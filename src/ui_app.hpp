@@ -367,6 +367,8 @@ private:
     int details_states_ = 0; /* how many slots the game in Details has */
     std::string launch_state_; /* the state to start the launched game from */
     void draw_controller_lines(float x, float y, float w, const porpoise::pad::Mapping &m);
+    /* A Wii game's controls: the DualSense as held, each Wii button on its control. */
+    void draw_wii_controls(float x, float y, float w, float h, const porpoise::pad::WiiConfig &wii, float alpha);
 
     Dialog dialog_;
     bool drawing_dialog_ = false;

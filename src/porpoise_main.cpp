@@ -35,6 +35,7 @@
 #include "porpoise_covers.hpp"
 #include "porpoise_jailbreak.hpp"
 #include "porpoise_pacer.hpp"
+#include "porpoise_aim.hpp"
 #include "porpoise_pad.hpp"
 #include "porpoise_sound.hpp"
 #include "porpoise_states.hpp"
@@ -759,15 +760,15 @@ void draw_motion_readout()
     row(line);
     std::snprintf(line, sizeof line, "remote g  %+.2f %+.2f %+.2f", m.gyro[0], m.gyro[1], m.gyro[2]);
     row(line);
-    std::snprintf(line, sizeof line, "pointer   %+.2f %+.2f   (R1 centres)", m.pointer_x, m.pointer_y);
+    std::snprintf(line, sizeof line, "pointer   %+.2f %+.2f  roll %+.0f", m.aim_x, m.aim_y, m.roll * 57.29578f);
     row(line);
     std::snprintf(line, sizeof line, "touch     %s %d, %d", m.touching ? "yes" : "no ", m.touch_x, m.touch_y);
     row(line);
     std::snprintf(line, sizeof line, "shake %s   buttons %04x", m.shaking ? "YES" : "no ", unsigned(p.joypad));
     row(line);
     /* What the game is told the remote's camera sees: the sensor bar's lights. */
-    porpoise::pad::SensorBarDot dots[2];
-    porpoise::pad::sensor_bar_dots(m.pointer_x, m.pointer_y, dots);
+    porpoise::aim::Dot dots[2];
+    porpoise::aim::sensor_bar(m.aim_x, m.aim_y, m.roll, dots);
     if (g_play.wii_pointer != 2)
         std::snprintf(line, sizeof line, "camera    %4d,%3d  %4d,%3d", dots[0].visible ? int(dots[0].x * 1023) : -1,
                       dots[0].visible ? int(dots[0].y * 767) : -1, dots[1].visible ? int(dots[1].x * 1023) : -1,

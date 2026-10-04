@@ -640,6 +640,20 @@ int main(int argc, char **argv)
             for (int i = 0; i < 4; ++i)
                 menu_press(1u << 1);
             shot("ingame-controls-wii");
+            /* Row 3 Wii controller, row 6 Grip: the drawing for each way of holding it. */
+            menu_press(1u << 0);    /* Wii controller */
+            menu_press(1u << 3);    /* Remote */
+            menu_press(1u << 1, 3); /* Grip */
+            shot("wii-remote-both-hands");
+            menu_press(1u << 3);
+            shot("wii-remote-upright-right");
+            menu_press(1u << 3);
+            shot("wii-remote-upright-left");
+            menu_press(1u << 3);    /* back to both hands */
+            menu_press(1u << 0, 3);
+            menu_press(1u << 3, 3); /* Two controllers */
+            shot("wii-two-controllers");
+            menu_press(1u << 3, 1); /* Remote + Nunchuk */
             for (int i = 0; i < 10; ++i)
                 menu_press(1u << 1);
             shot("ingame-controls-wii-2");

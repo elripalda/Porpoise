@@ -28,6 +28,7 @@
 #include "libretro.h"
 #include "porpoise_audio.hpp"
 #include "porpoise_pacer.hpp"
+#include "porpoise_aim.hpp"
 #include "porpoise_pad.hpp"
 #include "porpoise_vk.hpp"
 #include "trace.hpp"
@@ -573,19 +574,20 @@ void log_motion()
         return;
     const porpoise::pad::State p = porpoise::pad::snapshot(0);
     const porpoise::pad::Motion &m = p.motion;
-    porpoise::pad::SensorBarDot dots[2];
-    porpoise::pad::sensor_bar_dots(m.pointer_x, m.pointer_y, dots);
-    auto cam = [](const porpoise::pad::SensorBarDot &d, bool y) {
+    porpoise::aim::Dot dots[2];
+    porpoise::aim::sensor_bar(m.aim_x, m.aim_y, m.roll, dots);
+    auto cam = [](const porpoise::aim::Dot &d, bool y) {
         return d.visible ? static_cast<int>((y ? d.y * 767 : d.x * 1023) + 0.5f) : -1;
     };
     const int n = std::fprintf(
         h.motion_log,
-        "%llu,%u,%08x,%04x,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d\n",
+        "%llu,%u,%08x,%04x,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%.3f,%.3f,%.1f,%.4f,%.4f,%.4f\n",
         h.frame_number, m.samples, p.buttons, p.joypad, m.raw_accel[0], m.raw_accel[1], m.raw_accel[2],
         m.raw_gyro[0], m.raw_gyro[1], m.raw_gyro[2], m.orientation[0], m.orientation[1], m.orientation[2],
         m.orientation[3], m.accel[0], m.accel[1], m.accel[2], m.gyro[0], m.gyro[1], m.gyro[2], m.pointer_x,
         m.pointer_y, m.touching ? 1 : 0, m.touch_x, m.touch_y, m.shaking ? 1 : 0, cam(dots[0], false),
-        cam(dots[0], true), cam(dots[1], false), cam(dots[1], true));
+        cam(dots[0], true), cam(dots[1], false), cam(dots[1], true), m.aim_x, m.aim_y, m.roll * 57.29578f,
+        m.gyro_bias[0], m.gyro_bias[1], m.gyro_bias[2]);
     if (n > 0)
         h.motion_log_bytes += n;
 }
@@ -624,9 +626,9 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
          * gyro cursor can't add a second, different aim on top. */
         if (index > 1 || !h.wii.active)
             return 0;
-        porpoise::pad::SensorBarDot dots[2];
-        porpoise::pad::sensor_bar_dots(pad.motion.pointer_x, pad.motion.pointer_y, dots);
-        const porpoise::pad::SensorBarDot &dot = dots[index];
+        porpoise::aim::Dot dots[2];
+        porpoise::aim::sensor_bar(pad.motion.aim_x, pad.motion.aim_y, pad.motion.roll, dots);
+        const porpoise::aim::Dot &dot = dots[index];
         if (!dot.visible)
             return 0;
         if (id == RETRO_DEVICE_ID_POINTER_X)
@@ -902,12 +904,13 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             std::fprintf(h.motion_log,
                          "# Porpoise motion log: one line per frame. raw = the DualSense as the console gives it "
                          "(g, rad/s; x right, y out of the face, z toward the player); remote = turned into the "
-                         "Wii Remote's axes for the grip (x left, y back, z up). controller %d pointer %d grip %d "
+                         "Wii Remote's axes for the grip (x left, y back, z up); dots = the sensor bar in the Remote's "
+                         "1024x768 camera (-1 out of view); aim = the pointer past the screen's edges; roll in "
+                         "degrees; bias = the gyroscope drift learnt (rad/s). controller %d pointer %d grip %d "
                          "speed %d motion %d shake %d\n"
                          "frame,samples,buttons,joypad,raw_ax,raw_ay,raw_az,raw_gx,raw_gy,raw_gz,qx,qy,qz,qw,"
                          "remote_ax,remote_ay,remote_az,remote_gx,remote_gy,remote_gz,pointer_x,pointer_y,touching,"
-                         "touch_x,touch_y,shake,dot1_x,dot1_y,dot2_x,dot2_y (the sensor bar in the remote's 1024x768 "
-                         "camera, -1 out of view)\n",
+                         "touch_x,touch_y,shake,dot1_x,dot1_y,dot2_x,dot2_y,aim_x,aim_y,roll,bias_x,bias_y,bias_z\n",
                          h.wii.controller, h.wii.pointer, h.wii.grip, h.wii.speed, h.wii.motion ? 1 : 0,
                          h.wii.shake ? 1 : 0);
     }

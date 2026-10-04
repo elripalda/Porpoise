@@ -139,7 +139,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
             r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 1,
                          {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}});
             r.push_back({Kind::Int, "wii_grip", "Grip", &p.wii_grip, nullptr, 0,
-                         {"Both hands", "One hand, left edge", "One hand, right edge"}});
+                         {"Both hands", "Upright, right hand", "Upright, left hand"}});
             r.push_back({Kind::Bool, "wii_motion", "Motion", nullptr, &p.wii_motion, 0, {"Off", "On"}});
             r.push_back({Kind::Bool, "wii_shake", "Flick to shake", nullptr, &p.wii_shake, 0, {"Off", "On"}});
             r.push_back({Kind::Bool, "motion_readout", "Motion readout", nullptr, &p.motion_readout, 0,
@@ -874,7 +874,14 @@ void App::draw_game_menu(double time)
         }
         below += sh + 44;
     }
-    else if (menu_tab_ == kTabControls && !(menu_game_ && menu_game_->platform == "Wii"))
+    if (menu_tab_ == kTabControls && menu_game_ && menu_game_->platform == "Wii")
+    {
+        /* Beside the menu: how the DualSense is the Wii controller, as set. */
+        g.set_layer();
+        draw_wii_controls(960, 40, 920, 1000, p.wii_config(true), t);
+        g.set_layer(-(w + 80) * (1.0f - t), 0, 0.3f + 0.7f * t);
+    }
+    else if (menu_tab_ == kTabControls)
     {
         /* The controller and its buttons, as this game has them. */
         const float aw = 560;

@@ -115,13 +115,48 @@ enum WiiPointer : int
     PointerTouch = 1, /* the touch pad, as a little screen */
     PointerStick = 2, /* the right stick (the core's own) */
 };
-/* How the DualSense is held: its axes become the Remote's. */
+/* How the DualSense is held: which way it points, which side is the Remote's top. */
 enum WiiGrip : int
 {
-    GripNormal = 0,    /* in both hands, its back edge toward the TV */
-    GripLeftEdge = 1,  /* in the right hand, its left edge toward the TV */
-    GripRightEdge = 2, /* in the left hand, its right edge toward the TV */
+    GripNormal = 0,        /* in both hands, face up, the trigger edge toward the TV */
+    GripUprightRight = 1,  /* stood on its left grip in the right hand: face to the left, R2 under the index finger */
+    GripUprightLeft = 2,   /* the mirror image in the left hand: face to the right, L2 under the index finger */
     GripCount,
+};
+/* What a DualSense control is on the Wii controller being played. */
+enum WiiInput : int
+{
+    WiA, WiB, WiOne, WiTwo, WiMinus, WiPlus, WiHome,
+    WiUp, WiDown, WiLeft, WiRight,
+    WiShake,        /* shakes the Remote */
+    WiC, WiZ,       /* the Nunchuk's buttons */
+    WiNunchukShake,
+    WiClA, WiClB, WiClX, WiClY, WiClZL, WiClZR, WiClL, WiClR, /* the Classic Controller's */
+    WiCentre,       /* Porpoise: the pointer back to the middle */
+    WiInputCount,
+};
+struct WiiBinding
+{
+    int control; /* Control */
+    int input;   /* WiiInput */
+};
+/* What each stick does. */
+enum WiiStick : int
+{
+    StickNothing,
+    StickDPad,        /* pushed, it is the D-pad */
+    StickNunchuk,     /* the Nunchuk's stick */
+    StickClassicLeft, /* the Classic Controller's sticks */
+    StickClassicRight,
+    StickPointer,     /* aims the pointer (Pointer: right stick) */
+    StickTilt,        /* tilts the Remote (the core's, with the Nunchuk) */
+};
+struct WiiLayout
+{
+    WiiBinding binds[24];
+    int count = 0;
+    int left_stick = StickNothing, right_stick = StickNothing;
+    bool second_controller = false; /* two controllers: this is the Nunchuk one's */
 };
 struct WiiConfig
 {
@@ -137,6 +172,10 @@ struct WiiConfig
 void set_wii(const WiiConfig &config);
 WiiConfig wii();
 
+/* The buttons and sticks of a Wii controller, as played and as drawn. The
+ * second controller of "two controllers" has its own (second = true). */
+WiiLayout wii_layout(const WiiConfig &config, bool second = false);
+
 /* The libretro device a Wii game's port gets for a WiiController. */
 unsigned wii_device(int controller);
 
@@ -150,26 +189,18 @@ struct Motion
     /* The same, turned into the Wii Remote's axes for the grip (x left, y back
      * toward the player, z up), as the core wants them. */
     float accel[3] = {0, 0, 0}, gyro[3] = {0, 0, 0};
-    /* The pointer, -1..1 across the screen (0 the centre). */
+    /* The pointer, -1..1 across the screen (0 the centre, y down), held to the
+     * screen; aim_x / aim_y are the same past the edges (pointing off the
+     * screen), roll the Remote's turn about where it points (radians, + its
+     * top to the right). */
     float pointer_x = 0, pointer_y = 0;
+    float aim_x = 0, aim_y = 0, roll = 0;
+    float gyro_bias[3] = {0, 0, 0}; /* the drift learnt so far, rad/s */
     bool touching = false;
     int touch_x = 0, touch_y = 0; /* the first finger, 0..1919 x 0..1079 */
     bool shaking = false;         /* a flick was felt in the last few frames */
     unsigned samples = 0;         /* readings this poll */
 };
-
-/* What the Wii Remote's camera sees of the sensor bar when it points at
- * (pointer_x, pointer_y), -1..1 across the screen: the two lights, each x and
- * y over 0..1 of the camera's view, and whether it is in view. The same
- * geometry Dolphin uses for its own mouse pointer (Total Yaw 25, Total Pitch
- * 25, Vertical Offset 10 cm, sensor bar above the TV), so the game's cursor
- * lands where Porpoise's pointer is. */
-struct SensorBarDot
-{
-    float x = 0, y = 0;
-    bool visible = false;
-};
-void sensor_bar_dots(float pointer_x, float pointer_y, SensorBarDot out[2]);
 
 struct State
 {

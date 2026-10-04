@@ -13,9 +13,11 @@
  * becomes the next free player (the way ProsperoEden's pad.cpp does it). A
  * user who signs out frees their player. */
 #include "porpoise_pad.hpp"
+#include "porpoise_aim.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <atomic>
 #include <cstddef>
 #include <cstdio>
@@ -24,6 +26,8 @@
 
 #include "libretro.h"
 #include "trace.hpp"
+
+namespace aim = porpoise::aim;
 
 namespace
 {
@@ -147,102 +151,125 @@ struct Slot
     float pointer_x = 0, pointer_y = 0;
     std::uint64_t last_motion_us = 0;
     int shake_frames = 0;
-    bool r1_was = false;
-    /* Which way gravity reads, learnt from the first readings at rest. */
-    float gravity_sum = 0;
-    int gravity_count = 0;
-    float gravity_sign = 1.0f;
+    bool centre_was = false;
+    /* The controller's orientation, and where the middle of the screen is. */
+    aim::Fusion fusion;
+    aim::Angles centre;
+    bool centred = false;
 };
 
 /* ---- the Wii Remote ---- */
 WiiConfig g_wii;
 
-struct WiiBind
-{
-    std::uint32_t pad;
-    unsigned retro;
+/* Each Wii controller's layout: DualSense control -> Wii input. The same
+ * tables drive the game and the Controls tab's drawing. */
+constexpr WiiBinding kDPadAsDPad[] = {{CtlUp, WiUp}, {CtlDown, WiDown}, {CtlLeft, WiLeft}, {CtlRight, WiRight}};
+constexpr WiiBinding kLayRemote[] = {
+    /* Held either way on the right: the index finger on R2 (B), the thumb on
+     * Cross (A), 1 and 2 beside it. */
+    {CtlCross, WiA},    {CtlR2, WiB},       {CtlSquare, WiOne}, {CtlTriangle, WiTwo},
+    {CtlCircle, WiShake}, {CtlTouch, WiMinus}, {CtlOptions, WiPlus}, {CtlR3, WiHome},
+    {CtlR1, WiCentre},
 };
-/* Each Wii controller's buttons: DualSense button -> the libretro button the
- * Dolphin core reads for it (Source/Core/DolphinLibretro/Input.cpp,
- * retro_set_controller_port_device_wii). */
-constexpr WiiBind kWiiNunchuk[] = {
-    /* A, B (the trigger under the Remote), C, Z, -, +, 1, 2, Home, shakes. */
-    {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},      {pad_r2, RETRO_DEVICE_ID_JOYPAD_B},
-    {pad_l1, RETRO_DEVICE_ID_JOYPAD_X},         {pad_l2, RETRO_DEVICE_ID_JOYPAD_Y},
-    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_L},  {pad_options, RETRO_DEVICE_ID_JOYPAD_R},
-    {pad_square, RETRO_DEVICE_ID_JOYPAD_START}, {pad_triangle, RETRO_DEVICE_ID_JOYPAD_SELECT},
-    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},        {pad_circle, RETRO_DEVICE_ID_JOYPAD_R2},
-    {pad_l3, RETRO_DEVICE_ID_JOYPAD_L2},
+constexpr WiiBinding kLayRemoteLeft[] = {
+    /* The mirror image for the left hand: L2 B, the D-pad as the face buttons. */
+    {CtlDown, WiA},     {CtlL2, WiB},       {CtlRight, WiOne},  {CtlUp, WiTwo},
+    {CtlLeft, WiShake}, {CtlTouch, WiMinus}, {CtlOptions, WiPlus}, {CtlL3, WiHome},
+    {CtlL1, WiCentre},
 };
-constexpr WiiBind kWiiRemote[] = {
-    /* A, B, 1, 2, -, +, Home, shake. */
-    {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},       {pad_r2, RETRO_DEVICE_ID_JOYPAD_B},
-    {pad_square, RETRO_DEVICE_ID_JOYPAD_X},      {pad_triangle, RETRO_DEVICE_ID_JOYPAD_Y},
-    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_SELECT}, {pad_options, RETRO_DEVICE_ID_JOYPAD_START},
-    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},         {pad_circle, RETRO_DEVICE_ID_JOYPAD_R2},
+constexpr WiiBinding kLaySideways[] = {
+    /* Held like an NES pad: 1 on Square, 2 on Cross; A, B above them. */
+    {CtlSquare, WiOne}, {CtlCross, WiTwo},  {CtlTriangle, WiA}, {CtlCircle, WiB},
+    {CtlTouch, WiMinus}, {CtlOptions, WiPlus}, {CtlR3, WiHome}, {CtlR1, WiShake},
+    {CtlR2, WiShake},
 };
-constexpr WiiBind kWiiSideways[] = {
-    /* Held like an NES pad: 1 on Square, 2 on Cross; A, B; -, +, Home; shake on R1 / R2. */
-    {pad_square, RETRO_DEVICE_ID_JOYPAD_B},      {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},
-    {pad_triangle, RETRO_DEVICE_ID_JOYPAD_X},    {pad_circle, RETRO_DEVICE_ID_JOYPAD_Y},
-    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_SELECT}, {pad_options, RETRO_DEVICE_ID_JOYPAD_START},
-    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},         {pad_r1, RETRO_DEVICE_ID_JOYPAD_R2},
-    {pad_r2, RETRO_DEVICE_ID_JOYPAD_R2},
+constexpr WiiBinding kLayNunchuk[] = {
+    /* The Remote on the right (A, B on R2), the Nunchuk on the left (C on L1, Z on L2). */
+    {CtlCross, WiA},     {CtlR2, WiB},        {CtlL1, WiC},        {CtlL2, WiZ},
+    {CtlTouch, WiMinus}, {CtlOptions, WiPlus}, {CtlSquare, WiOne}, {CtlTriangle, WiTwo},
+    {CtlR3, WiHome},     {CtlCircle, WiShake}, {CtlL3, WiNunchukShake}, {CtlR1, WiCentre},
 };
-constexpr WiiBind kWiiClassic[] = {
-    /* By position: a Circle, b Cross, x Triangle, y Square; ZL / ZR on L1 / R1,
-     * L / R on the triggers (analog). */
-    {pad_circle, RETRO_DEVICE_ID_JOYPAD_A},  {pad_cross, RETRO_DEVICE_ID_JOYPAD_B},
-    {pad_triangle, RETRO_DEVICE_ID_JOYPAD_X}, {pad_square, RETRO_DEVICE_ID_JOYPAD_Y},
-    {pad_l1, RETRO_DEVICE_ID_JOYPAD_L},      {pad_r1, RETRO_DEVICE_ID_JOYPAD_R},
-    {pad_options, RETRO_DEVICE_ID_JOYPAD_START}, {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_SELECT},
-    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},
+constexpr WiiBinding kLayClassic[] = {
+    /* By position: a Circle, b Cross, x Triangle, y Square. */
+    {CtlCircle, WiClA}, {CtlCross, WiClB},  {CtlTriangle, WiClX}, {CtlSquare, WiClY},
+    {CtlL1, WiClZL},    {CtlR1, WiClZR},    {CtlL2, WiClL},       {CtlR2, WiClR},
+    {CtlOptions, WiPlus}, {CtlTouch, WiMinus}, {CtlR3, WiHome},
 };
-/* Two controllers: the first is the Remote (the Nunchuk device's Remote buttons)... */
-constexpr WiiBind kWiiTwoRemote[] = {
-    {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},       {pad_r2, RETRO_DEVICE_ID_JOYPAD_B},
-    {pad_square, RETRO_DEVICE_ID_JOYPAD_START},  {pad_triangle, RETRO_DEVICE_ID_JOYPAD_SELECT},
-    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_L},   {pad_options, RETRO_DEVICE_ID_JOYPAD_R},
-    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},         {pad_circle, RETRO_DEVICE_ID_JOYPAD_R2},
-};
-/* ...and the second the Nunchuk: Z on its triggers, C on its shoulders or Cross,
- * a shake on Circle (or a flick). */
-constexpr WiiBind kWiiTwoNunchuk[] = {
-    {pad_l2, RETRO_DEVICE_ID_JOYPAD_Y},    {pad_r2, RETRO_DEVICE_ID_JOYPAD_Y},
-    {pad_l1, RETRO_DEVICE_ID_JOYPAD_X},    {pad_r1, RETRO_DEVICE_ID_JOYPAD_X},
-    {pad_cross, RETRO_DEVICE_ID_JOYPAD_X}, {pad_circle, RETRO_DEVICE_ID_JOYPAD_L2},
+constexpr WiiBinding kLayTwoNunchuk[] = {
+    /* The second controller is the Nunchuk: Z on its triggers, C on its shoulders or Cross. */
+    {CtlL2, WiZ}, {CtlR2, WiZ}, {CtlL1, WiC}, {CtlR1, WiC}, {CtlCross, WiC}, {CtlCircle, WiNunchukShake},
 };
 
-template <std::size_t N> std::uint16_t wii_bits(const WiiBind (&binds)[N], std::uint32_t b)
+/* The libretro button the Dolphin core reads for each Wii input, per device
+ * (Source/Core/DolphinLibretro/Input.cpp, retro_set_controller_port_device_wii);
+ * -1: none. */
+constexpr int R(unsigned id) { return int(id); }
+constexpr int kRetroRemote[WiInputCount] = {
+    R(RETRO_DEVICE_ID_JOYPAD_A), R(RETRO_DEVICE_ID_JOYPAD_B), R(RETRO_DEVICE_ID_JOYPAD_X), R(RETRO_DEVICE_ID_JOYPAD_Y),
+    R(RETRO_DEVICE_ID_JOYPAD_SELECT), R(RETRO_DEVICE_ID_JOYPAD_START), R(RETRO_DEVICE_ID_JOYPAD_R3),
+    R(RETRO_DEVICE_ID_JOYPAD_UP), R(RETRO_DEVICE_ID_JOYPAD_DOWN), R(RETRO_DEVICE_ID_JOYPAD_LEFT), R(RETRO_DEVICE_ID_JOYPAD_RIGHT),
+    R(RETRO_DEVICE_ID_JOYPAD_R2), -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+constexpr int kRetroSideways[WiInputCount] = {
+    R(RETRO_DEVICE_ID_JOYPAD_X), R(RETRO_DEVICE_ID_JOYPAD_Y), R(RETRO_DEVICE_ID_JOYPAD_B), R(RETRO_DEVICE_ID_JOYPAD_A),
+    R(RETRO_DEVICE_ID_JOYPAD_SELECT), R(RETRO_DEVICE_ID_JOYPAD_START), R(RETRO_DEVICE_ID_JOYPAD_R3),
+    R(RETRO_DEVICE_ID_JOYPAD_UP), R(RETRO_DEVICE_ID_JOYPAD_DOWN), R(RETRO_DEVICE_ID_JOYPAD_LEFT), R(RETRO_DEVICE_ID_JOYPAD_RIGHT),
+    R(RETRO_DEVICE_ID_JOYPAD_R2), -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+constexpr int kRetroNunchuk[WiInputCount] = {
+    R(RETRO_DEVICE_ID_JOYPAD_A), R(RETRO_DEVICE_ID_JOYPAD_B), R(RETRO_DEVICE_ID_JOYPAD_START), R(RETRO_DEVICE_ID_JOYPAD_SELECT),
+    R(RETRO_DEVICE_ID_JOYPAD_L), R(RETRO_DEVICE_ID_JOYPAD_R), R(RETRO_DEVICE_ID_JOYPAD_R3),
+    R(RETRO_DEVICE_ID_JOYPAD_UP), R(RETRO_DEVICE_ID_JOYPAD_DOWN), R(RETRO_DEVICE_ID_JOYPAD_LEFT), R(RETRO_DEVICE_ID_JOYPAD_RIGHT),
+    R(RETRO_DEVICE_ID_JOYPAD_R2), R(RETRO_DEVICE_ID_JOYPAD_X), R(RETRO_DEVICE_ID_JOYPAD_Y), R(RETRO_DEVICE_ID_JOYPAD_L2),
+    -1, -1, -1, -1, -1, -1, -1, -1, -1};
+constexpr int kRetroClassic[WiInputCount] = {
+    -1, -1, -1, -1, R(RETRO_DEVICE_ID_JOYPAD_SELECT), R(RETRO_DEVICE_ID_JOYPAD_START), R(RETRO_DEVICE_ID_JOYPAD_R3),
+    R(RETRO_DEVICE_ID_JOYPAD_UP), R(RETRO_DEVICE_ID_JOYPAD_DOWN), R(RETRO_DEVICE_ID_JOYPAD_LEFT), R(RETRO_DEVICE_ID_JOYPAD_RIGHT),
+    -1, -1, -1, -1,
+    R(RETRO_DEVICE_ID_JOYPAD_A), R(RETRO_DEVICE_ID_JOYPAD_B), R(RETRO_DEVICE_ID_JOYPAD_X), R(RETRO_DEVICE_ID_JOYPAD_Y),
+    R(RETRO_DEVICE_ID_JOYPAD_L), R(RETRO_DEVICE_ID_JOYPAD_R), R(RETRO_DEVICE_ID_JOYPAD_L2), R(RETRO_DEVICE_ID_JOYPAD_R2), -1};
+static_assert(WiCentre == 23 && WiInputCount == 24, "the retro tables list every WiiInput");
+
+const int *retro_table(int controller)
 {
+    switch (controller)
+    {
+    case WiiRemote: return kRetroRemote;
+    case WiiSideways: return kRetroSideways;
+    case WiiClassic: return kRetroClassic;
+    default: return kRetroNunchuk; /* the Nunchuk device, also for two controllers */
+    }
+}
+
+/* Sticks pushed past half way are the D-pad. */
+std::uint16_t stick_dpad(std::int16_t x, std::int16_t y, const int *retro)
+{
+    constexpr int kPush = 16000;
     std::uint16_t out = 0;
-    for (const WiiBind &w : binds)
-        if (b & w.pad)
-            out |= static_cast<std::uint16_t>(1u << w.retro);
+    auto set = [&](int input) {
+        if (retro[input] >= 0)
+            out |= static_cast<std::uint16_t>(1u << retro[input]);
+    };
+    if (y < -kPush)
+        set(WiUp);
+    if (y > kPush)
+        set(WiDown);
+    if (x < -kPush)
+        set(WiLeft);
+    if (x > kPush)
+        set(WiRight);
     return out;
 }
 
-/* The DualSense's axes (x right, y out of its face, z toward the player)
- * into the Remote's (x left, y back, z up) for how it is held. */
-void to_remote(int grip, const float in[3], float out[3])
+const aim::Basis &grip_basis(int grip, int controller)
 {
+    /* Sideways and the Classic Controller are always held in both hands
+     * (Dolphin turns a sideways Remote's motion itself). */
+    if (controller == WiiSideways || controller == WiiClassic)
+        return aim::kGripNormal;
     switch (grip)
     {
-    case GripLeftEdge: /* its left edge points at the TV */
-        out[0] = in[2];
-        out[1] = in[0];
-        out[2] = in[1];
-        break;
-    case GripRightEdge:
-        out[0] = -in[2];
-        out[1] = -in[0];
-        out[2] = in[1];
-        break;
-    default: /* its back edge (the light bar) points at the TV */
-        out[0] = -in[0];
-        out[1] = in[2];
-        out[2] = in[1];
-        break;
+    case GripUprightRight: return aim::kGripUprightRight;
+    case GripUprightLeft: return aim::kGripUprightLeft;
+    default: return aim::kGripNormal;
     }
 }
 
@@ -369,8 +396,8 @@ void rescan()
     }
 }
 
-/* The motion in this poll's readings: the newest as it is, the gyro over all
- * of them for the pointer. */
+/* The motion in this poll's readings: each one fused into the controller's
+ * orientation, in order; the newest as it is for the readout and the core. */
 Motion read_motion(Slot &slot, std::int32_t count)
 {
     Motion m;
@@ -382,6 +409,15 @@ Motion read_motion(Slot &slot, std::int32_t count)
     std::sort(order, order + n, [](const PadSample *a, const PadSample *b) { return a->timestamp_us < b->timestamp_us; });
     if (n == 0)
         return m;
+    for (int i = 0; i < n; ++i)
+    {
+        const PadSample &p = *order[i];
+        if (slot.last_motion_us && p.timestamp_us <= slot.last_motion_us)
+            continue; /* already seen */
+        const float dt = slot.last_motion_us ? float(p.timestamp_us - slot.last_motion_us) * 1e-6f : 0.0f;
+        aim::fuse(slot.fusion, p.angular_velocity, p.acceleration, dt);
+        slot.last_motion_us = p.timestamp_us;
+    }
     const PadSample &last = *order[n - 1];
     m.valid = true;
     m.samples = unsigned(n);
@@ -389,71 +425,60 @@ Motion read_motion(Slot &slot, std::int32_t count)
     {
         m.raw_accel[i] = last.acceleration[i];
         m.raw_gyro[i] = last.angular_velocity[i];
+        m.gyro_bias[i] = slot.fusion.bias[i];
     }
     for (int i = 0; i < 4; ++i)
         m.orientation[i] = last.orientation[i];
-    /* Gravity's direction: the first readings with the controller still. */
     const float mag = std::sqrt(m.raw_accel[0] * m.raw_accel[0] + m.raw_accel[1] * m.raw_accel[1] +
                                 m.raw_accel[2] * m.raw_accel[2]);
-    if (slot.gravity_count < 60 && std::fabs(mag - 1.0f) < 0.12f && std::fabs(m.raw_accel[1]) > 0.7f)
-    {
-        slot.gravity_sum += m.raw_accel[1];
-        if (++slot.gravity_count == 60)
-            slot.gravity_sign = slot.gravity_sum >= 0 ? 1.0f : -1.0f;
-    }
-    float a[3];
-    for (int i = 0; i < 3; ++i)
-        a[i] = m.raw_accel[i] * slot.gravity_sign;
-    const int grip = g_wii.grip;
-    to_remote(grip, a, m.accel);
-    to_remote(grip, m.raw_gyro, m.gyro);
 
-    /* The pointer. */
-    const float k = 2.86f * float(std::clamp(g_wii.speed, 1, 10)) / 5.0f; /* screen widths per radian */
-    const float sx = g_wii.invert_x ? -1.0f : 1.0f, sy = g_wii.invert_y ? -1.0f : 1.0f;
-    for (int i = 0; i < n; ++i)
+    /* For the core: the Remote's own axes, the gyroscope without its drift. */
+    const aim::Basis &basis = grip_basis(g_wii.grip, g_wii.controller);
+    float g[3];
+    for (int i = 0; i < 3; ++i)
+        g[i] = m.raw_gyro[i] - slot.fusion.bias[i];
+    aim::to_remote(basis, m.raw_accel, m.accel);
+    aim::to_remote(basis, g, m.gyro);
+
+    /* Where it points. The middle of the screen is wherever it pointed half a
+     * second in (once gravity has settled), and again whenever centred. */
+    const aim::Angles now = aim::remote_angles(slot.fusion, basis);
+    const bool centre_held = (last.buttons & (g_wii.grip == GripUprightLeft ? pad_l1 : pad_r1)) != 0;
+    const bool centre_button = g_wii.controller != WiiSideways && g_wii.controller != WiiClassic;
+    if ((!slot.centred && slot.fusion.started && slot.fusion.age > 0.5f) ||
+        (centre_button && centre_held && !slot.centre_was))
     {
-        const PadSample &p = *order[i];
-        if (slot.last_motion_us && p.timestamp_us > slot.last_motion_us)
-        {
-            const float dt = std::min(0.05f, float(p.timestamp_us - slot.last_motion_us) * 1e-6f);
-            if (g_wii.pointer == PointerGyro)
-            {
-                float g[3];
-                to_remote(grip, p.angular_velocity, g);
-                /* Below about 1 degree a second is the sensor's own noise:
-                 * ignored, so a still hand keeps a still pointer. */
-                for (float &v : g)
-                    if (std::fabs(v) < 0.015f)
-                        v = 0.0f;
-                /* Turning left (+z) moves it left; the nose down (+x) moves it down. */
-                slot.pointer_x -= sx * g[2] * k * dt;
-                slot.pointer_y += sy * g[0] * k * dt;
-            }
-        }
-        if (p.timestamp_us > slot.last_motion_us)
-            slot.last_motion_us = p.timestamp_us;
+        slot.centre = now;
+        slot.centred = true;
+    }
+    slot.centre_was = centre_held;
+    m.roll = now.roll;
+    if (g_wii.pointer == PointerGyro)
+    {
+        float x = 0, y = 0;
+        if (slot.centred)
+            aim::pointer(now, slot.centre, g_wii.speed, x, y);
+        m.aim_x = g_wii.invert_x ? -x : x;
+        m.aim_y = g_wii.invert_y ? -y : y;
     }
     m.touching = (last.touch_count & 0x7f) > 0;
     if (m.touching)
     {
         m.touch_x = last.touch[0].x;
         m.touch_y = last.touch[0].y;
-        if (g_wii.pointer == PointerTouch)
+    }
+    if (g_wii.pointer == PointerTouch)
+    {
+        if (m.touching)
         {
             slot.pointer_x = float(m.touch_x) / 1919.0f * 2.0f - 1.0f;
             slot.pointer_y = float(m.touch_y) / 1030.0f * 2.0f - 1.0f; /* the pad reads 0..~1030 down */
         }
+        m.aim_x = slot.pointer_x;
+        m.aim_y = slot.pointer_y;
     }
-    /* R1 puts the pointer back in the middle. */
-    const bool r1 = (last.buttons & pad_r1) != 0;
-    if (r1 && !slot.r1_was && g_wii.pointer == PointerGyro)
-        slot.pointer_x = slot.pointer_y = 0;
-    slot.r1_was = r1;
-    slot.pointer_x = std::clamp(slot.pointer_x, -1.0f, 1.0f);
-    slot.pointer_y = std::clamp(slot.pointer_y, -1.0f, 1.0f);
-    m.pointer_x = slot.pointer_x;
-    m.pointer_y = slot.pointer_y;
+    m.pointer_x = std::clamp(m.aim_x, -1.0f, 1.0f);
+    m.pointer_y = std::clamp(m.aim_y, -1.0f, 1.0f);
     /* A flick: well over 1 g. */
     if (g_wii.shake && mag > 2.0f)
         slot.shake_frames = 8;
@@ -530,30 +555,36 @@ State read_slot(Slot &slot)
     if (g_wii.active)
     {
         /* A Wii game: the Wii controller's buttons instead of the GameCube's. */
-        const bool shake = motion.shaking;
-        switch (g_wii.controller)
+        auto bits = [&](const WiiLayout &lay, const int *retro) {
+            std::uint16_t out = 0;
+            for (int k = 0; k < lay.count; ++k)
+            {
+                const WiiBinding &w = lay.binds[k];
+                if (w.control >= 0 && w.control < CtlCount && (b & kControlPadBit[w.control]) && retro[w.input] >= 0)
+                    out |= static_cast<std::uint16_t>(1u << retro[w.input]);
+            }
+            if (lay.left_stick == StickDPad)
+                out |= stick_dpad(next.left_x, next.left_y, retro);
+            if (lay.right_stick == StickDPad)
+                out |= stick_dpad(next.right_x, next.right_y, retro);
+            return out;
+        };
+        const int *retro = retro_table(g_wii.controller);
+        next.joypad = bits(wii_layout(g_wii), retro);
+        if (motion.shaking && g_wii.controller != WiiClassic)
+            next.joypad |= static_cast<std::uint16_t>(1u << RETRO_DEVICE_ID_JOYPAD_R2);
+        if (g_wii.controller == WiiClassic)
         {
-        case WiiRemote: next.joypad = wii_bits(kWiiRemote, b); break;
-        case WiiSideways: next.joypad = wii_bits(kWiiSideways, b); break;
-        case WiiClassic:
-            next.joypad = wii_bits(kWiiClassic, b);
             next.l2 = static_cast<std::int16_t>(newest->left_trigger * 0x7fff / 255);
             next.r2 = static_cast<std::int16_t>(newest->right_trigger * 0x7fff / 255);
-            break;
-        case WiiTwoControllers:
-            next.joypad = wii_bits(kWiiTwoRemote, b) | (shake ? (1u << RETRO_DEVICE_ID_JOYPAD_R2) : 0u);
-            next.nunchuk = wii_bits(kWiiTwoNunchuk, b) | (shake ? (1u << RETRO_DEVICE_ID_JOYPAD_L2) : 0u);
-            break;
-        default:
-            next.joypad = wii_bits(kWiiNunchuk, b) | (shake ? (1u << RETRO_DEVICE_ID_JOYPAD_R2) : 0u);
-            break;
         }
-        /* The D-pad is the D-pad on every Wii controller. */
-        constexpr WiiBind kDpad[] = {{pad_up, RETRO_DEVICE_ID_JOYPAD_UP},
-                                     {pad_down, RETRO_DEVICE_ID_JOYPAD_DOWN},
-                                     {pad_left, RETRO_DEVICE_ID_JOYPAD_LEFT},
-                                     {pad_right, RETRO_DEVICE_ID_JOYPAD_RIGHT}};
-        next.joypad |= wii_bits(kDpad, b);
+        if (g_wii.controller == WiiTwoControllers)
+        {
+            /* The same controller as the second one: its Nunchuk buttons. */
+            next.nunchuk = bits(wii_layout(g_wii, true), kRetroNunchuk);
+            if (motion.shaking)
+                next.nunchuk |= static_cast<std::uint16_t>(1u << RETRO_DEVICE_ID_JOYPAD_L2);
+        }
     }
     return next;
 }
@@ -681,10 +712,68 @@ void set_wii(const WiiConfig &config)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     const bool was = g_wii.active;
+    const bool turned = config.grip != g_wii.grip || config.controller != g_wii.controller;
     g_wii = config;
-    if (config.active && !was)
+    if ((config.active && !was) || turned)
         for (Slot &slot : g_slots)
+        {
+            /* A new game or a new way of holding it: find the middle again. */
             slot.pointer_x = slot.pointer_y = 0;
+            slot.centred = false;
+            slot.fusion.age = 0.0f;
+        }
+}
+
+WiiLayout wii_layout(const WiiConfig &config, bool second)
+{
+    WiiLayout lay;
+    auto add = [&](const WiiBinding *b, std::size_t n) {
+        for (std::size_t i = 0; i < n && lay.count < int(std::size(lay.binds)); ++i)
+            lay.binds[lay.count++] = b[i];
+    };
+    const bool stick_aims = config.pointer == PointerStick;
+    if (second)
+    {
+        add(kLayTwoNunchuk, std::size(kLayTwoNunchuk));
+        lay.left_stick = StickNunchuk;
+        lay.second_controller = true;
+        return lay;
+    }
+    switch (config.controller)
+    {
+    case WiiRemote:
+    case WiiTwoControllers:
+        if (config.grip == GripUprightLeft)
+            add(kLayRemoteLeft, std::size(kLayRemoteLeft));
+        else
+        {
+            add(kLayRemote, std::size(kLayRemote));
+            add(kDPadAsDPad, std::size(kDPadAsDPad));
+        }
+        lay.left_stick = StickDPad;
+        lay.right_stick = stick_aims ? StickPointer : StickDPad;
+        break;
+    case WiiSideways:
+        add(kLaySideways, std::size(kLaySideways));
+        add(kDPadAsDPad, std::size(kDPadAsDPad));
+        lay.left_stick = StickDPad;
+        lay.right_stick = stick_aims ? StickPointer : StickNothing;
+        break;
+    case WiiClassic:
+        add(kLayClassic, std::size(kLayClassic));
+        add(kDPadAsDPad, std::size(kDPadAsDPad));
+        lay.left_stick = StickClassicLeft;
+        lay.right_stick = StickClassicRight;
+        break;
+    default:
+        add(kLayNunchuk, std::size(kLayNunchuk));
+        add(kDPadAsDPad, std::size(kDPadAsDPad));
+        lay.left_stick = StickNunchuk;
+        /* The core tilts the Remote with the right stick unless it aims. */
+        lay.right_stick = stick_aims ? StickPointer : StickTilt;
+        break;
+    }
+    return lay;
 }
 
 WiiConfig wii()
@@ -705,49 +794,14 @@ unsigned wii_device(int controller)
     }
 }
 
-void sensor_bar_dots(float pointer_x, float pointer_y, SensorBarDot out[2])
-{
-    /* A port of Dolphin's CameraLogic::GetCameraPoints with the Point group's
-     * transform (Dynamics.cpp EmulatePoint, WiimoteEmu GetTransformation):
-     * the remote 2 m from the bar, the bar 10 cm above the aim point, turned
-     * by yaw and pitch so the cursor's -1..1 spans 25 degrees each way. */
-    constexpr float kPi = 3.14159265358979f;
-    constexpr float kYaw = 25.0f * kPi / 180.0f / 2.0f;
-    constexpr float kPitch = 25.0f * kPi / 180.0f / 2.0f;
-    constexpr float kDistance = 2.0f, kHeight = 0.10f, kSeparation = 0.2f;
-    constexpr float kFovX = 42.0f * kPi / 180.0f, kFovY = kFovX / (4.0f / 3.0f);
-    const float cx = std::clamp(pointer_x, -1.0f, 1.0f);
-    const float cy = -std::clamp(pointer_y, -1.0f, 1.0f); /* up is + for Dolphin */
-    /* angle = (pitch * -cy, 0, yaw * -cx); the transform rotates by -angle. */
-    const float ax = kPitch * cy, az = kYaw * cx;
-    const float sx = std::sin(ax), cxr = std::cos(ax), sz = std::sin(az), czr = std::cos(az);
-    /* R = RotateZ(az) * RotateX(ax), row-major. */
-    const float r[9] = {czr, -sz * cxr, sz * sx, sz, czr * cxr, -czr * sx, 0, sx, cxr};
-    const float t = 1.0f / std::tan(kFovY / 2.0f);
-    for (int i = 0; i < 2; ++i)
-    {
-        /* The light, moved by -position (0, 2, -height), then rotated. */
-        const float v[3] = {i == 0 ? -kSeparation / 2 : kSeparation / 2, -kDistance, kHeight};
-        const float w[3] = {r[0] * v[0] + r[1] * v[1] + r[2] * v[2], r[3] * v[0] + r[4] * v[1] + r[5] * v[2],
-                            r[6] * v[0] + r[7] * v[1] + r[8] * v[2]};
-        /* RotateX(90 degrees): (x, y, z) -> (x, -z, y); then the perspective. */
-        const float px = w[0], py = -w[2], pz = w[1];
-        const float clip_x = px * t / (kFovX / kFovY), clip_y = py * t, clip_w = -pz;
-        out[i] = {};
-        if (clip_w <= 0)
-            continue;
-        const float x = (1 - clip_x / clip_w) / 2, y = (1 - clip_y / clip_w) / 2;
-        if (x < 0 || y < 0 || x >= 1 || y >= 1)
-            continue;
-        out[i] = {x, y, true};
-    }
-}
-
 void recenter(int player)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     if (player >= 0 && player < kMaxPlayers)
+    {
         g_slots[player].pointer_x = g_slots[player].pointer_y = 0;
+        g_slots[player].centred = false;
+    }
 }
 
 void set_rumble(int player, bool strong, std::uint16_t strength)

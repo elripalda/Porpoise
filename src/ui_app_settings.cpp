@@ -289,12 +289,12 @@ void App::add_game_rows(Settings &t, bool per_game)
            "controllers (beta): the second DualSense is the Nunchuk.",
            &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
                                   "Two controllers (beta)"});
-    choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: turn the controller (R1 centres it).",
+    choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen (R1 centres it).",
            &t.wii_pointer, 0, {"Gyro", "Touch pad", "Right stick"});
-    choice("wii_speed", "Pointer speed", "How far the gyro pointer moves when you turn the controller.", &t.wii_speed,
+    choice("wii_speed", "Pointer speed", "How far you turn the controller to reach the screen's edge.", &t.wii_speed,
            1, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"});
-    choice("wii_grip", "Grip", "How you hold the DualSense, so its motion turns the right way.", &t.wii_grip, 0,
-           {"Both hands", "One hand, left edge forward", "One hand, right edge forward"});
+    choice("wii_grip", "Grip", "How you hold the DualSense. Upright: stood on end in one hand, the index finger on R2 (L2 in the left hand).", &t.wii_grip, 0,
+           {"Both hands", "Upright, right hand", "Upright, left hand"});
     toggle("wii_motion", "Motion", "The DualSense's motion is the Remote's: tilt, swing and point.", &t.wii_motion);
     toggle("wii_shake", "Flick to shake", "A quick flick of the controller shakes the Remote.", &t.wii_shake);
     toggle("wii_invert_x", "Invert pointer left / right", "For testing: if the gyro pointer moves the wrong way.",

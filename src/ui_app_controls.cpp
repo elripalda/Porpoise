@@ -610,4 +610,317 @@ void App::draw_mapping(double time)
     else
         draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Start over"}, {Glyph::Circle, "Back"}}, {}, "");
 }
+
+/* ---- a Wii game's controls ------------------------------------------------------------- */
+
+namespace
+{
+/* A Wii input's chip text and its name in the list. */
+struct WiiInfo
+{
+    const char *chip;
+    const char *name;
+    std::uint32_t colour;
+};
+constexpr std::uint32_t kWiiWhite = 0xEEF3FF, kWiiBlue = 0x7FD9FF, kWiiAmber = 0xFFC85C, kWiiGreen = 0x6BE3A8;
+constexpr WiiInfo kWiiInfo[WiInputCount] = {
+    {"A", "A button", kWiiBlue},
+    {"B", "B, the trigger", kWiiBlue},
+    {"1", "1 button", kWiiWhite},
+    {"2", "2 button", kWiiWhite},
+    {"-", "Minus", kWiiWhite},
+    {"+", "Plus", kWiiWhite},
+    {"HOME", "HOME button", kWiiWhite},
+    {"", "D-pad up", kWiiWhite},
+    {"", "D-pad down", kWiiWhite},
+    {"", "D-pad left", kWiiWhite},
+    {"", "D-pad right", kWiiWhite},
+    {"SHAKE", "Shakes the Remote", kWiiAmber},
+    {"C", "Nunchuk C", kWiiWhite},
+    {"Z", "Nunchuk Z", kWiiWhite},
+    {"SHAKE", "Shakes the Nunchuk", kWiiAmber},
+    {"a", "a button", kWiiBlue},
+    {"b", "b button", kWiiBlue},
+    {"x", "x button", kWiiWhite},
+    {"y", "y button", kWiiWhite},
+    {"ZL", "ZL button", kWiiWhite},
+    {"ZR", "ZR button", kWiiWhite},
+    {"L", "L trigger", kWiiWhite},
+    {"R", "R trigger", kWiiWhite},
+    {"CENTRE", "Centres the pointer", kWiiGreen},
+};
+float wii_arrow(int input)
+{
+    switch (input)
+    {
+    case WiDown: return kPi;
+    case WiLeft: return -kPi * 0.5f;
+    case WiRight: return kPi * 0.5f;
+    default: return 0;
+    }
+}
+const char *stick_name(int role)
+{
+    switch (role)
+    {
+    case StickDPad: return "D-pad";
+    case StickNunchuk: return "Nunchuk stick";
+    case StickClassicLeft: return "Left stick";
+    case StickClassicRight: return "Right stick";
+    case StickPointer: return "Aims the pointer";
+    case StickTilt: return "Tilts the Remote";
+    default: return "";
+    }
+}
+const char *wii_controller_name(int controller)
+{
+    switch (controller)
+    {
+    case WiiRemote: return "Remote";
+    case WiiSideways: return "Remote sideways";
+    case WiiClassic: return "Classic Controller";
+    case WiiTwoControllers: return "Two controllers (beta)";
+    default: return "Remote + Nunchuk";
+    }
+}
+} // namespace
+
+void App::draw_wii_controls(float x, float y, float w, float h, const WiiConfig &wii, float alpha)
+{
+    Gfx &g = *g_;
+    if (alpha <= 0.01f)
+        return;
+    g.panel(x, y, w, h, rgba(0x0A1236, 0.82f * alpha), 0.85f, kR, with_alpha(rgba(0x3D4F9E), 0.9f * alpha), 1.6f, 0,
+            0.10f);
+    const bool held = wii.controller != WiiSideways && wii.controller != WiiClassic;
+    const int grip = held ? wii.grip : GripNormal;
+    static const char *const kGrips[] = {"Both hands", "Upright, right hand", "Upright, left hand"};
+    g.text_mid(Font::Bold, ts(40), x + 40, y + 52, with_alpha(kWhite, alpha), Align::Left,
+               tr(wii_controller_name(wii.controller)));
+    std::string held_as = tr(kGrips[std::clamp(grip, 0, 2)]);
+    if (grip == GripUprightRight)
+        held_as += tr(": stood on end, the trigger edge toward the TV, R2 under your index finger");
+    else if (grip == GripUprightLeft)
+        held_as += tr(": stood on end, the trigger edge toward the TV, L2 under your index finger");
+    g.text_mid(Font::Regular, ts(22), x + 40, y + 96, with_alpha(kLavender, alpha), Align::Left,
+               fit(g, Font::Regular, ts(22), held_as, w - 80));
+
+    const WiiLayout lay = wii_layout(wii);
+    /* The art: landscape on top, or stood up on the left with the list beside it. */
+    const bool upright = grip == GripUprightRight || grip == GripUprightLeft;
+    float bx, by, bw, bh; /* the art's box on screen */
+    if (upright)
+    {
+        bh = std::min(h - 200.0f, 620.0f);
+        bw = bh * kArtH / kArtW;
+        bx = x + (grip == GripUprightRight ? 70 : 30);
+        by = y + 140;
+    }
+    else
+    {
+        bw = std::min(w - 120.0f, 700.0f);
+        bh = bw * kArtH / kArtW;
+        bx = x + (w - bw) * 0.5f;
+        by = y + 120;
+    }
+    const float k = upright ? bh / kArtW : bw / kArtW;
+    /* Art units -> screen. Upright right: turned a quarter anticlockwise (the
+     * right grip up); upright left: clockwise. */
+    auto at = [&](float u, float v) -> std::pair<float, float> {
+        if (grip == GripUprightRight)
+            return {bx + v * k, by + (kArtW - u) * k};
+        if (grip == GripUprightLeft)
+            return {bx + (kArtH - v) * k, by + u * k};
+        return {bx + u * k, by + v * k};
+    };
+    if (!pad_art_tried_)
+    {
+        pad_art_tried_ = true;
+        pad_art_ = g.texture_file(g.asset_dir() + "/ui/dualsense.png");
+    }
+    if (pad_art_)
+    {
+        const Color tint = with_alpha(rgba(0xDDEBFF), alpha);
+        if (!upright)
+            g.image(pad_art_, bx, by, bw, bh, tint);
+        else
+        {
+            const auto tl = at(0, 0), tr_ = at(kArtW, 0), br = at(kArtW, kArtH), bl = at(0, kArtH);
+            const Corner c[4] = {{tl.first, tl.second, 1}, {tr_.first, tr_.second, 1}, {br.first, br.second, 1},
+                                 {bl.first, bl.second, 1}};
+            g.quad3d(pad_art_, c, kArtW * k, kArtH * k, tint, 0, false, false);
+        }
+    }
+
+    /* A chip on each control the Wii controller uses. */
+    auto chip = [&](int input, float cx, float cy, float ch) {
+        const WiiInfo &info = kWiiInfo[input];
+        const std::string label = info.chip;
+        const float cw = label.size() <= 1 ? ch : g.measure(Font::Bold, ch * 0.46f, label) + ch * 0.8f;
+        g.panel(cx - cw * 0.5f, cy - ch * 0.5f, cw, ch, with_alpha(rgba(info.colour), 0.96f * alpha), 0.8f, ch * 0.5f,
+                with_alpha(kWhite, 0.85f * alpha), 1.6f, 6, 0.35f);
+        const Color ink = with_alpha(rgba(0x0A1236), alpha);
+        if (label.empty())
+            g.glyph(Glyph::Arrow, cx, cy, ch * 0.5f, ink, wii_arrow(input));
+        else if (input == WiMinus || input == WiPlus)
+        {
+            /* Drawn, so they stay crisp at any size. */
+            const float bar = ch * 0.40f, th = std::max(2.0f, ch * 0.10f);
+            g.panel(cx - bar * 0.5f, cy - th * 0.5f, bar, th, ink, 1, th * 0.5f);
+            if (input == WiPlus)
+                g.panel(cx - th * 0.5f, cy - bar * 0.5f, th, bar, ink, 1, th * 0.5f);
+        }
+        else
+            g.text_mid(Font::Bold, label.size() == 1 ? ch * 0.62f : ch * 0.46f, cx, cy, ink, Align::Center, label);
+    };
+    const float chip_h = std::clamp(46 * k / 0.48f, 28.0f, 42.0f);
+    /* The shoulder buttons sit on the edge, one behind the other: their tags
+     * go outside the outline (art units), joined to the button by a line. */
+    auto shoulder = [](int c, float &u, float &v) {
+        switch (c)
+        {
+        case CtlL2: u = 300; v = 22; return true;
+        case CtlL1: u = 120; v = 128; return true;
+        case CtlR2: u = 1100; v = 22; return true;
+        case CtlR1: u = 1280; v = 128; return true;
+        default: return false;
+        }
+    };
+    for (int i = 0; i < lay.count; ++i)
+    {
+        const WiiBinding &b = lay.binds[i];
+        if (b.control < 0 || b.control >= CtlCount)
+            continue;
+        float u, v;
+        if (shoulder(b.control, u, v))
+        {
+            const auto [sx, sy] = at(kSpots[b.control].x, kSpots[b.control].y - 14);
+            const auto [tx, ty] = at(u, v);
+            const float dx = tx - sx, dy = ty - sy, len = std::sqrt(dx * dx + dy * dy);
+            if (len > 1)
+            {
+                /* The line, as a thin rotated bar. */
+                const float nx = -dy / len * 1.2f, ny = dx / len * 1.2f;
+                const Corner c[4] = {{sx + nx, sy + ny, 1}, {tx + nx, ty + ny, 1}, {tx - nx, ty - ny, 1},
+                                     {sx - nx, sy - ny, 1}};
+                g.quad3d(nullptr, c, len, 2.4f, with_alpha(rgba(0x8BD9FF), 0.8f * alpha), 0, false, false);
+            }
+            g.blob(sx, sy, 16, 16, with_alpha(rgba(0x8BD9FF), 0.9f * alpha));
+            /* The button's own icon beside the Wii chip. */
+            const WiiInfo &info = kWiiInfo[b.input];
+            const std::string label = info.chip;
+            const float cw = label.size() <= 1 ? chip_h : g.measure(Font::Bold, chip_h * 0.46f, label) + chip_h * 0.8f;
+            const float pw = cw + chip_h + 14;
+            g.panel(tx - pw * 0.5f, ty - chip_h * 0.5f - 5, pw, chip_h + 10, with_alpha(rgba(0x13308A), 0.95f * alpha),
+                    0.8f, (chip_h + 10) * 0.5f, with_alpha(rgba(0x8BD9FF), 0.9f * alpha), 1.4f);
+            if (g.has_icons())
+                g.icon(control_icon(b.control), tx - pw * 0.5f + chip_h * 0.5f + 6, ty, chip_h + 4,
+                       with_alpha(rgba(0xDCE8FF), alpha));
+            chip(b.input, tx + pw * 0.5f - cw * 0.5f - 6, ty, chip_h);
+            continue;
+        }
+        const auto [cx, cy] = at(kSpots[b.control].x, kSpots[b.control].y);
+        chip(b.input, cx, cy, chip_h);
+    }
+    /* The sticks: a small word on each. */
+    auto stick_tag = [&](int role, float u, float v) {
+        if (role == StickNothing)
+            return;
+        const auto [cx, sy] = at(u, v);
+        const float cy = sy + chip_h * 1.15f; /* just below the stick on screen, clear of its L3 / R3 chip */
+        const std::string t = tr(stick_name(role));
+        const float tw = g.measure(Font::SemiBold, ts(18), t) + 22;
+        g.panel(cx - tw * 0.5f, cy - 15, tw, 30, with_alpha(rgba(0x13308A), 0.92f * alpha), 0.8f, 15,
+                with_alpha(rgba(0x8BD9FF), 0.9f * alpha), 1.4f);
+        g.text_mid(Font::SemiBold, ts(18), cx, cy, with_alpha(kWhite, alpha), Align::Center, t);
+    };
+    /* Just below each stick, so L3 / R3's own chip stays visible on it. */
+    stick_tag(lay.left_stick, 525, 468);
+    stick_tag(lay.right_stick, 873, 468);
+
+    /* The list: each control and what it is, D-pad arrows as one line. */
+    float lx, ly, lw;
+    if (upright)
+    {
+        lx = bx + bw + (grip == GripUprightLeft ? 140 : 60);
+        ly = y + 150;
+        lw = x + w - 40 - lx;
+    }
+    else
+    {
+        lx = x + 50;
+        ly = by + bh + 30;
+        lw = w - 100;
+    }
+    const int columns = upright ? 1 : 2;
+    const float col_w = lw / float(columns), row_h = 44;
+    int n = 0;
+    auto place = [&](int index) {
+        const int col = columns == 1 ? 0 : index % columns, row = columns == 1 ? index : index / columns;
+        return std::pair<float, float>{lx + col * col_w, ly + row * row_h};
+    };
+    auto line = [&](Icon icon, int input, const std::string &text) {
+        const auto [ix, iy] = place(n++);
+        if (g.has_icons() && icon != Icon::Count)
+            g.icon(icon, ix + 18, iy, 40, with_alpha(rgba(0xDCE8FF), alpha));
+        float tx = ix + 48;
+        if (input >= 0)
+        {
+            const WiiInfo &info = kWiiInfo[input];
+            const std::string label = info.chip;
+            const float ch = 30;
+            const float cw = label.size() <= 1 ? ch : g.measure(Font::Bold, ch * 0.46f, label) + ch * 0.8f;
+            chip(input, tx + cw * 0.5f, iy, ch);
+            tx += cw + 12;
+        }
+        g.text_mid(Font::SemiBold, ts(21), tx, iy, with_alpha(kSoft, alpha), Align::Left,
+                   fit(g, Font::SemiBold, ts(21), text, ix + col_w - tx - 6));
+    };
+    bool dpad_listed = false;
+    for (int i = 0; i < lay.count; ++i)
+    {
+        const WiiBinding &b = lay.binds[i];
+        const bool arrow_home = b.input >= WiUp && b.input <= WiRight && b.control == CtlUp + (b.input - WiUp);
+        if (arrow_home)
+        {
+            if (!dpad_listed)
+                line(Icon::DPad, -1, tr("D-pad"));
+            dpad_listed = true;
+            continue;
+        }
+        line(control_icon(b.control), b.input, tr(kWiiInfo[b.input].name));
+    }
+    if (lay.left_stick != StickNothing)
+        line(Icon::LStick, -1, tr(stick_name(lay.left_stick)));
+    if (lay.right_stick != StickNothing)
+        line(Icon::RStick, -1, tr(stick_name(lay.right_stick)));
+    if (wii.controller == WiiTwoControllers)
+    {
+        const WiiLayout second = wii_layout(wii, true);
+        const auto [hx, hy] = place(n + (columns - n % columns) % columns);
+        n += (columns - n % columns) % columns + columns;
+        g.text_mid(Font::Bold, ts(22), hx, hy + 6, with_alpha(kLavender, alpha), Align::Left,
+                   tr("Second controller: the Nunchuk"));
+        for (int i = 0; i < second.count; ++i)
+            line(control_icon(second.binds[i].control), second.binds[i].input, tr(kWiiInfo[second.binds[i].input].name));
+        line(Icon::LStick, -1, tr(stick_name(second.left_stick)));
+    }
+
+    /* How the motion works. */
+    std::string how;
+    if (wii.pointer == PointerGyro && held)
+        how = tr("Point the controller at the screen to aim. Flick it to shake.");
+    else if (wii.pointer == PointerTouch && held)
+        how = tr("Slide a finger on the touch pad to aim. Flick the controller to shake.");
+    else
+        how = tr("Tilt and flick the controller: the game feels it.");
+    const auto lines = wrap(g, Font::Regular, ts(22), how, w - 80, 2);
+    float hy = y + h - 34 - 30 * float(lines.size() - 1);
+    for (const std::string &l : lines)
+    {
+        g.text_mid(Font::Regular, ts(22), x + 40, hy, with_alpha(kLavender, alpha), Align::Left, l);
+        hy += 30;
+    }
+}
+
 } // namespace porpoise::ui
