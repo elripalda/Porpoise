@@ -65,11 +65,16 @@ struct Settings
     /* Wii games: how the DualSense plays the Wii Remote (porpoise::pad::WiiConfig). */
     int wii_controller = 0; /* Remote + Nunchuk, Remote, sideways, Classic, two controllers */
     int wii_pointer = 0;    /* gyro, touch pad, right stick */
-    int wii_speed = 5;      /* the gyro pointer's speed, 1..10 */
+    int wii_speed = 5;      /* the gyro pointer's speed, 1..10; 0: as measured for the screen (wii_screen_x/y) */
     int wii_grip = 0;       /* auto; both hands; upright, trigger to the TV; upright, facing you (pad::WiiGrip) */
     bool wii_motion = true; /* the DualSense's motion is the Remote's */
     bool wii_shake = true;  /* a flick shakes the Remote */
     bool wii_invert_x = false, wii_invert_y = false;
+    /* The Wii Remote setup: the screen's half-width and half-height as angles
+     * from where the player sits, in tenths of a degree (0: not measured); and
+     * whether to offer the setup before each Wii game. */
+    int wii_screen_x = 0, wii_screen_y = 0;
+    bool wii_setup_ask = true;
     bool motion_readout = false; /* in a game: the controller's motion on screen (testing) */
     bool debug_logs = true;      /* test builds: /data/porpoise/debug */
     /* System */

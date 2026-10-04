@@ -71,12 +71,15 @@ const Field kFields[] = {
     {"rumble", nullptr, &Settings::rumble, 0, 1},
     {"wii_controller", &Settings::wii_controller, nullptr, 0, 4},
     {"wii_pointer", &Settings::wii_pointer, nullptr, 0, 2},
-    {"wii_speed", &Settings::wii_speed, nullptr, 1, 10},
+    {"wii_speed", &Settings::wii_speed, nullptr, 0, 10},
     {"wii_grip", &Settings::wii_grip, nullptr, 0, 3},
     {"wii_motion", nullptr, &Settings::wii_motion, 0, 1},
     {"wii_shake", nullptr, &Settings::wii_shake, 0, 1},
     {"wii_invert_x", nullptr, &Settings::wii_invert_x, 0, 1},
     {"wii_invert_y", nullptr, &Settings::wii_invert_y, 0, 1},
+    {"wii_screen_x", &Settings::wii_screen_x, nullptr, 0, 900},
+    {"wii_screen_y", &Settings::wii_screen_y, nullptr, 0, 900},
+    {"wii_setup_ask", nullptr, &Settings::wii_setup_ask, 0, 1},
     {"motion_readout", nullptr, &Settings::motion_readout, 0, 1},
     {"debug_logs", nullptr, &Settings::debug_logs, 0, 1},
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
@@ -522,6 +525,16 @@ porpoise::pad::WiiConfig Settings::wii_config(bool active) const
     c.controller = std::clamp(wii_controller, 0, int(porpoise::pad::WiiControllerCount) - 1);
     c.pointer = std::clamp(wii_pointer, 0, 2);
     c.speed = std::clamp(wii_speed, 1, 10);
+    if (wii_speed == 0)
+    {
+        if (wii_screen_x > 0 && wii_screen_y > 0)
+        {
+            c.half_x = float(wii_screen_x) * 0.1f * 3.14159265f / 180.0f;
+            c.half_y = float(wii_screen_y) * 0.1f * 3.14159265f / 180.0f;
+        }
+        else
+            c.speed = 5; /* "your screen" with nothing measured yet */
+    }
     c.grip = std::clamp(wii_grip, 0, int(porpoise::pad::GripCount) - 1);
     c.motion = wii_motion;
     c.shake = wii_shake;

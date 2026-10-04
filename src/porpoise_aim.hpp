@@ -63,19 +63,24 @@ struct Angles
 };
 Angles remote_angles(const Fusion &f, const Basis &b);
 
-/* Half the screen's width, as an angle, for a pointer speed of 1..10
- * (5 is about a real Remote two metres from a 50" TV). */
-float half_screen(int speed);
+/* How far the Remote turns from the middle of the screen to its edges, in
+ * radians: measured for this screen and seat (Wii Remote setup), or from a
+ * pointer speed of 1..10 (5 is about a real Remote two metres from a 50" TV;
+ * up-down takes less turning than left-right, as a 16:9 screen does). */
+struct Scale
+{
+    float half_x = 0, half_y = 0;
+};
+Scale scale_for(int speed, float measured_x = 0, float measured_y = 0);
 
 /* The pointer, from the Remote's angles less the centre's: -1..1 across the
- * screen at the edges, x right, y down; beyond 1 is off the screen. Up-down
- * takes less turning than left-right, as a 16:9 screen does. */
-void pointer(const Angles &now, const Angles &centre, int speed, float &x, float &y);
+ * screen at the edges, x right, y down; beyond 1 is off the screen. */
+void pointer(const Angles &now, const Angles &centre, const Scale &scale, float &x, float &y);
 
 /* A pointer held calmly just past an edge (not swung far off the screen) pulls
  * the centre after it, slowly, so a pointer that has drifted comes back in
  * line when it is pushed against the edge. dt: seconds since the last call. */
-void ease_edge(const Angles &now, Angles &centre, int speed, float dt);
+void ease_edge(const Angles &now, Angles &centre, const Scale &scale, float dt);
 
 /* The grip made level for how it is held right now: its up becomes gravity's
  * up and its forward the grip's forward made horizontal, so this hold reads

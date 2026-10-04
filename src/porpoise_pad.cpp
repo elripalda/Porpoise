@@ -167,6 +167,7 @@ struct Slot
     float up[3] = {0, 0, 0};
     unsigned centre_seq = 0; /* the Remote's centrings seen (two-controller play's Nunchuk) */
     float centre_hold = 0;   /* how long R1 (L1) has been held, calmly */
+    bool centre_request = false; /* centre_now */
     unsigned centrings = 0;  /* for the "centred" note on screen */
 };
 
@@ -525,6 +526,11 @@ Motion read_motion(Slot &slot, std::int32_t count)
     }
     const bool settled = slot.fusion.started && slot.fusion.age > 0.5f && (turning < 0.8f || slot.fusion.age > 3.0f);
     const bool follow = second && slot.centre_seq != g_centre_seq;
+    if (slot.centre_request)
+    {
+        slot.centre_request = false;
+        pressed_centre = true;
+    }
     if ((!slot.centred && settled) || reposed || pressed_centre || follow)
     {
         if ((pressed_centre || follow) && seen >= 0)
@@ -546,12 +552,38 @@ Motion read_motion(Slot &slot, std::int32_t count)
 
     /* For the core: the Remote's (or the Nunchuk's) own axes, the gyroscope
      * without its drift. */
-    aim::to_remote(slot.basis, m.raw_accel, m.accel);
-    aim::to_remote(slot.basis, g, m.gyro);
+    aim::Basis motion_basis = slot.basis;
+    if (g_wii.controller == WiiSideways)
+    {
+        /* Held sideways the Remote's own axes are a quarter turn round: x
+         * toward the TV, y to the left, z up. The core turns a sideways
+         * Remote's motion back itself (Input.cpp UpdateAccelerometer, and
+         * Dolphin's "Sideways Wii Remote"), so it wants exactly these. */
+        for (int c = 0; c < 3; ++c)
+        {
+            motion_basis.m[0][c] = -slot.basis.m[1][c];
+            motion_basis.m[1][c] = slot.basis.m[0][c];
+            motion_basis.m[2][c] = slot.basis.m[2][c];
+        }
+    }
+    aim::to_remote(motion_basis, m.raw_accel, m.accel);
+    aim::to_remote(motion_basis, g, m.gyro);
 
     /* Where it points, against the centre. */
     const aim::Angles now = aim::remote_angles(slot.fusion, slot.basis);
     m.roll = now.roll;
+    m.centred = slot.centred;
+    if (slot.centred)
+    {
+        float dyaw = now.yaw - slot.centre.yaw;
+        while (dyaw > 3.14159265f)
+            dyaw -= 6.2831853f;
+        while (dyaw < -3.14159265f)
+            dyaw += 6.2831853f;
+        m.rel_yaw = dyaw;
+        m.rel_pitch = now.pitch - slot.centre.pitch;
+    }
+    const aim::Scale scale = aim::scale_for(g_wii.speed, g_wii.half_x, g_wii.half_y);
     if (g_wii.pointer == PointerGyro)
     {
         float x = 0, y = 0;
@@ -559,8 +591,8 @@ Motion read_motion(Slot &slot, std::int32_t count)
         {
             /* Held calmly against an edge, a drifted pointer eases back. */
             if (turning < 0.5f)
-                aim::ease_edge(now, slot.centre, g_wii.speed, elapsed);
-            aim::pointer(now, slot.centre, g_wii.speed, x, y);
+                aim::ease_edge(now, slot.centre, scale, elapsed);
+            aim::pointer(now, slot.centre, scale, x, y);
         }
         m.aim_x = g_wii.invert_x ? -x : x;
         m.aim_y = g_wii.invert_y ? -y : y;
@@ -902,6 +934,23 @@ WiiLayout wii_layout(const WiiConfig &config, bool second, int pose)
         break;
     }
     return lay;
+}
+
+void centre_now(int player)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    if (player >= 0 && player < kMaxPlayers)
+        g_slots[player].centre_request = true;
+}
+
+void shift_centre(int player, float yaw, float pitch)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    if (player < 0 || player >= kMaxPlayers)
+        return;
+    Slot &slot = g_slots[player];
+    slot.centre.yaw += yaw;
+    slot.centre.pitch += pitch;
 }
 
 void set_nunchuk_motion(bool on)

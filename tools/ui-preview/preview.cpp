@@ -548,7 +548,19 @@ int main(int argc, char **argv)
         press(kRight);
         settle();
         render("settings-wii-remote", [&] { ui.draw(12.0); });
-        press(kCross); /* How to hold it */
+        press(kCross); /* Wii Remote setup */
+        settle();
+        for (int i = 0; i < 6; ++i)
+        {
+            ui.preview_setup_step(i);
+            const std::string shot_name = "wii-setup-" + std::to_string(i);
+            render(shot_name.c_str(), [&] { ui.draw(12.0); });
+        }
+        ui.preview_setup_step(0);
+        press(kCircle);
+        settle();
+        press(kDown, 2); /* How to hold it */
+        press(kCross);
         settle();
         for (int i = 0; i < 5; ++i)
         {

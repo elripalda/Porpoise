@@ -136,8 +136,8 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
                           "Two controllers (beta)"}});
             r.push_back({Kind::Int, "wii_pointer", "Pointer", &p.wii_pointer, nullptr, 0,
                          {"Gyro", "Touch pad", "Right stick"}});
-            r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 1,
-                         {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}});
+            r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 0,
+                         {"Your screen", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}});
             r.push_back({Kind::Int, "wii_grip", "Grip", &p.wii_grip, nullptr, 0,
                          {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"}});
             r.push_back({Kind::Bool, "wii_motion", "Motion", nullptr, &p.wii_motion, 0, {"Off", "On"}});

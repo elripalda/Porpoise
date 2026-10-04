@@ -304,6 +304,8 @@ App::Action App::update(const Input &in, double dt)
         return update_mapping(up, down, left, right);
     if (screen_ == Screen::WiiGuide)
         return update_wii_guide(left, right);
+    if (screen_ == Screen::WiiSetup)
+        return update_wii_setup(left, right);
     if (screen_ == Screen::States)
         return update_states(left, right);
     if (screen_ == Screen::Sort)
@@ -400,9 +402,7 @@ App::Action App::update(const Input &in, double dt)
         {
             if (details_row_ == 0)
             {
-                launch_ = &games[selected_];
-                launch_state_.clear();
-                action = Action::Launch;
+                action = start_game(&games[selected_], "");
                 sfx(Sound::LaunchGame);
             }
             else if (details_row_ == 1)
@@ -444,9 +444,7 @@ App::Action App::update(const Input &in, double dt)
         }
         if (pressed(BtnCross))
         {
-            launch_ = &games[selected_];
-            launch_state_.clear();
-            action = Action::Launch;
+            action = start_game(&games[selected_], "");
             sfx(Sound::LaunchGame);
         }
         if (pressed(BtnOptions))
@@ -1724,6 +1722,8 @@ void App::draw(double time)
         draw_mapping(time);
     else if (screen_ == Screen::WiiGuide)
         draw_wii_guide(time);
+    else if (screen_ == Screen::WiiSetup)
+        draw_wii_setup(time);
     else
         switch (tab_)
         {

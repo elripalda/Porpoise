@@ -59,6 +59,9 @@ public:
     void draw(double time);
 
     Game *launch_game() { return launch_; }
+#ifdef PORPOISE_HOST_PREVIEW
+    void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
+#endif
     /* The save state to start it from ("" for none); asking clears it. */
     std::string take_launch_state()
     {
@@ -149,6 +152,7 @@ private:
         Mapping,      /* the buttons: a GameCube input for each DualSense control */
         States,       /* a game's save states, over its Details */
         WiiGuide,     /* how to hold the DualSense as each Wii controller */
+        WiiSetup,     /* the Wii Remote setup: controller, hold, centre, the screen's corners */
     };
     struct SettingRow
     {
@@ -380,6 +384,31 @@ private:
     void open_wii_guide();
     Action update_wii_guide(bool left, bool right);
     void draw_wii_guide(double time);
+    /* The Wii Remote setup (before a Wii game, or from Settings). */
+    Action start_game(Game *g, const std::string &state);
+    void open_wii_setup(Game *g, bool launch, const std::string &state);
+    Action update_wii_setup(bool left, bool right);
+    void draw_wii_setup(double time);
+    void wii_setup_apply_pad();
+    enum WiiStep
+    {
+        kWsController,
+        kWsHold,
+        kWsCentre,
+        kWsTopLeft,
+        kWsBottomRight,
+        kWsTry,
+    };
+    int ws_step_ = kWsController;
+    int ws_controller_ = 0;
+    Game *ws_game_ = nullptr;
+    bool ws_launch_ = false;
+    std::string ws_state_;
+    Screen ws_return_ = Screen::Main;
+    double ws_hold_from_ = -1;     /* Cross held since, calmly (centring) */
+    float ws_tl_[2] = {0, 0};      /* the top-left corner: yaw, pitch */
+    std::string ws_note_;
+    double ws_note_time_ = -100;
     Settings *guide_target_ = nullptr;
     Screen guide_return_ = Screen::Main;
     int guide_controller_ = 0;

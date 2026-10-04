@@ -84,12 +84,12 @@ App::Action App::update_states(bool left, bool right)
     const bool used = menu_slot_used_[states_sel_];
     if (pressed(BtnCross) && used)
     {
-        launch_ = states_game_;
-        launch_state_ = porpoise::states::slot(Library::key_of(*states_game_), states_sel_).state_path;
+        const std::string state = porpoise::states::slot(Library::key_of(*states_game_), states_sel_).state_path;
+        Game *game = states_game_;
         menu_free_slots();
         screen_ = Screen::Details;
         sfx(Sound::LaunchGame);
-        return Action::Launch;
+        return start_game(game, state);
     }
     if (pressed(BtnSquare) && used)
         open_dialog(DialogKind::DeleteState, tr("Delete this save state?"),

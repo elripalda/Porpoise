@@ -109,6 +109,7 @@ struct Host
     int nunchuk_stage = 0;
     unsigned long long nunchuk_frame = 0;
     int nunchuk_tries = 0;
+    std::string debug_dir; /* the debug folder, "" when off */
     long long motion_log_bytes = 0;
     unsigned long long frame_number = 0;
     bool plugged[porpoise::pad::kMaxPlayers] = {}; /* GameCube ports with a controller in */
@@ -693,15 +694,18 @@ int add_nunchuk_motion(bool two)
             /* A Remote with the Nunchuk: its motion lines (ours from before)
              * are written again below. Other Remotes keep the core's. */
             if (!nunchuk || !(starts(l, "IMUAccelerometer/") || starts(l, "IMUGyroscope/") ||
-                              starts(l, "Extension/Nunchuk/IMUAccelerometer/")))
+                              starts(l, "Nunchuk/IMUAccelerometer/") ||
+                              starts(l, "Extension/Nunchuk/IMUAccelerometer/") /* test 5-6's wrong name */))
                 section.push_back(l);
         while (!section.empty() && section.back().empty())
             section.pop_back();
         if (nunchuk)
         {
             motion_lines(section, "", port, true);
+            /* An attachment's groups go under its own name (Attachments::SaveConfig:
+             * base + "Nunchuk/"), not under "Extension/". */
             if (two && port == 0)
-                motion_lines(section, "Extension/Nunchuk/", 1, false);
+                motion_lines(section, "Nunchuk/", 1, false);
             ++patched;
         }
         out.insert(out.end(), section.begin(), section.end());
@@ -719,7 +723,16 @@ int add_nunchuk_motion(bool two)
         if (!o.good())
             return 0;
     }
-    return std::rename(tmp.c_str(), wiimote_ini_path().c_str()) == 0 ? patched : 0;
+    if (std::rename(tmp.c_str(), wiimote_ini_path().c_str()) != 0)
+        return 0;
+    /* A copy in the debug folder, to see what the core was given. */
+    if (!h.debug_dir.empty())
+    {
+        std::ofstream copy(h.debug_dir + "/WiimoteNew.ini", std::ios::trunc);
+        for (const std::string &l : out)
+            copy << l << "\n";
+    }
+    return patched;
 }
 
 void set_core_option(const char *key, const char *value)
@@ -1115,6 +1128,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     h.nunchuk_frame = 10;
     h.nunchuk_tries = 0;
     porpoise::pad::set_nunchuk_motion(false);
+    h.debug_dir = playback.debug_dir ? playback.debug_dir : "";
     if (playback.debug_dir && h.wii.active)
     {
         mkdir(playback.debug_dir, 0777);

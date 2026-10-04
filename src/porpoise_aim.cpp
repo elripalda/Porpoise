@@ -153,40 +153,38 @@ Angles remote_angles(const Fusion &f, const Basis &b)
     return out;
 }
 
-float half_screen(int speed)
+Scale scale_for(int speed, float measured_x, float measured_y)
 {
+    constexpr float kTall = 0.65f; /* up-down turning to the edge, against left-right's */
+    if (measured_x > 0.03f && measured_y > 0.03f)
+        return {measured_x, measured_y};
     /* Degrees from the middle to the edge; 5 is about a real Remote's. */
     static constexpr float kDegrees[10] = {30, 26, 22, 18.5f, 15.5f, 13, 11, 9.5f, 8, 7};
-    return kDegrees[std::clamp(speed, 1, 10) - 1] * kPi / 180;
+    const float h = kDegrees[std::clamp(speed, 1, 10) - 1] * kPi / 180;
+    return {h, h * kTall};
 }
 
-namespace
+void pointer(const Angles &now, const Angles &centre, const Scale &scale, float &x, float &y)
 {
-constexpr float kTall = 0.65f; /* up-down turning to the edge, against left-right's */
+    x = wrap(now.yaw - centre.yaw) / scale.half_x;
+    y = -(now.pitch - centre.pitch) / scale.half_y;
 }
 
-void pointer(const Angles &now, const Angles &centre, int speed, float &x, float &y)
-{
-    const float h = half_screen(speed);
-    x = wrap(now.yaw - centre.yaw) / h;
-    y = -(now.pitch - centre.pitch) / (h * kTall);
-}
-
-void ease_edge(const Angles &now, Angles &centre, int speed, float dt)
+void ease_edge(const Angles &now, Angles &centre, const Scale &scale, float dt)
 {
     constexpr float kEdge = 1.02f, kFar = 1.6f, kRate = 0.4f; /* screen halves a second */
     float x, y;
-    pointer(now, centre, speed, x, y);
-    const float h = half_screen(speed), step = kRate * std::clamp(dt, 0.0f, 0.05f);
+    pointer(now, centre, scale, x, y);
+    const float step = kRate * std::clamp(dt, 0.0f, 0.05f);
     if (std::fabs(x) > kEdge && std::fabs(x) < kFar)
     {
         const float move = std::min(step, std::fabs(x) - kEdge);
-        centre.yaw = wrap(centre.yaw + std::copysign(move, x) * h);
+        centre.yaw = wrap(centre.yaw + std::copysign(move, x) * scale.half_x);
     }
     if (std::fabs(y) > kEdge && std::fabs(y) < kFar)
     {
         const float move = std::min(step, std::fabs(y) - kEdge);
-        centre.pitch -= std::copysign(move, y) * h * kTall;
+        centre.pitch -= std::copysign(move, y) * scale.half_y;
     }
 }
 
@@ -228,7 +226,7 @@ void sensor_bar_at(float x, float y, float roll, Dot out[2])
      * (Dolphin's own defaults, chosen to reach the edges in most games), and a
      * little past them so the pointer's edge is surely the game's; both lights
      * stay in the camera's view even in the corners. */
-    constexpr float kEdgeX = 12.5f * kPi / 180.0f, kEdgeY = 10.0f * kPi / 180.0f, kPast = 1.08f;
+    constexpr float kEdgeX = 12.5f * kPi / 180.0f, kEdgeY = 10.0f * kPi / 180.0f, kPast = 1.15f;
     constexpr float kDistance = 2.0f, kHeight = 0.10f, kSeparation = 0.2f;
     constexpr float kFovX = 42.0f * kPi / 180.0f, kFovY = kFovX / (4.0f / 3.0f);
     const float yaw = x * kEdgeX * kPast, pitch = -y * kEdgeY * kPast;
