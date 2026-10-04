@@ -66,6 +66,9 @@ struct Context
 Context context();
 /* Drawn inside every presented frame's render pass, after the core's image. */
 void set_overlay(void (*draw)(VkCommandBuffer cmd, unsigned slot, void *user), void *user);
+/* Called in each frame's command buffer before its render pass (copies into
+ * textures that change every frame). */
+void set_prepass(void (*record)(VkCommandBuffer cmd, void *user), void *user);
 unsigned current_slot();
 /* Tear down the device (and its swapchain) so another can take the display. */
 void close_device();

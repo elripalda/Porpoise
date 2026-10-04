@@ -53,6 +53,8 @@ Porpoise builds Dolphin from libretro/dolphin revision
 | [Noto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp) by Adobe and Google | The Japanese menus (a subset of the characters they use, `tools/make-jp-font.py`) | SIL Open Font License 1.1 |
 | [Dolphin's per-game settings](https://github.com/dolphin-emu/dolphin/tree/master/Data/Sys/GameSettings) by the Dolphin team | Shown under *Recommended* in a game's settings (they ship with the Dolphin core) | GPL-2.0-or-later |
 | [stb](https://github.com/nothings/stb) by Sean Barrett | `stb_truetype`, `stb_image` and `stb_vorbis`: text, images and the menu music | MIT or public domain |
+| [Wii Banner Player](https://github.com/jordan-woyak/wii-banner-player) by the Wii Banner Player Project | How a Wii disc's own tile and banner (layouts, animations, textures, jingle) are read and played. Rewritten for Porpoise as a software renderer (`src/porpoise_banner.cpp`). | zlib |
+| [Zstandard](https://github.com/facebook/zstd) educational decoder by Meta Platforms | Reading `.rvz` disc images for their banners | BSD or GPL-2.0 |
 
 ## The PS5 scene
 

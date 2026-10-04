@@ -34,6 +34,12 @@ struct Texture
     VkImageView view = VK_NULL_HANDLE;
     VkDescriptorSet set = VK_NULL_HANDLE;
     int width = 0, height = 0;
+    /* A streamed texture (Gfx::stream_texture): a staging buffer per frame
+     * slot, and the slot whose pixels are waiting to be copied (-1 none). */
+    VkBuffer staging[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    VkDeviceMemory staging_memory[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    void *staging_mapped[2] = {nullptr, nullptr};
+    int pending = -1;
 };
 
 enum class Font
@@ -137,6 +143,12 @@ public:
     /* PNG / JPG, halved until its longer side fits max_side. */
     Texture *texture_file(const std::string &path, int max_side = 1024);
     void free_texture(Texture *texture);
+    /* A texture whose pixels change often (a banner playing): stream_update()
+     * hands it this frame's pixels, and record_uploads() - called before the
+     * frame's render pass - copies them in, without waiting on the GPU. */
+    Texture *stream_texture(int width, int height);
+    void stream_update(Texture *texture, const std::uint8_t *pixels);
+    void record_uploads(VkCommandBuffer cmd);
     Texture *brand_mask() const { return brand_mask_; }
     const std::string &asset_dir() const { return init_.asset_dir; }
 
@@ -175,7 +187,8 @@ public:
     void icon(Icon i, float cx, float cy, float size, Color c);
     bool has_icons() const { return icons_ != nullptr; }
     /* Part of a texture: uv is u0 v0 u1 v1. */
-    void image_part(Texture *t, float x, float y, float w, float h, const float uv[4], Color tint = {});
+    void image_part(Texture *t, float x, float y, float w, float h, const float uv[4], Color tint = {},
+                    float radius = 0);
     /* A textured quad from four projected corners (top-left, top-right,
      * bottom-right, bottom-left); shape_w/h is the quad's own size before
      * projection, for rounded corners. reflection fades it out downward. */

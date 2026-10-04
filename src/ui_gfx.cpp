@@ -443,8 +443,73 @@ void Gfx::free_texture(Texture *t)
     graveyard_.push_back({t, frame_no_});
 }
 
+Texture *Gfx::stream_texture(int width, int height)
+{
+    std::vector<std::uint8_t> clear(std::size_t(width) * height * 4, 0);
+    Texture *t = upload(clear.data(), width, height);
+    if (!t)
+        return nullptr;
+    const VkDeviceSize bytes = VkDeviceSize(width) * height * 4;
+    for (int i = 0; i < 2; ++i)
+        if (!make_buffer(bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, t->staging[i], t->staging_memory[i],
+                         &t->staging_mapped[i]))
+        {
+            free_texture(t);
+            return nullptr;
+        }
+    return t;
+}
+
+void Gfx::stream_update(Texture *t, const std::uint8_t *pixels)
+{
+    if (!t || !t->staging_mapped[0] || !pixels)
+        return;
+    const int slot = int(slot_ % 2);
+    std::memcpy(t->staging_mapped[slot], pixels, std::size_t(t->width) * t->height * 4);
+    t->pending = slot;
+}
+
+void Gfx::record_uploads(VkCommandBuffer cmd)
+{
+    for (Texture *t : textures_)
+    {
+        if (t->pending < 0 || !t->staging[t->pending])
+            continue;
+        VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = t->image;
+        barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        vkCmdPipelineBarrier_(cmd, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+                              nullptr, 0, nullptr, 1, &barrier);
+        VkBufferImageCopy copy{};
+        copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        copy.imageExtent = {std::uint32_t(t->width), std::uint32_t(t->height), 1};
+        vkCmdCopyBufferToImage_(cmd, t->staging[t->pending], t->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier_(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
+                              nullptr, 0, nullptr, 1, &barrier);
+        t->pending = -1;
+    }
+}
+
 void Gfx::destroy_texture(Texture *t)
 {
+    for (int i = 0; i < 2; ++i)
+    {
+        if (t->staging_mapped[i])
+            vkUnmapMemory_(device_, t->staging_memory[i]);
+        if (t->staging[i])
+            vkDestroyBuffer_(device_, t->staging[i], nullptr);
+        if (t->staging_memory[i])
+            vkFreeMemory_(device_, t->staging_memory[i], nullptr);
+    }
     if (t->set)
         vkFreeDescriptorSets_(device_, pool_, 1, &t->set);
     if (t->view)
@@ -889,7 +954,7 @@ void Gfx::blob(float cx, float cy, float w, float h, Color c)
     push(nullptr, v);
 }
 
-void Gfx::image_part(Texture *t, float x, float y, float w, float h, const float uv[4], Color tint)
+void Gfx::image_part(Texture *t, float x, float y, float w, float h, const float uv[4], Color tint, float radius)
 {
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
@@ -902,7 +967,7 @@ void Gfx::image_part(Texture *t, float x, float y, float w, float h, const float
         fill(v[i].uv, {uv[0] + (uv[2] - uv[0]) * local[i][0], uv[1] + (uv[3] - uv[1]) * local[i][1]});
         fill(v[i].local, {local[i][0], local[i][1]});
         fill(v[i].color, {tint.r, tint.g, tint.b, tint.a});
-        fill(v[i].p0, {float(K_IMAGE), 0, 0, 0});
+        fill(v[i].p0, {float(radius > 0 ? K_COVER : K_IMAGE), radius * px, 0, 0});
         fill(v[i].p1, {w * px, h * px, w * px, h * px});
     }
     push(t, v);

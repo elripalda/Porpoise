@@ -32,6 +32,7 @@
 #include "porpoise_audio.hpp"
 #include "porpoise_borders.hpp"
 #include "porpoise_core.hpp"
+#include "porpoise_banner.hpp"
 #include "porpoise_covers.hpp"
 #include "porpoise_jailbreak.hpp"
 #include "porpoise_pacer.hpp"
@@ -233,6 +234,14 @@ long long now_ns()
 /* The launcher's frame pacing (porpoise_pacer.hpp): one frame per vblank
  * when the display holds the loop to it, its own clock otherwise. */
 porpoise::pacer::Pacer g_pacer;
+
+/* Before each frame's render pass: the pixels of textures that changed
+ * (a Wii disc's banner playing) go into them. */
+void prepass(VkCommandBuffer cmd, void *)
+{
+    if (g_gfx.ready())
+        g_gfx.record_uploads(cmd);
+}
 
 /* The UI is recorded into every presented frame, after the core's picture. */
 void overlay(VkCommandBuffer cmd, unsigned, void *)
@@ -955,8 +964,13 @@ int main()
     if (!porpoise::vk::open_device(nullptr) || !start_gfx())
         leave(1);
     porpoise::vk::set_overlay(overlay, nullptr);
+    porpoise::vk::set_prepass(prepass, nullptr);
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
     g_app.set_sound_hook(play_sound);
+    g_app.set_jingle_hook([](const std::int16_t *frames, std::size_t count) {
+        porpoise::sound::play_jingle(frames, count);
+    });
+    porpoise::banner::set_cache_dir(g_data + "/banners");
     porpoise::sound::load("/app0/assets");
     porpoise::states::set_data_dir(g_data);
     porpoise::borders::set_dirs("/app0/assets", g_data);
@@ -1074,6 +1088,8 @@ int main()
          * the game starts behind it. */
         ps5::debug::mark(("main: launching " + launch->path).c_str());
         porpoise::covers::stop();
+        porpoise::banner::pause(true); /* the disc is the game's now */
+        porpoise::sound::play_jingle(nullptr, 0);
         /* The game's own settings, on top of the global ones. */
         g_play = g_settings;
         if (g_play.load(g_app.game_settings_path(*launch), true))
@@ -1197,6 +1213,7 @@ int main()
         porpoise::audio::set_muted(false);
         g_settings.write_core_options(g_options_path);
         apply_settings();
+        porpoise::banner::pause(false);
         g_app.return_from_game();
         porpoise::sound::fade_music(1.0f, 2.5f);
         if (exit == porpoise::core::Exit::Failed)

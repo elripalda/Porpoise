@@ -652,7 +652,7 @@ void App::draw_controller_lines(float x, float y, float w, const Mapping &m)
     if (!lines_art_)
         return;
     const float k = w / kLinesW, h = kLinesH * k;
-    g.image(lines_art_, x, y, w, h, rgba(0xBFD8FF, 0.95f));
+    g.image(lines_art_, x, y, w, h, g.tone(rgba(0xBFD8FF, 0.95f)));
 
     int on_control[CtlCount];
     std::fill(std::begin(on_control), std::end(on_control), -1);

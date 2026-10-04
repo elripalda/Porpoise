@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 namespace porpoise::sound
@@ -20,6 +22,9 @@ enum class Effect
 /* Loads <assets>/sounds/: the effects (48 kHz stereo WAV) and the music (Ogg). */
 bool load(const std::string &asset_dir);
 void play(Effect e);
+/* A Wii disc's banner jingle (48 kHz stereo frames, copied); null stops it.
+ * The music steps back while it plays. */
+void play_jingle(const std::int16_t *frames, std::size_t count);
 /* volume 0..1 */
 void set_music(bool on, float volume);
 void set_effects(bool on, float volume);

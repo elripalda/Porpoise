@@ -186,6 +186,8 @@ struct State
     retro_hw_render_interface_vulkan iface{};
     bool device_is_ours = false;
     void (*overlay)(VkCommandBuffer, unsigned, void *) = nullptr;
+    void (*prepass)(VkCommandBuffer, void *) = nullptr; /* before the render pass: texture copies */
+    void *prepass_user = nullptr;
     void *overlay_user = nullptr;
 };
 
@@ -671,6 +673,8 @@ void present(const float clear[3], const Push *quad, VkImageView view, bool shar
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     (void)vkBeginCommandBuffer(cmd, &begin);
+    if (s.prepass)
+        s.prepass(cmd, s.prepass_user);
     VkClearValue clear_value{};
     clear_value.color.float32[0] = clear[0];
     clear_value.color.float32[1] = clear[1];
@@ -1115,6 +1119,12 @@ void present_clear(float r, float g, float b)
         return;
     const float colour[3] = {r, g, b};
     present(colour, nullptr, VK_NULL_HANDLE, false);
+}
+
+void set_prepass(void (*record)(VkCommandBuffer, void *), void *user)
+{
+    s.prepass = record;
+    s.prepass_user = user;
 }
 
 void set_overlay(void (*draw)(VkCommandBuffer, unsigned, void *), void *user)

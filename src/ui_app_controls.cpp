@@ -457,7 +457,7 @@ void App::draw_mapping(double time)
     const float k = aw / kArtW;
     auto at = [&](float x, float y) { return std::pair<float, float>{ax + x * k, ay + y * k}; };
     if (pad_art_)
-        g.image(pad_art_, ax, ay, aw, ah, rgba(0xDDEBFF));
+        g.image(pad_art_, ax, ay, aw, ah, g.tone(rgba(0xDDEBFF))); /* line art: dark on the light look */
 
     /* Which GameCube input is on each control. */
     int on_control[CtlCount];
@@ -729,13 +729,13 @@ std::pair<float, float> App::draw_wii_pad(const WiiLayout &lay, int pose, float 
     {
         const Color tint = with_alpha(rgba(0xDDEBFF), alpha);
         if (!upright)
-            g.image(pad_art_, bx, by, bw, bh, tint);
+            g.image(pad_art_, bx, by, bw, bh, g.tone(tint));
         else
         {
             const auto tl = at(0, 0), tr_ = at(kArtW, 0), br = at(kArtW, kArtH), bl = at(0, kArtH);
             const Corner c[4] = {{tl.first, tl.second, 1}, {tr_.first, tr_.second, 1}, {br.first, br.second, 1},
                                  {bl.first, bl.second, 1}};
-            g.quad3d(pad_art_, c, kArtW * k, kArtH * k, tint, 0, false, false);
+            g.quad3d(pad_art_, c, kArtW * k, kArtH * k, g.tone(tint), 0, false, false);
         }
     }
     const float chip_h = std::clamp(52 * k / 0.48f, 24.0f, 44.0f);

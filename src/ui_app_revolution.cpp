@@ -365,6 +365,7 @@ App::Action App::update_rev_details(bool left, bool right, bool up, bool down, d
         lib_->set_selected(Library::key_of(games[std::size_t(selected_)]));
         home_synced_ = false;
         sfx(Sound::GameRow);
+        opened_tile(games[std::size_t(selected_)]);
     };
 
     rev_pointer_step();
@@ -443,6 +444,9 @@ App::Action App::update_rev_details(bool left, bool right, bool up, bool down, d
     {
         open_screen(Screen::Main);
         sfx(Sound::DetailsFlip);
+        if (jingle_)
+            jingle_(nullptr, 0);
+        jingle_for_.clear();
         return action;
     }
     if (pressed(BtnCross))
@@ -455,6 +459,8 @@ App::Action App::update_rev_details(bool left, bool right, bool up, bool down, d
         }
         else if (f == kRdStart)
         {
+            if (jingle_)
+                jingle_(nullptr, 0);
             action = start_game(&game, "");
             sfx(Sound::LaunchGame);
         }
@@ -628,12 +634,16 @@ void App::draw_rev_details(double time)
     }
     else
         content(game, 0, 1);
-    if (rd_info_ && has_banner(game))
-        g.text_mid(Font::SemiBold, ts(20), kFrameX + kFrameW - 30, kFrameY + kFrameH - 26, rev::kInkSoft,
-                   Align::Right, tr("Triangle: the game's own picture"));
-    else if (has_banner(game))
-        g.text_mid(Font::SemiBold, ts(20), kFrameX + kFrameW - 30, kFrameY + kFrameH - 26,
-                   rgba(0xFFFFFF, 0.9f), Align::Right, tr("Triangle: about this game"));
+    if (has_banner(game))
+    {
+        /* Triangle turns between the disc's own banner and the facts. */
+        const std::string hint = rd_info_ ? tr("The game's banner") : tr("About this game");
+        const float hw = g.measure(Font::SemiBold, ts(20), hint) + 36 + 34;
+        const float hx = kFrameX + kFrameW - 26 - hw, hy = kFrameY + kFrameH - 26 - 40;
+        g.panel(hx, hy, hw, 40, rgba(0xFFFFFF, 0.92f), 0.96f, 20, rev::kRim, 2);
+        g.glyph(Glyph::Triangle, hx + 24, hy + 20, 24, rev::kInkSoft);
+        g.text_mid(Font::SemiBold, ts(20), hx + 44, hy + 20, rev::kInk, Align::Left, hint);
+    }
 
     /* Arrows to the games beside it. */
     for (int side = 0; side < 2; ++side)

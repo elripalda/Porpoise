@@ -49,6 +49,10 @@ bool g_music_on = true, g_effects_on = true;
 float g_music_volume = 0.3f, g_effects_volume = 0.8f;
 float g_fade = 0.0f, g_fade_to = 1.0f, g_fade_step = 1.0f / 90.0f; /* per frame */
 bool g_loaded = false;
+/* A Wii disc's banner jingle: one at a time; the music steps back under it. */
+std::vector<std::int16_t> g_jingle;
+std::size_t g_jingle_at = 0;
+float g_duck = 1.0f;
 
 bool read_file(const std::string &path, std::vector<unsigned char> &out)
 {
@@ -169,6 +173,18 @@ void set_effects(bool on, float volume)
     g_effects_volume = std::clamp(volume, 0.0f, 1.0f);
 }
 
+void play_jingle(const std::int16_t *frames, std::size_t count)
+{
+    if (!frames || count == 0)
+    {
+        g_jingle.clear();
+        g_jingle_at = 0;
+        return;
+    }
+    g_jingle.assign(frames, frames + count * 2);
+    g_jingle_at = 0;
+}
+
 void fade_music(float to, float seconds)
 {
     g_fade_to = std::clamp(to, 0.0f, 1.0f);
@@ -197,7 +213,9 @@ void pump()
 
     /* Music, a gentle bed. The gain curve is squared so the low end of the
      * volume setting stays usable. */
-    const float music_gain = g_music_on ? g_music_volume * g_music_volume * g_fade : 0.0f;
+    const bool jingle = g_jingle_at < g_jingle.size() / 2;
+    g_duck = jingle ? std::max(0.2f, g_duck - 0.05f) : std::min(1.0f, g_duck + 0.02f);
+    const float music_gain = g_music_on ? g_music_volume * g_music_volume * g_fade * g_duck : 0.0f;
     if (g_music && music_gain > 0.0005f)
     {
         music.resize(n * 2);
@@ -231,6 +249,16 @@ void pump()
         }
         if (v.at >= total)
             v.clip = -1;
+    }
+
+    if (jingle && g_effects_on)
+    {
+        const float gain = std::max(0.35f, g_effects_volume) * 0.9f;
+        for (std::size_t i = 0; i < n && g_jingle_at < g_jingle.size() / 2; ++i, ++g_jingle_at)
+        {
+            mix[i * 2] += g_jingle[g_jingle_at * 2] * gain;
+            mix[i * 2 + 1] += g_jingle[g_jingle_at * 2 + 1] * gain;
+        }
     }
 
     pcm.resize(n * 2);

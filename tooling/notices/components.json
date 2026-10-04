@@ -42,7 +42,7 @@
     },
     {
       "id": "porpoise-media",
-      "name": "Porpoise menu music, sound effects, logo, borders, flags and QR code",
+      "name": "Porpoise menu music, sound effects, logo, borders, flags, QR code and pointer",
       "kind": "asset",
       "always": true,
       "artifacts": [
@@ -51,7 +51,8 @@
         "assets/borders/*",
         "assets/ui/flags.png",
         "assets/ui/report-qr.png",
-        "assets/recommended.ini"
+        "assets/recommended.ini",
+        "assets/ui/pointer-hand.png"
       ],
       "licence": "GPL-3.0-or-later",
       "copyright": [
@@ -486,6 +487,56 @@
         "url": "https://github.com/elripalda/Porpoise/tree/{rev}/third_party/stb"
       },
       "modifications": "Unmodified. Upstream: https://github.com/nothings/stb."
+    },
+    {
+      "id": "wii-banner-player",
+      "name": "Wii Banner Player (how Porpoise plays a Wii disc's banner, in altered form)",
+      "kind": "code",
+      "always": true,
+      "artifacts": [
+        "eboot.bin"
+      ],
+      "licence": "Zlib",
+      "copyright": [
+        "Copyright (c) 2010 - Wii Banner Player Project"
+      ],
+      "texts": [
+        {
+          "from": "third_party/wii-banner-player/LICENSE.txt",
+          "to": "LICENSE.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/third_party/wii-banner-player"
+      },
+      "modifications": "Altered: rewritten as src/porpoise_banner.cpp, a software renderer for Porpoise. Original: https://github.com/jordan-woyak/wii-banner-player."
+    },
+    {
+      "id": "zstd-educational",
+      "name": "Zstandard educational decoder (reading .rvz disc images)",
+      "kind": "code",
+      "always": true,
+      "artifacts": [
+        "eboot.bin"
+      ],
+      "licence": "BSD-3-Clause OR GPL-2.0-only",
+      "copyright": [
+        "Copyright (c) Meta Platforms, Inc. and affiliates."
+      ],
+      "texts": [
+        {
+          "from": "third_party/zstd-educational/LICENSE",
+          "to": "LICENSE"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/third_party/zstd-educational"
+      },
+      "modifications": "Unmodified; compiled by src/zstd_impl.c with its exit() on errors turned into a failed call. Upstream: https://github.com/facebook/zstd (doc/educational_decoder, 1.5.8)."
     }
   ]
 }

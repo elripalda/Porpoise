@@ -8,12 +8,15 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <chrono>
+#include <thread>
 #include <vector>
 
 #include <sys/stat.h>
 
 #include "porpoise_borders.hpp"
 #include "porpoise_states.hpp"
+#include "porpoise_banner.hpp"
 #include "ui_recommend.hpp"
 #include "ui_setups.hpp"
 #include "ui_app.hpp"
@@ -230,6 +233,17 @@ int main(int argc, char **argv)
         lib.games().push_back(g);
     }
     lib.sort(lib.sort_order()); /* as a scan leaves it: Sort & filter's count too */
+    /* Two Wii games are a disc with a real tile and banner (made by
+     * tools/ui-preview from an open-source channel's layout). */
+    for (Game &g : lib.games())
+    {
+        if (g.title == "Bowling Night" || g.title == "Star Pilots")
+            g.path = covers + "/../discs/banner-test.rvz";
+        if (g.title == "Tiny Tennis")
+            g.path = covers + "/../discs/banner-test.iso";
+    }
+    std::system(("rm -rf '" + out + "/banners'").c_str());
+    porpoise::banner::set_cache_dir(out + "/banners");
     lib.games()[3].last_played = (long long)std::time(nullptr) - 30 * 3600;
     for (Game &g : lib.games())
         if (g.id == "PRVW03")
@@ -306,6 +320,7 @@ int main(int argc, char **argv)
         vkResetCommandBuffer(cmd, 0);
         VkCommandBufferBeginInfo b{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
         vkBeginCommandBuffer(cmd, &b);
+        gfx.record_uploads(cmd); /* streamed textures (Wii banners) */
         VkClearValue clear{};
         VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
         rbi.renderPass = rp;
@@ -459,6 +474,18 @@ int main(int argc, char **argv)
     {
         settings.ui_theme = 1;
         settle();
+        /* Wii banners play on worker threads: draw a while, in real time. */
+        auto warm = [&](double seconds) {
+            const auto until = std::chrono::steady_clock::now() + std::chrono::duration<double>(seconds);
+            while (std::chrono::steady_clock::now() < until)
+            {
+                gfx.begin(0, float(W), float(H), 12.0f, 0.0f, false);
+                ui.update(none, 0.016);
+                ui.draw(12.0);
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            }
+        };
+        warm(2.5);
         ui.preview_pointer(1010, 360);
         settle();
         render("home-pointer", [&] { ui.draw(12.0); });
@@ -483,8 +510,7 @@ int main(int argc, char **argv)
         press(kRight, 2); /* a Wii game */
         settle();
         press(kCross); /* its tile opens */
-        for (int i = 0; i < 40; ++i)
-            ui.update(none, 0.016);
+        warm(3.0);
         render("rev-details-wii", [&] { ui.draw(12.0); });
         press(kRight); /* Wii controls */
         settle();

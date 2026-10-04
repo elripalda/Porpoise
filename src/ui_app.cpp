@@ -264,6 +264,7 @@ App::Action App::update(const Input &in, double dt)
     auto &games = lib_->games();
     Action action = Action::None;
     home_pad_sync(); /* the Revolution look's pointer */
+    pump_banners();  /* Wii discs' tiles and banners, as they come */
 
     const bool calm = settings_->reduced_motion;
     const float rate = calm ? 40.0f : 14.0f;
@@ -503,6 +504,12 @@ App::Action App::update(const Input &in, double dt)
             details_row_ = 0;
             details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
             count_states(&games[std::size_t(selected_)]);
+            if (revolution())
+            {
+                rd_focus_ = 0;
+                rd_info_ = false;
+                opened_tile(games[std::size_t(selected_)]);
+            }
         }
         if (pressed(BtnTriangle))
         {
@@ -1933,7 +1940,11 @@ void App::draw_revolution(double time)
         draw_home(time);
     else if (opened)
         draw_rev_details(time);
-    draw_rev_top_bar(!home);
+    /* The full-screen pages (the setups, the guide, a folder) have headings of their own. */
+    const bool full_page = screen_ == Screen::WiiSetup || screen_ == Screen::WiiGuide || screen_ == Screen::Mapping ||
+                           screen_ == Screen::Browse || screen_ == Screen::GameSettings;
+    if (!full_page)
+        draw_rev_top_bar(!home);
 
     float dx = 0, dy = 0, fade = 1;
     if (tab_anim_ > 0)

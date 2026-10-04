@@ -8,10 +8,13 @@
 #pragma once
 
 #include <array>
+#include <map>
+#include <set>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+#include "porpoise_banner.hpp"
 #include "porpoise_borders.hpp"
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
@@ -55,6 +58,8 @@ public:
     };
 
     void set_sound_hook(void (*play)(Sound)) { sound_ = play; }
+    /* Plays a Wii disc's banner jingle (48 kHz stereo frames); null stops it. */
+    void set_jingle_hook(void (*play)(const std::int16_t *, std::size_t)) { jingle_ = play; }
     void init(Gfx *gfx, Library *library, Settings *settings, const std::string &settings_path,
               const std::string &options_path, const std::string &saves_dir);
     Action update(const Input &in, double dt);
@@ -355,6 +360,26 @@ private:
     float ts(float size) const { return settings_ && settings_->large_text ? size * 1.15f : size; }
 
     void (*sound_)(Sound) = nullptr;
+    void (*jingle_)(const std::int16_t *, std::size_t) = nullptr;
+    /* Wii discs' tiles and banners, played a frame at a time by
+     * porpoise_banner into streamed textures (ui_app_banner.cpp). */
+    struct BannerTex
+    {
+        Texture *tex = nullptr;
+        int w = 0, h = 0;
+        std::uint64_t serial = 0;
+        double used = 0;
+    };
+    std::map<std::string, BannerTex> banner_tex_; /* by "<id>/icon" or "<id>/banner" */
+    std::vector<std::uint8_t> banner_px_;
+    std::set<std::string> no_banner_, banner_checked_;
+    std::string jingle_for_;     /* the opened tile whose jingle is due */
+    double rd_open_time_ = 0;    /* when the opened tile opened (its banner starts then) */
+    std::string banner_lang_;
+    void pump_banners();
+    void opened_tile(const Game &game); /* the banner starts, its jingle plays */
+    BannerTex *banner_texture(const Game &game, bool big);
+    void draw_frames(const BannerTex &b, float x, float y, float w, float h, float fade, float radius, bool fill);
     Gfx *g_ = nullptr;
     Library *lib_ = nullptr;
     Settings *settings_ = nullptr;

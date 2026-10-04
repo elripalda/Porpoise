@@ -535,6 +535,9 @@ void App::build_settings()
     info("Font", "Nunito", "Nunito by Vernon Adams and contributors, SIL Open Font License.");
     info("Japanese font", "Noto Sans JP", "Noto Sans JP by Google, SIL Open Font License.");
     info("Images and audio", "stb", "stb_image, stb_truetype and stb_vorbis by Sean Barrett (public domain / MIT).");
+    info("Wii banners", "Wii Banner Player",
+         "How a Wii disc's own tile and banner play: after the Wii Banner Player Project (zlib licence), rewritten "
+         "for Porpoise. RVZ discs are read with Zstandard's decoder (BSD).");
     info("Thanks", "PS5 scene", "etaHEN, kstuff and ShadowMountPlus make homebrew like this possible.");
     info("Trademarks", "Nintendo", "GameCube and Wii are trademarks of Nintendo. Porpoise is not affiliated with Nintendo.");
     info("Trademarks", "Sony",
