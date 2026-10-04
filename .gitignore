@@ -1,7 +1,7 @@
 # Build output and fetched dependencies
 build/
 dist/
-.deps/
+.deps
 .env
 
 # Generated binaries
