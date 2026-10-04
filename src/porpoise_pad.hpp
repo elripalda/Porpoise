@@ -1,4 +1,4 @@
-/* Porpoise - the DualSense, as libretro joypad and analog state.
+/* Porpoise - the DualSense controllers, as libretro joypad and analog state.
  * Copyright (C) 2026 Ruben (Project Porpoise)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #pragma once
@@ -7,23 +7,11 @@
 
 namespace porpoise::pad
 {
-/* How the face buttons reach the GameCube pad.
- *
- * Dolphin binds GameCube A to libretro's A and GameCube B to libretro's B
- * (Source/Core/DolphinLibretro/Input.cpp). By libretro's Super Nintendo naming,
- * A is the right face button, so out of the box GameCube A lands on Circle.
- *
- *   GameCube: Cross = A, Square = B, Circle = X, Triangle = Y. The confirm
- *             button sits where a PlayStation player expects it. The default.
- *   Position: the libretro placement - Circle = A, Cross = B, Triangle = X,
- *             Square = Y. */
-enum class Layout
-{
-    GameCube,
-    Position,
-};
+/* One controller per signed-in PS5 user: player 1 is the user who started
+ * Porpoise, the others join as their users sign in. */
+constexpr int kMaxPlayers = 4;
 
-/* Physical buttons, for Porpoise's own screens (independent of Layout). */
+/* Physical buttons, for Porpoise's own screens (independent of the mapping). */
 enum Button : std::uint32_t
 {
     BtnUp = 1u << 0,
@@ -40,27 +28,94 @@ enum Button : std::uint32_t
     BtnR2 = 1u << 11,
     BtnOptions = 1u << 12,
     BtnTouch = 1u << 13,
+    BtnL3 = 1u << 14,
+    BtnR3 = 1u << 15,
 };
+
+/* The DualSense controls a GameCube input can be given to. */
+enum Control : int
+{
+    CtlCross,
+    CtlCircle,
+    CtlSquare,
+    CtlTriangle,
+    CtlL1,
+    CtlR1,
+    CtlL2,
+    CtlR2,
+    CtlL3,
+    CtlR3,
+    CtlOptions,
+    CtlTouch,
+    CtlUp,
+    CtlDown,
+    CtlLeft,
+    CtlRight,
+    CtlCount,
+};
+
+/* The GameCube controller's buttons. The control stick and the C-stick are
+ * always the left and right sticks. */
+enum GcInput : int
+{
+    GcA,
+    GcB,
+    GcX,
+    GcY,
+    GcZ,
+    GcL,
+    GcR,
+    GcStart,
+    GcUp,
+    GcDown,
+    GcLeft,
+    GcRight,
+    GcCount,
+};
+
+/* Which DualSense control each GameCube input is on. */
+struct Mapping
+{
+    std::int8_t control[GcCount];
+};
+
+/* The ready-made layouts:
+ *   GameCube    Cross A, Square B, Circle X, Triangle Y: A where a PlayStation
+ *               player confirms, B beside it as on the GameCube pad. The default.
+ *   PlayStation Cross A, Circle B, Square X, Triangle Y: confirm and back
+ *               where PlayStation games put them.
+ * Both: R1 Z, L2 / R2 the analog L and R, Options Start, the D-pad the D-pad. */
+enum Layout : int
+{
+    LayoutGameCube = 0,
+    LayoutPlayStation = 1,
+    LayoutCustom = 2,
+};
+Mapping preset(int layout);
+
+/* The bit in State::buttons for a control. */
+std::uint32_t control_bit(int control);
 
 struct State
 {
     bool connected = false;
-    std::uint16_t joypad = 0; /* bit n = RETRO_DEVICE_ID_JOYPAD_n */
+    std::uint16_t joypad = 0; /* bit n = RETRO_DEVICE_ID_JOYPAD_n, through the mapping */
     std::int16_t left_x = 0, left_y = 0, right_x = 0, right_y = 0;
-    std::int16_t l2 = 0, r2 = 0; /* 0..0x7fff */
-    /* Raw PS5 buttons this poll, for Porpoise's own shortcuts. */
+    std::int16_t l2 = 0, r2 = 0; /* the GameCube L and R analog, 0..0x7fff */
+    /* Raw buttons this poll, for Porpoise's own shortcuts and screens. */
     bool ps_menu_combo = false; /* Options + touch pad: open the Porpoise menu */
     std::uint32_t buttons = 0;  /* Button bits */
 };
 
 bool open();
 void close();
-void set_layout(Layout layout);
-Layout layout();
+void set_mapping(const Mapping &mapping);
 void set_rumble_enabled(bool enabled);
-/* Read the pad. Call once a frame, before the core runs. */
+/* Read every controller. Call once a frame; returns player 1. */
 const State &poll();
-const State &state();
-/* libretro rumble: strength 0..0xffff per motor. */
-void set_rumble(bool strong, std::uint16_t strength);
+const State &state(int player = 0);
+bool connected(int player);
+int connected_count();
+/* libretro rumble for one player: strength 0..0xffff per motor. */
+void set_rumble(int player, bool strong, std::uint16_t strength);
 } // namespace porpoise::pad

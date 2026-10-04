@@ -65,7 +65,19 @@ const Field kFields[] = {
     {"music_volume", &Settings::music_volume, nullptr, 0, 10},
     {"menu_sounds", nullptr, &Settings::menu_sounds, 0, 1},
     {"sounds_volume", &Settings::sounds_volume, nullptr, 0, 10},
-    {"gamecube_layout", nullptr, &Settings::gamecube_layout, 0, 1},
+    {"button_layout", &Settings::button_layout, nullptr, 0, 2},
+    {"map_a", &Settings::map_a, nullptr, 0, 15},
+    {"map_b", &Settings::map_b, nullptr, 0, 15},
+    {"map_x", &Settings::map_x, nullptr, 0, 15},
+    {"map_y", &Settings::map_y, nullptr, 0, 15},
+    {"map_z", &Settings::map_z, nullptr, 0, 15},
+    {"map_l", &Settings::map_l, nullptr, 0, 15},
+    {"map_r", &Settings::map_r, nullptr, 0, 15},
+    {"map_start", &Settings::map_start, nullptr, 0, 15},
+    {"map_up", &Settings::map_up, nullptr, 0, 15},
+    {"map_down", &Settings::map_down, nullptr, 0, 15},
+    {"map_left", &Settings::map_left, nullptr, 0, 15},
+    {"map_right", &Settings::map_right, nullptr, 0, 15},
     {"rumble", nullptr, &Settings::rumble, 0, 1},
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
     {"dual_core", nullptr, &Settings::dual_core, 0, 1},
@@ -124,6 +136,7 @@ bool Settings::load(const std::string &path, bool overlay)
     if (!overlay)
         folders.clear();
     bool versioned = false;
+    int version = 0;
     char line[1024];
     while (std::fgets(line, sizeof line, f))
     {
@@ -137,6 +150,7 @@ bool Settings::load(const std::string &path, bool overlay)
         if (k == "settings_version")
         {
             versioned = true;
+            version = std::atoi(v.c_str());
             continue;
         }
         if (k == "folder")
@@ -158,6 +172,12 @@ bool Settings::load(const std::string &path, bool overlay)
      * 4K stays only for those who choose it again. */
     if (!overlay && !versioned && resolution == 6)
         resolution = 3;
+    /* Before 11: shaders compiled synchronously by default, which stalls a
+     * game each time it draws something new; asynchronous ubershaders are the
+     * default now. And the old two-way layout switch is gone: everyone starts
+     * on the GameCube layout, PlayStation and Custom are a choice away. */
+    if (!overlay && version < 11 && shader_mode == 0)
+        shader_mode = 2;
     return true;
 }
 
@@ -167,7 +187,7 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = std::fopen(tmp.c_str(), "w");
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 10\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 11\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     for (const std::string &folder : folders)
@@ -213,6 +233,34 @@ std::vector<std::string> Settings::keys_in(const std::string &path)
     }
     std::fclose(f);
     return keys;
+}
+
+int *Settings::map_slot(int gc)
+{
+    int *const slots[porpoise::pad::GcCount] = {&map_a,     &map_b,  &map_x,    &map_y,    &map_z,    &map_l,
+                                                &map_r,     &map_start, &map_up, &map_down, &map_left, &map_right};
+    return gc >= 0 && gc < porpoise::pad::GcCount ? slots[gc] : nullptr;
+}
+
+int Settings::map_of(int gc) const
+{
+    return const_cast<Settings *>(this)->map_slot(gc) ? *const_cast<Settings *>(this)->map_slot(gc) : -1;
+}
+
+porpoise::pad::Mapping Settings::mapping() const
+{
+    if (button_layout != porpoise::pad::LayoutCustom)
+        return porpoise::pad::preset(button_layout);
+    porpoise::pad::Mapping m{};
+    for (int gc = 0; gc < porpoise::pad::GcCount; ++gc)
+        m.control[gc] = static_cast<std::int8_t>(std::clamp(map_of(gc), 0, porpoise::pad::CtlCount - 1));
+    return m;
+}
+
+std::vector<std::string> Settings::mapping_keys()
+{
+    return {"button_layout", "map_a",     "map_b",  "map_x",    "map_y",    "map_z",    "map_l",
+            "map_r",         "map_start", "map_up", "map_down", "map_left", "map_right"};
 }
 
 void Settings::reset()

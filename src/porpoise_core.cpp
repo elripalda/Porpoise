@@ -14,6 +14,7 @@
 #include <atomic>
 #include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -25,6 +26,7 @@
 
 #include "libretro.h"
 #include "porpoise_audio.hpp"
+#include "porpoise_pacer.hpp"
 #include "porpoise_pad.hpp"
 #include "porpoise_vk.hpp"
 #include "trace.hpp"
@@ -87,6 +89,7 @@ struct Host
     bool sharp = false;
     bool have_frame = false;
     bool hold_input = false; /* after the menu: the game sees no buttons until all are let go */
+    bool plugged[porpoise::pad::kMaxPlayers] = {}; /* GameCube ports with a controller in */
     std::FILE *log = nullptr;
 };
 
@@ -296,9 +299,9 @@ void perf_log() {}
 
 bool set_rumble(unsigned port, enum retro_rumble_effect effect, uint16_t strength)
 {
-    if (port != 0)
+    if (port >= unsigned(porpoise::pad::kMaxPlayers))
         return false;
-    porpoise::pad::set_rumble(effect == RETRO_RUMBLE_STRONG, strength);
+    porpoise::pad::set_rumble(int(port), effect == RETRO_RUMBLE_STRONG, strength);
     return true;
 }
 
@@ -497,9 +500,9 @@ void input_poll()
 
 int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
-    if (port != 0 || h.hold_input)
+    if (port >= unsigned(porpoise::pad::kMaxPlayers) || (port == 0 && h.hold_input))
         return 0;
-    const porpoise::pad::State &pad = porpoise::pad::state();
+    const porpoise::pad::State &pad = porpoise::pad::state(int(port));
     switch (device)
     {
     case RETRO_DEVICE_JOYPAD:
@@ -525,29 +528,10 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
     }
 }
 
+using porpoise::pacer::now_ns;
 long long monotonic_ns()
 {
-    timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
-}
-
-/* Sleep most of the way, then spin the last stretch: a sleep can overshoot by
- * up to a millisecond, which over a 16.7 ms frame is visible judder. */
-void sleep_until_ns(long long deadline)
-{
-    for (;;)
-    {
-        const long long left = deadline - monotonic_ns();
-        if (left <= 0)
-            return;
-        if (left > 1500000)
-        {
-            const long long nap = left - 1000000;
-            timespec ts{static_cast<time_t>(nap / 1000000000LL), static_cast<long>(nap % 1000000000LL)};
-            nanosleep(&ts, nullptr);
-        }
-    }
+    return now_ns();
 }
 
 /* ---- loading --------------------------------------------------------------------------- */
@@ -718,7 +702,17 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         return Exit::Failed;
     }
     ps5::debug::mark("core: game loaded");
-    h.api.set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
+    /* Player 1's GameCube port always has a controller; the others get one
+     * for each controller that is on, now or when it joins mid-game. A port
+     * keeps its controller when a player leaves, so no game pauses for it. */
+    porpoise::pad::poll();
+    for (int port = 0; port < porpoise::pad::kMaxPlayers; ++port)
+    {
+        h.plugged[port] = port == 0 || porpoise::pad::connected(port);
+        if (h.plugged[port])
+            h.api.set_controller_port_device(unsigned(port), RETRO_DEVICE_JOYPAD);
+    }
+    ps5::debug::mark_value("core: controllers plugged in", porpoise::pad::connected_count());
 
     retro_system_av_info av{};
     h.api.get_system_av_info(&av);
@@ -765,28 +759,32 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     ps5::debug::mark("core: context_reset done; running");
 
     unsigned long long frames = 0;
-    /* Pacing. Two clocks hold a game to its real speed:
+    /* Pacing (porpoise_pacer.hpp). The display is the clock when it runs at
+     * the game's rate and the swapchain holds each present to the vblank: one
+     * new frame every vblank, the steadiest picture there is. Otherwise a
+     * clock of Porpoise's own gives each frame 1/fps of wall time.
      *
-     * - The speakers. Dolphin makes its sound as it emulates, so the samples
-     *   it has produced measure emulated time exactly. When more than ~60 ms
-     *   are waiting to be played, the loop waits for the speakers, the way
-     *   RetroArch's audio sync does. This holds whatever a retro_run covers.
-     * - The display rate. The console's present does not wait for the display
-     *   the way a desktop FIFO swapchain does, so each frame is also given
-     *   1/fps of wall time from a running deadline; this keeps video smooth
-     *   and covers the moments with no audio (loading). A stall longer than a
-     *   few frames resets the deadline rather than racing to catch up.
+     * The speakers are the backstop either way. Dolphin makes its sound as
+     * it emulates, so the samples waiting to be played measure how far the
+     * game has run ahead; past the high water the loop waits for them, as
+     * RetroArch's audio sync does. Locked to the display, the resampler's
+     * rate control keeps the queue near its target and the backstop sits
+     * higher, out of the way.
      *
      * Dolphin reports 32 kHz audio before the game starts but its sound
      * stream runs at 48 kHz; the rate is asked for again once sound flows,
      * or the resampler would stretch the audio by half and overflow. */
-    constexpr std::size_t kAudioHighWater = 2304 + 512; /* 48 kHz frames, ~59 ms */
-    long long deadline = monotonic_ns();
-    long long window_start = deadline;
+    constexpr std::size_t kAudioHighWater = 2304 + 512;  /* 48 kHz frames, ~59 ms: own clock */
+    constexpr std::size_t kAudioBackstop = 4800;         /* ~100 ms: locked to the display */
+    porpoise::pacer::Pacer pacer;
+    auto content_hz = [] { return h.fps > 10.0 && h.fps < 60.5 ? h.fps : 60.0; };
+    pacer.start(content_hz(), "game");
+    long long window_start = monotonic_ns();
     unsigned long long window_frames = 0, window_samples = 0;
     long long window_audio_wait_us = 0;
+    double window_present_wait_ms = 0;
     double measured_fps = 0;
-    long long fps_start = deadline;
+    long long fps_start = window_start;
     unsigned fps_frames = 0;
     bool rate_checked = false;
     Exit exit = Exit::Home;
@@ -794,6 +792,16 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     for (;;)
     {
         const porpoise::pad::State &pad = porpoise::pad::poll();
+        /* A controller that joins mid-game is plugged into its GameCube port. */
+        for (int port = 1; port < porpoise::pad::kMaxPlayers; ++port)
+            if (!h.plugged[port] && porpoise::pad::connected(port))
+            {
+                h.plugged[port] = true;
+                h.api.set_controller_port_device(unsigned(port), RETRO_DEVICE_JOYPAD);
+                ps5::debug::mark_value("core: a controller joined; player", port + 1);
+                if (h.log)
+                    std::fprintf(h.log, "[porpoise] player %d joined\n", port + 1);
+            }
         /* Options + touch pad: the in-game menu, which pauses the game. */
         const bool combo = pad.ps_menu_combo;
         const bool combo_pressed = combo && !combo_was;
@@ -821,7 +829,6 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             {
                 paused = false;
                 h.hold_input = true;
-                deadline = monotonic_ns();
                 ps5::debug::mark("core: resumed");
             }
             /* The paused picture, with the menu over it. */
@@ -831,13 +838,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.sharp);
             else
                 porpoise::vk::present_clear(0, 0, 0);
-            const long long period = static_cast<long long>(1e9 / 60.0);
-            deadline += period;
-            const long long now = monotonic_ns();
-            if (now > deadline + 4 * period)
-                deadline = now;
-            else
-                sleep_until_ns(deadline);
+            pacer.frame_done();
             continue;
         }
         h.api.run();
@@ -858,8 +859,11 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 h.sample_rate = now_av.timing.sample_rate;
                 porpoise::audio::set_source_rate(h.sample_rate);
             }
-            if (now_av.timing.fps > 10.0 && now_av.timing.fps < 200.0)
+            if (now_av.timing.fps > 10.0 && now_av.timing.fps < 200.0 && std::fabs(now_av.timing.fps - h.fps) > 0.5)
+            {
                 h.fps = now_av.timing.fps;
+                pacer.start(content_hz(), "game"); /* a PAL game shows its 50 Hz only now */
+            }
         }
 
         if (hooks.frame)
@@ -868,20 +872,14 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.sharp);
         else
             porpoise::vk::present_clear(0, 0, 0);
+        window_present_wait_ms += porpoise::vk::last_present_wait_ms();
 
-        /* The speakers first: never run ahead of what has been heard. */
+        /* The speakers: never run far ahead of what has been heard. */
         if (rate_checked)
-            window_audio_wait_us += porpoise::audio::wait_below(kAudioHighWater, 40);
+            window_audio_wait_us +=
+                porpoise::audio::wait_below(pacer.display_locked() ? kAudioBackstop : kAudioHighWater, 40);
 
-        /* Never above 60: a game's own rate (59.94 NTSC, 50 PAL) or less. */
-        const double fps = h.fps > 10.0 && h.fps < 60.5 ? h.fps : 60.0;
-        const long long period = static_cast<long long>(1e9 / fps);
-        deadline += period;
-        long long now = monotonic_ns();
-        if (now > deadline + 4 * period)
-            deadline = now; /* fell behind: start again from here */
-        else
-            sleep_until_ns(deadline);
+        pacer.frame_done();
 
         ++frames;
         ++window_frames;
@@ -894,23 +892,25 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         }
         if (frames == 1)
             ps5::debug::mark("core: first frame run");
-        now = monotonic_ns();
+        const long long now = monotonic_ns();
         if (now - window_start >= 10'000'000'000LL && h.log)
         {
             const double secs = (now - window_start) / 1e9;
             const unsigned long long samples = h.samples_in - window_samples;
             /* Emulated speed: the core's sound per wall second over its rate. */
             std::fprintf(h.log,
-                         "[porpoise] %.2f runs/s (target %.3f), %.0f audio frames/s at %.0f Hz = %.0f%% speed, "
-                         "%.0f per run, queue %zu, waited %.1f ms/s for the speakers\n",
-                         window_frames / secs, fps, samples / secs, h.sample_rate,
-                         100.0 * samples / secs / h.sample_rate, window_frames ? double(samples) / window_frames : 0.0,
-                         porpoise::audio::queued(), window_audio_wait_us / 1000.0 / secs);
+                         "[porpoise] %.2f frames/s (game %.3f), %.0f%% speed (%.0f audio frames/s at %.0f Hz), "
+                         "%s, display wait %.1f ms/frame, queue %zu, waited %.1f ms/s for the speakers, players %d\n",
+                         window_frames / secs, h.fps, 100.0 * samples / secs / h.sample_rate, samples / secs,
+                         h.sample_rate, pacer.display_locked() ? "locked to the vblank" : "own clock",
+                         window_frames ? window_present_wait_ms / window_frames : 0.0, porpoise::audio::queued(),
+                         window_audio_wait_us / 1000.0 / secs, porpoise::pad::connected_count());
             std::fflush(h.log);
             window_start = now;
             window_frames = 0;
             window_samples = h.samples_in;
             window_audio_wait_us = 0;
+            window_present_wait_ms = 0;
         }
     }
 

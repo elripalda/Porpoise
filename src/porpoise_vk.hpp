@@ -31,6 +31,10 @@ retro_hw_render_interface_vulkan *render_interface();
 unsigned screen_width();
 unsigned screen_height();
 double refresh_hz();
+/* The display mode's own rate (may be above 60). */
+double display_hz();
+/* How long the last present waited for the display to free an image. */
+double last_present_wait_ms();
 
 /* The core's frame, aspect-fit onto the screen. aspect <= 0 uses w / h. */
 void present_core_frame(unsigned width, unsigned height, float aspect, bool sharp);

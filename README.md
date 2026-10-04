@@ -70,6 +70,7 @@ controller and enjoyed from the couch.
   the way.
 - **Triangle** flips to the **back cover**, and the **right stick** turns the box
   in your hands.
+- **L2 / R2** swipe to the previous or next game without leaving Details.
 - The disc spins beside the box, showing its real label art.
 - **Play**, **Game settings** and **Save data** are one press away. A game with
   its own settings is marked *Custom*.
@@ -83,6 +84,17 @@ controller and enjoyed from the couch.
   **Triangle**. Both ask first, with *Cancel* selected by default.
 - **Save data** on a game's Details page jumps straight to that game's save.
 
+### Controllers and players
+- **Up to four players.** Every controller signed in to a PS5 user is a player:
+  turn on a second controller, pick a user for it, and it joins, even in the
+  middle of a game.
+- **Three button layouts.** *GameCube* (the default: Cross is A, Square is B,
+  as on the GameCube pad), *PlayStation* (Cross is A, Circle is B) and *Custom*.
+- **Customize buttons** shows a picture of the DualSense with the GameCube
+  button each control plays. Pick a GameCube button, press the DualSense button
+  you want, and the two swap places so nothing is ever left without a button.
+- Any game can have its own layout, and analog L and R follow the triggers.
+
 ### Settings
 Settings open on a rail of sections; inside each section, rows show their value
 as chips.
@@ -90,9 +102,9 @@ as chips.
 | Section | What's inside |
 |---|---|
 | **Video** | Internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, smooth or sharp scaling, FPS counter |
-| **Graphics** | Shader compilation (including asynchronous ubershaders), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
+| **Graphics** | Shader compilation (asynchronous ubershaders by default, for stutter-free play), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
 | **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume |
-| **Controls** | Button layout (GameCube-style: Cross is A, or PlayStation-style: by position), rumble |
+| **Controls** | Button layout (GameCube, PlayStation or Custom), Customize buttons, vibration, connected controllers |
 | **System** | Emulated CPU clock (50–300%), dual core, fast disc loading, cheats, console language, progressive scan |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info |
 | **Interface** | Menu language, reduced motion, larger text, **reset all settings** |
@@ -128,15 +140,20 @@ that closed the menu never reaches the game.
 ### Languages
 - English, **Español**, **Français** and **Português**. Porpoise follows your
   PS5's system language, and **Settings → Interface → Language** overrides it.
+- More languages are coming in a future update.
 - Want to fix a line without waiting for an update? Create
   `/data/porpoise/lang/es.txt` (or `fr.txt`, `pt.txt`) with lines such as
   `Quit to library = Volver a la biblioteca`.
 
 ### Performance
-- Games are paced by the audio clock, so they run at their real speed with clean
-  sound at 48 kHz, capped at 60 fps even when the TV is in 120 Hz mode.
-- Dolphin's JIT with fastmem, Vulkan through RADV, and asynchronous ubershaders,
-  so compiling shaders doesn't cause stutter.
+- **Locked to your TV's refresh.** When the display allows it, every frame is
+  shown on its own vblank for smooth, even motion. Otherwise Porpoise keeps its
+  own clock. Either way games run at their real speed, never above 60 fps, with
+  clean 48 kHz sound.
+- **Stutter-free shaders.** Dolphin compiles shaders in the background with
+  asynchronous ubershaders, so a game doesn't stall the first time it draws
+  something new.
+- Dolphin's x86-64 JIT with fastmem, and Vulkan through RADV.
 
 ## Requirements
 
@@ -188,6 +205,7 @@ below it. After copying new games, use **Search for games now**.
 | **Circle** | – | Back to the library | Back |
 | **Square** | Open Details | – | Copy to the other slot |
 | **Triangle** | Sort | Front / back of the box | Delete |
+| **L2 / R2** | – | Previous / next game | – |
 | **Right stick** | – | Turn the box | – |
 | **L1 / R1** | Switch tabs: Library, Memory Cards, Settings | | |
 
@@ -198,9 +216,22 @@ below it. After copying new games, use **Search for games now**.
 | **Options + touch pad** | Pause and open the in-game menu |
 | **Circle** (in the menu) | Resume |
 
-With the default **GameCube** button layout, Cross is A, just like confirming on
-PlayStation. L2 and R2 are analog triggers. Choose **PlayStation** under
-**Settings → Controls → Button layout** to map buttons by position instead.
+With the default **GameCube** layout:
+
+| GameCube | DualSense |
+|---|---|
+| A / B / X / Y | Cross / Square / Circle / Triangle |
+| Z | R1 |
+| L / R (analog) | L2 / R2 |
+| Start | Options |
+| Control stick / C-stick | Left stick / right stick |
+| D-pad | D-pad |
+
+The **PlayStation** layout puts B on Circle and X on Square. To set any button
+yourself, go to **Settings → Controls → Customize buttons**.
+
+**More players:** turn on another controller and choose a PS5 user for it. It
+becomes the next player, up to four, and can join in the middle of a game.
 
 ## Where things are kept
 
@@ -231,7 +262,6 @@ console firmware, the game's disc ID and those logs.
 
 ## Known limitations in 1.0
 
-- One player: only the first controller is read.
 - Wii support is experimental. Games that need Wii Remote pointing or motion
   aren't practical on a DualSense yet.
 - Save states, netplay and achievements aren't part of Porpoise.

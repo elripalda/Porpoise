@@ -31,6 +31,7 @@
 #include "porpoise_audio.hpp"
 #include "porpoise_core.hpp"
 #include "porpoise_covers.hpp"
+#include "porpoise_pacer.hpp"
 #include "porpoise_pad.hpp"
 #include "porpoise_sound.hpp"
 #include "porpoise_vk.hpp"
@@ -153,29 +154,9 @@ long long now_ns()
     return static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
 }
 
-/* The launcher's own frame pacing: the console's present does not wait for
- * the display, so the loop holds itself to the refresh rate. */
-void pace(long long &deadline, double hz)
-{
-    const long long period = static_cast<long long>(1e9 / (hz > 20 ? hz : 60.0));
-    deadline += period;
-    long long now = now_ns();
-    if (now > deadline + 4 * period)
-    {
-        deadline = now;
-        return;
-    }
-    while ((now = now_ns()) < deadline)
-    {
-        const long long left = deadline - now;
-        if (left > 1500000)
-        {
-            const long long nap = left - 1000000;
-            timespec ts{static_cast<time_t>(nap / 1000000000LL), static_cast<long>(nap % 1000000000LL)};
-            nanosleep(&ts, nullptr);
-        }
-    }
-}
+/* The launcher's frame pacing (porpoise_pacer.hpp): one frame per vblank
+ * when the display holds the loop to it, its own clock otherwise. */
+porpoise::pacer::Pacer g_pacer;
 
 /* The UI is recorded into every presented frame, after the core's picture. */
 void overlay(VkCommandBuffer cmd, unsigned, void *)
@@ -263,8 +244,7 @@ void apply_settings()
 {
     porpoise::sound::set_music(g_settings.menu_music, g_settings.music_volume / 10.0f);
     porpoise::sound::set_effects(g_settings.menu_sounds, g_settings.sounds_volume / 10.0f);
-    porpoise::pad::set_layout(g_settings.gamecube_layout ? porpoise::pad::Layout::GameCube
-                                                         : porpoise::pad::Layout::Position);
+    porpoise::pad::set_mapping(g_settings.mapping());
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
 }
 
@@ -422,8 +402,8 @@ int main()
     porpoise::sound::fade_music(1.0f, 2.5f);
     fetch_covers();
 
-    long long deadline = now_ns();
     const double hz = porpoise::vk::refresh_hz();
+    g_pacer.start(hz, "launcher");
     for (;;)
     {
         porpoise::ui::Game *launch = nullptr;
@@ -470,7 +450,7 @@ int main()
             g_app.draw(g_time);
             porpoise::vk::present_clear(0, 0, 0);
             porpoise::sound::pump();
-            pace(deadline, hz);
+            g_pacer.frame_done();
         }
 
         /* The launch: the screen dims into the launch tile for a moment, then
@@ -482,8 +462,7 @@ int main()
         if (g_play.load(g_app.game_settings_path(*launch), true))
             ps5::debug::mark("main: the game has its own settings");
         g_play.write_core_options(g_options_path);
-        porpoise::pad::set_layout(g_play.gamecube_layout ? porpoise::pad::Layout::GameCube
-                                                         : porpoise::pad::Layout::Position);
+        porpoise::pad::set_mapping(g_play.mapping());
         porpoise::pad::set_rumble_enabled(g_play.rumble);
         g_app.begin_launch(launch);
         /* The music fades as the screen dims; the Play sound finishes. */
@@ -496,7 +475,7 @@ int main()
             g_app.draw_launch(g_time);
             porpoise::vk::present_clear(0, 0, 0);
             porpoise::sound::pump();
-            pace(deadline, hz);
+            g_pacer.frame_done();
         }
 
         g_playing = launch;
@@ -544,7 +523,7 @@ int main()
                                                 "Porpoise can't read yet. Details are in porpoise/core.log."));
         ps5::debug::mark("main: back in the library");
         fetch_covers();
-        deadline = now_ns();
+        g_pacer.start(hz, "launcher");
     }
 }
 

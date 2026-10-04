@@ -6,13 +6,14 @@
 
 - **Cover-flow library** of glass box-art tiles that finds your games on its own: the usual folders, USB and extended drives, plus any folder you add. Plays `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`.
 - **Automatic box art** from GameTDB: front covers, **back covers** and disc label art, along with game details (description, developer, publisher, release date, genre, players and rating).
-- **Details page:** Square flies the box in, Triangle flips to the back cover, the right stick turns the box, and the disc spins alongside.
+- **Details page:** Square flies the box in, Triangle flips to the back cover, the right stick turns the box, L2 / R2 swipe between games, and the disc spins alongside.
+- **Up to four players**, one per signed-in PS5 user, joining any time. Button layouts: GameCube (default), PlayStation, or **Custom** with a DualSense button-mapping screen.
 - **Memory cards:** Slot A and Slot B with save icons and banners. Copy and delete saves, each with a confirmation.
 - **Settings for everything:** video, graphics, audio, controls, system, games and interface, plus **per-game settings**, each with a reset.
 - **In-game menu** (Options + touch pad): resume, quick video and volume settings, Quit to library, Close Porpoise.
 - **Original menu music and sound effects** by @elripalda, each with its own switch and volume.
-- **English, Español, Français, Português.** Porpoise follows your PS5's language.
-- Games run at full speed with clean 48 kHz sound, capped at 60 fps.
+- **English, Español, Français, Português.** Porpoise follows your PS5's language. More languages are coming in a future update.
+- Smooth play: frames locked to your TV's refresh, stutter-free asynchronous ubershaders, clean 48 kHz sound, never above 60 fps.
 
 ## Install
 

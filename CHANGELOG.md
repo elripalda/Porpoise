@@ -4,6 +4,14 @@
 
 The first public release of Porpoise.
 
+### Controllers
+- Up to four players, one per signed-in PS5 user. Controllers can join in the
+  middle of a game.
+- Three button layouts: GameCube (the default), PlayStation (Cross A, Circle B)
+  and Custom.
+- Customize buttons: a picture of the DualSense with the GameCube button on each
+  control. Pick a button, press the one you want, and the two swap.
+
 ### Library
 - A cover-flow shelf of thick glass box-art tiles in a perspective grid room,
   with gloss, chromatic edges and a slow moving reflection.
@@ -20,6 +28,7 @@ The first public release of Porpoise.
   genre, players and rating.
 - Square flies the box into Details, Triangle shows the back of the box, the
   right stick turns it, and the disc spins alongside.
+- L2 / R2 swipe to the previous or next game inside Details.
 
 ### Memory cards
 - Slot A and Slot B with save icons, banners, block counts and dates.
@@ -45,10 +54,13 @@ The first public release of Porpoise.
 - Original menu music and sound effects by @elripalda, with separate switches
   and volumes.
 - English, Spanish, French and Portuguese. Porpoise follows the PS5's language,
-  with an override in Settings and optional translation fix files.
+  with an override in Settings and optional translation fix files. More
+  languages are coming in a future update.
 
 ### Under the hood
 - Dolphin's JIT on the PS5's CPU, with Vulkan through Mesa's RADV.
-- Audio-clock pacing with clean 48 kHz sound, capped at 60 fps.
+- Frames locked to the TV's vblank when the display allows it, for even
+  motion; clean 48 kHz sound; never above 60 fps.
+- Asynchronous ubershaders by default, so games don't stall on new shaders.
 - Textures are freed only after the GPU is done with them, and large images are
   scaled down to save memory.

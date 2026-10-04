@@ -20,7 +20,7 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "1.0 (build 11)";
+constexpr const char *kVersion = "1.0 (build 12)";
 
 /* What a settings row does when pressed, besides changing a value. */
 enum RowAction
@@ -31,7 +31,12 @@ enum RowAction
     kRowRescan,
     kRowResetAll,
     kRowResetGame,
+    kRowMapping,
 };
+
+/* Prompts with a keycap instead of a face-button glyph (draw_prompts). */
+constexpr Glyph kKeyL2R2 = Glyph(32);
+constexpr Glyph kKeyL1R1 = Glyph(33);
 
 constexpr float kPi = 3.14159265f;
 constexpr float kR = 14.0f;      /* the one corner radius */

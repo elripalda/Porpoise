@@ -132,10 +132,29 @@ void App::add_game_rows(Settings &t, bool per_game)
     }
 
     header("Controls");
-    toggle("gamecube_layout", "Button layout",
-           "GameCube: Cross is A, like confirming on PlayStation. PlayStation: by position.", &t.gamecube_layout,
-           "PlayStation", "GameCube");
+    choice("button_layout", "Button layout",
+           "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. Custom: your own buttons.",
+           &t.button_layout, 0, {"GameCube", "PlayStation", "Custom"});
+    {
+        SettingRow r;
+        r.section = section;
+        r.label = tr("Customize buttons");
+        r.help = tr("Give every GameCube button the DualSense button you like, on a picture of the controller.");
+        r.values = {tr("Edit\xE2\x80\xA6")};
+        r.action = kRowMapping;
+        rows_.push_back(r);
+    }
     toggle("rumble", "Vibration", "Controller rumble.", &t.rumble);
+    if (!per_game)
+    {
+        SettingRow r;
+        r.section = section;
+        r.key = "players"; /* its value is counted when it is drawn */
+        r.label = tr("Controllers");
+        r.help = tr("Up to four players. To join, turn on another controller and choose a user for it.");
+        r.values = {""};
+        rows_.push_back(r);
+    }
 
     header("System");
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
@@ -239,9 +258,11 @@ void App::build_settings()
            "Reset\xE2\x80\xA6", kRowResetAll);
 
     header("About");
-    info("Porpoise", build_label(), "A GameCube and Wii player for PS5, in the spirit of the GameCube's own menus.");
+    info("Porpoise", build_label(), "A GameCube and Wii emulator for PS5, powered by Dolphin.");
     info("Created by", "@elripalda", "Ruben - www.elripalda.com");
     info("Website", "www.elripalda.com", "Updates, news and more from the creator of Porpoise.");
+    info("Report a bug", "github.com/elripalda/Porpoise",
+         "Found a problem? Open an issue there with the game, what happened and porpoise/core.log.");
     info("Music and sounds", "@elripalda", "The menu music and sound effects, made for Porpoise by Ruben.");
     info("Emulation", "Dolphin", "Dolphin, by the Dolphin Team - dolphin-emu.org. Free software, GPL v2 or later.");
     info("Dolphin core", "libretro", "Dolphin's libretro core, maintained by the libretro team (GPL v2 or later).");
@@ -391,6 +412,9 @@ App::Action App::activate_row(const SettingRow &row)
         open_dialog(DialogKind::ResetAll, tr("Reset all settings?"),
                     tr("Every setting goes back to how Porpoise ships. Your games, folders, covers and saves stay."),
                     tr("Reset"), true);
+        return Action::None;
+    case kRowMapping:
+        open_mapping();
         return Action::None;
     case kRowResetGame:
         open_dialog(DialogKind::ResetGame, tr("Reset this game's settings?"),
@@ -570,6 +594,11 @@ void App::draw_settings()
             vi = *r.int_value - r.min;
         if (vi >= 0 && vi < count)
             value = r.values[std::size_t(vi)];
+        if (r.key == "players")
+        {
+            const int n = porpoise::pad::connected_count();
+            value = n <= 1 ? tr("1 player") : trf("{n} players", {{"n", std::to_string(n)}});
+        }
         const float right = row_x + row_w - 24;
         const Color value_c = own ? kCyan : (on ? kWhite : kSoft);
         if (r.action)
@@ -638,6 +667,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Remove"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowRescan)
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowMapping)
+        draw_prompts({{Glyph::Cross, "Customize"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action)
         draw_prompts({{Glyph::Cross, "Reset"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (info)

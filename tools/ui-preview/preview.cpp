@@ -321,6 +321,21 @@ int main(int argc, char **argv)
     }
     press(kTriangle);
     settle();
+    {
+        /* R2: the next game, swiping in; L2 back again. */
+        const std::uint32_t kL2 = 1u << 10, kR2 = 1u << 11;
+        Input in;
+        in.held = kR2;
+        ui.update(in, 0.016);
+        ui.update(none, 0.016);
+        for (int i = 0; i < 7; ++i)
+            ui.update(none, 0.016);
+        render("details-swipe", [&] { ui.draw(12.0); });
+        settle();
+        render("details-next", [&] { ui.draw(12.0); });
+        press(kL2);
+        settle();
+    }
     press(kDown);
     press(kCross); /* Game settings */
     press(kRight);
@@ -400,6 +415,39 @@ int main(int argc, char **argv)
     press(kDown, 2);
     settle();
     render("settings-about", [&] { ui.draw(12.0); });
+
+    /* Controls, and the button-mapping screen. */
+    {
+        const std::uint32_t kUp = 1u << 0;
+        press(kR1, 2);    /* Settings, from the library */
+        press(kUp, 8);    /* the top of the rail */
+        press(kDown, 4);  /* Controls */
+        press(kRight);
+        settle();
+        render("settings-controls", [&] { ui.draw(12.0); });
+        press(kDown);     /* Customize buttons */
+        press(kCross);
+        settle();
+        render("mapping", [&] { ui.draw(12.0); });
+        press(kDown);     /* B */
+        press(kCross);    /* waiting for a button */
+        for (int i = 0; i < 20; ++i)
+            ui.update(none, 0.016);
+        render("mapping-capture", [&] { ui.draw(12.0); });
+        press(kCircle);   /* B on Circle */
+        settle();
+        render("mapping-custom", [&] { ui.draw(12.0); });
+        press(kDown, 12); /* Use the PlayStation layout */
+        press(kCross);
+        settle();
+        render("mapping-playstation", [&] { ui.draw(12.0); });
+        press(kCircle);
+        settle();
+        render("settings-controls-after", [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(kCircle); /* back to the library */
+        settle();
+    }
 
     /* The in-game menu, over a stand-in for the game's picture. */
     {

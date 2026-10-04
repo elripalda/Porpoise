@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cstring>
 #include <mutex>
+#include <time.h>
 
 #include "trace.hpp"
 
@@ -126,6 +127,7 @@ struct State
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkExtent2D extent{1920, 1080};
     double refresh_hz = 60.0;
+    long long last_wait_ns = 0; /* the last present's wait for a free image */
 
     VkDevice device = VK_NULL_HANDLE;
     VkQueue queue = VK_NULL_HANDLE;
@@ -611,11 +613,19 @@ void present(const float clear[3], const Push *quad, VkImageView view, bool shar
 {
     std::lock_guard<std::mutex> present_lock(present_mutex);
     const unsigned slot = s.index;
+    /* How long the display kept this present waiting: the frame pacer's sign
+     * that the swapchain is holding the loop to the vblank. */
     (void)vkWaitForFences(s.device, 1, &s.fences[slot], VK_TRUE, UINT64_MAX);
 
+    /* Only the acquire: the fence above waits for the GPU, the acquire for
+     * the display to flip an image away. */
+    timespec wait_start{}, wait_end{};
+    clock_gettime(CLOCK_MONOTONIC, &wait_start);
     std::uint32_t image = 0;
     const VkResult acquired = vkAcquireNextImageKHR(s.device, s.swapchain, UINT64_MAX,
                                                     s.acquired[slot], VK_NULL_HANDLE, &image);
+    clock_gettime(CLOCK_MONOTONIC, &wait_end);
+    s.last_wait_ns = (wait_end.tv_sec - wait_start.tv_sec) * 1000000000LL + (wait_end.tv_nsec - wait_start.tv_nsec);
     if (acquired != VK_SUCCESS && acquired != VK_SUBOPTIMAL_KHR)
     {
         static bool reported = false;
@@ -856,6 +866,16 @@ unsigned screen_width()
 unsigned screen_height()
 {
     return s.extent.height;
+}
+
+double display_hz()
+{
+    return s.refresh_hz;
+}
+
+double last_present_wait_ms()
+{
+    return s.last_wait_ns / 1e6;
 }
 
 double refresh_hz()

@@ -109,6 +109,7 @@ private:
         Sort,
         Browse,       /* choosing a game folder */
         GameSettings, /* one game's own settings */
+        Mapping,      /* the buttons: a GameCube input for each DualSense control */
     };
     struct SettingRow
     {
@@ -171,6 +172,16 @@ private:
     Action update_browser(bool up, bool down);
     std::string build_label() const;
 
+    /* Button mapping (ui_app_controls.cpp) */
+    void open_mapping();
+    void close_mapping();
+    Action update_mapping(bool up, bool down);
+    void draw_mapping(double time);
+    void assign_control(int gc_input, int control);
+    void use_layout(int layout);
+    void save_mapping();
+    void draw_keycap(float right, float cy, const std::string &label, bool on, float height = 40);
+
     /* Dialogs */
     void open_dialog(DialogKind kind, const std::string &title, const std::string &message,
                      const std::string &yes, bool danger = false);
@@ -188,6 +199,7 @@ private:
     std::string copy_target(const Save &s) const;
 
     void draw_top_bar();
+    float draw_key_pair(float x, float cy, Glyph which, bool measure_only = false);
     void draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left,
                       const std::vector<std::pair<Glyph, std::string>> &right, const std::string &center);
     void draw_library(double time);
@@ -259,6 +271,24 @@ private:
     bool drawing_dialog_ = false;
     Texture *logo_ = nullptr;
     bool logo_tried_ = false;
+    Texture *pad_art_ = nullptr; /* the controller on the mapping screen */
+    bool pad_art_tried_ = false;
+
+    /* Button mapping */
+    Screen map_return_ = Screen::Main;
+    Settings *map_target_ = nullptr; /* the global settings, or a game's */
+    int map_row_ = 0;
+    bool map_capture_ = false; /* waiting for a button press */
+    bool map_armed_ = false;   /* every button was let go since the capture began */
+    double map_capture_start_ = 0;
+    std::string map_note_; /* a line under the list after a change */
+    double map_note_time_ = -10;
+
+    /* Details: L2 / R2 swipe to the previous / next game. */
+    float swipe_anim_ = 0; /* 1 -> 0 */
+    int swipe_dir_ = 0;
+    int swipe_from_ = -1;
+    float rep_l2_ = 0, rep_r2_ = 0;
     std::string note_;
 
     /* Motion: the content slides in when the tab changes; screens fade in. */
@@ -276,6 +306,7 @@ private:
     int browse_games_ = 0;
 
     std::uint32_t held_ = 0, prev_ = 0;
+    std::uint32_t raw_held_ = 0, raw_prev_ = 0; /* the buttons alone, without the stick as a D-pad */
     float rep_left_ = 0, rep_right_ = 0, rep_up_ = 0, rep_down_ = 0;
     double time_ = 0;
 

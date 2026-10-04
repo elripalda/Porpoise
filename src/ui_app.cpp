@@ -63,6 +63,8 @@ void App::forget_textures()
         }
     logo_ = nullptr;
     logo_tried_ = false;
+    pad_art_ = nullptr;
+    pad_art_tried_ = false;
 }
 
 void App::free_card_textures()
@@ -236,6 +238,8 @@ App::Action App::update(const Input &in, double dt)
     time_ += dt;
     prev_ = held_;
     held_ = in.held;
+    raw_prev_ = raw_held_;
+    raw_held_ = in.held;
     if (in.stick_x < -0.55f) held_ |= BtnLeft;
     if (in.stick_x > 0.55f) held_ |= BtnRight;
     if (in.stick_y < -0.55f) held_ |= BtnUp;
@@ -255,6 +259,7 @@ App::Action App::update(const Input &in, double dt)
     screen_anim_ = calm ? 0.0f : std::max(0.0f, screen_anim_ - float(dt) * 4.5f);
     dialog_.anim = calm ? 1.0f : std::min(1.0f, dialog_.anim + float(dt) * 6.0f);
     flip_anim_ = calm ? 0.0f : std::max(0.0f, flip_anim_ - float(dt) * 2.4f);
+    swipe_anim_ = calm ? 0.0f : std::max(0.0f, swipe_anim_ - float(dt) * 3.4f);
     right_x_ = std::fabs(in.right_x) > 0.15f ? in.right_x : 0.0f;
     {
         const float target = (box_back_ ? kPi : 0.0f) + right_x_ * 0.9f;
@@ -273,6 +278,8 @@ App::Action App::update(const Input &in, double dt)
         return update_browser(up, down);
     if (screen_ == Screen::GameSettings)
         return update_settings(up, down, left, right);
+    if (screen_ == Screen::Mapping)
+        return update_mapping(up, down);
     if (screen_ == Screen::Sort)
     {
         if (up || down)
@@ -297,6 +304,46 @@ App::Action App::update(const Input &in, double dt)
     }
     if (screen_ == Screen::Details)
     {
+        /* L2 / R2: the previous / next game, without leaving Details. Held,
+         * they keep going, a little slower than the D-pad so each swipe shows. */
+        auto trigger = [&](std::uint32_t bit, float &timer) {
+            if (!(held_ & bit))
+            {
+                timer = 0;
+                return false;
+            }
+            if (!(prev_ & bit))
+            {
+                timer = 0.42f;
+                return true;
+            }
+            timer -= float(dt);
+            if (timer <= 0)
+            {
+                timer = 0.26f;
+                return true;
+            }
+            return false;
+        };
+        const bool prev_game = trigger(BtnL2, rep_l2_), next_game = trigger(BtnR2, rep_r2_);
+        if ((prev_game || next_game) && !games.empty())
+        {
+            const int dir = next_game ? +1 : -1;
+            const int to = selected_ + dir;
+            if (to >= 0 && to < int(games.size()))
+            {
+                swipe_from_ = selected_;
+                selected_ = to;
+                swipe_dir_ = dir;
+                swipe_anim_ = calm ? 0.0f : 1.0f;
+                flip_anim_ = 0;
+                box_back_ = false;
+                box_yaw_ = calm ? 0.0f : float(dir) * 1.25f; /* it swings in and settles */
+                details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
+                lib_->set_selected(Library::key_of(games[std::size_t(selected_)]));
+                sfx(Sound::GameRow);
+            }
+        }
         if (up && details_row_ > 0)
         {
             --details_row_;
@@ -795,6 +842,24 @@ void App::draw_top_bar()
     g.text_mid(Font::SemiBold, ts(27), 1866, kBarCy, kWhite, Align::Right, clock_text());
 }
 
+/* Two keycaps side by side (L2 R2, L1 R1) where a prompt's glyph would be;
+ * returns their width. measure_only draws nothing. */
+float App::draw_key_pair(float x, float cy, Glyph which, bool measure_only)
+{
+    Gfx &g = *g_;
+    const char *a = which == kKeyL1R1 ? "L1" : "L2";
+    const char *b = which == kKeyL1R1 ? "R1" : "R2";
+    const float kw = 50, kh = 34, gap = 6;
+    if (!measure_only)
+        for (int i = 0; i < 2; ++i)
+        {
+            const float kx = x + float(i) * (kw + gap);
+            g.panel(kx, cy - kh * 0.5f, kw, kh, kClear, 1, kR * 0.8f, rgba(0xDDE6FF, 0.9f), 2.0f);
+            g.text_mid(Font::Bold, 19, kx + kw * 0.5f, cy, kWhite, Align::Center, i == 0 ? a : b);
+        }
+    return kw * 2 + gap;
+}
+
 void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in,
                        const std::vector<std::pair<Glyph, std::string>> &right_in, const std::string &center)
 {
@@ -818,7 +883,10 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
             g.panel(x - 2, y - 22, 1.6f, 44, rgba(0x5A68A8, 0.8f), 1, 0);
             x += 38;
         }
-        g.glyph(left[i].first, x + 20, y, 44, kWhite);
+        if (int(left[i].first) >= int(kKeyL2R2))
+            x += draw_key_pair(x, y, left[i].first) - 54 + 14;
+        else
+            g.glyph(left[i].first, x + 20, y, 44, kWhite);
         x += 54;
         x += g.text_mid(Font::SemiBold, size, x, y, kWhite, Align::Left, left[i].second) + 40;
     }
@@ -827,8 +895,16 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
     {
         const float w = g.measure(Font::SemiBold, size, right[i].second);
         g.text_mid(Font::SemiBold, size, rx, y, kWhite, Align::Right, right[i].second);
-        const float glyph_x = rx - w - 36;
-        g.glyph(right[i].first, glyph_x, y, 44, kWhite);
+        float glyph_x = rx - w - 36;
+        if (int(right[i].first) >= int(kKeyL2R2))
+        {
+            const float kw = draw_key_pair(0, y, right[i].first, true);
+            glyph_x = rx - w - 14 - kw;
+            draw_key_pair(glyph_x, y, right[i].first);
+            glyph_x += 22; /* as if a glyph centred here */
+        }
+        else
+            g.glyph(right[i].first, glyph_x, y, 44, kWhite);
         rx = glyph_x - 22 - 38;
         if (i > 0)
         {
@@ -1145,13 +1221,25 @@ void App::draw_details(double time)
     /* The box, large, in glass: 5 wide for 7 high. It flies in from the
      * library turning over once, and turns with the right stick. */
     const float cw = 486, ch = 680, ccx = 120 + cw * 0.5f, ccy = 150 + ch * 0.5f + 10;
+    /* L2 / R2: the old box slides off one side as the new one swings in from
+     * the other, and the panel follows a little behind. */
+    const bool swiping = swipe_anim_ > 0 && swipe_from_ >= 0 && swipe_from_ < int(games.size());
+    const float st = swiping ? ease_out(1.0f - swipe_anim_) : 1.0f;
     {
         const float p = ease_out(1.0f - flip_anim_);
         const float bx = kCx + (ccx - kCx) * p, by = kCy + (ccy - kCy) * p;
         const float bw = kTileW + (cw - kTileW) * p, bh = kTileH + (ch - kTileH) * p;
         g.set_layer(); /* the box is not part of the panel's fade */
-        draw_tile(&game, bx, by, bw, bh, box_yaw_, 1.0f, false, false);
-        g.set_layer(layer_dx_, layer_dy_, layer_fade_);
+        if (swiping)
+        {
+            Game &old = games[std::size_t(swipe_from_)];
+            draw_tile(&old, ccx - float(swipe_dir_) * 760.0f * st, ccy, cw, ch, -float(swipe_dir_) * 0.9f * st,
+                      1.0f - st, false, false);
+        }
+        draw_tile(&game, bx + (swiping ? float(swipe_dir_) * 760.0f * (1.0f - st) : 0.0f), by, bw, bh, box_yaw_,
+                  swiping ? st : 1.0f, false, false);
+        g.set_layer(layer_dx_ + (swiping ? float(swipe_dir_) * 120.0f * (1.0f - st) : 0.0f), layer_dy_,
+                    layer_fade_ * (swiping ? 0.15f + 0.85f * st : 1.0f));
     }
 
     /* Information panel. */
@@ -1243,8 +1331,10 @@ void App::draw_details(double time)
         if (on)
             g.glyph(Glyph::Arrow, rx - 26, ry + rh * 0.5f, 32, kWhite, kPi * 0.5f);
     }
+    g.set_layer(layer_dx_, layer_dy_, layer_fade_);
     draw_prompts({{Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}},
-                 {{Glyph::Triangle, box_back_ ? "Front of box" : "Back of box"}}, tr("Right stick: turn the box"));
+                 {{kKeyL2R2, "Other games"}, {Glyph::Triangle, box_back_ ? "Front of box" : "Back of box"}},
+                 games.size() > 1 ? "" : tr("Right stick: turn the box"));
 }
 
 /* ---- memory cards ------------------------------------------------------------------------- */
@@ -1508,6 +1598,8 @@ void App::draw(double time)
         draw_browser();
     else if (screen_ == Screen::GameSettings)
         draw_settings();
+    else if (screen_ == Screen::Mapping)
+        draw_mapping(time);
     else
         switch (tab_)
         {
