@@ -33,6 +33,11 @@ inline constexpr Basis kGripUprightRight{{{0, 1, 0}, {0, 0, 1}, {1, 0, 0}}};
 /* The mirror image, in the left hand: the face toward the right, L2 under the
  * index finger. */
 inline constexpr Basis kGripUprightLeft{{{0, -1, 0}, {0, 0, 1}, {-1, 0, 0}}};
+/* Stood on end in the right hand, its face toward the player and its back
+ * toward the TV, the grips pointing right (two-controller play's Remote). */
+inline constexpr Basis kGripFacingRight{{{0, 0, -1}, {0, 1, 0}, {1, 0, 0}}};
+/* Its mirror image in the left hand, the grips pointing left (the Nunchuk). */
+inline constexpr Basis kGripFacingLeft{{{0, 0, 1}, {0, 1, 0}, {-1, 0, 0}}};
 
 /* A DualSense vector into the Remote's axes (x left, y back, z up). */
 void to_remote(const Basis &b, const float in[3], float out[3]);
@@ -63,8 +68,13 @@ Angles remote_angles(const Fusion &f, const Basis &b);
 float half_screen(int speed);
 
 /* The pointer, from the Remote's angles less the centre's: -1..1 across the
- * screen at the edges, x right, y down; beyond 1 is off the screen. */
+ * screen at the edges, x right, y down; beyond 1 is off the screen. Up-down
+ * takes less turning than left-right, as a 16:9 screen does. */
 void pointer(const Angles &now, const Angles &centre, int speed, float &x, float &y);
+
+/* When the pointer is past limit (in screen halves) the centre moves with it,
+ * so pushing on past an edge brings a drifted pointer back in line. */
+void follow_edge(const Angles &now, Angles &centre, int speed, float limit);
 
 /* What the Remote's camera sees of the sensor bar when the pointer is at
  * (x, y) and the Remote rolled by roll radians: each light's x and y over 0..1

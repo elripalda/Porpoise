@@ -66,7 +66,7 @@ struct Settings
     int wii_controller = 0; /* Remote + Nunchuk, Remote, sideways, Classic, two controllers */
     int wii_pointer = 0;    /* gyro, touch pad, right stick */
     int wii_speed = 5;      /* the gyro pointer's speed, 1..10 */
-    int wii_grip = 0;       /* both hands; one hand, left edge forward; one hand, right edge forward */
+    int wii_grip = 0;       /* auto; both hands; upright, trigger to the TV; upright, facing you (pad::WiiGrip) */
     bool wii_motion = true; /* the DualSense's motion is the Remote's */
     bool wii_shake = true;  /* a flick shakes the Remote */
     bool wii_invert_x = false, wii_invert_y = false;

@@ -548,6 +548,17 @@ int main(int argc, char **argv)
         press(kRight);
         settle();
         render("settings-wii-remote", [&] { ui.draw(12.0); });
+        press(kCross); /* How to hold it */
+        settle();
+        for (int i = 0; i < 5; ++i)
+        {
+            const std::string shot_name = "wii-guide-" + std::to_string(i);
+            render(shot_name.c_str(), [&] { ui.draw(12.0); });
+            press(kRight);
+            settle();
+        }
+        press(kCircle);
+        settle();
         press(kCircle);
         press(1u << 0); /* back to Controls */
         press(kRight);

@@ -115,14 +115,26 @@ enum WiiPointer : int
     PointerTouch = 1, /* the touch pad, as a little screen */
     PointerStick = 2, /* the right stick (the core's own) */
 };
-/* How the DualSense is held: which way it points, which side is the Remote's top. */
+/* How the DualSense is held (the setting). Auto reads it from gravity. */
 enum WiiGrip : int
 {
-    GripNormal = 0,        /* in both hands, face up, the trigger edge toward the TV */
-    GripUprightRight = 1,  /* stood on its left grip in the right hand: face to the left, R2 under the index finger */
-    GripUprightLeft = 2,   /* the mirror image in the left hand: face to the right, L2 under the index finger */
+    GripAuto = 0,
+    GripBothHands = 1,      /* face up in both hands, the trigger edge toward the TV */
+    GripUprightTrigger = 2, /* stood on end in one hand, the trigger edge toward the TV */
+    GripUprightFacing = 3,  /* stood on end in one hand, its face toward the player */
     GripCount,
 };
+/* How it is actually held, as read: which way it points and which hand. */
+enum WiiPose : int
+{
+    PoseFlat = 0,         /* face up, in both hands */
+    PoseTriggerRight = 1, /* upright in the right hand, the face to the left, R2 under the index finger */
+    PoseTriggerLeft = 2,  /* its mirror image in the left hand */
+    PoseFacingRight = 3,  /* upright in the right hand, the face toward the player, the grips pointing right */
+    PoseFacingLeft = 4,   /* its mirror image in the left hand, the grips pointing left */
+    PoseCount,
+};
+inline bool pose_left_hand(int pose) { return pose == PoseTriggerLeft || pose == PoseFacingLeft; }
 /* What a DualSense control is on the Wii controller being played. */
 enum WiiInput : int
 {
@@ -164,7 +176,7 @@ struct WiiConfig
     int controller = WiiRemoteNunchuk;
     int pointer = PointerGyro;
     int speed = 5;       /* 1..10 */
-    int grip = GripNormal;
+    int grip = GripAuto;
     bool motion = true;  /* the sensors go to the core */
     bool shake = true;   /* a flick of the controller is a shake */
     bool invert_x = false, invert_y = false;
@@ -174,7 +186,10 @@ WiiConfig wii();
 
 /* The buttons and sticks of a Wii controller, as played and as drawn. The
  * second controller of "two controllers" has its own (second = true). */
-WiiLayout wii_layout(const WiiConfig &config, bool second = false);
+WiiLayout wii_layout(const WiiConfig &config, bool second = false, int pose = -1);
+/* The pose a grip setting means before anything is read (for drawings): the
+ * Remote's, or with second the two-controller Nunchuk's. */
+int expected_pose(const WiiConfig &config, bool second = false);
 
 /* The libretro device a Wii game's port gets for a WiiController. */
 unsigned wii_device(int controller);
@@ -196,6 +211,7 @@ struct Motion
     float pointer_x = 0, pointer_y = 0;
     float aim_x = 0, aim_y = 0, roll = 0;
     float gyro_bias[3] = {0, 0, 0}; /* the drift learnt so far, rad/s */
+    int pose = PoseFlat;            /* how it is held, as read (WiiPose) */
     bool touching = false;
     int touch_x = 0, touch_y = 0; /* the first finger, 0..1919 x 0..1079 */
     bool shaking = false;         /* a flick was felt in the last few frames */

@@ -160,25 +160,46 @@ float half_screen(int speed)
     return kDegrees[std::clamp(speed, 1, 10) - 1] * kPi / 180;
 }
 
+namespace
+{
+constexpr float kTall = 0.65f; /* up-down turning to the edge, against left-right's */
+}
+
 void pointer(const Angles &now, const Angles &centre, int speed, float &x, float &y)
 {
     const float h = half_screen(speed);
     x = wrap(now.yaw - centre.yaw) / h;
-    y = -(now.pitch - centre.pitch) / h;
+    y = -(now.pitch - centre.pitch) / (h * kTall);
 }
 
-void sensor_bar(float x, float y, float roll, Dot out[2])
+void follow_edge(const Angles &now, Angles &centre, int speed, float limit)
+{
+    float x, y;
+    pointer(now, centre, speed, x, y);
+    const float h = half_screen(speed);
+    if (x > limit || x < -limit)
+        centre.yaw = wrap(centre.yaw + (x - std::copysign(limit, x)) * h);
+    if (y > limit || y < -limit)
+        centre.pitch = now.pitch + std::copysign(limit, y) * h * kTall;
+}
+
+namespace
+{
+void sensor_bar_at(float x, float y, float roll, Dot out[2])
 {
     /* Dolphin's pointer geometry (Core/HW/WiimoteEmu: Dynamics.cpp EmulatePoint,
-     * Camera.cpp GetCameraPoints, libretro defaults): the Remote 2 m from the
-     * bar, the bar 10 cm above it, the screen's edges 12.5 degrees either side;
-     * a 42 degree camera, 4:3. Here the Remote's orientation is built exactly
+     * Camera.cpp GetCameraPoints): the Remote 2 m from the bar, the bar 10 cm
+     * above it; a 42 degree camera, 4:3. Here the Remote's orientation is built exactly
      * (yaw, then pitch, then roll about where it points) and the bar seen
      * through its inverse. */
-    constexpr float kEdge = 12.5f * kPi / 180.0f;
+    /* The screen's edges at 12.5 degrees either side and 10 above and below
+     * (Dolphin's own defaults, chosen to reach the edges in most games), and a
+     * little past them so the pointer's edge is surely the game's; both lights
+     * stay in the camera's view even in the corners. */
+    constexpr float kEdgeX = 12.5f * kPi / 180.0f, kEdgeY = 10.0f * kPi / 180.0f, kPast = 1.08f;
     constexpr float kDistance = 2.0f, kHeight = 0.10f, kSeparation = 0.2f;
     constexpr float kFovX = 42.0f * kPi / 180.0f, kFovY = kFovX / (4.0f / 3.0f);
-    const float yaw = x * kEdge, pitch = -y * kEdge;
+    const float yaw = x * kEdgeX * kPast, pitch = -y * kEdgeY * kPast;
     /* M = Rz(-yaw) Rx(-pitch) Ry(-roll), axes x left, y back, z up. */
     const float cz = std::cos(-yaw), sz = std::sin(-yaw);
     const float cx = std::cos(-pitch), sx = std::sin(-pitch);
@@ -214,6 +235,25 @@ void sensor_bar(float x, float y, float roll, Dot out[2])
         if (u < 0 || v2 < 0 || u >= 1 || v2 >= 1)
             continue;
         out[i] = Dot{u, v2, true};
+    }
+}
+} // namespace
+
+void sensor_bar(float x, float y, float roll, Dot out[2])
+{
+    sensor_bar_at(x, y, roll, out);
+    /* On the screen (up to a little past its edges) both lights must stay in
+     * view, or the game loses the pointer in a corner: when one slips out,
+     * the picture is the one a touch nearer the middle. Further out, they go,
+     * as when a real Remote points away from the TV. */
+    if ((out[0].visible && out[1].visible) || std::fabs(x) > 1.15f || std::fabs(y) > 1.15f)
+        return;
+    for (int i = 1; i <= 12; ++i)
+    {
+        const float k = 1.0f - 0.02f * float(i);
+        sensor_bar_at(x * k, y * k, roll, out);
+        if (out[0].visible && out[1].visible)
+            return;
     }
 }
 } // namespace porpoise::aim

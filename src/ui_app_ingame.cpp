@@ -139,7 +139,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
             r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 1,
                          {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}});
             r.push_back({Kind::Int, "wii_grip", "Grip", &p.wii_grip, nullptr, 0,
-                         {"Both hands", "Upright, right hand", "Upright, left hand"}});
+                         {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"}});
             r.push_back({Kind::Bool, "wii_motion", "Motion", nullptr, &p.wii_motion, 0, {"Off", "On"}});
             r.push_back({Kind::Bool, "wii_shake", "Flick to shake", nullptr, &p.wii_shake, 0, {"Off", "On"}});
             r.push_back({Kind::Bool, "motion_readout", "Motion readout", nullptr, &p.motion_readout, 0,
@@ -878,7 +878,10 @@ void App::draw_game_menu(double time)
     {
         /* Beside the menu: how the DualSense is the Wii controller, as set. */
         g.set_layer();
-        draw_wii_controls(960, 40, 920, 1000, p.wii_config(true), t);
+        /* With Grip on Auto, the hold as it is read right now. */
+        const porpoise::pad::State p1 = porpoise::pad::snapshot(0), p2 = porpoise::pad::snapshot(1);
+        draw_wii_controls(960, 40, 920, 1000, p.wii_config(true), t, p1.motion.valid ? p1.motion.pose : -1,
+                          p2.motion.valid ? p2.motion.pose : -1);
         g.set_layer(-(w + 80) * (1.0f - t), 0, 0.3f + 0.7f * t);
     }
     else if (menu_tab_ == kTabControls)

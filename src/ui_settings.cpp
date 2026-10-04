@@ -72,7 +72,7 @@ const Field kFields[] = {
     {"wii_controller", &Settings::wii_controller, nullptr, 0, 4},
     {"wii_pointer", &Settings::wii_pointer, nullptr, 0, 2},
     {"wii_speed", &Settings::wii_speed, nullptr, 1, 10},
-    {"wii_grip", &Settings::wii_grip, nullptr, 0, 2},
+    {"wii_grip", &Settings::wii_grip, nullptr, 0, 3},
     {"wii_motion", nullptr, &Settings::wii_motion, 0, 1},
     {"wii_shake", nullptr, &Settings::wii_shake, 0, 1},
     {"wii_invert_x", nullptr, &Settings::wii_invert_x, 0, 1},
@@ -144,6 +144,9 @@ const char *const kManaged[] = {
     "dolphin_vertex_rounding", "dolphin_vi_skip", "dolphin_fast_texture_sampling",
     /* The Wii Remote's pointer: Porpoise's pointer (gyro, touch pad), or the right stick. */
     "dolphin_ir_mode", "dolphin_ir_passthrough",
+    /* Off at every launch: Porpoise turns it on itself for two-controller play
+     * (porpoise_core.cpp, nunchuk_motion_step). */
+    "dolphin_save_load_settings",
 };
 } // namespace
 
@@ -578,6 +581,7 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
         /* Gyro and touch pad: Porpoise works out what the remote's camera sees
          * (porpoise_core.cpp), so the game's cursor is exactly Porpoise's. */
         {"dolphin_ir_passthrough", on_off(wii_pointer != 2)},
+        {"dolphin_save_load_settings", "disabled"},
     };
 }
 

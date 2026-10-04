@@ -148,6 +148,7 @@ private:
         GameSettings, /* one game's own settings */
         Mapping,      /* the buttons: a GameCube input for each DualSense control */
         States,       /* a game's save states, over its Details */
+        WiiGuide,     /* how to hold the DualSense as each Wii controller */
     };
     struct SettingRow
     {
@@ -367,8 +368,21 @@ private:
     int details_states_ = 0; /* how many slots the game in Details has */
     std::string launch_state_; /* the state to start the launched game from */
     void draw_controller_lines(float x, float y, float w, const porpoise::pad::Mapping &m);
-    /* A Wii game's controls: the DualSense as held, each Wii button on its control. */
-    void draw_wii_controls(float x, float y, float w, float h, const porpoise::pad::WiiConfig &wii, float alpha);
+    /* A Wii game's controls: the DualSense as held, each Wii button on its control.
+     * live_pose: how the first (second) controller is held right now, or -1. */
+    void draw_wii_controls(float x, float y, float w, float h, const porpoise::pad::WiiConfig &wii, float alpha,
+                           int live_pose = -1, int live_pose_second = -1);
+    std::pair<float, float> draw_wii_pad(const porpoise::pad::WiiLayout &lay, int pose, float bx, float by,
+                                         float art_h, float alpha);
+    void wii_chip(int input, float cx, float cy, float ch, float alpha);
+    float draw_wii_list(const porpoise::pad::WiiLayout &lay, float lx, float ly, float lw, int columns, float alpha);
+    /* Settings > Wii Remote > How to hold it. */
+    void open_wii_guide();
+    Action update_wii_guide(bool left, bool right);
+    void draw_wii_guide(double time);
+    Settings *guide_target_ = nullptr;
+    Screen guide_return_ = Screen::Main;
+    int guide_controller_ = 0;
 
     Dialog dialog_;
     bool drawing_dialog_ = false;

@@ -302,6 +302,8 @@ App::Action App::update(const Input &in, double dt)
         return update_settings(up, down, left, right);
     if (screen_ == Screen::Mapping)
         return update_mapping(up, down, left, right);
+    if (screen_ == Screen::WiiGuide)
+        return update_wii_guide(left, right);
     if (screen_ == Screen::States)
         return update_states(left, right);
     if (screen_ == Screen::Sort)
@@ -1720,6 +1722,8 @@ void App::draw(double time)
         draw_settings();
     else if (screen_ == Screen::Mapping)
         draw_mapping(time);
+    else if (screen_ == Screen::WiiGuide)
+        draw_wii_guide(time);
     else
         switch (tab_)
         {

@@ -156,6 +156,11 @@ struct Slot
     aim::Fusion fusion;
     aim::Angles centre;
     bool centred = false;
+    /* How it is held (WiiPose; -1 not yet read), and how long a different
+     * hold has been seen, steadily, before switching to it. */
+    int pose = -1;
+    int pose_seen = -1;
+    float pose_wait = 0;
 };
 
 /* ---- the Wii Remote ---- */
@@ -259,19 +264,39 @@ std::uint16_t stick_dpad(std::int16_t x, std::int16_t y, const int *retro)
     return out;
 }
 
-const aim::Basis &grip_basis(int grip, int controller)
+const aim::Basis &pose_basis(int pose)
 {
-    /* Sideways and the Classic Controller are always held in both hands
-     * (Dolphin turns a sideways Remote's motion itself). */
-    if (controller == WiiSideways || controller == WiiClassic)
-        return aim::kGripNormal;
-    switch (grip)
+    switch (pose)
     {
-    case GripUprightRight: return aim::kGripUprightRight;
-    case GripUprightLeft: return aim::kGripUprightLeft;
+    case PoseTriggerRight: return aim::kGripUprightRight;
+    case PoseTriggerLeft: return aim::kGripUprightLeft;
+    case PoseFacingRight: return aim::kGripFacingRight;
+    case PoseFacingLeft: return aim::kGripFacingLeft;
     default: return aim::kGripNormal;
     }
 }
+
+/* The hold gravity shows, for the grip setting: -1 when it isn't clear (or
+ * the setting doesn't allow what is seen). */
+int classify_pose(const float accel[3], const WiiConfig &c, bool second)
+{
+    if (c.controller == WiiSideways || c.controller == WiiClassic || c.grip == GripBothHands)
+        return PoseFlat; /* always held in both hands (Dolphin turns a sideways Remote itself) */
+    const float n = std::sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
+    if (n < 0.6f || n > 1.4f)
+        return -1;
+    const float ux = accel[0] / n, uy = accel[1] / n;
+    const bool facing = c.grip == GripUprightFacing || (c.grip == GripAuto && c.controller == WiiTwoControllers);
+    if (ux > 0.75f) /* its right side up: in the right hand */
+        return facing ? PoseFacingRight : PoseTriggerRight;
+    if (ux < -0.75f)
+        return facing ? PoseFacingLeft : PoseTriggerLeft;
+    if (uy > 0.75f && c.grip == GripAuto)
+        return PoseFlat;
+    (void)second;
+    return -1;
+}
+
 
 Slot g_slots[kMaxPlayers];
 PadSample g_samples[sample_capacity];
@@ -409,6 +434,7 @@ Motion read_motion(Slot &slot, std::int32_t count)
     std::sort(order, order + n, [](const PadSample *a, const PadSample *b) { return a->timestamp_us < b->timestamp_us; });
     if (n == 0)
         return m;
+    float elapsed = 0;
     for (int i = 0; i < n; ++i)
     {
         const PadSample &p = *order[i];
@@ -417,6 +443,7 @@ Motion read_motion(Slot &slot, std::int32_t count)
         const float dt = slot.last_motion_us ? float(p.timestamp_us - slot.last_motion_us) * 1e-6f : 0.0f;
         aim::fuse(slot.fusion, p.angular_velocity, p.acceleration, dt);
         slot.last_motion_us = p.timestamp_us;
+        elapsed += std::min(dt, 0.05f);
     }
     const PadSample &last = *order[n - 1];
     m.valid = true;
@@ -432,23 +459,59 @@ Motion read_motion(Slot &slot, std::int32_t count)
     const float mag = std::sqrt(m.raw_accel[0] * m.raw_accel[0] + m.raw_accel[1] * m.raw_accel[1] +
                                 m.raw_accel[2] * m.raw_accel[2]);
 
-    /* For the core: the Remote's own axes, the gyroscope without its drift. */
-    const aim::Basis &basis = grip_basis(g_wii.grip, g_wii.controller);
+    /* How it is held. Read when the pointer is centred; after that a
+     * different hold has to be seen steadily for a few seconds (so a punch or
+     * a swing never flips it). */
+    const int index = int(&slot - g_slots);
+    const bool second = g_wii.controller == WiiTwoControllers && index == 1;
     float g[3];
     for (int i = 0; i < 3; ++i)
         g[i] = m.raw_gyro[i] - slot.fusion.bias[i];
+    const float turning = std::sqrt(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+    const int seen = classify_pose(m.raw_accel, g_wii, second);
+    const bool centre_due = !slot.centred && slot.fusion.started && slot.fusion.age > 0.5f;
+    bool reposed = false;
+    if (slot.pose < 0 || centre_due)
+    {
+        const int was = slot.pose;
+        slot.pose = seen >= 0 ? seen : (slot.pose >= 0 ? slot.pose : expected_pose(g_wii, second));
+        reposed = slot.pose != was;
+        slot.pose_wait = 0;
+    }
+    else if (seen >= 0 && seen != slot.pose && turning < 1.0f)
+    {
+        if (seen != slot.pose_seen)
+            slot.pose_wait = 0;
+        slot.pose_seen = seen;
+        slot.pose_wait += elapsed;
+        if (slot.pose_wait > 3.0f)
+        {
+            slot.pose = seen;
+            slot.pose_wait = 0;
+            reposed = true;
+        }
+    }
+    else
+        slot.pose_wait = 0;
+    m.pose = slot.pose;
+
+    /* For the core: the Remote's (or the Nunchuk's) own axes, the gyroscope
+     * without its drift. */
+    const aim::Basis &basis = pose_basis(slot.pose);
     aim::to_remote(basis, m.raw_accel, m.accel);
     aim::to_remote(basis, g, m.gyro);
 
     /* Where it points. The middle of the screen is wherever it pointed half a
-     * second in (once gravity has settled), and again whenever centred. */
+     * second in (once gravity has settled), again whenever centred, and again
+     * when the hold changes. */
     const aim::Angles now = aim::remote_angles(slot.fusion, basis);
-    const bool centre_held = (last.buttons & (g_wii.grip == GripUprightLeft ? pad_l1 : pad_r1)) != 0;
-    const bool centre_button = g_wii.controller != WiiSideways && g_wii.controller != WiiClassic;
-    if ((!slot.centred && slot.fusion.started && slot.fusion.age > 0.5f) ||
-        (centre_button && centre_held && !slot.centre_was))
+    const bool centre_held = (last.buttons & (pose_left_hand(slot.pose) ? pad_l1 : pad_r1)) != 0;
+    const bool centre_button = g_wii.controller != WiiSideways && g_wii.controller != WiiClassic && !second;
+    if (centre_due || reposed || (centre_button && centre_held && !slot.centre_was))
     {
-        slot.centre = now;
+        if (centre_held && !slot.centre_was && seen >= 0)
+            slot.pose = seen; /* centring also re-reads the hold */
+        slot.centre = aim::remote_angles(slot.fusion, pose_basis(slot.pose));
         slot.centred = true;
     }
     slot.centre_was = centre_held;
@@ -457,7 +520,13 @@ Motion read_motion(Slot &slot, std::int32_t count)
     {
         float x = 0, y = 0;
         if (slot.centred)
+        {
+            /* Pushed well past an edge (calmly, not mid-swing), the middle
+             * follows: the slow drift of a gyroscope fixes itself. */
+            if (turning < 1.5f)
+                aim::follow_edge(now, slot.centre, g_wii.speed, 1.3f);
             aim::pointer(now, slot.centre, g_wii.speed, x, y);
+        }
         m.aim_x = g_wii.invert_x ? -x : x;
         m.aim_y = g_wii.invert_y ? -y : y;
     }
@@ -570,7 +639,7 @@ State read_slot(Slot &slot)
             return out;
         };
         const int *retro = retro_table(g_wii.controller);
-        next.joypad = bits(wii_layout(g_wii), retro);
+        next.joypad = bits(wii_layout(g_wii, false, slot.pose), retro);
         if (motion.shaking && g_wii.controller != WiiClassic)
             next.joypad |= static_cast<std::uint16_t>(1u << RETRO_DEVICE_ID_JOYPAD_R2);
         if (g_wii.controller == WiiClassic)
@@ -581,7 +650,7 @@ State read_slot(Slot &slot)
         if (g_wii.controller == WiiTwoControllers)
         {
             /* The same controller as the second one: its Nunchuk buttons. */
-            next.nunchuk = bits(wii_layout(g_wii, true), kRetroNunchuk);
+            next.nunchuk = bits(wii_layout(g_wii, true, slot.pose), kRetroNunchuk);
             if (motion.shaking)
                 next.nunchuk |= static_cast<std::uint16_t>(1u << RETRO_DEVICE_ID_JOYPAD_L2);
         }
@@ -720,13 +789,32 @@ void set_wii(const WiiConfig &config)
             /* A new game or a new way of holding it: find the middle again. */
             slot.pointer_x = slot.pointer_y = 0;
             slot.centred = false;
+            slot.pose = -1;
             slot.fusion.age = 0.0f;
         }
 }
 
-WiiLayout wii_layout(const WiiConfig &config, bool second)
+int expected_pose(const WiiConfig &config, bool second)
+{
+    if (config.controller == WiiSideways || config.controller == WiiClassic)
+        return PoseFlat;
+    switch (config.grip)
+    {
+    case GripBothHands: return PoseFlat;
+    case GripUprightTrigger: return second ? PoseTriggerLeft : PoseTriggerRight;
+    case GripUprightFacing: return second ? PoseFacingLeft : PoseFacingRight;
+    default:
+        if (config.controller == WiiTwoControllers)
+            return second ? PoseFacingLeft : PoseFacingRight;
+        return config.controller == WiiRemote ? PoseTriggerRight : PoseFlat;
+    }
+}
+
+WiiLayout wii_layout(const WiiConfig &config, bool second, int pose)
 {
     WiiLayout lay;
+    if (pose < 0)
+        pose = expected_pose(config, second);
     auto add = [&](const WiiBinding *b, std::size_t n) {
         for (std::size_t i = 0; i < n && lay.count < int(std::size(lay.binds)); ++i)
             lay.binds[lay.count++] = b[i];
@@ -743,7 +831,7 @@ WiiLayout wii_layout(const WiiConfig &config, bool second)
     {
     case WiiRemote:
     case WiiTwoControllers:
-        if (config.grip == GripUprightLeft)
+        if (pose_left_hand(pose))
             add(kLayRemoteLeft, std::size(kLayRemoteLeft));
         else
         {

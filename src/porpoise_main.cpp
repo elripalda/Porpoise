@@ -742,7 +742,7 @@ void draw_motion_readout()
     using namespace porpoise::ui;
     const porpoise::pad::State p = porpoise::pad::snapshot(0);
     const porpoise::pad::Motion &m = p.motion;
-    const float x = 36, y = 100, w = 520, h = 364;
+    const float x = 36, y = 100, w = 560, h = 398;
     g_gfx.panel(x, y, w, h, rgba(0x0A1236, 0.8f), 0.9f, 14, rgba(0x5CD3FF, 0.9f), 1.6f);
     char line[160];
     float ty = y + 34;
@@ -759,6 +759,12 @@ void draw_motion_readout()
     std::snprintf(line, sizeof line, "remote a  %+.2f %+.2f %+.2f", m.accel[0], m.accel[1], m.accel[2]);
     row(line);
     std::snprintf(line, sizeof line, "remote g  %+.2f %+.2f %+.2f", m.gyro[0], m.gyro[1], m.gyro[2]);
+    row(line);
+    static const char *const kPose[] = {"flat", "upright R (trigger)", "upright L (trigger)", "upright R (facing)",
+                                        "upright L (facing)"};
+    const porpoise::pad::Motion m2 = porpoise::pad::snapshot(1).motion;
+    std::snprintf(line, sizeof line, "hold      %s%s%s", kPose[std::clamp(m.pose, 0, 4)], m2.valid ? "  / 2: " : "",
+                  m2.valid ? kPose[std::clamp(m2.pose, 0, 4)] : "");
     row(line);
     std::snprintf(line, sizeof line, "pointer   %+.2f %+.2f  roll %+.0f", m.aim_x, m.aim_y, m.roll * 57.29578f);
     row(line);

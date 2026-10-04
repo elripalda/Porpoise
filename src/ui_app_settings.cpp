@@ -283,6 +283,15 @@ void App::add_game_rows(Settings &t, bool per_game)
     }
 
     header("Wii Remote");
+    {
+        SettingRow r;
+        r.section = section;
+        r.label = tr("How to hold it");
+        r.help = tr("A picture of the DualSense as each Wii controller: how to hold it and what every button does.");
+        r.values = {tr("Show\xE2\x80\xA6")};
+        r.action = kRowWiiGuide;
+        rows_.push_back(r);
+    }
     choice("wii_controller", "Wii controller",
            "How a Wii game sees your DualSense. Remote + Nunchuk: the Nunchuk on the left stick and L1 / L2. Remote: "
            "held pointing at the TV, with its motion. Sideways: held like an NES pad, tilt to steer. Two "
@@ -293,8 +302,8 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.wii_pointer, 0, {"Gyro", "Touch pad", "Right stick"});
     choice("wii_speed", "Pointer speed", "How far you turn the controller to reach the screen's edge.", &t.wii_speed,
            1, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"});
-    choice("wii_grip", "Grip", "How you hold the DualSense. Upright: stood on end in one hand, the index finger on R2 (L2 in the left hand).", &t.wii_grip, 0,
-           {"Both hands", "Upright, right hand", "Upright, left hand"});
+    choice("wii_grip", "Grip", "How you hold the DualSense. Auto reads it: flat in both hands, or stood on end in either hand.", &t.wii_grip, 0,
+           {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"});
     toggle("wii_motion", "Motion", "The DualSense's motion is the Remote's: tilt, swing and point.", &t.wii_motion);
     toggle("wii_shake", "Flick to shake", "A quick flick of the controller shakes the Remote.", &t.wii_shake);
     toggle("wii_invert_x", "Invert pointer left / right", "For testing: if the gyro pointer moves the wrong way.",
@@ -892,6 +901,9 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowMapping:
         open_mapping();
         return Action::None;
+    case kRowWiiGuide:
+        open_wii_guide();
+        return Action::None;
     case kRowResetGame:
         open_dialog(DialogKind::ResetGame, tr("Reset this game's settings?"),
                     tr("It forgets its own settings and follows your settings again."), tr("Reset"), true);
@@ -1242,6 +1254,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMapping)
         draw_prompts({{Glyph::Cross, "Customize"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowWiiGuide)
+        draw_prompts({{Glyph::Cross, "Show"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowUpdate)
         draw_prompts({{Glyph::Cross, update_available() ? "Install" : "Check now"}, {Glyph::Circle, "Sections"}}, {},
                      "");
