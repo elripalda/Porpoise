@@ -340,7 +340,13 @@ private:
     void draw_rev_top_bar(bool clock);
     void draw_seg_clock(float cx, float cy, float h);
     std::string short_date() const;
-    void draw_hand(float x, float y, float roll, int player);
+    void draw_hand(float x, float y, float roll, int player, bool pointing);
+    /* Opening a tile: it grows to fill the screen, the opened tile comes up
+     * out of it (and back down into it on the way out). */
+    bool home_rect_of(int game, float rect[4]);
+    void start_zoom(int dir);
+    void draw_zoom(double time);
+    bool zoom_shows_home() const;
     bool pointer_screen() const;
     void rev_pointer_step();
     void rev_pointer_rest();
@@ -429,7 +435,6 @@ private:
     Texture *wii_save_icon(WiiSave &s);
     void update_wii_saves(bool left, bool right, bool up, bool down);
     void draw_wii_saves(double time);
-    void draw_mc_switch();
     void forget_banners();
     bool cards_scanned_ = false;
     int mc_card_ = 0;             /* 0 = A, 1 = B */
@@ -583,7 +588,11 @@ private:
     bool home_synced_ = false; /* the focus has been put on the selected game */
     float home_grow_[kHomeGrow] = {};
     float rev_tab_x_[3] = {}, rev_tab_w_[3] = {};
-    Texture *hand_ = nullptr;
+    Texture *hands_[2] = {nullptr, nullptr}; /* open, pointing */
+    float zoom_anim_ = 0;   /* 1 -> 0 as a tile opens or closes */
+    int zoom_dir_ = 1;      /* +1 opening, -1 closing */
+    int zoom_game_ = -1;
+    float zoom_from_[4] = {0, 0, 0, 0};
     bool hand_tried_ = false;
     int rd_focus_ = 0;           /* the opened tile: Start, the controls, the chips, the arrows */
     float rd_grow_[kRdGrow] = {};

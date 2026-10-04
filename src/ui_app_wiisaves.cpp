@@ -137,23 +137,6 @@ void App::update_wii_saves(bool left, bool right, bool up, bool down)
         wii_scroll_ = float(row - kRowsShown + 1);
 }
 
-/* GameCube | Wii, just under the tabs. */
-void App::draw_mc_switch()
-{
-    Gfx &g = *g_;
-    const std::string names[2] = {tr("GameCube"), tr("Wii")};
-    const float w = 150, h = 34, x0 = 960 - w, y = 99;
-    g.panel(x0 - 3, y - 3, w * 2 + 6, h + 6, rgba(0x0A1236, 0.6f), 1, (h + 6) * 0.5f, rgba(0x3D4F9E, 0.9f), 1.4f);
-    for (int i = 0; i < 2; ++i)
-    {
-        const bool on = (i == 1) == mc_wii_;
-        if (on)
-            g.panel(x0 + i * w, y, w, h, rgba(0x1F63F0), 0.62f, h * 0.5f, rgba(0x7FD9FF), 1.4f, 4);
-        g.text_mid(on ? Font::Bold : Font::SemiBold, ts(20), x0 + i * w + w * 0.5f, y + h * 0.5f, on ? kWhite : kSoft,
-                   Align::Center, names[i]);
-    }
-}
-
 void App::draw_wii_saves(double time)
 {
     Gfx &g = *g_;
@@ -165,7 +148,7 @@ void App::draw_wii_saves(double time)
     long long total = 0;
     for (const WiiSave &s : wii_saves_)
         total += s.bytes;
-    g.text_mid(Font::Bold, ts(36), kPanelX + kPad, kPanelY + 52, kWhite, Align::Left, tr("Wii saves"));
+    g.text_mid(Font::Bold, ts(36), kPanelX + kPad, kPanelY + 52, kWhite, Align::Left, title_case(tr("Wii saves")));
     g.text_mid(Font::Regular, ts(24), kPanelX + kPanelW - kPad, kPanelY + 52, kLavender, Align::Right,
                n ? plural(n, "1 game", "{n} games") + "   \xE2\x80\xA2   " + size_text(total) : std::string());
 

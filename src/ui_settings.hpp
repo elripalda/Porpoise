@@ -107,12 +107,9 @@ struct Settings
     /* Interface */
     bool reduced_motion = false;
     bool large_text = false;
-    int ui_theme = 0;  /* the look: 0 Porpoise, 1 Revolution (a bright grid of tiles and a pointer) */
+    int ui_theme = 0;  /* the theme: 0 Porpoise, 1 Revolution (a bright grid of tiles and a pointer) */
     int ui_layout = 0; /* Revolution's home: 0 a grid of tiles, 1 the cover flow */
     bool ui_pointer = true; /* Revolution: point with the controller's motion (the touch pad toggles it) */
-    /* Sort & filter's Show for each look (-1: not chosen yet; Revolution then
-     * starts on Wii games). */
-    int show_porpoise = -1, show_revolution = -1;
     /* Dolphin's own per-game settings set by Porpoise, as "dolphin.<Section>.<Key>"
      * and its value (e.g. dolphin.Video_Hacks.EFBToTextureEnable = True). Kept
      * in a game's settings file only, and written for Dolphin before the game

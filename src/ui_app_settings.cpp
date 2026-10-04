@@ -469,7 +469,7 @@ void App::build_settings()
         SettingRow r;
         r.section = section;
         r.key = "ui_theme";
-        r.label = tr("Look");
+        r.label = tr("Theme");
         r.help = tr("Porpoise: the cover flow. Revolution: a bright grid of game tiles you point at by moving the "
                     "controller, with the date and time below.");
         r.int_value = &settings_->ui_theme;

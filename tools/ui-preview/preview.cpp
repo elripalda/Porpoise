@@ -489,6 +489,9 @@ int main(int argc, char **argv)
         ui.preview_pointer(1010, 360);
         settle();
         render("home-pointer", [&] { ui.draw(12.0); });
+        ui.preview_pointer(1300, 1010); /* over nothing: the open hand */
+        settle();
+        render("home-pointer-open", [&] { ui.draw(12.0); });
         ui.preview_pointer(-1, -1);
         press(kDown);
         settle();
@@ -507,12 +510,21 @@ int main(int argc, char **argv)
         ui.preview_home_page(0);
         press(1u << 0, 3);
         press(1u << 2, 3);
-        press(kRight, 2); /* a Wii game */
+        press(kRight, 1); /* a Wii game */
         settle();
-        press(kCross); /* its tile opens */
+        press(kCross); /* its tile opens: it grows to fill the screen */
+        for (int i = 0; i < 6; ++i)
+            ui.update(none, 0.016);
+        render("rev-zoom-1", [&] { ui.draw(12.0); });
+        for (int i = 0; i < 8; ++i)
+            ui.update(none, 0.016);
+        render("rev-zoom-2", [&] { ui.draw(12.0); });
+        for (int i = 0; i < 8; ++i)
+            ui.update(none, 0.016);
+        render("rev-zoom-3", [&] { ui.draw(12.0); });
         warm(3.0);
         render("rev-details-wii", [&] { ui.draw(12.0); });
-        press(kRight); /* Wii controls */
+        press(1u << 2); /* Wii controls, to the left of Start */
         settle();
         render("rev-details-controls", [&] { ui.draw(12.0); });
         press(kCross); /* the setup for this game */
@@ -533,7 +545,8 @@ int main(int argc, char **argv)
         press(kCircle);
         settle();
         press(1u << 0, 3);
-        press(1u << 2, 3); /* the Continue tile */
+        press(1u << 2, 3);
+        press(kRight, 3); /* a GameCube game */
         press(kCross);
         settle();
         render("rev-details-gc", [&] { ui.draw(12.0); });

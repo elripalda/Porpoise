@@ -1,6 +1,6 @@
 /* Porpoise UI - the Revolution look's home screen: a bright grid of game
- * tiles, twelve to a page, pointed at by moving the controller. The first
- * tile goes back to the game played last; the bar below keeps the time and
+ * tiles, twelve to a page, pointed at by moving the controller (arrows at
+ * the sides turn the page). The bar below keeps the time and
  * the date, with round buttons for Settings and the memory cards. The D-pad
  * works as well as pointing does.
  *
@@ -58,16 +58,7 @@ bool in_circle(float px, float py, float cx, float cy, float r)
 std::vector<App::HomeItem> App::home_items() const
 {
     std::vector<HomeItem> items;
-    const auto &games = lib_->games();
     const int shown = lib_->shown();
-    /* The first tile: the game played most recently, when there is one. */
-    int last = -1;
-    for (int i = 0; i < shown; ++i)
-        if (games[std::size_t(i)].last_played > 0 &&
-            (last < 0 || games[std::size_t(i)].last_played > games[std::size_t(last)].last_played))
-            last = i;
-    if (last >= 0)
-        items.push_back({last, true});
     for (int i = 0; i < shown; ++i)
         items.push_back({i, false});
     return items;
@@ -151,7 +142,7 @@ void App::update_home(bool left, bool right, bool up, bool down, bool &play, boo
     {
         home_synced_ = true;
         for (int i = 0; i < n; ++i)
-            if (items[std::size_t(i)].game == selected_ && !items[std::size_t(i)].resume)
+            if (items[std::size_t(i)].game == selected_)
             {
                 home_page_ = i / kPer;
                 home_focus_ = i % kPer;
@@ -312,17 +303,7 @@ void App::draw_home(double time)
                     3.0f + grow * 2.0f, grow * 14.0f, 0.35f);
             const float pad = 12 * (w / kHTileW);
             /* The disc's own tile, when Porpoise has read it: it fills the tile. */
-            if (draw_banner(game, x + pad * 0.5f, y + pad * 0.5f, w - pad, h - pad, time, 1.0f, false))
-            {
-                if (it.resume)
-                {
-                    const std::string label = tr("Continue");
-                    const float lw = g.measure(Font::Bold, ts(19), label) + 26;
-                    g.panel(x + 14, y + 12, lw, 32, kAccent, 0.9f, 16);
-                    g.text_mid(Font::Bold, ts(19), x + 14 + lw * 0.5f, y + 28, kTile, Align::Center, label);
-                }
-            }
-            else
+            if (!draw_banner(game, x + pad * 0.5f, y + pad * 0.5f, w - pad, h - pad, time, 1.0f, false))
             {
                 /* Else the cover, upright at the left, and its name. */
                 const float ch = h - pad * 2;
@@ -341,32 +322,16 @@ void App::draw_home(double time)
                 }
                 const float tx = x + pad * 2 + cw, tw = x + w - pad - tx;
                 float ty = y + pad + 8;
-                if (it.resume)
-                {
-                    g.text(Font::Bold, ts(22), tx, ty, kAccent, Align::Left, tr("Continue"), 1.0f);
-                    ty += 36;
-                }
-                for (const std::string &l : wrap(g, Font::Bold, ts(25), game.title, tw, it.resume ? 2 : 3))
+                for (const std::string &l : wrap(g, Font::Bold, ts(25), game.title, tw, 3))
                 {
                     g.text(Font::Bold, ts(25), tx, ty, kInk, Align::Left, l);
                     ty += 33;
                 }
                 const float by = y + h - pad - 32;
-                if (it.resume)
-                {
-                    g.text_mid(Font::Regular, ts(19), tx, by + 16, kInkSoft, Align::Left,
-                               fit(g, Font::Regular, ts(19),
-                                   relative_time(game.last_played, (long long)std::time(nullptr)), tw - 48));
-                    g.panel(x + w - pad - 40, by - 4, 40, 40, kAccent, 0.85f, 20);
-                    g.glyph(Glyph::Arrow, x + w - pad - 18, by + 16, 20, kTile, kPi * 0.5f);
-                }
-                else
-                {
-                    const std::string label = wii ? "Wii" : "GameCube";
-                    const float lw = g.measure(Font::SemiBold, ts(17), label) + 26;
-                    g.panel(tx, by + 2, lw, 30, wii ? kWii : kGameCube, 0.9f, 15);
-                    g.text_mid(Font::SemiBold, ts(17), tx + lw * 0.5f, by + 17, kTile, Align::Center, label);
-                }
+                const std::string label = wii ? "Wii" : "GameCube";
+                const float lw = g.measure(Font::SemiBold, ts(17), label) + 26;
+                g.panel(tx, by + 2, lw, 30, wii ? kWii : kGameCube, 0.9f, 15);
+                g.text_mid(Font::SemiBold, ts(17), tx + lw * 0.5f, by + 17, kTile, Align::Center, label);
             }
             if (game.favourite)
                 g.glyph(Glyph::Star, x + w - pad - 14, y + pad + 14, 24, rgba(0xF5B82E));
@@ -387,7 +352,7 @@ void App::draw_home(double time)
     for (int i = 0; i < n; ++i)
     {
         Game &game = games[std::size_t(items[std::size_t(i)].game)];
-        if (std::abs(i / kPer - home_page_) > 1 && game.cover && !items[std::size_t(i)].resume)
+        if (std::abs(i / kPer - home_page_) > 1 && game.cover)
         {
             g.free_texture(game.cover);
             game.cover = nullptr;
@@ -512,7 +477,8 @@ void App::draw_home(double time)
     }
 
     /* What the buttons do, small, along the floor. */
-    auto hint = [&](Glyph gl, const std::string &label, float x, bool right_aligned) {
+    auto hint = [&](Glyph gl, const std::string &label_in, float x, bool right_aligned) {
+        const std::string label = title_case(label_in);
         const float w = 30 + 8 + g.measure(Font::SemiBold, ts(20), label);
         const float x0 = right_aligned ? x - w : x;
         g.glyph(gl, x0 + 15, 1052, 28, rgba(0x8A939D));
@@ -534,6 +500,100 @@ void App::draw_home(double time)
             g.panel(960 - nw * 0.5f, 1004, nw, 46, rgba(0xFFFFFF, 0.95f), 0.96f, 23, kRim, 2);
             g.text_mid(Font::SemiBold, ts(22), 960, 1027, kInk, Align::Center, note);
         }
+    }
+}
+/* ---- a tile opening: it grows to fill the screen ---------------------------------------- */
+
+namespace
+{
+constexpr float kZoomGrow = 0.55f;  /* opening: the tile grows, then the opened tile shows through */
+constexpr float kZoomShrink = 0.35f; /* closing: the opened tile goes white, then shrinks back */
+
+float ease_in_out(float u)
+{
+    u = std::clamp(u, 0.0f, 1.0f);
+    return u < 0.5f ? 4 * u * u * u : 1 - (-2 * u + 2) * (-2 * u + 2) * (-2 * u + 2) * 0.5f;
+}
+} // namespace
+
+/* Where a game's tile sits on the home screen (its page brought into view). */
+bool App::home_rect_of(int game, float rect[4])
+{
+    const std::vector<HomeItem> items = home_items();
+    for (int i = 0; i < int(items.size()); ++i)
+        if (items[std::size_t(i)].game == game)
+        {
+            home_page_ = i / kPer;
+            home_scroll_ = float(home_page_);
+            home_focus_ = i % kPer;
+            home_synced_ = true;
+            home_tile_rect(home_focus_, 0, rect[0], rect[1], rect[2], rect[3]);
+            return true;
+        }
+    return false;
+}
+
+void App::start_zoom(int dir)
+{
+    zoom_anim_ = 0;
+    if (settings_->reduced_motion || settings_->ui_layout != 0 || !home_rect_of(selected_, zoom_from_))
+        return;
+    zoom_game_ = selected_;
+    zoom_dir_ = dir;
+    zoom_anim_ = 1;
+}
+
+bool App::zoom_shows_home() const
+{
+    const float t = 1.0f - zoom_anim_;
+    return zoom_dir_ > 0 ? t < kZoomGrow : t >= kZoomShrink;
+}
+
+void App::draw_zoom(double time)
+{
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    if (zoom_anim_ <= 0 || tab_ != Tab::Library || zoom_game_ < 0 || zoom_game_ >= int(games.size()))
+        return;
+    const float t = 1.0f - zoom_anim_;
+    float u, fade = 1;
+    if (zoom_dir_ > 0)
+    {
+        u = ease_in_out(t / kZoomGrow);
+        if (t >= kZoomGrow)
+            fade = 1.0f - (t - kZoomGrow) / (1.0f - kZoomGrow);
+    }
+    else
+    {
+        u = t < kZoomShrink ? 1.0f : 1.0f - ease_in_out((t - kZoomShrink) / (1.0f - kZoomShrink));
+        if (t < kZoomShrink)
+            fade = t / kZoomShrink;
+    }
+    const float to[4] = {-6, -6, 1932, 1092};
+    float r[4];
+    for (int i = 0; i < 4; ++i)
+        r[i] = zoom_from_[i] + (to[i] - zoom_from_[i]) * u;
+    const float radius = rev::kTileR * (1.0f - u);
+    Game &game = games[std::size_t(zoom_game_)];
+    if (u < 0.98f)
+        g.blob(r[0] + r[2] * 0.5f, r[1] + r[3] + 6, r[2] * 0.92f, 40, rgba(0x2A3442, 0.14f * fade));
+    g.panel(r[0], r[1], r[2], r[3], with_alpha(rev::kTile, fade), 1, radius, with_alpha(rev::kBlue, fade * (1.0f - u)),
+            4.0f);
+    /* What the tile showed, growing with it and fading as it fills the screen. */
+    const float k = fade * (1.0f - 0.85f * u);
+    const float pad = 6 + 40 * u;
+    const float cx = r[0] + pad, cy = r[1] + pad, cw = r[2] - pad * 2, ch = r[3] - pad * 2;
+    if (k > 0.01f && !draw_banner(game, cx, cy, cw, ch, time, k, false))
+    {
+        Texture *cover = cover_of(game);
+        if (cover && cover->height > 0)
+        {
+            const float h = ch * 0.8f, w = h * float(cover->width) / float(cover->height);
+            g.image(cover, r[0] + r[2] * 0.5f - w * 0.5f, cy + ch * 0.1f, w, h, rgba(0xFFFFFF, k), 14 + 10 * u);
+        }
+        else
+            g.text_mid(Font::Bold, ts(30 + 30 * u), r[0] + r[2] * 0.5f, r[1] + r[3] * 0.5f, with_alpha(rev::kInk, k),
+                       Align::Center, game.title);
     }
 }
 } // namespace porpoise::ui

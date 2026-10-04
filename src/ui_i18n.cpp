@@ -224,4 +224,34 @@ std::string plural(long long n, const char *one, const char *many)
         return tr(one);
     return trf(many, {{"n", std::to_string(n)}});
 }
+
+std::string title_case(const std::string &text)
+{
+    if (language() != Language::English)
+        return text;
+    static const char *const kSmall[] = {"a", "an", "the", "and", "or", "of", "to", "in", "on", "at", "for", "by", "with", "from"};
+    std::string out = text;
+    std::size_t i = 0;
+    bool first = true;
+    while (i < out.size())
+    {
+        while (i < out.size() && out[i] == ' ')
+            ++i;
+        std::size_t j = i;
+        while (j < out.size() && out[j] != ' ')
+            ++j;
+        if (j > i)
+        {
+            const std::string word = out.substr(i, j - i);
+            bool small = false;
+            for (const char *k : kSmall)
+                small = small || word == k;
+            if ((first || !small) && out[i] >= 'a' && out[i] <= 'z')
+                out[i] = char(out[i] - 'a' + 'A');
+            first = false;
+        }
+        i = j;
+    }
+    return out;
+}
 } // namespace porpoise::ui

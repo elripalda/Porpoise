@@ -57,4 +57,7 @@ std::string trf(const std::string &english, std::initializer_list<std::pair<cons
 /* "1 game" / "{n} games" chosen by n, translated. A Polish or Russian
  * translation may hold "one|few|many" forms; trf picks by {n}. */
 std::string plural(long long n, const char *one, const char *many);
+/* A label as a button or prompt shows it: in English, Title Case ("Back Up",
+ * "GameCube Cards", "Copy to B"); other languages keep their own. */
+std::string title_case(const std::string &text);
 } // namespace porpoise::ui

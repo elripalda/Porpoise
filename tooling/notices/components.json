@@ -52,7 +52,8 @@
         "assets/ui/flags.png",
         "assets/ui/report-qr.png",
         "assets/recommended.ini",
-        "assets/ui/pointer-hand.png"
+        "assets/ui/pointer-hand.png",
+        "assets/ui/pointer-open.png"
       ],
       "licence": "GPL-3.0-or-later",
       "copyright": [

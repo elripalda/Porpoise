@@ -35,6 +35,7 @@ void App::init(Gfx *gfx, Library *library, Settings *settings, const std::string
     options_path_ = options_path;
     saves_dir_ = saves_dir;
     data_dir_ = settings_path.substr(0, settings_path.rfind('/'));
+    mc_wii_ = settings_->ui_theme == 1; /* Revolution opens on the Wii saves */
     build_settings();
     /* Return to the game played last. */
     const std::string key = lib_->selected_id();
@@ -64,7 +65,7 @@ void App::forget_textures()
         }
     for (WiiSave &s : wii_saves_)
         s.icon_tex = s.banner_tex = nullptr;
-    hand_ = nullptr;
+    hands_[0] = hands_[1] = nullptr;
     hand_tried_ = false;
     forget_banners();
     logo_ = nullptr;
@@ -276,6 +277,7 @@ App::Action App::update(const Input &in, double dt)
     dialog_.anim = calm ? 1.0f : std::min(1.0f, dialog_.anim + float(dt) * 6.0f);
     flip_anim_ = calm ? 0.0f : std::max(0.0f, flip_anim_ - float(dt) * 2.4f);
     swipe_anim_ = calm ? 0.0f : std::max(0.0f, swipe_anim_ - float(dt) * 3.4f);
+    zoom_anim_ = calm ? 0.0f : std::max(0.0f, zoom_anim_ - float(dt) * 1.9f);
     right_x_ = std::fabs(in.right_x) > 0.15f ? in.right_x : 0.0f;
     {
         const float target = (box_back_ ? kPi : 0.0f) + right_x_ * 0.9f;
@@ -509,6 +511,7 @@ App::Action App::update(const Input &in, double dt)
                 rd_focus_ = 0;
                 rd_info_ = false;
                 opened_tile(games[std::size_t(selected_)]);
+                start_zoom(+1);
             }
         }
         if (pressed(BtnTriangle))
@@ -753,7 +756,8 @@ void App::draw_dialog()
         g.panel(bx, by, bw, bh, on ? (danger ? rgba(0xB0305A, 0.92f) : rgba(0x1F63F0, 0.92f)) : rgba(0x07102E, 0.5f),
                 0.7f, kR, on ? (danger ? kDanger : kIcy) : rgba(0x3D5AB0, 0.8f), on ? 2.2f : 1.4f, on ? 8 : 0,
                 on ? 0.25f : 0.0f);
-        g.text_mid(Font::Bold, ts(28), bx + bw * 0.5f, by + bh * 0.5f, on ? kWhite : kSoft, Align::Center, label);
+        g.text_mid(Font::Bold, ts(28), bx + bw * 0.5f, by + bh * 0.5f, on ? kWhite : kSoft, Align::Center,
+                   title_case(label));
     };
     if (dialog_.yes.empty())
         button(x + w - 56 - 220, 220, tr("OK"), true, false);
@@ -1013,9 +1017,9 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
     /* Every prompt is translated here, so callers write plain English. */
     std::vector<std::pair<Glyph, std::string>> left_tr, right_tr;
     for (const auto &p : left_in)
-        left_tr.push_back({p.first, tr(p.second)});
+        left_tr.push_back({p.first, title_case(tr(p.second))});
     for (const auto &p : right_in)
-        right_tr.push_back({p.first, tr(p.second)});
+        right_tr.push_back({p.first, title_case(tr(p.second))});
     const auto &left = left_tr;
     const auto &right = right_tr;
     const float y = kPromptY, size = ts(28);
@@ -1558,7 +1562,8 @@ void App::draw_details(double time)
                    settings_->download_info ? tr("No description yet. It arrives with the game info from GameTDB.com.")
                                             : tr("Turn on Settings > Games > Download game info for a description."));
 
-    const std::string actions[4] = {tr("Play"), tr("Save states"), tr("Game settings"), tr("Save data")};
+    const std::string actions[4] = {title_case(tr("Play")), title_case(tr("Save states")),
+                                    title_case(tr("Game settings")), title_case(tr("Save data"))};
     for (int i = 0; i < 4; ++i)
     {
         const float ry = actions_y + i * 66, rx = px + 52 + 40, rw = pw - 104 - 40, rh = 58;
@@ -1709,7 +1714,6 @@ void App::draw_card(Card &card, int which, float x, float y, double time)
 void App::draw_memory_cards(double time)
 {
     Gfx &g = *g_;
-    draw_mc_switch();
     if (mc_wii_)
     {
         draw_wii_saves(time);
@@ -1793,21 +1797,22 @@ void App::release_covers()
 
 /* The look changed (from the look `was`): each look keeps its own Show in
  * Sort & filter; Revolution starts on the Wii games when there are some. */
+/* A new theme starts from its own view: Porpoise shows every game and the
+ * GameCube cards; Revolution shows the Wii games (when there are any) and
+ * the Wii saves. */
 void App::look_changed(int was)
 {
-    const int now = int(lib_->show());
-    (was == 1 ? settings_->show_revolution : settings_->show_porpoise) = now;
-    int want = settings_->ui_theme == 1 ? settings_->show_revolution : settings_->show_porpoise;
-    if (want < 0)
-    {
-        want = 0;
-        if (settings_->ui_theme == 1)
-            for (const Game &g : lib_->games())
-                if (g.platform == "Wii")
-                    want = int(Library::Show::Wii);
-    }
+    (void)was;
+    int want = int(Library::Show::All);
+    if (settings_->ui_theme == 1)
+        for (const Game &g : lib_->games())
+            if (g.platform == "Wii")
+                want = int(Library::Show::Wii);
+    mc_wii_ = settings_->ui_theme == 1;
+    wii_sel_ = 0;
+    wii_scroll_ = 0;
     const std::string key = lib_->shown() > 0 ? Library::key_of(lib_->games()[std::size_t(selected_)]) : "";
-    lib_->set_show(Library::Show(std::clamp(want, 0, 2)));
+    lib_->set_show(Library::Show(want));
     keep_selection(key);
     lib_->save();
     settings_->save(settings_path_);
@@ -1936,15 +1941,18 @@ void App::draw_revolution(double time)
     draw_room();
     const bool home = home_showing();
     const bool opened = tab_ == Tab::Library && (screen_ == Screen::Details || screen_ == Screen::States);
-    if (home)
+    /* While a tile opens or closes, the zoom decides which side shows. */
+    const bool zooming = zoom_anim_ > 0 && tab_ == Tab::Library;
+    if (zooming ? zoom_shows_home() : home)
         draw_home(time);
-    else if (opened)
+    else if (opened || zooming)
         draw_rev_details(time);
     /* The full-screen pages (the setups, the guide, a folder) have headings of their own. */
     const bool full_page = screen_ == Screen::WiiSetup || screen_ == Screen::WiiGuide || screen_ == Screen::Mapping ||
                            screen_ == Screen::Browse || screen_ == Screen::GameSettings;
     if (!full_page)
         draw_rev_top_bar(!home);
+    draw_zoom(time);
 
     float dx = 0, dy = 0, fade = 1;
     if (tab_anim_ > 0)

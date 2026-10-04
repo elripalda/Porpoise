@@ -169,37 +169,60 @@ std::string App::short_date() const
            std::to_string(tm.tm_mday);
 }
 
-/* The pointer: Porpoise's own hand (assets/ui/pointer-hand.png), leaning
- * with the controller's roll, the player's number on its cuff. */
-void App::draw_hand(float x, float y, float roll, int player)
+/* The pointer: Ruben's hands (tools/pointer-art), an open hand over nothing
+ * and a pointing hand over something it can choose (assets/ui/pointer-open.png,
+ * pointer-hand.png), leaning with the controller's roll, the player's number
+ * on the palm. The fractions come from tools/make-pointer-hand.py. */
+namespace
+{
+struct HandArt
+{
+    const char *file;
+    float tip_x, tip_y;   /* the spot it points at, as a fraction of its size */
+    float num_x, num_y;   /* where the player's number sits */
+};
+constexpr HandArt kHands[2] = {
+    {"pointer-open.png", 0.338f, 0.048f, 0.523f, 0.704f},
+    {"pointer-hand.png", 0.309f, 0.008f, 0.513f, 0.719f},
+};
+} // namespace
+
+void App::draw_hand(float x, float y, float roll, int player, bool pointing)
 {
     Gfx &g = *g_;
     if (!hand_tried_)
     {
         hand_tried_ = true;
-        const std::string path = g.asset_dir() + "/ui/pointer-hand.png";
-        if (access(path.c_str(), R_OK) == 0)
-            hand_ = g.texture_file(path, 512);
+        for (int i = 0; i < 2; ++i)
+        {
+            const std::string path = g.asset_dir() + "/ui/" + kHands[i].file;
+            if (access(path.c_str(), R_OK) == 0)
+                hands_[i] = g.texture_file(path, 512);
+        }
     }
-    if (!hand_)
+    const int which = pointing || !hands_[0] ? 1 : 0;
+    Texture *tex = hands_[which];
+    if (!tex)
     {
         /* No picture: a ringed dot. */
         g.panel(x - 14, y - 14, 28, 28, rgba(0xFFFFFF), 1, 14, rgba(0x26303D), 3);
         return;
     }
-    const float w = 70, h = w * float(hand_->height) / float(hand_->width);
-    const float hx = 0.41f * w, hy = 0.03f * h; /* the fingertip */
+    const HandArt &art = kHands[which];
+    /* Both pictures are at one scale, so the hand keeps its size as it changes. */
+    constexpr float kHandScale = 0.42f;
+    const float h = float(tex->height) * kHandScale, w = float(tex->width) * kHandScale;
+    const float hx = art.tip_x * w, hy = art.tip_y * h;
     const float a = std::clamp(roll, -1.0f, 1.0f) * 0.55f, c = std::cos(a), s = std::sin(a);
-    g.blob(x + 10, y + h * 0.55f, w * 1.2f, h * 0.9f, rgba(0x1A2230, 0.16f));
+    g.blob(x + 10, y + h * 0.55f, w * 1.1f, h * 0.85f, rgba(0x1A2230, 0.16f));
     auto corner = [&](float lx, float ly) {
         const float dx = lx - hx, dy = ly - hy;
         return Corner{x + dx * c - dy * s, y + dx * s + dy * c, 1.0f};
     };
     const Corner q[4] = {corner(0, 0), corner(w, 0), corner(w, h), corner(0, h)};
-    g.quad3d(hand_, q, w, h, rgba(0xFFFFFF), 0, false, false);
-    /* The player's number on the cuff. */
-    const Corner cuff = corner(w * 0.56f, h * 0.89f);
-    g.text_mid(Font::ExtraBold, 20, cuff.x, cuff.y, rgba(0xFFFFFF), Align::Center, std::to_string(player));
+    g.quad3d(tex, q, w, h, rgba(0xFFFFFF), 0, false, false);
+    const Corner num = corner(w * art.num_x, h * art.num_y);
+    g.text_mid(Font::ExtraBold, 40, num.x, num.y, rgba(0x1E9BE0), Align::Center, std::to_string(player));
 }
 
 /* ---- pointing, shared by the home screen and the opened tile ----------------------------- */
@@ -283,7 +306,8 @@ void App::draw_rev_pointer()
 {
     if (!home_pointing_ || !pointer_screen() || screen_ == Screen::Sort)
         return;
-    draw_hand(home_px_, home_py_, home_roll_, 1);
+    const bool over = screen_ == Screen::Details ? rd_focus_ >= 0 : home_focus_ >= 0;
+    draw_hand(home_px_, home_py_, home_roll_, 1, over);
 }
 
 /* ---- the opened tile (Details) --------------------------------------------------------------- */
@@ -308,6 +332,8 @@ std::vector<std::pair<int, std::string>> App::rev_chips(const Game &game) const
         chips.push_back({kChipSettings, tr("Game settings")});
     chips.push_back({kChipSave, tr("Save data")});
     chips.push_back({kChipFavourite, game.favourite ? tr("Favourite") : tr("Add to favourites")});
+    for (auto &c : chips)
+        c.second = title_case(c.second);
     return chips;
 }
 
@@ -316,8 +342,9 @@ void App::rev_details_rects(const Game &game, std::vector<std::pair<int, std::ar
 {
     Gfx &g = *g_;
     out.clear();
-    out.push_back({kRdStart, {960 - kBigGap * 0.5f - kBigW, kBigY, kBigW, kBigH}});
-    out.push_back({kRdSecond, {960 + kBigGap * 0.5f, kBigY, kBigW, kBigH}});
+    /* The controls on the left, Start on the right. */
+    out.push_back({kRdSecond, {960 - kBigGap * 0.5f - kBigW, kBigY, kBigW, kBigH}});
+    out.push_back({kRdStart, {960 + kBigGap * 0.5f, kBigY, kBigW, kBigH}});
     const auto chips = rev_chips(game);
     float total = 0;
     std::vector<float> widths;
@@ -378,16 +405,16 @@ App::Action App::update_rev_details(bool left, bool right, bool up, bool down, d
             f = kRdStart;
         else if (f < kRdChip)
         {
-            if (left && f == kRdSecond)
-                f = kRdStart;
-            else if (right && f == kRdStart)
+            if (left && f == kRdStart)
                 f = kRdSecond;
-            else if (left && f == kRdStart)
-                go(-1);
             else if (right && f == kRdSecond)
+                f = kRdStart;
+            else if (left && f == kRdSecond)
+                go(-1);
+            else if (right && f == kRdStart)
                 go(+1);
             else if (down)
-                f = kRdChip + std::min(nchips - 1, f == kRdStart ? 0 : nchips / 2);
+                f = kRdChip + std::min(nchips - 1, f == kRdSecond ? 0 : nchips / 2);
         }
         else
         {
@@ -397,7 +424,7 @@ App::Action App::update_rev_details(bool left, bool right, bool up, bool down, d
             else if (right && c + 1 < nchips)
                 f = f + 1;
             else if (up)
-                f = c < nchips / 2 ? kRdStart : kRdSecond;
+                f = c < nchips / 2 ? kRdSecond : kRdStart;
         }
         rd_focus_ = f;
     }
@@ -443,6 +470,7 @@ App::Action App::update_rev_details(bool left, bool right, bool up, bool down, d
     if (pressed(BtnCircle))
     {
         open_screen(Screen::Main);
+        start_zoom(-1);
         sfx(Sound::DetailsFlip);
         if (jingle_)
             jingle_(nullptr, 0);
@@ -678,9 +706,9 @@ void App::draw_rev_details(double time)
                 big ? 3.5f + grow * 1.5f : 2.5f, grow * (big ? 14.0f : 8.0f), 0.45f);
         std::string label;
         if (id == kRdStart)
-            label = tr("Start");
+            label = title_case(tr("Start"));
         else if (id == kRdSecond)
-            label = wii ? tr("Wii controls") : tr("Game settings");
+            label = title_case(wii ? tr("Wii controls") : tr("Game settings"));
         else
             label = chips[std::size_t(id - kRdChip)].second;
         const Color ink = grow > 0.5f ? rgba(0x1E8CC4) : rev::kInk;

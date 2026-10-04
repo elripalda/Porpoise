@@ -2,27 +2,30 @@
 
 ## 1.5 — 2026-10-04
 
-### Revolution look (Settings → Interface → Look)
-- A bright home screen of game tiles, twelve to a page: the first tile goes
-  back to the game played last, page arrows and L2 / R2 turn the page, and a
+### Revolution theme (Settings → Interface → Theme)
+- A bright home screen of game tiles, twelve to a page: page arrows at the
+  sides and L2 / R2 turn the page, and a
   floor along the bottom keeps a segmented clock, the date, and round buttons
   for Settings and the memory cards. Porpoise's mark and the tabs sit on top.
-- **Point with the controller:** a hand pointer (Porpoise's own drawing) that
-  leans as you twist the controller, a tap of rumble and a tick as it lands
-  on something. The D-pad works as well; the touch pad turns pointing on and
+- **Point with the controller:** a hand pointer (drawn by Ruben) that opens
+  over empty space and points over anything you can choose, leans as you twist
+  the controller, with a tap of rumble and a tick as it lands on something. The D-pad works as well; the touch pad turns pointing on and
   off; R3 centres it.
 - **Wii discs' own tiles and banners:** Porpoise reads each Wii disc's banner
   (.iso, .rvz, .wia, .wbfs, .ciso, .gcz) and plays it — animated tiles on the
   home screen, the full banner and its jingle when a tile opens. GameCube games
   keep their covers.
-- **Opened tile:** Cross on a tile opens it, with **Start** and **Wii
-  controls** (or Game settings) below, save states, save data and favourite;
-  Triangle turns between the banner and the game's facts.
+- **Opened tile:** Cross on a tile grows it to fill the screen and opens it,
+  with **Wii Controls** (or Game Settings) and **Start** below, save states,
+  save data and favourite; Triangle turns between the banner and the game's
+  facts. Circle shrinks it back into its tile.
 - Every other screen goes white with it: Memory Cards, Settings, the Wii Remote
   setup, the guide, dialogs and the in-game menu. A cover flow layout is there
   too (Interface → Home screen).
-- Switching to it shows the Wii games; GameCube games are one press away in
-  Sort & filter. Each look remembers its own choice.
+- Switching to it shows the Wii games and the Wii saves; GameCube games are
+  one press away in Sort & filter. Switching back to Porpoise shows every game
+  and the GameCube cards.
+- Buttons and prompts read in Title Case (in English).
 
 ### Memory Cards
 - **Wii saves:** L2 / R2 switches between the GameCube cards and the Wii saves
