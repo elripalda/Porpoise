@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #pragma once
 
+#include "porpoise_pad.hpp"
+
 #include <vector>
 
 namespace porpoise::core
@@ -76,7 +78,14 @@ struct Playback
     int filter = 0;        /* porpoise::vk screen filter */
     float strength = 0.6f; /* 0..1 */
     const char *load_state = nullptr; /* a save state to load once the game is up */
+    /* A Wii game: how the DualSense plays the Wii Remote (pad.hpp). */
+    porpoise::pad::WiiConfig wii;
+    /* When set: a line per frame of the controller's motion goes to
+     * <debug_dir>/motion.csv, for tuning (a test build's debug folder). */
+    const char *debug_dir = nullptr;
 };
+/* The Wii Remote's settings changed in the in-game menu. */
+void set_wii(const porpoise::pad::WiiConfig &config);
 
 /* Load the core, boot the game, run it until the player leaves it. The
  * core is unloaded again afterwards, so the next game starts it fresh. */

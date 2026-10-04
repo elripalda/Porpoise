@@ -74,7 +74,7 @@ struct Row
 
 const std::vector<std::string> kPercent = {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
 
-std::vector<Row> rows_for(int tab, Settings &p)
+std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
 {
     std::vector<Row> r;
     switch (tab)
@@ -128,6 +128,23 @@ std::vector<Row> rows_for(int tab, Settings &p)
                      {"GameCube", "PlayStation", "My layout 1", "My layout 2", "My layout 3", "My layout 4"}});
         r.push_back({Kind::Customize, "", "Customize buttons"});
         r.push_back({Kind::Bool, "rumble", "Vibration", nullptr, &p.rumble, 0, {"Off", "On"}});
+        if (wii)
+        {
+            /* The Wii Remote, tried while playing. */
+            r.push_back({Kind::Int, "wii_controller", "Wii controller", &p.wii_controller, nullptr, 0,
+                         {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
+                          "Two controllers (beta)"}});
+            r.push_back({Kind::Int, "wii_pointer", "Pointer", &p.wii_pointer, nullptr, 0,
+                         {"Gyro", "Touch pad", "Right stick"}});
+            r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 1,
+                         {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}});
+            r.push_back({Kind::Int, "wii_grip", "Grip", &p.wii_grip, nullptr, 0,
+                         {"Both hands", "One hand, left edge", "One hand, right edge"}});
+            r.push_back({Kind::Bool, "wii_motion", "Motion", nullptr, &p.wii_motion, 0, {"Off", "On"}});
+            r.push_back({Kind::Bool, "wii_shake", "Flick to shake", nullptr, &p.wii_shake, 0, {"Off", "On"}});
+            r.push_back({Kind::Bool, "motion_readout", "Motion readout", nullptr, &p.motion_readout, 0,
+                         {"Off", "On"}});
+        }
         break;
     default:
         break;
@@ -376,7 +393,7 @@ int App::update_game_menu(const Input &in, double dt)
     }
 
     Settings &p = *menu_play_;
-    std::vector<Row> rows = rows_for(menu_tab_, p);
+    std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii");
     const int count = int(rows.size());
 
     /* L1 / R1: the tabs. */
@@ -733,7 +750,7 @@ void App::draw_game_menu(double time)
     hy += 10;
 
     /* Rows. */
-    const std::vector<Row> rows = rows_for(menu_tab_, p);
+    const std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii");
     const float row_h = 56, rx = x + 24, rw = w - 48;
     float ry = hy;
     for (int i = 0; i < int(rows.size()); ++i)
@@ -857,7 +874,7 @@ void App::draw_game_menu(double time)
         }
         below += sh + 44;
     }
-    else if (menu_tab_ == kTabControls)
+    else if (menu_tab_ == kTabControls && !(menu_game_ && menu_game_->platform == "Wii"))
     {
         /* The controller and its buttons, as this game has them. */
         const float aw = 560;

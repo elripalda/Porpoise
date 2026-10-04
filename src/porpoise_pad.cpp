@@ -15,6 +15,7 @@
 #include "porpoise_pad.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <atomic>
 #include <cstddef>
 #include <cstdio>
@@ -49,6 +50,7 @@ extern "C"
     std::int32_t scePadSetVibrationMode(std::int32_t handle, std::int32_t mode);
     std::int32_t scePadSetLightBar(std::int32_t handle, const ScePadLightBarParam *param);
     std::int32_t scePadResetLightBar(std::int32_t handle);
+    std::int32_t scePadSetMotionSensorState(std::int32_t handle, bool enable);
     std::int32_t sceUserServiceInitialize(const void *params);
     std::int32_t sceUserServiceGetInitialUser(std::int32_t *user_id);
     /* The signed-in users: four ids, -1 for none (room to spare is kept). */
@@ -87,7 +89,18 @@ struct PadSample
     std::uint8_t right_y;
     std::uint8_t left_trigger;
     std::uint8_t right_trigger;
-    std::uint8_t reserved_to_connected[66];
+    std::uint8_t padding[2];
+    float orientation[4];      /* a quaternion: x, y, z, w */
+    float angular_velocity[3]; /* rad/s: x right, y up out of the face, z toward the player */
+    float acceleration[3];     /* in g, the same axes */
+    std::uint8_t touch_count;
+    std::uint8_t touch_reserved[7];
+    struct
+    {
+        std::uint16_t x, y;
+        std::uint8_t id;
+        std::uint8_t reserved[3];
+    } touch[2];
     std::int32_t connected;
     std::uint64_t timestamp_us;
     std::uint8_t extension[16];
@@ -98,6 +111,9 @@ static_assert(sizeof(PadSample) == 120, "the console's pad samples are 120 bytes
 static_assert(offsetof(PadSample, left_x) == 0x04, "the stick bytes follow the button word");
 static_assert(offsetof(PadSample, connected) == 0x4c, "connection state sits at 0x4c");
 static_assert(offsetof(PadSample, timestamp_us) == 0x50, "the timestamp sits at 0x50");
+static_assert(offsetof(PadSample, orientation) == 0x0c, "the motion data follows the triggers");
+static_assert(offsetof(PadSample, acceleration) == 0x28, "acceleration sits at 0x28");
+static_assert(offsetof(PadSample, touch) == 0x3c, "the touches sit at 0x3c");
 
 constexpr int sample_capacity = 64;
 constexpr unsigned polls_per_scan = 60; /* about once a second */
@@ -126,7 +142,108 @@ struct Slot
     std::int32_t handle = -1;
     std::uint8_t motor_large = 0, motor_small = 0;
     State state;
+    /* The pointer and its bookkeeping. */
+    float pointer_x = 0, pointer_y = 0;
+    std::uint64_t last_motion_us = 0;
+    int shake_frames = 0;
+    bool r1_was = false;
+    /* Which way gravity reads, learnt from the first readings at rest. */
+    float gravity_sum = 0;
+    int gravity_count = 0;
+    float gravity_sign = 1.0f;
 };
+
+/* ---- the Wii Remote ---- */
+WiiConfig g_wii;
+
+struct WiiBind
+{
+    std::uint32_t pad;
+    unsigned retro;
+};
+/* Each Wii controller's buttons: DualSense button -> the libretro button the
+ * Dolphin core reads for it (Source/Core/DolphinLibretro/Input.cpp,
+ * retro_set_controller_port_device_wii). */
+constexpr WiiBind kWiiNunchuk[] = {
+    /* A, B (the trigger under the Remote), C, Z, -, +, 1, 2, Home, shakes. */
+    {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},      {pad_r2, RETRO_DEVICE_ID_JOYPAD_B},
+    {pad_l1, RETRO_DEVICE_ID_JOYPAD_X},         {pad_l2, RETRO_DEVICE_ID_JOYPAD_Y},
+    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_L},  {pad_options, RETRO_DEVICE_ID_JOYPAD_R},
+    {pad_square, RETRO_DEVICE_ID_JOYPAD_START}, {pad_triangle, RETRO_DEVICE_ID_JOYPAD_SELECT},
+    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},        {pad_circle, RETRO_DEVICE_ID_JOYPAD_R2},
+    {pad_l3, RETRO_DEVICE_ID_JOYPAD_L2},
+};
+constexpr WiiBind kWiiRemote[] = {
+    /* A, B, 1, 2, -, +, Home, shake. */
+    {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},       {pad_r2, RETRO_DEVICE_ID_JOYPAD_B},
+    {pad_square, RETRO_DEVICE_ID_JOYPAD_X},      {pad_triangle, RETRO_DEVICE_ID_JOYPAD_Y},
+    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_SELECT}, {pad_options, RETRO_DEVICE_ID_JOYPAD_START},
+    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},         {pad_circle, RETRO_DEVICE_ID_JOYPAD_R2},
+};
+constexpr WiiBind kWiiSideways[] = {
+    /* Held like an NES pad: 1 on Square, 2 on Cross; A, B; -, +, Home; shake on R1 / R2. */
+    {pad_square, RETRO_DEVICE_ID_JOYPAD_B},      {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},
+    {pad_triangle, RETRO_DEVICE_ID_JOYPAD_X},    {pad_circle, RETRO_DEVICE_ID_JOYPAD_Y},
+    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_SELECT}, {pad_options, RETRO_DEVICE_ID_JOYPAD_START},
+    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},         {pad_r1, RETRO_DEVICE_ID_JOYPAD_R2},
+    {pad_r2, RETRO_DEVICE_ID_JOYPAD_R2},
+};
+constexpr WiiBind kWiiClassic[] = {
+    /* By position: a Circle, b Cross, x Triangle, y Square; ZL / ZR on L1 / R1,
+     * L / R on the triggers (analog). */
+    {pad_circle, RETRO_DEVICE_ID_JOYPAD_A},  {pad_cross, RETRO_DEVICE_ID_JOYPAD_B},
+    {pad_triangle, RETRO_DEVICE_ID_JOYPAD_X}, {pad_square, RETRO_DEVICE_ID_JOYPAD_Y},
+    {pad_l1, RETRO_DEVICE_ID_JOYPAD_L},      {pad_r1, RETRO_DEVICE_ID_JOYPAD_R},
+    {pad_options, RETRO_DEVICE_ID_JOYPAD_START}, {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_SELECT},
+    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},
+};
+/* Two controllers: the first is the Remote (the Nunchuk device's Remote buttons)... */
+constexpr WiiBind kWiiTwoRemote[] = {
+    {pad_cross, RETRO_DEVICE_ID_JOYPAD_A},       {pad_r2, RETRO_DEVICE_ID_JOYPAD_B},
+    {pad_square, RETRO_DEVICE_ID_JOYPAD_START},  {pad_triangle, RETRO_DEVICE_ID_JOYPAD_SELECT},
+    {pad_touch_pad, RETRO_DEVICE_ID_JOYPAD_L},   {pad_options, RETRO_DEVICE_ID_JOYPAD_R},
+    {pad_r3, RETRO_DEVICE_ID_JOYPAD_R3},         {pad_circle, RETRO_DEVICE_ID_JOYPAD_R2},
+};
+/* ...and the second the Nunchuk: Z on its triggers, C on its shoulders or Cross,
+ * a shake on Circle (or a flick). */
+constexpr WiiBind kWiiTwoNunchuk[] = {
+    {pad_l2, RETRO_DEVICE_ID_JOYPAD_Y},    {pad_r2, RETRO_DEVICE_ID_JOYPAD_Y},
+    {pad_l1, RETRO_DEVICE_ID_JOYPAD_X},    {pad_r1, RETRO_DEVICE_ID_JOYPAD_X},
+    {pad_cross, RETRO_DEVICE_ID_JOYPAD_X}, {pad_circle, RETRO_DEVICE_ID_JOYPAD_L2},
+};
+
+template <std::size_t N> std::uint16_t wii_bits(const WiiBind (&binds)[N], std::uint32_t b)
+{
+    std::uint16_t out = 0;
+    for (const WiiBind &w : binds)
+        if (b & w.pad)
+            out |= static_cast<std::uint16_t>(1u << w.retro);
+    return out;
+}
+
+/* The DualSense's axes (x right, y out of its face, z toward the player)
+ * into the Remote's (x left, y back, z up) for how it is held. */
+void to_remote(int grip, const float in[3], float out[3])
+{
+    switch (grip)
+    {
+    case GripLeftEdge: /* its left edge points at the TV */
+        out[0] = in[2];
+        out[1] = in[0];
+        out[2] = in[1];
+        break;
+    case GripRightEdge:
+        out[0] = -in[2];
+        out[1] = -in[0];
+        out[2] = in[1];
+        break;
+    default: /* its back edge (the light bar) points at the TV */
+        out[0] = -in[0];
+        out[1] = in[2];
+        out[2] = in[1];
+        break;
+    }
+}
 
 Slot g_slots[kMaxPlayers];
 PadSample g_samples[sample_capacity];
@@ -185,11 +302,14 @@ void open_slot(int player, std::int32_t user, int attempts)
     slot.user = user;
     slot.handle = handle;
     (void)scePadSetVibrationMode(handle, 2);
+    /* The gyroscope and accelerometer, for the Wii Remote. */
+    const std::int32_t motion = scePadSetMotionSensorState(handle, true);
     /* Each player's light bar has their colour, so everyone knows which
      * controller is theirs: blue, red, green, pink. */
     static const ScePadLightBarParam kColours[kMaxPlayers] = {{0, 96, 255}, {255, 36, 48}, {0, 210, 80}, {255, 60, 190}};
     (void)scePadSetLightBar(handle, &kColours[player]);
-    std::snprintf(line, sizeof line, "pad: player %d is user %d, handle %d", player + 1, int(user), int(handle));
+    std::snprintf(line, sizeof line, "pad: player %d is user %d, handle %d, motion %#x", player + 1, int(user),
+                  int(handle), unsigned(motion));
     ps5::debug::mark(line);
 }
 
@@ -248,6 +368,95 @@ void rescan()
     }
 }
 
+/* The motion in this poll's readings: the newest as it is, the gyro over all
+ * of them for the pointer. */
+Motion read_motion(Slot &slot, std::int32_t count)
+{
+    Motion m;
+    const PadSample *order[sample_capacity];
+    int n = 0;
+    for (std::int32_t i = 0; i < count; ++i)
+        if (g_samples[i].connected)
+            order[n++] = &g_samples[i];
+    std::sort(order, order + n, [](const PadSample *a, const PadSample *b) { return a->timestamp_us < b->timestamp_us; });
+    if (n == 0)
+        return m;
+    const PadSample &last = *order[n - 1];
+    m.valid = true;
+    m.samples = unsigned(n);
+    for (int i = 0; i < 3; ++i)
+    {
+        m.raw_accel[i] = last.acceleration[i];
+        m.raw_gyro[i] = last.angular_velocity[i];
+    }
+    for (int i = 0; i < 4; ++i)
+        m.orientation[i] = last.orientation[i];
+    /* Gravity's direction: the first readings with the controller still. */
+    const float mag = std::sqrt(m.raw_accel[0] * m.raw_accel[0] + m.raw_accel[1] * m.raw_accel[1] +
+                                m.raw_accel[2] * m.raw_accel[2]);
+    if (slot.gravity_count < 60 && std::fabs(mag - 1.0f) < 0.12f && std::fabs(m.raw_accel[1]) > 0.7f)
+    {
+        slot.gravity_sum += m.raw_accel[1];
+        if (++slot.gravity_count == 60)
+            slot.gravity_sign = slot.gravity_sum >= 0 ? 1.0f : -1.0f;
+    }
+    float a[3];
+    for (int i = 0; i < 3; ++i)
+        a[i] = m.raw_accel[i] * slot.gravity_sign;
+    const int grip = g_wii.grip;
+    to_remote(grip, a, m.accel);
+    to_remote(grip, m.raw_gyro, m.gyro);
+
+    /* The pointer. */
+    const float k = 2.86f * float(std::clamp(g_wii.speed, 1, 10)) / 5.0f; /* screen widths per radian */
+    const float sx = g_wii.invert_x ? -1.0f : 1.0f, sy = g_wii.invert_y ? -1.0f : 1.0f;
+    for (int i = 0; i < n; ++i)
+    {
+        const PadSample &p = *order[i];
+        if (slot.last_motion_us && p.timestamp_us > slot.last_motion_us)
+        {
+            const float dt = std::min(0.05f, float(p.timestamp_us - slot.last_motion_us) * 1e-6f);
+            if (g_wii.pointer == PointerGyro)
+            {
+                float g[3];
+                to_remote(grip, p.angular_velocity, g);
+                /* Turning left (+z) moves it left; the nose down (+x) moves it down. */
+                slot.pointer_x -= sx * g[2] * k * dt;
+                slot.pointer_y += sy * g[0] * k * dt;
+            }
+        }
+        if (p.timestamp_us > slot.last_motion_us)
+            slot.last_motion_us = p.timestamp_us;
+    }
+    m.touching = (last.touch_count & 0x7f) > 0;
+    if (m.touching)
+    {
+        m.touch_x = last.touch[0].x;
+        m.touch_y = last.touch[0].y;
+        if (g_wii.pointer == PointerTouch)
+        {
+            slot.pointer_x = float(m.touch_x) / 1919.0f * 2.0f - 1.0f;
+            slot.pointer_y = float(m.touch_y) / 1079.0f * 2.0f - 1.0f;
+        }
+    }
+    /* R1 puts the pointer back in the middle. */
+    const bool r1 = (last.buttons & pad_r1) != 0;
+    if (r1 && !slot.r1_was && g_wii.pointer == PointerGyro)
+        slot.pointer_x = slot.pointer_y = 0;
+    slot.r1_was = r1;
+    slot.pointer_x = std::clamp(slot.pointer_x, -1.0f, 1.0f);
+    slot.pointer_y = std::clamp(slot.pointer_y, -1.0f, 1.0f);
+    m.pointer_x = slot.pointer_x;
+    m.pointer_y = slot.pointer_y;
+    /* A flick: well over 1 g. */
+    if (g_wii.shake && mag > 2.0f)
+        slot.shake_frames = 8;
+    m.shaking = slot.shake_frames > 0;
+    if (slot.shake_frames > 0)
+        --slot.shake_frames;
+    return m;
+}
+
 State read_slot(Slot &slot)
 {
     const std::int32_t count = scePadRead(slot.handle, g_samples, sample_capacity);
@@ -261,6 +470,7 @@ State read_slot(Slot &slot)
             newest = &g_samples[i];
     if (newest == nullptr || !newest->connected || (newest->buttons & pad_intercepted) != 0)
         return State{}; /* off, or the system menu has the pad: release everything */
+    const Motion motion = read_motion(slot, count);
 
     const std::uint32_t b = newest->buttons;
     State next;
@@ -310,6 +520,35 @@ State read_slot(Slot &slot)
     next.l2 = analog(GcL);
     next.r2 = analog(GcR);
     next.ps_menu_combo = (b & (pad_options | pad_touch_pad)) == (pad_options | pad_touch_pad);
+    next.motion = motion;
+    if (g_wii.active)
+    {
+        /* A Wii game: the Wii controller's buttons instead of the GameCube's. */
+        const bool shake = motion.shaking;
+        switch (g_wii.controller)
+        {
+        case WiiRemote: next.joypad = wii_bits(kWiiRemote, b); break;
+        case WiiSideways: next.joypad = wii_bits(kWiiSideways, b); break;
+        case WiiClassic:
+            next.joypad = wii_bits(kWiiClassic, b);
+            next.l2 = static_cast<std::int16_t>(newest->left_trigger * 0x7fff / 255);
+            next.r2 = static_cast<std::int16_t>(newest->right_trigger * 0x7fff / 255);
+            break;
+        case WiiTwoControllers:
+            next.joypad = wii_bits(kWiiTwoRemote, b) | (shake ? (1u << RETRO_DEVICE_ID_JOYPAD_R2) : 0u);
+            next.nunchuk = wii_bits(kWiiTwoNunchuk, b) | (shake ? (1u << RETRO_DEVICE_ID_JOYPAD_L2) : 0u);
+            break;
+        default:
+            next.joypad = wii_bits(kWiiNunchuk, b) | (shake ? (1u << RETRO_DEVICE_ID_JOYPAD_R2) : 0u);
+            break;
+        }
+        /* The D-pad is the D-pad on every Wii controller. */
+        constexpr WiiBind kDpad[] = {{pad_up, RETRO_DEVICE_ID_JOYPAD_UP},
+                                     {pad_down, RETRO_DEVICE_ID_JOYPAD_DOWN},
+                                     {pad_left, RETRO_DEVICE_ID_JOYPAD_LEFT},
+                                     {pad_right, RETRO_DEVICE_ID_JOYPAD_RIGHT}};
+        next.joypad |= wii_bits(kDpad, b);
+    }
     return next;
 }
 } // namespace
@@ -430,6 +669,41 @@ int connected_count()
     for (int player = 0; player < kMaxPlayers; ++player)
         n += connected(player) ? 1 : 0;
     return n;
+}
+
+void set_wii(const WiiConfig &config)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    const bool was = g_wii.active;
+    g_wii = config;
+    if (config.active && !was)
+        for (Slot &slot : g_slots)
+            slot.pointer_x = slot.pointer_y = 0;
+}
+
+WiiConfig wii()
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    return g_wii;
+}
+
+unsigned wii_device(int controller)
+{
+    /* The Dolphin core's devices (Input.cpp): a plain joypad is the Remote. */
+    switch (controller)
+    {
+    case WiiRemote: return RETRO_DEVICE_JOYPAD;
+    case WiiSideways: return (2 << 8) | RETRO_DEVICE_JOYPAD;
+    case WiiClassic: return (4 << 8) | RETRO_DEVICE_JOYPAD;
+    default: return (3 << 8) | RETRO_DEVICE_JOYPAD; /* with the Nunchuk */
+    }
+}
+
+void recenter(int player)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    if (player >= 0 && player < kMaxPlayers)
+        g_slots[player].pointer_x = g_slots[player].pointer_y = 0;
 }
 
 void set_rumble(int player, bool strong, std::uint16_t strength)

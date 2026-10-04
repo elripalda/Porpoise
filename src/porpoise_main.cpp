@@ -677,8 +677,17 @@ int menu_paused(void *)
         porpoise::pad::set_mapping(g_play.mapping());
     else if (key == "fast_forward")
         porpoise::core::set_fast_forward(g_app.menu_fast_forward());
-    else if (key == "border" || key == "fps_overlay")
+    else if (key == "border" || key == "fps_overlay" || key == "motion_readout")
         ; /* drawn by launch_frame */
+    else if (key.rfind("wii_", 0) == 0)
+    {
+        /* The Wii Remote: the pad and the core's ports; the pointer's source
+         * is also a Dolphin option. */
+        porpoise::core::set_wii(g_play.wii_config(true));
+        if (key == "wii_pointer")
+            for (const auto &[k, v] : g_play.core_options())
+                porpoise::core::set_option(k.c_str(), v.c_str());
+    }
     else if (!key.empty())
     {
         /* A Dolphin option: hand the core every value (it applies what it can
@@ -725,6 +734,43 @@ int menu_paused(void *)
     return answer;
 }
 
+/* Testing the Wii Remote: what player 1's controller feels, and where the
+ * pointer is, over the game. */
+void draw_motion_readout()
+{
+    using namespace porpoise::ui;
+    const porpoise::pad::State p = porpoise::pad::snapshot(0);
+    const porpoise::pad::Motion &m = p.motion;
+    const float x = 36, y = 100, w = 520, h = 330;
+    g_gfx.panel(x, y, w, h, rgba(0x0A1236, 0.8f), 0.9f, 14, rgba(0x5CD3FF, 0.9f), 1.6f);
+    char line[160];
+    float ty = y + 34;
+    auto row = [&](const char *text) {
+        g_gfx.text_mid(Font::SemiBold, 22, x + 22, ty, rgba(0xF4F7FF), Align::Left, text);
+        ty += 34;
+    };
+    std::snprintf(line, sizeof line, "Motion %s, %u readings", m.valid ? "on" : "none", m.samples);
+    row(line);
+    std::snprintf(line, sizeof line, "accel g   %+.2f %+.2f %+.2f", m.raw_accel[0], m.raw_accel[1], m.raw_accel[2]);
+    row(line);
+    std::snprintf(line, sizeof line, "gyro r/s  %+.2f %+.2f %+.2f", m.raw_gyro[0], m.raw_gyro[1], m.raw_gyro[2]);
+    row(line);
+    std::snprintf(line, sizeof line, "remote a  %+.2f %+.2f %+.2f", m.accel[0], m.accel[1], m.accel[2]);
+    row(line);
+    std::snprintf(line, sizeof line, "remote g  %+.2f %+.2f %+.2f", m.gyro[0], m.gyro[1], m.gyro[2]);
+    row(line);
+    std::snprintf(line, sizeof line, "pointer   %+.2f %+.2f   (R1 centres)", m.pointer_x, m.pointer_y);
+    row(line);
+    std::snprintf(line, sizeof line, "touch     %s %d, %d", m.touching ? "yes" : "no ", m.touch_x, m.touch_y);
+    row(line);
+    std::snprintf(line, sizeof line, "shake %s   buttons %04x", m.shaking ? "YES" : "no ", unsigned(p.joypad));
+    row(line);
+    /* Where Porpoise points: a ring over the picture. */
+    const float px = 960 + m.pointer_x * 940, py = 540 + m.pointer_y * 520;
+    g_gfx.panel(px - 16, py - 16, 32, 32, rgba(0xFFFFFF, 0.0f), 0.0f, 16, rgba(0xFFC85C, 0.95f), 3.0f);
+    g_gfx.panel(px - 3, py - 3, 6, 6, rgba(0xFFC85C), 1, 3);
+}
+
 void launch_frame(bool core_frame, double fps, void *)
 {
     g_time += 1.0 / 60.0;
@@ -758,6 +804,8 @@ void launch_frame(bool core_frame, double fps, void *)
         g_gfx.text_mid(porpoise::ui::Font::Bold, 28, 111, 55, porpoise::ui::rgba(0xF4F7FF),
                    porpoise::ui::Align::Center, text);
     }
+    if (g_play.motion_readout && !g_menu_open)
+        draw_motion_readout();
     if (g_menu_open)
         g_app.draw_game_menu(g_time);
 }
@@ -1019,6 +1067,26 @@ int main()
         playback.muted = g_play.muted;
         playback.filter = g_play.screen_filter;
         playback.strength = g_play.filter_strength / 10.0f;
+        /* A Wii game: the DualSense as a Wii Remote; a test build logs it. */
+        playback.wii = g_play.wii_config(launch->platform == "Wii");
+        const std::string debug_dir = g_data + "/debug";
+        if (g_settings.debug_logs)
+        {
+            playback.debug_dir = debug_dir.c_str();
+            mkdir(debug_dir.c_str(), 0777);
+            if (std::FILE *f = std::fopen((debug_dir + "/README.txt").c_str(), "w"))
+            {
+                std::fputs("Porpoise's debug folder (test builds; turn it off in Settings > System > Debug logs).\n\n"
+                           "motion.csv  Each frame of the last Wii game: what the DualSense's motion sensors and touch "
+                           "pad read, what Porpoise gave the game as the Wii Remote, the pointer and shakes.\n\n"
+                           "Send it with /data/homebrew/PPSA99764/trace.txt and "
+                           "/data/homebrew/PPSA99764/porpoise/core.log when you report how the Wii Remote felt.\n",
+                           f);
+                std::fclose(f);
+            }
+        }
+        if (playback.wii.active)
+            ps5::debug::mark_value("main: Wii game; Wii controller", playback.wii.controller);
         const std::string start_state = g_app.take_launch_state();
         playback.load_state = start_state.empty() ? nullptr : start_state.c_str();
         porpoise::core::Paths core_paths;

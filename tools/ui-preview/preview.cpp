@@ -543,6 +543,15 @@ int main(int argc, char **argv)
         press(kRight);
         settle();
         render("settings-controls", [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(kDown); /* Wii Remote */
+        press(kRight);
+        settle();
+        render("settings-wii-remote", [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(1u << 0); /* back to Controls */
+        press(kRight);
+        settle();
         press(kDown);     /* Customize buttons */
         press(kCross);
         settle();
@@ -624,6 +633,20 @@ int main(int argc, char **argv)
         menu_press(1u << 0, 9);
         menu_press(1u << 9); /* Controls */
         shot("ingame-controls");
+        {
+            /* The same tab for a Wii game: the Wii Remote's rows. */
+            const std::string was = lib.games()[3].platform;
+            lib.games()[3].platform = "Wii";
+            for (int i = 0; i < 4; ++i)
+                menu_press(1u << 1);
+            shot("ingame-controls-wii");
+            for (int i = 0; i < 10; ++i)
+                menu_press(1u << 1);
+            shot("ingame-controls-wii-2");
+            for (int i = 0; i < 14; ++i)
+                menu_press(1u << 0);
+            lib.games()[3].platform = was;
+        }
         menu_press(1u << 1);
         menu_press(1u << 4); /* Customize buttons, over the game */
         shot("ingame-mapping");

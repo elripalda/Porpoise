@@ -282,6 +282,28 @@ void App::add_game_rows(Settings &t, bool per_game)
         rows_.push_back(r);
     }
 
+    header("Wii Remote");
+    choice("wii_controller", "Wii controller",
+           "How a Wii game sees your DualSense. Remote + Nunchuk: the Nunchuk on the left stick and L1 / L2. Remote: "
+           "held pointing at the TV, with its motion. Sideways: held like an NES pad, tilt to steer. Two "
+           "controllers (beta): the second DualSense is the Nunchuk.",
+           &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
+                                  "Two controllers (beta)"});
+    choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: turn the controller (R1 centres it).",
+           &t.wii_pointer, 0, {"Gyro", "Touch pad", "Right stick"});
+    choice("wii_speed", "Pointer speed", "How far the gyro pointer moves when you turn the controller.", &t.wii_speed,
+           1, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"});
+    choice("wii_grip", "Grip", "How you hold the DualSense, so its motion turns the right way.", &t.wii_grip, 0,
+           {"Both hands", "One hand, left edge forward", "One hand, right edge forward"});
+    toggle("wii_motion", "Motion", "The DualSense's motion is the Remote's: tilt, swing and point.", &t.wii_motion);
+    toggle("wii_shake", "Flick to shake", "A quick flick of the controller shakes the Remote.", &t.wii_shake);
+    toggle("wii_invert_x", "Invert pointer left / right", "For testing: if the gyro pointer moves the wrong way.",
+           &t.wii_invert_x);
+    toggle("wii_invert_y", "Invert pointer up / down", "For testing: if the gyro pointer moves the wrong way.",
+           &t.wii_invert_y);
+    toggle("motion_readout", "Motion readout", "For testing: the controller's motion and the pointer, over the game.",
+           &t.motion_readout);
+
     header("System");
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
            &t.cpu_clock, 0, {"50%", "60%", "70%", "80%", "90%", "100%", "150%", "200%", "250%", "300%"});
@@ -294,6 +316,10 @@ void App::add_game_rows(Settings &t, bool per_game)
            {"English", "Japanese", "German", "French", "Spanish", "Italian", "Dutch", "Chinese (simplified)",
             "Chinese (traditional)", "Korean"});
     toggle("progressive", "Progressive scan", "480p output, as on a component cable.", &t.progressive);
+    if (!per_game)
+        toggle("debug_logs", "Debug logs",
+               "For testing: Wii games write the controller's motion to /data/porpoise/debug/motion.csv.",
+               &t.debug_logs);
 }
 
 void App::build_settings()

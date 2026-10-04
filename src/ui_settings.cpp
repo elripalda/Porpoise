@@ -69,6 +69,16 @@ const Field kFields[] = {
     {"sounds_volume", &Settings::sounds_volume, nullptr, 0, 10},
     {"button_layout", &Settings::button_layout, nullptr, 0, 5},
     {"rumble", nullptr, &Settings::rumble, 0, 1},
+    {"wii_controller", &Settings::wii_controller, nullptr, 0, 4},
+    {"wii_pointer", &Settings::wii_pointer, nullptr, 0, 2},
+    {"wii_speed", &Settings::wii_speed, nullptr, 1, 10},
+    {"wii_grip", &Settings::wii_grip, nullptr, 0, 2},
+    {"wii_motion", nullptr, &Settings::wii_motion, 0, 1},
+    {"wii_shake", nullptr, &Settings::wii_shake, 0, 1},
+    {"wii_invert_x", nullptr, &Settings::wii_invert_x, 0, 1},
+    {"wii_invert_y", nullptr, &Settings::wii_invert_y, 0, 1},
+    {"motion_readout", nullptr, &Settings::motion_readout, 0, 1},
+    {"debug_logs", nullptr, &Settings::debug_logs, 0, 1},
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
     {"dual_core", nullptr, &Settings::dual_core, 0, 1},
     {"fast_disc", nullptr, &Settings::fast_disc, 0, 1},
@@ -132,6 +142,8 @@ const char *const kManaged[] = {
     "dolphin_efb_access_defer_invalidation", "dolphin_bbox_enabled", "dolphin_efb_to_vram", "dolphin_defer_efb_copies",
     "dolphin_immediate_xfb", "dolphin_efb_scaled_copy", "dolphin_efb_emulate_format_changes",
     "dolphin_vertex_rounding", "dolphin_vi_skip", "dolphin_fast_texture_sampling",
+    /* The Wii Remote's pointer: Porpoise's pointer (gyro, touch pad), or the right stick. */
+    "dolphin_ir_mode",
 };
 } // namespace
 
@@ -500,6 +512,21 @@ std::string Settings::get(const std::string &key) const
     return fd->i ? std::to_string(this->*fd->i) : (this->*fd->b ? "1" : "0");
 }
 
+porpoise::pad::WiiConfig Settings::wii_config(bool active) const
+{
+    porpoise::pad::WiiConfig c;
+    c.active = active;
+    c.controller = std::clamp(wii_controller, 0, int(porpoise::pad::WiiControllerCount) - 1);
+    c.pointer = std::clamp(wii_pointer, 0, 2);
+    c.speed = std::clamp(wii_speed, 1, 10);
+    c.grip = std::clamp(wii_grip, 0, int(porpoise::pad::GripCount) - 1);
+    c.motion = wii_motion;
+    c.shake = wii_shake;
+    c.invert_x = wii_invert_x;
+    c.invert_y = wii_invert_y;
+    return c;
+}
+
 porpoise::pad::Mapping Settings::mapping() const
 {
     const int own = preset_in_use();
@@ -547,6 +574,7 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
         {"dolphin_cheats_enabled", on_off(cheats)},
         {"dolphin_language", std::to_string(kLanguages[std::clamp(language, 0, 9)])},
         {"dolphin_progressive_scan", on_off(progressive)},
+        {"dolphin_ir_mode", wii_pointer == 2 ? "1" : "2"},
     };
 }
 

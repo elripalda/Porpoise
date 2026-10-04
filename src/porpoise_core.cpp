@@ -98,11 +98,20 @@ struct Host
     float strength = 0.6f; /* its strength, 0..1 */
     bool have_frame = false;
     bool hold_input = false; /* after the menu: the game sees no buttons until all are let go */
+    porpoise::pad::WiiConfig wii;   /* a Wii game's Remote */
+    bool wii_changed = false;       /* the in-game menu changed it: the ports again */
+    std::FILE *motion_log = nullptr; /* the debug folder's motion.csv */
+    long long motion_log_bytes = 0;
+    unsigned long long frame_number = 0;
     bool plugged[porpoise::pad::kMaxPlayers] = {}; /* GameCube ports with a controller in */
     std::FILE *log = nullptr;
 };
 
 Host h;
+
+/* The Wii Remote's motion (below). */
+bool RETRO_CALLCONV set_sensor_state(unsigned port, enum retro_sensor_action action, unsigned rate);
+float RETRO_CALLCONV get_sensor_input(unsigned port, unsigned id);
 
 /* ---- options --------------------------------------------------------------------------- */
 
@@ -411,6 +420,14 @@ bool environment(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE:
         static_cast<retro_rumble_interface *>(data)->set_rumble_state = set_rumble;
         return true;
+    case RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE:
+    {
+        /* The DualSense's gyroscope and accelerometer, as the Wii Remote's. */
+        auto *sensors = static_cast<retro_sensor_interface *>(data);
+        sensors->set_sensor_state = set_sensor_state;
+        sensors->get_sensor_input = get_sensor_input;
+        return true;
+    }
     case RETRO_ENVIRONMENT_SET_GEOMETRY:
     {
         const auto *geometry = static_cast<const retro_game_geometry *>(data);
@@ -502,6 +519,71 @@ std::size_t audio_batch(const int16_t *data, std::size_t frames)
     return frames;
 }
 
+/* ---- the Wii Remote's motion ---------------------------------------------------------- */
+
+/* The DualSense playing a port's Remote: in two-controller play, the first. */
+int remote_player(unsigned port)
+{
+    return h.wii.controller == porpoise::pad::WiiTwoControllers ? 0 : int(port);
+}
+
+bool RETRO_CALLCONV set_sensor_state(unsigned port, enum retro_sensor_action action, unsigned)
+{
+    const bool enable = action == RETRO_SENSOR_ACCELEROMETER_ENABLE || action == RETRO_SENSOR_GYROSCOPE_ENABLE;
+    if (!enable)
+        return true;
+    const bool ok = h.wii.active && h.wii.motion && port < unsigned(porpoise::pad::kMaxPlayers);
+    if (h.log)
+        std::fprintf(h.log, "[porpoise] motion sensor %s for port %u: %s\n",
+                     action == RETRO_SENSOR_ACCELEROMETER_ENABLE ? "accelerometer" : "gyroscope", port,
+                     ok ? "on" : "off");
+    return ok;
+}
+
+float RETRO_CALLCONV get_sensor_input(unsigned port, unsigned id)
+{
+    if (!h.wii.active || !h.wii.motion || port >= unsigned(porpoise::pad::kMaxPlayers))
+        return 0.0f;
+    const porpoise::pad::Motion m = porpoise::pad::snapshot(remote_player(port)).motion;
+    switch (id)
+    {
+    case RETRO_SENSOR_ACCELEROMETER_X: return m.accel[0];
+    case RETRO_SENSOR_ACCELEROMETER_Y: return m.accel[1];
+    case RETRO_SENSOR_ACCELEROMETER_Z: return m.accel[2];
+    case RETRO_SENSOR_GYROSCOPE_X: return m.gyro[0];
+    case RETRO_SENSOR_GYROSCOPE_Y: return m.gyro[1];
+    case RETRO_SENSOR_GYROSCOPE_Z: return m.gyro[2];
+    default: return 0.0f;
+    }
+}
+
+/* Which device each port gets: GameCube pads, or the chosen Wii controller. */
+unsigned port_device(int)
+{
+    if (!h.wii.active)
+        return RETRO_DEVICE_JOYPAD;
+    return porpoise::pad::wii_device(h.wii.controller);
+}
+
+/* A line for the debug folder's motion.csv: what the controller felt and
+ * what the game was given. */
+void log_motion()
+{
+    if (!h.motion_log || h.motion_log_bytes > (40LL << 20))
+        return;
+    const porpoise::pad::State p = porpoise::pad::snapshot(0);
+    const porpoise::pad::Motion &m = p.motion;
+    const int n = std::fprintf(
+        h.motion_log,
+        "%llu,%u,%08x,%04x,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.3f,%.3f,%d,%d,%d,%d\n",
+        h.frame_number, m.samples, p.buttons, p.joypad, m.raw_accel[0], m.raw_accel[1], m.raw_accel[2],
+        m.raw_gyro[0], m.raw_gyro[1], m.raw_gyro[2], m.orientation[0], m.orientation[1], m.orientation[2],
+        m.orientation[3], m.accel[0], m.accel[1], m.accel[2], m.gyro[0], m.gyro[1], m.gyro[2], m.pointer_x,
+        m.pointer_y, m.touching ? 1 : 0, m.touch_x, m.touch_y, m.shaking ? 1 : 0);
+    if (n > 0)
+        h.motion_log_bytes += n;
+}
+
 void input_poll()
 {
     /* The pad is read once per frame by the run loop, before retro_run. */
@@ -511,14 +593,37 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
     if (port >= unsigned(porpoise::pad::kMaxPlayers) || (port == 0 && h.hold_input))
         return 0;
-    const porpoise::pad::State pad = porpoise::pad::snapshot(int(port));
+    const bool two = h.wii.active && h.wii.controller == porpoise::pad::WiiTwoControllers;
+    if (two && port > 0)
+        return 0; /* both controllers are player 1's Remote and Nunchuk */
+    porpoise::pad::State pad = porpoise::pad::snapshot(int(port));
+    porpoise::pad::State nunchuk_pad;
+    if (two)
+    {
+        /* The second controller is the Nunchuk: its buttons and stick. */
+        nunchuk_pad = porpoise::pad::snapshot(1);
+        pad.joypad |= nunchuk_pad.nunchuk;
+    }
     switch (device)
     {
     case RETRO_DEVICE_JOYPAD:
         if (id == RETRO_DEVICE_ID_JOYPAD_MASK)
             return static_cast<int16_t>(pad.joypad);
         return id < 16 && (pad.joypad & (1u << id)) ? 1 : 0;
+    case RETRO_DEVICE_POINTER:
+        /* The Wii Remote's pointer (the core's "mouse controls pointer"). */
+        if (index != 0 || !h.wii.active)
+            return 0;
+        if (id == RETRO_DEVICE_ID_POINTER_X)
+            return static_cast<int16_t>(std::clamp(pad.motion.pointer_x, -1.0f, 1.0f) * 32767.0f);
+        if (id == RETRO_DEVICE_ID_POINTER_Y)
+            return static_cast<int16_t>(std::clamp(pad.motion.pointer_y, -1.0f, 1.0f) * 32767.0f);
+        if (id == RETRO_DEVICE_ID_POINTER_PRESSED)
+            return 1;
+        return 0;
     case RETRO_DEVICE_ANALOG:
+        if (index == RETRO_DEVICE_INDEX_ANALOG_LEFT && two)
+            return id == RETRO_DEVICE_ID_ANALOG_X ? nunchuk_pad.left_x : nunchuk_pad.left_y;
         if (index == RETRO_DEVICE_INDEX_ANALOG_LEFT)
             return id == RETRO_DEVICE_ID_ANALOG_X ? pad.left_x : pad.left_y;
         if (index == RETRO_DEVICE_INDEX_ANALOG_RIGHT)
@@ -628,6 +733,20 @@ void set_option(const char *key, const char *value)
         o->value = value;
         h.options_updated = true;
     }
+}
+
+void set_wii(const porpoise::pad::WiiConfig &config)
+{
+    if (!h.wii.active)
+        return;
+    const bool device_changed = config.controller != h.wii.controller;
+    h.wii = config;
+    h.wii.active = true;
+    porpoise::pad::set_wii(h.wii);
+    h.wii_changed |= device_changed;
+    if (h.log)
+        std::fprintf(h.log, "[porpoise] Wii controller now %d, pointer %d, grip %d, speed %d\n", h.wii.controller,
+                     h.wii.pointer, h.wii.grip, h.wii.speed);
 }
 
 void set_fast_forward(int factor)
@@ -741,6 +860,40 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     h.hold_input = false;
     h.fast_forward = 1;
     h.pending_state = playback.load_state ? playback.load_state : "";
+    /* A Wii game's Remote; undone however the game ends. */
+    h.wii = playback.wii;
+    h.wii_changed = false;
+    h.frame_number = 0;
+    porpoise::pad::set_wii(h.wii);
+    struct WiiOff
+    {
+        ~WiiOff()
+        {
+            porpoise::pad::set_wii(porpoise::pad::WiiConfig{});
+            h.wii = porpoise::pad::WiiConfig{};
+            if (h.motion_log)
+                std::fclose(h.motion_log);
+            h.motion_log = nullptr;
+        }
+    } wii_off;
+    if (playback.debug_dir && h.wii.active)
+    {
+        mkdir(playback.debug_dir, 0777);
+        const std::string path = std::string(playback.debug_dir) + "/motion.csv";
+        h.motion_log = std::fopen(path.c_str(), "w");
+        h.motion_log_bytes = 0;
+        if (h.motion_log)
+            std::fprintf(h.motion_log,
+                         "# Porpoise motion log: one line per frame. raw = the DualSense as the console gives it "
+                         "(g, rad/s; x right, y out of the face, z toward the player); remote = turned into the "
+                         "Wii Remote's axes for the grip (x left, y back, z up). controller %d pointer %d grip %d "
+                         "speed %d motion %d shake %d\n"
+                         "frame,samples,buttons,joypad,raw_ax,raw_ay,raw_az,raw_gx,raw_gy,raw_gz,qx,qy,qz,qw,"
+                         "remote_ax,remote_ay,remote_az,remote_gx,remote_gy,remote_gz,pointer_x,pointer_y,touching,"
+                         "touch_x,touch_y,shake\n",
+                         h.wii.controller, h.wii.pointer, h.wii.grip, h.wii.speed, h.wii.motion ? 1 : 0,
+                         h.wii.shake ? 1 : 0);
+    }
     h.frames_with_picture = 0;
     h.running = false;
     h.filter = playback.filter;
@@ -812,10 +965,15 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     porpoise::pad::poll();
     for (int port = 0; port < porpoise::pad::kMaxPlayers; ++port)
     {
-        h.plugged[port] = port == 0 || porpoise::pad::connected(port);
+        const bool two = h.wii.active && h.wii.controller == porpoise::pad::WiiTwoControllers;
+        h.plugged[port] = port == 0 || (porpoise::pad::connected(port) && !two);
         if (h.plugged[port])
-            h.api.set_controller_port_device(unsigned(port), RETRO_DEVICE_JOYPAD);
+            h.api.set_controller_port_device(unsigned(port), port_device(port));
     }
+    if (h.wii.active && h.log)
+        std::fprintf(h.log, "[porpoise] Wii controller %d, pointer %d, grip %d, motion %s, shake %s\n",
+                     h.wii.controller, h.wii.pointer, h.wii.grip, h.wii.motion ? "on" : "off",
+                     h.wii.shake ? "on" : "off");
     ps5::debug::mark_value("core: controllers plugged in", porpoise::pad::connected_count());
 
     retro_system_av_info av{};
@@ -896,12 +1054,23 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     for (;;)
     {
         const porpoise::pad::State &pad = porpoise::pad::poll();
+        ++h.frame_number;
+        log_motion();
+        if (h.wii_changed)
+        {
+            /* The in-game menu changed the Wii controller: every port again. */
+            h.wii_changed = false;
+            for (int port = 0; port < porpoise::pad::kMaxPlayers; ++port)
+                if (h.plugged[port])
+                    h.api.set_controller_port_device(unsigned(port), port_device(port));
+        }
         /* A controller that joins mid-game is plugged into its GameCube port. */
+        const bool two_controllers = h.wii.active && h.wii.controller == porpoise::pad::WiiTwoControllers;
         for (int port = 1; port < porpoise::pad::kMaxPlayers; ++port)
-            if (!h.plugged[port] && porpoise::pad::connected(port))
+            if (!h.plugged[port] && porpoise::pad::connected(port) && !two_controllers)
             {
                 h.plugged[port] = true;
-                h.api.set_controller_port_device(unsigned(port), RETRO_DEVICE_JOYPAD);
+                h.api.set_controller_port_device(unsigned(port), port_device(port));
                 ps5::debug::mark_value("core: a controller joined; player", port + 1);
                 if (h.log)
                     std::fprintf(h.log, "[porpoise] player %d joined\n", port + 1);

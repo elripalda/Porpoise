@@ -62,6 +62,16 @@ struct Settings
         {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}, {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15},
         {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}, {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}};
     bool rumble = true;
+    /* Wii games: how the DualSense plays the Wii Remote (porpoise::pad::WiiConfig). */
+    int wii_controller = 0; /* Remote + Nunchuk, Remote, sideways, Classic, two controllers */
+    int wii_pointer = 0;    /* gyro, touch pad, right stick */
+    int wii_speed = 5;      /* the gyro pointer's speed, 1..10 */
+    int wii_grip = 0;       /* both hands; one hand, left edge forward; one hand, right edge forward */
+    bool wii_motion = true; /* the DualSense's motion is the Remote's */
+    bool wii_shake = true;  /* a flick shakes the Remote */
+    bool wii_invert_x = false, wii_invert_y = false;
+    bool motion_readout = false; /* in a game: the controller's motion on screen (testing) */
+    bool debug_logs = true;      /* test builds: /data/porpoise/debug */
     /* System */
     int cpu_clock = 5;       /* index into the clock list (50% .. 300%): 100% */
     bool dual_core = true;   /* dolphin_main_cpu_thread */
@@ -104,6 +114,8 @@ struct Settings
     bool set(const std::string &key, const std::string &value);
     /* Its value as the file has it ("" for no such setting). */
     std::string get(const std::string &key) const;
+    /* The Wii Remote's settings, for a Wii game (active) or not. */
+    porpoise::pad::WiiConfig wii_config(bool active) const;
     /* The buttons in effect: a ready-made layout, or one of the player's own. */
     porpoise::pad::Mapping mapping() const;
     /* The player's own layout 0..3 being used, or -1 for a ready-made one. */
