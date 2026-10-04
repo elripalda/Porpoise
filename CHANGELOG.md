@@ -4,13 +4,14 @@
 
 ### Revolution theme (Settings → Interface → Theme)
 - A bright home screen of game tiles, twelve to a page: page arrows at the
-  sides and L2 / R2 turn the page, and a
-  floor along the bottom keeps a segmented clock, the date, and round buttons
-  for Settings and the memory cards. Porpoise's mark and the tabs sit on top.
+  sides and L2 / R2 turn the page, and a floor along the bottom keeps a
+  segmented clock, the date, and round buttons for Settings and the memory
+  cards. Porpoise's mark and the tabs sit on top.
 - **Point with the controller:** a hand pointer (drawn by Ruben) that opens
   over empty space and points over anything you can choose, leans as you twist
-  the controller, with a tap of rumble and a tick as it lands on something. The D-pad works as well; the touch pad turns pointing on and
-  off; R3 centres it.
+  the controller, with a tap of rumble and a tick as it lands on something.
+  The D-pad works as well; the touch pad turns pointing on and off; R3
+  centres it.
 - **Wii discs' own tiles and banners:** Porpoise reads each Wii disc's banner
   (.iso, .rvz, .wia, .wbfs, .ciso, .gcz) and plays it — animated tiles on the
   home screen, the full banner and its jingle when a tile opens. GameCube games
@@ -27,16 +28,41 @@
   and the GameCube cards.
 - Buttons and prompts read in Title Case (in English).
 
+### Wii Remote on the DualSense (beta)
+- Wii games get a Wii controller: **Remote + Nunchuk** (the default),
+  **Remote**, **Remote sideways**, **Classic Controller**, or **two
+  controllers** (alpha: a second DualSense is the Nunchuk).
+- **Point at the screen** with the gyro (hold R1 a moment to centre), the touch
+  pad or the right stick. The DualSense's motion is the Remote's (tilt, swing,
+  point) and a quick flick shakes it. The pointer is smoothed against hand
+  tremor without lagging on a sweep.
+- **Wii Remote setup:** pick the controller, centre, then point at two corners
+  of your screen, so the pointer matches your TV and how far you sit. It can
+  come up before each Wii game (Triangle skips it); Simple and Advanced, with
+  four named presets.
+- **Grip:** Auto reads how you hold the DualSense (flat in both hands, or stood
+  on end in either hand), or choose one yourself.
+- **How to hold it:** a page that draws the DualSense as each Wii controller,
+  with what every button does. In a Wii game, the in-game menu can
+  recalibrate the pointer, open the setup or switch presets.
+
 ### Memory Cards
 - **Wii saves:** L2 / R2 switches between the GameCube cards and the Wii saves
   Dolphin keeps, each with its own banner, icon and name. Square backs one up,
   Triangle deletes it.
 
+### Faster and lighter
+- Banners and covers stop working in the background the moment a game starts,
+  so the game has the console to itself.
+- Animated tiles are drawn a frame at a time into textures streamed to the
+  GPU, and covers and banners off screen give their memory back.
+
 ### Also
-- Sort & filter (All / GameCube / Wii), "Get covers and info now", covers for
-  games added while a download runs, custom texture packs (the core now sees
-  the console's memory), per-game "Before this game" for the Wii Remote setup,
-  developer options kept out of the way, the updater's "Finishing up".
+- **Sort & filter:** All / GameCube / Wii, and "Get covers and info now".
+- Covers arrive for games added while a download is running.
+- **Custom texture packs** load now (the core was told the console had no
+  memory to spare for them).
+- The updater shows "Finishing up" with a spinner while it installs.
 
 ## 1.1 — 2026-10-04 (build 15)
 

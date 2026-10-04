@@ -192,7 +192,8 @@ def readme(components, tag):
         "Dolphin port patch and the scripts that build the title",
         "(https://github.com/elripalda/Porpoise, tools/build-porpoise.sh).",
         "",
-        "Not included: no games, BIOS files, console firmware or decryption keys. The",
+        "Not included: no games, BIOS files or console firmware. The only key is the",
+        "Wii disc key Dolphin itself includes, used to read a Wii disc's banner. The",
         "games you play are the backups you made from your own discs.",
         "",
     ]

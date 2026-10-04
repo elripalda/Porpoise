@@ -1,10 +1,11 @@
 Porpoise - legal use
 ====================
 
-PIRACY IS NOT CONDONED. Porpoise contains no games, no console BIOS, IPL or
-firmware files, and no decryption keys, and none will ever be provided or
-linked to. Play only games you own, as backups you made yourself from your
-own discs. Downloading or sharing games you do not own is piracy: do not do
+PIRACY IS NOT CONDONED. Porpoise contains no games and no console BIOS, IPL
+or firmware files, and none will ever be provided or linked to. The only key
+it carries is the Wii disc key that Dolphin itself includes, used to read a
+Wii disc's own banner. Play only games you own, as backups you made yourself
+from your own discs. Downloading or sharing games you do not own is piracy: do not do
 it, and do not ask for help with it.
 
 NOT AFFILIATED WITH NINTENDO OR SONY. Porpoise is an independent, free and

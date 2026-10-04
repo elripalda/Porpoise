@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 1.1</b></a> ·
+  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 1.5</b></a> ·
   <a href="#install">Install</a> ·
   <a href="#controls">Controls</a> ·
   <a href="BUILDING.md">Build from source</a> ·
@@ -46,6 +46,41 @@ BIOS or firmware files.
 - Sort by title, recently played, most played or favourites first. Each game
   shows its play time and when you last played it.
 
+### Revolution theme
+- **Settings → Interface → Theme** switches between **Porpoise** (the cover
+  flow) and **Revolution**: a bright home screen of game tiles, twelve to a
+  page, with a segmented clock and the date along the bottom and round buttons
+  for Settings and the memory cards. Arrows at the sides (or L2 / R2) turn the
+  page. *Home screen* can switch it to a cover flow instead.
+- **Point with the controller:** a hand pointer that follows the DualSense,
+  opens over empty space, points over anything you can choose and leans as you
+  twist. The D-pad works too, the touch pad turns pointing on and off, and R3
+  centres it.
+- **Wii games play their own tile and banner**, animated, read from the disc
+  (any of the formats above), with the banner's jingle when a tile opens.
+  GameCube games show their covers.
+- **Cross** on a tile grows it to fill the screen and opens it, with **Wii
+  Controls** (or **Game Settings**) and **Start**, plus save states, save data
+  and favourite. **Square** on a tile plays it straight away.
+- Memory Cards, Settings, dialogs and the in-game menu all go white with it.
+  Switching to Revolution shows your Wii games and Wii saves; switching back
+  shows every game and the GameCube cards.
+
+### Wii Remote on the DualSense (beta)
+- Each Wii game gets a Wii controller: **Remote + Nunchuk** (the default),
+  **Remote**, **Remote sideways**, **Classic Controller**, or **two
+  controllers** (alpha: a second DualSense is the Nunchuk).
+- The Remote's pointer comes from the gyro (hold R1 a moment to centre it),
+  the touch pad or the right stick. The DualSense's motion is the Remote's,
+  and a quick flick shakes it.
+- **Wii Remote setup:** pick the controller, centre, then point at two corners
+  of your screen, so the pointer matches your TV and how far away you sit. It
+  can come up before each Wii game (Triangle skips it), has Simple and Advanced
+  modes and keeps up to four presets.
+- **Grip:** Auto reads how you're holding the DualSense, or choose one.
+  **How to hold it** (Settings → Wii Remote) draws the DualSense as each Wii
+  controller with every button labelled.
+
 ### Box art and game info
 - Front covers, back covers and disc art download from
   [GameTDB](https://www.gametdb.com) while the console is online.
@@ -70,6 +105,8 @@ BIOS or firmware files.
 - **Square** copies a save to the other slot and **Triangle** deletes it. Both
   ask first.
 - **Save data** on a game's details page goes straight to that game's save.
+- **Wii saves:** L2 / R2 switches to the Wii saves Dolphin keeps, each with its
+  banner, icon and name. **Square** backs one up and **Triangle** deletes it.
 
 ### Controllers and players
 - Up to four players. Every controller signed in to a PS5 user is a player,
@@ -92,9 +129,10 @@ Settings are split into sections:
 | **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
 | **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume |
 | **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, connected controllers |
+| **Wii Remote** | Wii Remote setup, presets, setup before each Wii game, How to hold it, Wii controller, pointer, pointer speed, grip, motion, flick to shake |
 | **System** | Emulated CPU clock (50–300%), dual core, fast disc loading, cheats, console language, progressive scan |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info |
-| **Interface** | Menu language, reduced motion, larger text, **reset all settings** |
+| **Interface** | Menu language, **Theme** (Porpoise or Revolution), Revolution's home screen and pointer, reduced motion, larger text, **reset all settings** |
 | **About** | Version, **Updates** (check GitHub and install a new Porpoise), a QR code for reporting a bug, and credits |
 
 - **Per-game settings.** Any game can override the Video, Graphics, Audio, Controls
@@ -196,7 +234,7 @@ that closed the menu never reaches the game.
 
 ## Install
 
-1. Download **`Porpoise-1.1.zip`** from the
+1. Download **`Porpoise-1.5.zip`** from the
    [latest release](https://github.com/elripalda/Porpoise/releases/latest) and
    unzip it on your computer. You get a folder named **`PPSA99764`**.
 2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
@@ -299,6 +337,8 @@ becomes the next player, up to four, and can join in the middle of a game.
 | `/data/porpoise/info.tsv` | Downloaded game details (`info-es.tsv` and so on for other languages) |
 | `/data/porpoise/recommended.ini` | Porpoise's recommended settings, as last downloaded |
 | `/data/porpoise/setups/` | Your four setups (Video and Graphics settings to use on any game) |
+| `/data/porpoise/banners/` | Wii discs' banners, read once from each disc |
+| `/data/porpoise/saves/User/Wii/backups/` | Wii saves you backed up from Memory Cards |
 | `/data/porpoise/latest-release.json` | What GitHub last said about the newest release |
 | `/data/porpoise/lang/` | Your own translation fixes (optional) |
 
@@ -335,8 +375,9 @@ console firmware, the game's disc ID and those logs.
 
 ## Known limitations
 
-- Wii support is experimental. Games that need Wii Remote pointing or motion
-  aren't practical on a DualSense yet.
+- Wii support is experimental. The Wii Remote on the DualSense is in beta:
+  pointing works well, motion-heavy games are still being tuned, and two
+  controllers as Remote and Nunchuk is alpha.
 - Save states are tied to the Porpoise and Dolphin version that made them; a
   future update may not load older ones. Your memory card saves always carry
   over.
@@ -373,6 +414,10 @@ It stands on the work of many people. The full list, with licences, is in
 - **[Zacksly](https://zacksly.itch.io)** ([@_Zacksly](https://twitter.com/_Zacksly)),
   for *PS5 Button Icons and Controls* (CC BY 3.0): the DualSense drawings and the
   button icons, adapted for Porpoise.
+- The **[Wii Banner Player Project](https://github.com/jordan-woyak/wii-banner-player)**
+  (zlib), for how a Wii disc's banner is read and played, and the
+  **[Zstandard](https://github.com/facebook/zstd)** educational decoder, for
+  reading `.rvz` discs.
 - **[Nunito](https://github.com/googlefonts/nunito)** and
   **[Noto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp)**
   (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
@@ -383,9 +428,11 @@ It stands on the work of many people. The full list, with licences, is in
 ## Legal
 
 > [!IMPORTANT]
-> **Porpoise does not condone piracy.** It contains no games, no console BIOS,
-> IPL or firmware files, and no decryption keys, and none will ever be provided
-> or linked to. Play only games you own, as backups you made from your own discs.
+> **Porpoise does not condone piracy.** It contains no games and no console
+> BIOS, IPL or firmware files, and none will ever be provided or linked to. The
+> only key it carries is the Wii disc key that Dolphin itself includes, used to
+> read a Wii disc's own banner. Play only games you own, as backups you made
+> from your own discs.
 
 Porpoise is an independent, free and open-source project. It is **not
 affiliated with, endorsed by or sponsored by Nintendo or Sony Interactive
