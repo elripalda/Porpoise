@@ -741,7 +741,7 @@ void draw_motion_readout()
     using namespace porpoise::ui;
     const porpoise::pad::State p = porpoise::pad::snapshot(0);
     const porpoise::pad::Motion &m = p.motion;
-    const float x = 36, y = 100, w = 520, h = 330;
+    const float x = 36, y = 100, w = 520, h = 364;
     g_gfx.panel(x, y, w, h, rgba(0x0A1236, 0.8f), 0.9f, 14, rgba(0x5CD3FF, 0.9f), 1.6f);
     char line[160];
     float ty = y + 34;
@@ -764,6 +764,16 @@ void draw_motion_readout()
     std::snprintf(line, sizeof line, "touch     %s %d, %d", m.touching ? "yes" : "no ", m.touch_x, m.touch_y);
     row(line);
     std::snprintf(line, sizeof line, "shake %s   buttons %04x", m.shaking ? "YES" : "no ", unsigned(p.joypad));
+    row(line);
+    /* What the game is told the remote's camera sees: the sensor bar's lights. */
+    porpoise::pad::SensorBarDot dots[2];
+    porpoise::pad::sensor_bar_dots(m.pointer_x, m.pointer_y, dots);
+    if (g_play.wii_pointer != 2)
+        std::snprintf(line, sizeof line, "camera    %4d,%3d  %4d,%3d", dots[0].visible ? int(dots[0].x * 1023) : -1,
+                      dots[0].visible ? int(dots[0].y * 767) : -1, dots[1].visible ? int(dots[1].x * 1023) : -1,
+                      dots[1].visible ? int(dots[1].y * 767) : -1);
+    else
+        std::snprintf(line, sizeof line, "camera    (right stick aims)");
     row(line);
     /* Where Porpoise points: a ring over the picture. */
     const float px = 960 + m.pointer_x * 940, py = 540 + m.pointer_y * 520;

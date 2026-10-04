@@ -143,7 +143,7 @@ const char *const kManaged[] = {
     "dolphin_immediate_xfb", "dolphin_efb_scaled_copy", "dolphin_efb_emulate_format_changes",
     "dolphin_vertex_rounding", "dolphin_vi_skip", "dolphin_fast_texture_sampling",
     /* The Wii Remote's pointer: Porpoise's pointer (gyro, touch pad), or the right stick. */
-    "dolphin_ir_mode",
+    "dolphin_ir_mode", "dolphin_ir_passthrough",
 };
 } // namespace
 
@@ -575,6 +575,9 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
         {"dolphin_language", std::to_string(kLanguages[std::clamp(language, 0, 9)])},
         {"dolphin_progressive_scan", on_off(progressive)},
         {"dolphin_ir_mode", wii_pointer == 2 ? "1" : "2"},
+        /* Gyro and touch pad: Porpoise works out what the remote's camera sees
+         * (porpoise_core.cpp), so the game's cursor is exactly Porpoise's. */
+        {"dolphin_ir_passthrough", on_off(wii_pointer != 2)},
     };
 }
 

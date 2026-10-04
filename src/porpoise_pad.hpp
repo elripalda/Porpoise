@@ -158,6 +158,19 @@ struct Motion
     unsigned samples = 0;         /* readings this poll */
 };
 
+/* What the Wii Remote's camera sees of the sensor bar when it points at
+ * (pointer_x, pointer_y), -1..1 across the screen: the two lights, each x and
+ * y over 0..1 of the camera's view, and whether it is in view. The same
+ * geometry Dolphin uses for its own mouse pointer (Total Yaw 25, Total Pitch
+ * 25, Vertical Offset 10 cm, sensor bar above the TV), so the game's cursor
+ * lands where Porpoise's pointer is. */
+struct SensorBarDot
+{
+    float x = 0, y = 0;
+    bool visible = false;
+};
+void sensor_bar_dots(float pointer_x, float pointer_y, SensorBarDot out[2]);
+
 struct State
 {
     Motion motion;

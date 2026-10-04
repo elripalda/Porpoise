@@ -705,6 +705,44 @@ unsigned wii_device(int controller)
     }
 }
 
+void sensor_bar_dots(float pointer_x, float pointer_y, SensorBarDot out[2])
+{
+    /* A port of Dolphin's CameraLogic::GetCameraPoints with the Point group's
+     * transform (Dynamics.cpp EmulatePoint, WiimoteEmu GetTransformation):
+     * the remote 2 m from the bar, the bar 10 cm above the aim point, turned
+     * by yaw and pitch so the cursor's -1..1 spans 25 degrees each way. */
+    constexpr float kPi = 3.14159265358979f;
+    constexpr float kYaw = 25.0f * kPi / 180.0f / 2.0f;
+    constexpr float kPitch = 25.0f * kPi / 180.0f / 2.0f;
+    constexpr float kDistance = 2.0f, kHeight = 0.10f, kSeparation = 0.2f;
+    constexpr float kFovX = 42.0f * kPi / 180.0f, kFovY = kFovX / (4.0f / 3.0f);
+    const float cx = std::clamp(pointer_x, -1.0f, 1.0f);
+    const float cy = -std::clamp(pointer_y, -1.0f, 1.0f); /* up is + for Dolphin */
+    /* angle = (pitch * -cy, 0, yaw * -cx); the transform rotates by -angle. */
+    const float ax = kPitch * cy, az = kYaw * cx;
+    const float sx = std::sin(ax), cxr = std::cos(ax), sz = std::sin(az), czr = std::cos(az);
+    /* R = RotateZ(az) * RotateX(ax), row-major. */
+    const float r[9] = {czr, -sz * cxr, sz * sx, sz, czr * cxr, -czr * sx, 0, sx, cxr};
+    const float t = 1.0f / std::tan(kFovY / 2.0f);
+    for (int i = 0; i < 2; ++i)
+    {
+        /* The light, moved by -position (0, 2, -height), then rotated. */
+        const float v[3] = {i == 0 ? -kSeparation / 2 : kSeparation / 2, -kDistance, kHeight};
+        const float w[3] = {r[0] * v[0] + r[1] * v[1] + r[2] * v[2], r[3] * v[0] + r[4] * v[1] + r[5] * v[2],
+                            r[6] * v[0] + r[7] * v[1] + r[8] * v[2]};
+        /* RotateX(90 degrees): (x, y, z) -> (x, -z, y); then the perspective. */
+        const float px = w[0], py = -w[2], pz = w[1];
+        const float clip_x = px * t / (kFovX / kFovY), clip_y = py * t, clip_w = -pz;
+        out[i] = {};
+        if (clip_w <= 0)
+            continue;
+        const float x = (1 - clip_x / clip_w) / 2, y = (1 - clip_y / clip_w) / 2;
+        if (x < 0 || y < 0 || x >= 1 || y >= 1)
+            continue;
+        out[i] = {x, y, true};
+    }
+}
+
 void recenter(int player)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
