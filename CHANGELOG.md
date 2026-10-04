@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.1 — the quality-of-life update
+
+### In-game menu
+- Four tabs, switched with L1 / R1: **Game**, **Video**, **Graphics** and
+  **Controls**, with nearly every setting there, applied at once and saved for
+  that game.
+- **Save states:** three slots per game, each with a picture. Save and load
+  from the menu, or start a game from a slot in its Details page.
+- **Fast forward:** 2x or 4x, shown in a corner while it's on.
+- The Controls tab draws the DualSense with a line out to every button and the
+  GameCube button it plays, and opens Customize buttons over the paused game.
+
+### Controls
+- **Four layouts of your own** (*My layout 1–4*) beside GameCube and
+  PlayStation. Any game can use any of them. 1.0's custom buttons become
+  *My layout 1* (a game's own custom buttons move to a free layout).
+- New controller art and **button icons everywhere**, from Zacksly's
+  *PS5 Button Icons and Controls* (CC BY 3.0).
+- The DualSense **light bar** shows each player's colour.
+
+### Picture
+- **Screen filters:** Smooth, Sharp, Sharpen, CRT, Arcade CRT and VHS, with a
+  strength setting.
+- **Borders** for 4:3 games: Porpoise glass, Midnight and Arcade cabinet, plus
+  your own PNGs in `/data/porpoise/borders/`.
+
+### Library
+- **Favourites** (Options): a gold star on the box, and a *Favourites first*
+  sort.
+- **Play time** for every game, and a *Most played* sort.
+- **Recommended settings** in each game's settings: Dolphin's own fixes for the
+  game, and Porpoise's tested picks, applied with one press and updated daily.
+
+### Languages
+- **Italiano** and **日本語** join English, Español, Français and Português,
+  with a flag beside each language.
+- Game descriptions in Spanish, French, Portuguese and Italian where GameTDB
+  has them.
+
+### Also
+- An **update notice** when a new Porpoise is out (library and About).
+- A **QR code** in About that opens the bug tracker on your phone.
+- Faster save-state pictures; second discs of two-disc games keep their own
+  history and states.
+
 ## 1.0 — 2026-10-03
 
 The first public release of Porpoise.

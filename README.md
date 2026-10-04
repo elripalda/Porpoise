@@ -52,7 +52,8 @@ controller and enjoyed from the couch.
   USB or extended drive. You can also add folders with the built-in folder
   browser, and it searches four levels deep.
 - **Game formats:** `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`.
-- **Sort** by title (A–Z) or by recently played. Each game shows when you last
+- **Sort** by title (A–Z), recently played, most played or favourites first.
+  Each game shows its play time and when you last
   played it.
 
 ### Box art and game info
@@ -72,8 +73,13 @@ controller and enjoyed from the couch.
   in your hands.
 - **L2 / R2** swipe to the previous or next game without leaving Details.
 - The disc spins beside the box, showing its real label art.
-- **Play**, **Game settings** and **Save data** are one press away. A game with
-  its own settings is marked *Custom*.
+- **Play**, **Save states**, **Game settings** and **Save data** are one press
+  away. A game with its own settings is marked *Custom*, and one with recommended
+  settings says so.
+- **Save states:** three slots per game, each with a picture of the moment it
+  was saved. Start the game straight from any of them.
+- **Options** marks a game as a **favourite** (a gold star on its box), here or
+  in the library. Details also shows your **play time**.
 
 ### Memory cards
 - **Slot A and Slot B**, side by side like a classic memory-card manager. Each
@@ -88,12 +94,15 @@ controller and enjoyed from the couch.
 - **Up to four players.** Every controller signed in to a PS5 user is a player:
   turn on a second controller, pick a user for it, and it joins, even in the
   middle of a game.
-- **Three button layouts.** *GameCube* (the default: Cross is A, Square is B,
-  as on the GameCube pad), *PlayStation* (Cross is A, Circle is B) and *Custom*.
+- **Button layouts.** *GameCube* (the default: Cross is A, Square is B, as on
+  the GameCube pad), *PlayStation* (Cross is A, Circle is B), and **four layouts
+  of your own** (*My layout 1–4*).
 - **Customize buttons** shows a picture of the DualSense with the GameCube
-  button each control plays. Pick a GameCube button, press the DualSense button
-  you want, and the two swap places so nothing is ever left without a button.
-- Any game can have its own layout, and analog L and R follow the triggers.
+  button each control plays. Choose which of your layouts to edit, pick a
+  GameCube button, press the DualSense button you want, and the two swap places
+  so nothing is ever left without a button. It works from inside a game too.
+- Any game can use any layout, and analog L and R follow the triggers.
+- The **light bar** shows each player's colour: blue, red, green and pink.
 
 ### Settings
 Settings open on a rail of sections; inside each section, rows show their value
@@ -101,30 +110,52 @@ as chips.
 
 | Section | What's inside |
 |---|---|
-| **Video** | Internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, smooth or sharp scaling, FPS counter |
+| **Video** | Internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
 | **Graphics** | Shader compilation (asynchronous ubershaders by default, for stutter-free play), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
 | **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume |
-| **Controls** | Button layout (GameCube, PlayStation or Custom), Customize buttons, vibration, connected controllers |
+| **Controls** | Button layout (GameCube, PlayStation or one of your four), Customize buttons, vibration, connected controllers |
 | **System** | Emulated CPU clock (50–300%), dual core, fast disc loading, cheats, console language, progressive scan |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info |
 | **Interface** | Menu language, reduced motion, larger text, **reset all settings** |
-| **About** | Version and credits |
+| **About** | Version, an update notice when a new Porpoise is out, a QR code for reporting a bug, and credits |
 
 - **Per-game settings.** Any game can override the Video, Graphics, Audio, Controls
   and System settings. Changed values show in blue, and *This game → Reset to
   default* clears them.
+- **Recommended settings.** A game's settings list **Dolphin's own fixes** for
+  it, from Dolphin's per-game database (applied automatically), and
+  **Porpoise's picks**, tested settings you can apply with one press. The picks
+  come from [`data/recommended.ini`](data/recommended.ini) in this repository
+  and update by themselves once a day.
+
+### Screen filters and borders
+- **Screen filters:** *Smooth*, *Sharp*, *Sharpen*, *CRT* (scanlines and an
+  aperture grille), *Arcade CRT* (a curved tube with rounded corners) and *VHS*
+  (tracking wobble, colour bleed and tape noise), each with a strength.
+- **Borders** fill the bars beside a 4:3 picture when widescreen is off:
+  *Porpoise glass*, *Midnight* and an *Arcade cabinet* with a curved opening.
+  **Make your own:** a 1920×1080 PNG, transparent where the picture shows (the
+  4:3 picture fills x 240–1680), in `/data/porpoise/borders/`. It appears in
+  the list by its file name.
 - **Reset all settings** puts Porpoise back the way it ships. Your games,
   folders and saves are kept.
 
 ### In-game menu
 Press **Options + touch pad** together while playing. The game pauses and a
-glass menu slides in from the left:
+glass menu slides in from the left, with four tabs (**L1 / R1**):
 
-- **Resume**
-- **Internal resolution**, **Widescreen**, **FPS counter**, **Upscaling** and
-  **Volume**. Changes apply immediately and are saved for that game.
-- **Quit to library:** back to the shelf without leaving Porpoise.
-- **Close Porpoise:** back to the PS5 home screen.
+- **Game:** Resume, **Save state** and **Load state** (three slots, with
+  pictures), **Fast forward** (2x or 4x), Volume, Quit to library and Close
+  Porpoise.
+- **Video:** resolution, widescreen, aspect ratio, anti-aliasing, anisotropic
+  filtering, screen filter and strength, border, FPS counter.
+- **Graphics:** shader compilation, texture cache, texture filtering, output
+  resampling, per-pixel lighting, fog, overscan and duplicate frames.
+- **Controls:** button layout, **Customize buttons** over the paused game,
+  vibration, and the DualSense drawn with a line to every button saying which
+  GameCube button it is.
+
+Changes apply immediately and are saved for that game.
 
 When you resume, the game ignores your buttons until you let go, so the press
 that closed the menu never reaches the game.
@@ -138,12 +169,14 @@ that closed the menu never reaches the game.
   quiet bed at 40%.
 
 ### Languages
-- English, **Español**, **Français** and **Português**. Porpoise follows your
+- English, **Español**, **Français**, **Português**, **Italiano** and
+  **日本語**, each with its flag in the language list. Porpoise follows your
   PS5's system language, and **Settings → Interface → Language** overrides it.
-- More languages are coming in a future update.
+- Game descriptions from GameTDB come in Spanish, French, Portuguese and
+  Italian too, where GameTDB has them (English otherwise).
 - Want to fix a line without waiting for an update? Create
-  `/data/porpoise/lang/es.txt` (or `fr.txt`, `pt.txt`) with lines such as
-  `Quit to library = Volver a la biblioteca`.
+  `/data/porpoise/lang/es.txt` (or `fr.txt`, `pt.txt`, `it.txt`, `ja.txt`) with
+  lines such as `Quit to library = Volver a la biblioteca`.
 
 ### Performance
 - **Locked to your TV's refresh.** When the display allows it, every frame is
@@ -211,6 +244,7 @@ below it. After copying new games, use **Search for games now**.
 | **Circle** | – | Back to the library | Back |
 | **Square** | Open Details | – | Copy to the other slot |
 | **Triangle** | Sort | Front / back of the box | Delete |
+| **Options** | Favourite | Favourite | – |
 | **L2 / R2** | – | Previous / next game | – |
 | **Right stick** | – | Turn the box | – |
 | **L1 / R1** | Switch tabs: Library, Memory Cards, Settings | | |
@@ -221,6 +255,7 @@ below it. After copying new games, use **Search for games now**.
 |---|---|
 | **Options + touch pad** | Pause and open the in-game menu |
 | **Circle** (in the menu) | Resume |
+| **L1 / R1** (in the menu) | Switch tabs: Game, Video, Graphics, Controls |
 
 With the default **GameCube** layout:
 
@@ -234,7 +269,8 @@ With the default **GameCube** layout:
 | D-pad | D-pad |
 
 The **PlayStation** layout puts B on Circle and X on Square. To set any button
-yourself, go to **Settings → Controls → Customize buttons**.
+yourself, go to **Settings → Controls → Customize buttons** (or the in-game
+menu's Controls tab), and give a game its layout in its own settings.
 
 **More players:** turn on another controller and choose a PS5 user for it. It
 becomes the next player, up to four, and can join in the middle of a game.
@@ -248,7 +284,10 @@ becomes the next player, up to four, and can join in the middle of a game.
 | `/data/porpoise/covers/` | Box art, back covers and disc art (`<disc ID>.png`); replace any with your own |
 | `/data/porpoise/saves/` | Dolphin's data, including the memory cards (`User/GC/<region>/Card A`, `Card B`) |
 | `/data/porpoise/game-settings/` | Each game's own settings |
-| `/data/porpoise/info.tsv` | Downloaded game details |
+| `/data/porpoise/states/` | Save states, three per game, with their pictures |
+| `/data/porpoise/borders/` | Your own borders (1920×1080 PNGs) |
+| `/data/porpoise/info.tsv` | Downloaded game details (`info-es.tsv` and so on for other languages) |
+| `/data/porpoise/recommended.ini` | Porpoise's recommended settings, as last downloaded |
 | `/data/porpoise/lang/` | Your own translation fixes (optional) |
 
 ## Troubleshooting
@@ -266,11 +305,14 @@ becomes the next player, up to four, and can join in the middle of a game.
 Please [open an issue](https://github.com/elripalda/Porpoise/issues) with your
 console firmware, the game's disc ID and those logs.
 
-## Known limitations in 1.0
+## Known limitations
 
 - Wii support is experimental. Games that need Wii Remote pointing or motion
   aren't practical on a DualSense yet.
-- Save states, netplay and achievements aren't part of Porpoise.
+- Save states are tied to the Porpoise and Dolphin version that made them; a
+  future update may not load older ones. Your memory card saves always carry
+  over.
+- Netplay and achievements aren't part of Porpoise.
 - Memory-card copy and delete work on saves Dolphin keeps as files (the normal
   `Card A` and `Card B` folders).
 
@@ -298,6 +340,9 @@ It stands on the work of many people. The full list, with licences, is in
   and contributors, and **BlackBearReloaded**'s native title pipeline.
 - **[GameTDB](https://www.gametdb.com)** and its contributors, for the box art
   and game details.
+- **[Zacksly](https://zacksly.itch.io)** ([@_Zacksly](https://twitter.com/_Zacksly)),
+  for *PS5 Button Icons and Controls* (CC BY 3.0): the DualSense drawings and the
+  button icons, adapted for Porpoise.
 - **[Nunito](https://github.com/googlefonts/nunito)** (SIL OFL) and
   **[stb](https://github.com/nothings/stb)** by Sean Barrett.
 - The PS5 scene: **etaHEN**, **kstuff** and **ShadowMountPlus**, and the front
