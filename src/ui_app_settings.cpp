@@ -135,8 +135,8 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.resampling, 0,
            {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp bilinear", "Area sampling"});
     choice("screen_filter", "Screen filter",
-           "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor or a worn VHS tape.",
-           &t.screen_filter, 0, {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS"});
+           "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor, a worn or a soft VHS tape, 8-bit pixels, or a green handheld screen.",
+           &t.screen_filter, 0, {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-bit", "Pocket"});
     choice("filter_strength", "Filter strength", "How strong the screen filter is.", &t.filter_strength, 1,
            {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
     {

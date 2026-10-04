@@ -33,6 +33,7 @@
 #include "porpoise_borders.hpp"
 #include "porpoise_core.hpp"
 #include "porpoise_covers.hpp"
+#include "porpoise_jailbreak.hpp"
 #include "porpoise_pacer.hpp"
 #include "porpoise_pad.hpp"
 #include "porpoise_sound.hpp"
@@ -68,17 +69,14 @@ namespace
 std::string g_data = "/app0/porpoise";
 std::string g_settings_path, g_options_path, g_saves_path, g_options_reference, g_core_log;
 
+bool g_sandboxed = false; /* /data out of reach even after asking the HEN */
+
 void choose_data_dir()
 {
-    mkdir("/data/porpoise", 0777);
-    const std::string probe = "/data/porpoise/.write-test";
-    if (std::FILE *f = std::fopen(probe.c_str(), "w"))
-    {
-        std::fputs("ok\n", f);
-        std::fclose(f);
-        std::remove(probe.c_str());
+    if (porpoise::jailbreak::ensure())
         g_data = "/data/porpoise";
-    }
+    else
+        g_sandboxed = true;
     mkdir(g_data.c_str(), 0777);
     mkdir((g_data + "/covers").c_str(), 0777);
     mkdir((g_data + "/games").c_str(), 0777);
@@ -237,7 +235,7 @@ std::string info_path()
 porpoise::ui::LibraryPaths library_paths()
 {
     porpoise::ui::LibraryPaths paths;
-    paths.roots = {"/app0/content", "/data/porpoise/games"};
+    paths.roots = {"/app0/content", g_data + "/games"};
     if (g_settings.auto_search)
     {
         for (const char *dir : {"/data/games", "/data/GameCube", "/data/gamecube", "/data/Wii", "/data/wii",
@@ -650,6 +648,12 @@ int main()
                                        "/app0/assets/recommended.ini");
     read_latest_release();
     apply_settings();
+    if (g_sandboxed)
+        g_app.show_message(porpoise::ui::tr("Porpoise can't reach /data"),
+                           porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
+                                            "/data or USB drives, and asking the HEN didn't free it. Add PPSA99764 "
+                                            "to your HEN's list of apps to jailbreak (etaHEN or OnionHEN), then "
+                                            "open Porpoise again. Until then, games go in /app0/porpoise/games."));
     porpoise::sound::fade_music(1.0f, 2.5f);
     fetch_covers();
 

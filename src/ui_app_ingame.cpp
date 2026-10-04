@@ -97,7 +97,7 @@ std::vector<Row> rows_for(int tab, Settings &p)
         r.push_back({Kind::Int, "anisotropy", "Anisotropic filtering", &p.anisotropy, nullptr, 0,
                      {"1x", "2x", "4x", "8x", "16x"}});
         r.push_back({Kind::Int, "screen_filter", "Screen filter", &p.screen_filter, nullptr, 0,
-                     {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS"}});
+                     {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-bit", "Pocket"}});
         r.push_back({Kind::Int, "filter_strength", "Filter strength", &p.filter_strength, nullptr, 1,
                      {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"}});
         r.push_back({Kind::Border, "border", "Border"});

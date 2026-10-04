@@ -560,6 +560,7 @@ bool Gfx::build_fonts()
     }
     atlas_ = upload(atlas.data(), kAtlas, kAtlas);
     atlas_pixels_ = std::move(atlas);
+    std::fprintf(stderr, "[gfx] text atlas filled to row %d of %d\n", pen_y + row_h, kAtlas);
 
     /* Japanese, when its font is there: every character the subset holds. */
     if (read_file(init_.asset_dir + "/fonts/NotoSansJP-Porpoise.ttf", cjk_.ttf))

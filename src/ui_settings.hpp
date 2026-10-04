@@ -30,7 +30,7 @@ struct Settings
     /* Porpoise's own picture, drawn over the game's: how it is scaled and
      * filtered on the way to the TV, and what fills the bars beside a 4:3
      * picture. */
-    int screen_filter = 0;   /* porpoise::vk::Filter: Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS */
+    int screen_filter = 0;   /* Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS, Soft VHS, 8-bit, Pocket */
     int filter_strength = 6; /* 1..10 */
     std::string border;      /* "" none, or a border's name (built in, or a PNG in /data/porpoise/borders) */
     bool fps_overlay = false;

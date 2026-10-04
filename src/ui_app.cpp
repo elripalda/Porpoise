@@ -1145,7 +1145,7 @@ void App::draw_empty()
     draw_mark(960, 420, 150, kCyan);
     g.text(Font::Bold, ts(40), 960, 500, kWhite, Align::Center, tr("Add games"));
     g.text(Font::Regular, ts(26), 960, 560, kSoft, Align::Center, tr("Copy .iso, .rvz or .ciso files with PS5 Upload into"));
-    g.text(Font::SemiBold, ts(26), 960, 600, kIcy, Align::Center, "/data/porpoise/games");
+    g.text(Font::SemiBold, ts(26), 960, 600, kIcy, Align::Center, data_dir_ + "/games");
     g.text(Font::Regular, ts(26), 960, 640, kSoft, Align::Center, tr("or add your own folder in Settings, under Games."));
 }
 

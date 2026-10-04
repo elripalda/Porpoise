@@ -2,7 +2,8 @@
 /* Porpoise: the game's picture on its way to the TV, with an optional screen
  * filter. Copyright (C) 2026 Ruben (Project Porpoise), GPL-3.0-or-later.
  *
- * params: x filter (0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS),
+ * params: x filter (0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS,
+ *           6 soft VHS, 7 8-bit, 8 pocket LCD),
  *         y strength 0..1, z time in seconds, w unused.
  * size:   x, y the picture's texture size in texels; z, w its size on screen
  *         in pixels. Smooth and sharp differ only in the sampler the host
@@ -91,6 +92,69 @@ vec3 vhs(vec2 uv, float amount)
     return clamp(col, 0.0, 1.0);
 }
 
+
+float luma(vec3 c)
+{
+    return dot(c, vec3(0.299, 0.587, 0.114));
+}
+
+/* A clean tape: soft, a little smeared, faded and warm, with a gentle glow
+ * round the bright parts. No noise, no tracking. */
+vec3 soft_vhs(vec2 uv, float amount)
+{
+    vec2 t = vec2(1.0 / p.size.x, 0.0);
+    vec2 v = vec2(0.0, 1.0 / p.size.y);
+    float spread = mix(1.0, 2.2, amount);
+    vec3 c = sample_rgb(uv - t * 2.0 * spread) * 0.1 + sample_rgb(uv - t * spread) * 0.2 + sample_rgb(uv) * 0.4 +
+             sample_rgb(uv + t * spread) * 0.2 + sample_rgb(uv + t * 2.0 * spread) * 0.1;
+    vec3 shifted = sample_rgb(uv + t * mix(1.5, 4.0, amount));
+    vec3 col = vec3(luma(c)) + (shifted - luma(shifted)) * 0.9;
+    vec3 wide = (sample_rgb(uv + t * 6.0) + sample_rgb(uv - t * 6.0) + sample_rgb(uv + v * 4.0) +
+                 sample_rgb(uv - v * 4.0)) * 0.25;
+    col += max(wide - 0.5, 0.0) * mix(0.3, 0.8, amount);
+    col = mix(col, vec3(luma(col)), 0.22 * amount);
+    col = col * mix(0.94, 0.84, amount) + mix(0.03, 0.08, amount);
+    col *= mix(vec3(1.0), vec3(1.05, 1.0, 0.9), amount);
+    col *= 0.975 + 0.025 * cos(6.2831853 * uv.y * 240.0);
+    return clamp(col, 0.0, 1.0);
+}
+
+/* Big pixels, few colours, an ordered dither: a home console of the 80s. */
+vec3 eight_bit(vec2 uv, float amount)
+{
+    float across = mix(320.0, 128.0, amount);
+    vec2 cells = vec2(across, across * p.size.w / max(p.size.z, 1.0));
+    vec2 cell = floor(uv * cells);
+    vec3 c = sample_rgb((cell + 0.5) / cells);
+    const float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0,
+                                      13.0, 5.0);
+    int bx = int(mod(cell.x, 4.0)), by = int(mod(cell.y, 4.0));
+    float d = (bayer[by * 4 + bx] + 0.5) / 16.0 - 0.5;
+    float levels = mix(6.0, 3.0, amount);
+    c = floor(c * (levels - 1.0) + 0.5 + d) / (levels - 1.0);
+    return clamp(c, 0.0, 1.0);
+}
+
+/* A handheld's green screen: four shades, and the grid between its pixels. */
+vec3 pocket(vec2 uv, float amount)
+{
+    float across = mix(240.0, 160.0, amount);
+    vec2 cells = vec2(across, across * p.size.w / max(p.size.z, 1.0));
+    vec2 cell = floor(uv * cells);
+    float y = smoothstep(0.06, 0.8, luma(sample_rgb((cell + 0.5) / cells)));
+    const float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0,
+                                      13.0, 5.0);
+    float d = (bayer[int(mod(cell.y, 4.0)) * 4 + int(mod(cell.x, 4.0))] + 0.5) / 16.0 - 0.5;
+    float shade = floor(clamp(y * 3.0 + 0.5 + d * 0.9, 0.0, 3.999));
+    vec3 col = shade < 1.0 ? vec3(0.06, 0.22, 0.06)
+             : shade < 2.0 ? vec3(0.19, 0.38, 0.19)
+             : shade < 3.0 ? vec3(0.55, 0.67, 0.06)
+                           : vec3(0.61, 0.74, 0.06);
+    vec2 f = fract(uv * cells);
+    float grid = smoothstep(0.0, 0.12, f.x) * smoothstep(0.0, 0.12, f.y);
+    return mix(col * 0.82, col, grid) * mix(1.0, 0.95, amount);
+}
+
 void main()
 {
     int filter_id = int(p.params.x + 0.5);
@@ -117,6 +181,12 @@ void main()
     }
     else if (filter_id == 5)
         col = vhs(uv, amount);
+    else if (filter_id == 6)
+        col = soft_vhs(uv, amount);
+    else if (filter_id == 7)
+        col = eight_bit(uv, amount);
+    else if (filter_id == 8)
+        col = pocket(uv, amount);
     else
         col = texture(tex, uv).rgb;
     frag = vec4(col * edge, 1.0) * p.color;
