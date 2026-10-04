@@ -634,19 +634,37 @@ void set_fast_forward(int factor)
     h.fast_forward = std::clamp(factor, 1, 8);
 }
 
-bool save_state(const char *path)
+bool serialize(std::vector<unsigned char> &data)
 {
-    if (!h.running || !h.api.serialize_size)
+    if (!h.running || !h.api.serialize_size || !h.api.serialize)
         return false;
+    timespec t0{}, t1{}, t2{};
+    clock_gettime(CLOCK_MONOTONIC, &t0);
     const std::size_t size = h.api.serialize_size();
+    clock_gettime(CLOCK_MONOTONIC, &t1);
     if (size == 0)
         return false;
-    std::vector<unsigned char> data(size);
-    if (!h.api.serialize(data.data(), size))
-    {
+    data.resize(size);
+    const bool ok = h.api.serialize(data.data(), size);
+    clock_gettime(CLOCK_MONOTONIC, &t2);
+    auto ms = [](const timespec &a, const timespec &b) {
+        return (long long)(b.tv_sec - a.tv_sec) * 1000 + (b.tv_nsec - a.tv_nsec) / 1000000;
+    };
+    char line[160];
+    std::snprintf(line, sizeof line, "core: state %zu MB, measured in %lld ms, taken in %lld ms", size >> 20,
+                  ms(t0, t1), ms(t1, t2));
+    ps5::debug::mark(line);
+    if (!ok)
         ps5::debug::mark("core: the game would not save its state");
+    return ok;
+}
+
+bool save_state(const char *path)
+{
+    std::vector<unsigned char> data;
+    if (!serialize(data))
         return false;
-    }
+    const std::size_t size = data.size();
     const std::string tmp = std::string(path) + ".part";
     std::FILE *f = std::fopen(tmp.c_str(), "wb");
     if (!f)

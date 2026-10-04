@@ -60,6 +60,7 @@ const Field kFields[] = {
     {"crop_overscan", nullptr, &Settings::crop_overscan, 0, 1},
     {"custom_textures", nullptr, &Settings::custom_textures, 0, 1},
     {"skip_dupes", nullptr, &Settings::skip_dupes, 0, 1},
+    {"fast_states", nullptr, &Settings::fast_states, 0, 1},
     {"volume", &Settings::volume, nullptr, 0, 10},
     {"muted", nullptr, &Settings::muted, 0, 1},
     {"menu_music", nullptr, &Settings::menu_music, 0, 1},
@@ -80,9 +81,15 @@ const Field kFields[] = {
 };
 
 /* Settings kept as text rather than numbers. */
+bool is_dolphin_key(const std::string &key)
+{
+    /* dolphin.<Section>.<Key>: one of Dolphin's own per-game settings. */
+    return key.rfind("dolphin.", 0) == 0 && key.find('.', 8) != std::string::npos;
+}
+
 bool is_text_key(const std::string &key)
 {
-    return key == "border";
+    return key == "border" || is_dolphin_key(key);
 }
 
 const Field *field(const std::string &key)
@@ -159,6 +166,11 @@ bool Settings::load(const std::string &path, bool overlay)
         if (k == "border")
         {
             border = v;
+            continue;
+        }
+        if (is_dolphin_key(k))
+        {
+            set(k, v);
             continue;
         }
         if (k.size() == 7 && k.rfind("layout", 0) == 0 && k[6] >= '1' && k[6] <= '4')
@@ -264,6 +276,8 @@ bool Settings::save_keys(const std::string &path, const std::vector<std::string>
             write_field(f, *this, *fd);
         else if (k == "border")
             std::fprintf(f, "border = %s\n", border.c_str());
+        else if (is_dolphin_key(k) && !get(k).empty())
+            std::fprintf(f, "%s = %s\n", k.c_str(), get(k).c_str());
     }
     std::fclose(f);
     return true;
@@ -288,6 +302,55 @@ std::vector<std::string> Settings::keys_in(const std::string &path)
     }
     std::fclose(f);
     return keys;
+}
+
+void Settings::forget(const std::string &key)
+{
+    dolphin.erase(std::remove_if(dolphin.begin(), dolphin.end(),
+                                 [&](const std::pair<std::string, std::string> &kv) { return kv.first == key; }),
+                  dolphin.end());
+}
+
+bool Settings::write_dolphin_game_ini(const std::string &path) const
+{
+    /* Dolphin's own per-game file in its user folder (its LocalGame layer),
+     * over the shipped Sys/GameSettings: Porpoise writes it before each game
+     * from that game's dolphin.* settings, and removes it when there are none,
+     * as long as it is Porpoise's. */
+    static const char kMark[] = "# Written by Porpoise";
+    bool ours = true;
+    if (std::FILE *f = std::fopen(path.c_str(), "r"))
+    {
+        char first[64] = {0};
+        ours = std::fgets(first, sizeof first, f) && std::strncmp(first, kMark, sizeof kMark - 1) == 0;
+        std::fclose(f);
+    }
+    else if (dolphin.empty())
+        return true;
+    if (!ours)
+        return false; /* the player's own file: left alone */
+    if (dolphin.empty())
+        return std::remove(path.c_str()) == 0;
+    std::vector<std::string> sections;
+    for (const auto &kv : dolphin)
+    {
+        const std::string sec = kv.first.substr(8, kv.first.find('.', 8) - 8);
+        if (std::find(sections.begin(), sections.end(), sec) == sections.end())
+            sections.push_back(sec);
+    }
+    std::FILE *f = std::fopen(path.c_str(), "w");
+    if (!f)
+        return false;
+    std::fprintf(f, "%s from this game's settings; changes here are replaced.\n", kMark);
+    for (const std::string &sec : sections)
+    {
+        std::fprintf(f, "\n[%s]\n", sec.c_str());
+        for (const auto &kv : dolphin)
+            if (kv.first.compare(8, sec.size() + 1, sec + ".") == 0)
+                std::fprintf(f, "%s = %s\n", kv.first.substr(9 + sec.size()).c_str(), kv.second.c_str());
+    }
+    std::fclose(f);
+    return true;
 }
 
 bool Settings::migrate_game_file(const std::string &path, Settings &global)
@@ -389,6 +452,17 @@ bool Settings::set(const std::string &key, const std::string &value)
         border = value;
         return true;
     }
+    if (is_dolphin_key(key))
+    {
+        for (auto &kv : dolphin)
+            if (kv.first == key)
+            {
+                kv.second = value;
+                return true;
+            }
+        dolphin.push_back({key, value});
+        return true;
+    }
     const Field *fd = field(key);
     if (!fd)
         return false;
@@ -403,6 +477,13 @@ std::string Settings::get(const std::string &key) const
 {
     if (key == "border")
         return border;
+    if (is_dolphin_key(key))
+    {
+        for (const auto &kv : dolphin)
+            if (kv.first == key)
+                return kv.second;
+        return "";
+    }
     const Field *fd = field(key);
     if (!fd)
         return "";

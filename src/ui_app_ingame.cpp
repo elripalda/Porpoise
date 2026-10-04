@@ -78,8 +78,8 @@ std::vector<Row> rows_for(int tab, Settings &p)
     {
     case kTabGame:
         r.push_back({Kind::Resume, "", "Resume"});
-        r.push_back({Kind::Save, "", "Save state"});
-        r.push_back({Kind::Load, "", "Load state"});
+        r.push_back({Kind::Save, "", "Save state\xE2\x80\xA6"});
+        r.push_back({Kind::Load, "", "Load state\xE2\x80\xA6"});
         r.push_back({Kind::FastForward, "", "Fast forward"});
         r.push_back({Kind::Int, "volume", "Volume", &p.volume, nullptr, 0, kPercent});
         r.push_back({Kind::Library, "", "Quit to library", nullptr, nullptr, 0, {}, true});
@@ -145,8 +145,10 @@ const char *help_for(const Row &row, const Settings &p)
         return "Safe fixes some games' text and effects; Fast is quickest.";
     if (row.kind == Kind::FastForward)
         return "Runs the game 2x or 4x faster until you turn it off. The game's sound pauses meanwhile.";
-    if (row.kind == Kind::Save || row.kind == Kind::Load)
-        return "Three slots for this game. Left and right choose the slot.";
+    if (row.kind == Kind::Save)
+        return "Choose one of three slots to save this moment in.";
+    if (row.kind == Kind::Load)
+        return "Choose a saved moment to go back to.";
     if (row.kind == Kind::Customize)
         return "Your own layouts: change any button on a picture of the DualSense.";
     return "Changes here are saved for this game.";
@@ -221,12 +223,15 @@ void App::load_slots(const Game *game)
 
 void App::menu_state_done(MenuRequest::Kind kind, int slot, bool ok)
 {
+    menu_busy_ = {};
+    menu_busy_handed_ = false;
+    menu_confirm_ = false;
     if (kind == MenuRequest::Save)
     {
         menu_note_ = ok ? trf("Saved to slot {n}.", {{"n", std::to_string(slot + 1)}})
                         : tr("The game's state couldn't be saved.");
-        if (ok)
-            load_slots(menu_game_);
+        load_slots(menu_game_);
+        menu_slots_mode_ = 0; /* back to the list */
         sfx(ok ? Sound::LaunchGame : Sound::MovingTab);
     }
     else
@@ -234,8 +239,27 @@ void App::menu_state_done(MenuRequest::Kind kind, int slot, bool ok)
         menu_note_ = ok ? trf("Slot {n} loaded.", {{"n", std::to_string(slot + 1)}})
                         : tr("That slot couldn't be loaded.");
         sfx(ok ? Sound::LaunchGame : Sound::MovingTab);
+        if (ok)
+        {
+            /* Straight back into the game, at that moment. */
+            menu_slots_mode_ = 0;
+            menu_closing_ = true;
+            menu_answer_ = 1;
+            if (settings_->reduced_motion)
+                menu_anim_ = 0;
+        }
     }
     menu_note_time_ = time_;
+}
+
+App::MenuRequest App::take_menu_request()
+{
+    /* Handed over once the "Saving..." it shows has been drawn, so the
+     * player sees it while the game's state is taken. */
+    if (menu_busy_.kind == MenuRequest::None || menu_busy_handed_ || menu_busy_frames_ < 1)
+        return {};
+    menu_busy_handed_ = true;
+    return menu_busy_;
 }
 
 /* ---- opening and input ------------------------------------------------------------------ */
@@ -251,6 +275,10 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_answer_ = 0;
     menu_note_.clear();
     map_in_game_ = false;
+    menu_slots_mode_ = 0;
+    menu_confirm_ = false;
+    menu_busy_ = {};
+    menu_busy_handed_ = false;
     menu_borders_ = porpoise::borders::list();
     load_slots(menu_game_);
     prev_ = held_ = raw_held_ = raw_prev_ = 0xFFFFFFFFu; /* buttons still down from the shortcut don't count */
@@ -287,6 +315,51 @@ int App::update_game_menu(const Input &in, double dt)
     if (map_in_game_)
     {
         update_mapping(up, down, left, right);
+        return 0;
+    }
+    /* Saving or loading: nothing to do but wait. */
+    if (menu_busy_.kind != MenuRequest::None)
+        return 0;
+    /* Choosing a slot to save to, or to load. */
+    if (menu_slots_mode_)
+    {
+        const bool saving = menu_slots_mode_ == 1;
+        if (left || right)
+        {
+            menu_slot_ = (menu_slot_ + (left ? porpoise::states::kSlots - 1 : 1)) % porpoise::states::kSlots;
+            menu_confirm_ = false;
+            sfx(Sound::MenuScroll);
+        }
+        if (pressed(BtnCircle))
+        {
+            menu_slots_mode_ = 0;
+            menu_confirm_ = false;
+            sfx(Sound::MovingTab);
+            return 0;
+        }
+        if (pressed(BtnCross))
+        {
+            if (!saving && !menu_slot_used_[menu_slot_])
+            {
+                menu_note_ = tr("That slot is empty.");
+                menu_note_time_ = time_;
+                sfx(Sound::MovingTab);
+            }
+            else if (saving && menu_slot_used_[menu_slot_] && !menu_confirm_)
+            {
+                menu_confirm_ = true; /* a second press replaces it */
+                sfx(Sound::MovingTab);
+            }
+            else
+            {
+                menu_busy_.kind = saving ? MenuRequest::Save : MenuRequest::Load;
+                menu_busy_.slot = menu_slot_;
+                menu_busy_frames_ = 0;
+                menu_busy_handed_ = false;
+                menu_busy_start_ = time_;
+                sfx(Sound::DetailsFlip);
+            }
+        }
         return 0;
     }
 
@@ -350,26 +423,30 @@ int App::update_game_menu(const Input &in, double dt)
         break;
     case Kind::Save:
     case Kind::Load:
-        if (left || right)
+        if (cross)
         {
-            menu_slot_ = (menu_slot_ + (left ? porpoise::states::kSlots - 1 : 1)) % porpoise::states::kSlots;
-            sfx(Sound::MenuScroll);
-        }
-        else if (cross)
-        {
-            if (row.kind == Kind::Load && !menu_slot_used_[menu_slot_])
+            const bool any = menu_slot_used_[0] || menu_slot_used_[1] || menu_slot_used_[2];
+            if (row.kind == Kind::Load && !any)
             {
-                menu_note_ = tr("That slot is empty.");
+                menu_note_ = tr("No save states for this game yet.");
                 menu_note_time_ = time_;
                 sfx(Sound::MovingTab);
+                break;
             }
-            else
+            menu_slots_mode_ = row.kind == Kind::Save ? 1 : 2;
+            menu_confirm_ = false;
+            if (row.kind == Kind::Load && !menu_slot_used_[menu_slot_])
             {
-                menu_request_.kind = row.kind == Kind::Save ? MenuRequest::Save : MenuRequest::Load;
-                menu_request_.slot = menu_slot_;
-                if (row.kind == Kind::Load)
-                    return close(1); /* back into the game at that moment */
+                /* Start on the newest slot there is. */
+                long long newest = -1;
+                for (int i = 0; i < porpoise::states::kSlots; ++i)
+                    if (menu_slot_used_[i] && menu_slot_time_[i] > newest)
+                    {
+                        newest = menu_slot_time_[i];
+                        menu_slot_ = i;
+                    }
             }
+            sfx(Sound::DetailsFlip);
         }
         break;
     case Kind::FastForward:
@@ -612,10 +689,6 @@ void App::draw_game_menu(double time)
         bool arrows = true;
         switch (row.kind)
         {
-        case Kind::Save:
-        case Kind::Load:
-            value = trf("Slot {n}", {{"n", std::to_string(menu_slot_ + 1)}});
-            break;
         case Kind::FastForward:
             value = menu_ff_ == 0 ? tr("Off") : menu_ff_ == 1 ? "2x" : "4x";
             break;
@@ -658,15 +731,26 @@ void App::draw_game_menu(double time)
     float below = ry + 14;
     if (menu_tab_ == kTabGame)
     {
-        /* The three slots, with what each one saw. */
-        const bool slots_on = focus.kind == Kind::Save || focus.kind == Kind::Load;
+        /* The three slots, with what each one saw: chosen from while
+         * saving or loading, a glance otherwise. */
+        const bool picking = menu_slots_mode_ != 0;
+        const bool saving = menu_slots_mode_ == 1;
         const float sw = 200, sh = 112, sgap = 24, sx0 = x + (w - (sw * 3 + sgap * 2)) * 0.5f;
+        if (picking)
+        {
+            g.text_mid(Font::Bold, ts(24), x + 48, below + 8, kWhite, Align::Left,
+                       tr(saving ? "Save to which slot?" : "Load which slot?"));
+            below += 30;
+        }
         for (int i = 0; i < porpoise::states::kSlots; ++i)
         {
             const float sx = sx0 + float(i) * (sw + sgap), sy = below + 4;
-            const bool on = slots_on && i == menu_slot_;
-            g.panel(sx - 4, sy - 4, sw + 8, sh + 8, rgba(0x07102E, 0.6f), 1, kR * 0.7f,
-                    on ? kIcy : rgba(0x5A68A8, 0.8f), on ? 2.6f : 1.4f, on ? 10 : 0);
+            const bool on = picking && i == menu_slot_;
+            const bool dim = picking && !saving && !menu_slot_used_[i]; /* nothing to load there */
+            const bool replace = on && saving && menu_confirm_;
+            const Color edge = replace ? rgba(0xFFB347) : on ? kIcy : rgba(0x5A68A8, dim ? 0.4f : 0.8f);
+            g.panel(sx - 4, sy - 4, sw + 8, sh + 8, rgba(0x07102E, dim ? 0.35f : 0.6f), 1, kR * 0.7f, edge,
+                    on ? 2.8f : 1.4f, on ? 12 : 0);
             if (menu_slot_tex_[i])
             {
                 /* Fit the picture inside the card, at its own shape. */
@@ -678,7 +762,7 @@ void App::draw_game_menu(double time)
                     iw = sh * a;
                 }
                 g.image(menu_slot_tex_[i], sx + (sw - iw) * 0.5f, sy + (sh - ih) * 0.5f, iw, ih,
-                        on ? kWhite : rgba(0xFFFFFF, 0.8f), kR * 0.5f);
+                        on || !picking ? kWhite : rgba(0xFFFFFF, 0.7f), kR * 0.5f);
             }
             else
                 g.text_mid(Font::SemiBold, ts(21), sx + sw * 0.5f, sy + sh * 0.5f, with_alpha(kLavender, 0.8f),
@@ -705,18 +789,37 @@ void App::draw_game_menu(double time)
         below += 36 + kLinesH * aw / kLinesW;
     }
 
-    /* A note after a save or load, else the row's help. */
+    /* A note after a save or load, what Cross will do while picking a slot,
+     * else the row's help. */
     {
         const double since = time_ - menu_note_time_;
-        const bool note = !menu_note_.empty() && since < 4.0;
-        const std::string text = note ? menu_note_ : tr(help_for(focus, p));
+        bool note = !menu_note_.empty() && since < 4.0;
+        std::string text = note ? menu_note_ : tr(help_for(focus, p));
+        bool warn = false;
+        if (menu_slots_mode_ && !note)
+        {
+            const std::string n = std::to_string(menu_slot_ + 1);
+            if (menu_slots_mode_ == 2)
+                text = menu_slot_used_[menu_slot_] ? trf("Cross loads slot {n}. The game goes back to that moment.", {{"n", n}})
+                                                   : tr("That slot is empty.");
+            else if (!menu_slot_used_[menu_slot_])
+                text = trf("Cross saves this moment in slot {n}.", {{"n", n}});
+            else if (!menu_confirm_)
+                text = trf("Slot {n} has a save state. Cross, then Cross again, replaces it.", {{"n", n}});
+            else
+            {
+                text = trf("Press Cross again to replace slot {n}.", {{"n", n}});
+                warn = true;
+            }
+            note = true;
+        }
         const float ny = std::min(below + 10, y + h - 112);
         const auto lines = wrap(g, Font::Regular, ts(22), text, w - 96, 2);
         float ly = ny;
         for (const std::string &l : lines)
         {
             g.text_mid(note ? Font::SemiBold : Font::Regular, ts(22), x + 48, ly,
-                       note ? kCyan : kLavender, Align::Left, l);
+                       warn ? rgba(0xFFC266) : note ? kCyan : kLavender, Align::Left, l);
             ly += 30;
         }
     }
@@ -727,10 +830,10 @@ void App::draw_game_menu(double time)
         const float py = y + h - 50, size = ts(22);
         std::vector<std::pair<Glyph, std::string>> prompts = {{Glyph::Cross, tr("Select")},
                                                               {Glyph::Circle, tr("Resume")}};
-        if (focus.kind == Kind::Save)
-            prompts[0].second = tr("Save");
-        else if (focus.kind == Kind::Load)
-            prompts[0].second = tr("Load");
+        if (menu_slots_mode_)
+            prompts = {{Glyph::DPad, tr("Slot")},
+                       {Glyph::Cross, tr(menu_slots_mode_ == 1 ? "Save" : "Load")},
+                       {Glyph::Circle, tr("Back")}};
         for (std::size_t i = 0; i < prompts.size(); ++i)
         {
             if (i > 0)
@@ -752,6 +855,27 @@ void App::draw_game_menu(double time)
             g.glyph(Glyph::R1, right - tw - 30, py, 30, kWhite);
             g.glyph(Glyph::L1, right - tw - 76, py, 30, kWhite);
         }
+    }
+
+    /* Saving or loading: the panel waits under a veil, with a spinner. */
+    if (menu_busy_.kind != MenuRequest::None)
+    {
+        ++menu_busy_frames_;
+        g.panel(x + 8, y + 8, w - 16, h - 16, rgba(0x050A24, 0.72f), 1, kR);
+        const float cx = x + w * 0.5f, cy = y + h * 0.5f - 20;
+        const float spin = float(time - menu_busy_start_) * 7.0f;
+        for (int i = 0; i < 10; ++i)
+        {
+            const float a = float(i) / 10.0f * 2.0f * kPi;
+            const float fade = std::fmod(float(i) / 10.0f - spin / (2.0f * kPi) + 10.0f, 1.0f);
+            g.blob(cx + std::cos(a) * 46, cy + std::sin(a) * 46, 22, 22, rgba(0x8BD9FF, 0.25f + 0.75f * fade));
+        }
+        const std::string n = std::to_string(menu_busy_.slot + 1);
+        g.text_mid(Font::Bold, ts(30), cx, cy + 100, kWhite, Align::Center,
+                   menu_busy_.kind == MenuRequest::Save ? trf("Saving to slot {n}\xE2\x80\xA6", {{"n", n}})
+                                                        : trf("Loading slot {n}\xE2\x80\xA6", {{"n", n}}));
+        g.text_mid(Font::Regular, ts(22), cx, cy + 142, kLavender, Align::Center,
+                   tr("This can take a few seconds."));
     }
     g.set_layer();
 }

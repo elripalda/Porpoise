@@ -11,7 +11,7 @@ namespace porpoise::ui::recommend
 {
 namespace
 {
-std::string g_feed_path, g_settings_dir;
+std::string g_feed_path, g_settings_dir, g_bundled_path;
 bool g_loaded = false;
 std::map<std::string, Pick> g_picks;
 
@@ -32,15 +32,14 @@ std::string upper(std::string s)
     return s;
 }
 
-void load_feed()
+void read_feed(const std::string &path)
 {
-    g_loaded = true;
-    g_picks.clear();
-    std::FILE *f = std::fopen(g_feed_path.c_str(), "r");
+    std::FILE *f = std::fopen(path.c_str(), "r");
     if (!f)
         return;
     char line[1024];
     std::string id;
+    std::map<std::string, Pick> here;
     while (std::fgets(line, sizeof line, f))
     {
         const std::string s = trim(line);
@@ -49,6 +48,7 @@ void load_feed()
         if (s.front() == '[' && s.back() == ']')
         {
             id = upper(trim(s.substr(1, s.size() - 2)));
+            here[id];
             continue;
         }
         const auto eq = s.find('=');
@@ -56,11 +56,22 @@ void load_feed()
             continue;
         const std::string k = trim(s.substr(0, eq)), v = trim(s.substr(eq + 1));
         if (k == "note")
-            g_picks[id].note = v;
+            here[id].note = v;
         else if (!k.empty())
-            g_picks[id].values.push_back({k, v});
+            here[id].values.push_back({k, v});
     }
     std::fclose(f);
+    for (auto &kv : here)
+        g_picks[kv.first] = kv.second; /* a later file wins, game by game */
+}
+
+void load_feed()
+{
+    g_loaded = true;
+    g_picks.clear();
+    if (!g_bundled_path.empty())
+        read_feed(g_bundled_path);
+    read_feed(g_feed_path);
 }
 
 /* Dolphin's keys, said plainly. Unknown ones are shown as Dolphin names them. */
@@ -100,6 +111,7 @@ constexpr Known kKnown[] = {
     {"AccurateNaNs", "Accurate NaNs", "On", "Off"},
     {"LowDCBZHack", "Low DCBZ hack", "On", "Off"},
     {"OverclockEnable", "CPU overclock", "On", "Off"},
+    {"EnableGPUTextureDecoding", "GPU texture decoding", "On", "Off"},
 };
 /* Settings that change nothing a player sees on PS5. */
 constexpr const char *kSkip[] = {"StereoConvergence", "StereoEFBMonoDepth", "SuggestedAspectRatio", "HSPDevice",
@@ -161,6 +173,14 @@ void read_fixes(const std::string &path, std::vector<Fix> &out)
         fix.label = k;
         fix.value = v;
         fix.why = comment;
+        fix.section = section.size() > 2 ? section.substr(1, section.size() - 2) : section;
+        fix.key = k;
+        fix.raw = v;
+        if (v == "True" || v == "False" || v == "true" || v == "false")
+        {
+            fix.override_key = "dolphin." + fix.section + "." + k;
+            fix.off_value = is_true(v) ? "False" : "True";
+        }
         for (const Known &kn : kKnown)
             if (k == kn.key)
             {
@@ -184,11 +204,28 @@ void read_fixes(const std::string &path, std::vector<Fix> &out)
 }
 } // namespace
 
-void set_paths(const std::string &feed, const std::string &game_settings)
+void set_paths(const std::string &feed, const std::string &game_settings, const std::string &bundled)
 {
     g_feed_path = feed;
     g_settings_dir = game_settings;
+    g_bundled_path = bundled;
     g_loaded = false;
+}
+
+void describe_dolphin(const std::string &settings_key, const std::string &value, std::string &label,
+                      std::string &value_text)
+{
+    const std::size_t dot = settings_key.rfind('.');
+    const std::string k = dot == std::string::npos ? settings_key : settings_key.substr(dot + 1);
+    label = k;
+    value_text = value;
+    for (const Known &kn : kKnown)
+        if (k == kn.key)
+        {
+            label = kn.label;
+            if (kn.on)
+                value_text = is_true(value) ? kn.on : kn.off;
+        }
 }
 
 void feed_changed()

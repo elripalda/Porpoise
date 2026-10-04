@@ -255,6 +255,75 @@ porpoise::ui::LibraryPaths library_paths()
     return paths;
 }
 
+/* One key = value in an INI file's [section], kept with everything else in it. */
+void set_ini_value(const std::string &path, const std::string &section, const std::string &key,
+                   const std::string &value)
+{
+    std::vector<std::string> lines;
+    if (std::FILE *f = std::fopen(path.c_str(), "r"))
+    {
+        char buf[1024];
+        while (std::fgets(buf, sizeof buf, f))
+        {
+            std::string l = buf;
+            while (!l.empty() && (l.back() == '\n' || l.back() == '\r'))
+                l.pop_back();
+            lines.push_back(l);
+        }
+        std::fclose(f);
+    }
+    auto trim = [](std::string s) {
+        const auto a = s.find_first_not_of(" \t");
+        const auto b = s.find_last_not_of(" \t");
+        return a == std::string::npos ? std::string() : s.substr(a, b - a + 1);
+    };
+    const std::string header = "[" + section + "]";
+    std::size_t sec = lines.size(), end = lines.size();
+    for (std::size_t i = 0; i < lines.size(); ++i)
+        if (trim(lines[i]) == header)
+        {
+            sec = i;
+            end = lines.size();
+            for (std::size_t j = i + 1; j < lines.size(); ++j)
+                if (!trim(lines[j]).empty() && trim(lines[j])[0] == '[')
+                {
+                    end = j;
+                    break;
+                }
+            break;
+        }
+    const std::string entry = key + " = " + value;
+    if (sec == lines.size())
+    {
+        lines.push_back(header);
+        lines.push_back(entry);
+    }
+    else
+    {
+        bool done = false;
+        for (std::size_t i = sec + 1; i < end && !done; ++i)
+        {
+            const auto eq = lines[i].find('=');
+            if (eq != std::string::npos && trim(lines[i].substr(0, eq)) == key)
+            {
+                lines[i] = entry;
+                done = true;
+            }
+        }
+        if (!done)
+            lines.insert(lines.begin() + std::ptrdiff_t(end), entry);
+    }
+    const std::string dir = path.substr(0, path.rfind('/'));
+    mkdir(dir.substr(0, dir.rfind('/')).c_str(), 0777);
+    mkdir(dir.c_str(), 0777);
+    if (std::FILE *f = std::fopen(path.c_str(), "w"))
+    {
+        for (const std::string &l : lines)
+            std::fprintf(f, "%s\n", l.c_str());
+        std::fclose(f);
+    }
+}
+
 /* The newest release, as the last check wrote it: tag, then its page. */
 void read_latest_release()
 {
@@ -430,11 +499,27 @@ int menu_paused(void *)
     if (request.kind != porpoise::ui::App::MenuRequest::None && g_playing)
     {
         const std::string game = porpoise::ui::Library::key_of(*g_playing);
-        const bool save = request.kind == porpoise::ui::App::MenuRequest::Save;
-        const bool ok = save ? porpoise::states::save(game, request.slot) : porpoise::states::load(game, request.slot);
-        ps5::debug::mark_value(save ? "main: state saved to slot" : "main: state loaded from slot",
-                               ok ? request.slot + 1 : -(request.slot + 1));
-        g_app.menu_state_done(request.kind, request.slot, ok);
+        if (request.kind == porpoise::ui::App::MenuRequest::Save)
+        {
+            /* Taken now; written in the background (reported below). */
+            if (!porpoise::states::save(game, request.slot))
+                g_app.menu_state_done(request.kind, request.slot, false);
+        }
+        else
+        {
+            const bool ok = porpoise::states::load(game, request.slot);
+            ps5::debug::mark_value("main: state loaded from slot", ok ? request.slot + 1 : -(request.slot + 1));
+            g_app.menu_state_done(request.kind, request.slot, ok);
+        }
+    }
+    {
+        int slot = 0;
+        bool ok = false;
+        if (porpoise::states::take_finished(slot, ok))
+        {
+            ps5::debug::mark_value("main: state saved to slot", ok ? slot + 1 : -(slot + 1));
+            g_app.menu_state_done(porpoise::ui::App::MenuRequest::Save, slot, ok);
+        }
     }
     porpoise::sound::pump(); /* the menu's own sounds, while the game is still */
     if (answer != porpoise::core::kMenuStay)
@@ -561,7 +646,8 @@ int main()
     porpoise::sound::load("/app0/assets");
     porpoise::states::set_data_dir(g_data);
     porpoise::borders::set_dirs("/app0/assets", g_data);
-    porpoise::ui::recommend::set_paths(g_data + "/recommended.ini", "/app0/system/dolphin-emu/Sys/GameSettings");
+    porpoise::ui::recommend::set_paths(g_data + "/recommended.ini", "/app0/system/dolphin-emu/Sys/GameSettings",
+                                       "/app0/assets/recommended.ini");
     read_latest_release();
     apply_settings();
     porpoise::sound::fade_music(1.0f, 2.5f);
@@ -640,6 +726,22 @@ int main()
         if (g_play.load(g_app.game_settings_path(*launch), true))
             ps5::debug::mark("main: the game has its own settings");
         g_play.write_core_options(g_options_path);
+        /* Fast save states: Dolphin leaves its GPU texture cache out of them
+         * (Dolphin.ini's base layer, read when the core starts). */
+        set_ini_value(g_saves_path + "/User/Config/GFX.ini", "Settings", "SaveTextureCacheToState",
+                      g_play.fast_states ? "False" : "True");
+        if (launch->id.size() == 6)
+        {
+            /* The game's Dolphin settings (recommended ones turned on or off),
+             * where Dolphin reads them: over its own per-game fixes. */
+            const std::string dir = g_saves_path + "/User/GameSettings";
+            mkdir((g_saves_path + "/User").c_str(), 0777);
+            mkdir(dir.c_str(), 0777);
+            if (!g_play.write_dolphin_game_ini(dir + "/" + launch->id + ".ini"))
+                ps5::debug::mark("main: the game's Dolphin settings file is the player's own; left as it is");
+            for (const auto &[k, v] : g_play.dolphin)
+                ps5::debug::mark(("main: Dolphin setting for this game: " + k + " = " + v).c_str());
+        }
         porpoise::pad::set_mapping(g_play.mapping());
         porpoise::pad::set_rumble_enabled(g_play.rumble);
         g_app.begin_launch(launch);
@@ -683,6 +785,7 @@ int main()
         /* Play time: the whole visit, loading included, as consoles count it. */
         if (exit != porpoise::core::Exit::Failed)
             g_library.add_play_time(*launch, (now_ns() - played_from) / 1000000000LL);
+        porpoise::states::wait(); /* a save still being written */
         g_playing = nullptr;
         g_menu_open = false;
         if (exit == porpoise::core::Exit::Home)

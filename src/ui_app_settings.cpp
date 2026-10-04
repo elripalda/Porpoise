@@ -177,6 +177,10 @@ void App::add_game_rows(Settings &t, bool per_game)
            "Loads texture packs from /data/porpoise/saves/User/Load/Textures/<game ID>.", &t.custom_textures);
     toggle("skip_dupes", "Skip duplicate frames", "Saves work when a game shows the same frame twice.",
            &t.skip_dupes);
+    toggle("fast_states", "Fast save states",
+           "Leaves the GPU's texture cache out of save states: much quicker to save, and smaller. Turn it off if a "
+           "game looks wrong for a moment after loading a state.",
+           &t.fast_states);
 
     header("Audio");
     choice("volume", "Game volume", "Volume of the game's sound.", &t.volume, 0,
@@ -381,47 +385,108 @@ void App::build_game_settings()
     reset.values = {tr("Reset\xE2\x80\xA6")};
     reset.action = kRowResetGame;
     rows_.push_back(reset);
-    add_recommended_rows();
     add_game_rows(game_, true);
+    add_recommended_rows();
     if (settings_row_ < 0 || settings_row_ >= int(rows_.size()) || rows_[std::size_t(settings_row_)].header)
         settings_row_ = 1;
     rail_ = std::clamp(rail_, 0, std::max(0, section_count() - 1));
 }
 
-/* What's recommended for this game: Porpoise's picks, to apply, and Dolphin's
- * own fixes, which it applies by itself. */
+/* What's recommended for this game, as switches: Porpoise's picks (all at
+ * once, or one by one) and Dolphin's own fixes, which are on unless turned
+ * off here. Built after the game's other rows, whose names it borrows. */
 void App::add_recommended_rows()
 {
+    rec_rows_.clear();
     if (!game_for_)
         return;
+    std::vector<SettingRow> out;
     SettingRow h;
     h.section = "Recommended";
     h.header = true;
-    rows_.push_back(h);
+    out.push_back(h);
+    auto add = [&](const std::string &label, const std::string &help, RecRow rec) {
+        SettingRow r;
+        r.section = "Recommended";
+        r.label = label;
+        r.tag = rec.kind == RecRow::DolphinFix ? tr("Dolphin's fix")
+                : rec.kind == RecRow::Pick     ? tr("Porpoise's pick")
+                                               : "";
+        r.help = help;
+        r.values = {""};
+        r.rec = int(rec_rows_.size());
+        r.toggle = rec_on(rec) ? 1 : 0;
+        rec_rows_.push_back(rec);
+        out.push_back(r);
+    };
+    /* How a setting and its value read, from the game's own rows. */
+    auto describe = [&](const std::string &key, const std::string &value, std::string &label, std::string &text) {
+        if (key.rfind("dolphin.", 0) == 0)
+        {
+            recommend::describe_dolphin(key, value, label, text);
+            label = tr(label);
+            text = tr(text);
+            return;
+        }
+        label = key;
+        text = value;
+        for (const SettingRow &r : rows_)
+            if (r.key == key && (r.int_value || r.bool_value))
+            {
+                label = r.label;
+                const int v = std::atoi(value.c_str());
+                const int i = r.bool_value ? (v ? 1 : 0) : v - r.min;
+                if (i >= 0 && i < int(r.values.size()))
+                    text = r.values[std::size_t(i)];
+            }
+    };
+
     recommend::Pick pick;
-    const bool has_pick = recommend::pick_for(game_for_->id, pick);
-    if (has_pick)
+    if (recommend::pick_for(game_for_->id, pick))
     {
-        SettingRow r;
-        r.section = "Recommended";
-        r.label = tr("Porpoise's picks");
-        r.help = pick.note.empty() ? tr("Settings that run this game best on PS5, as tested.") : pick.note;
-        r.values = {pick_in_use(pick) ? tr("In use") : tr("Use\xE2\x80\xA6")};
-        r.action = kRowRecommended;
-        rows_.push_back(r);
+        RecRow all;
+        all.kind = RecRow::AllPicks;
+        add(tr("Porpoise's picks"),
+            (pick.note.empty() ? tr("Settings that run this game best on PS5, as tested.") : pick.note) + "  " +
+                tr("Cross turns them all on or off."),
+            all);
+        for (const auto &[k, v] : pick.values)
+        {
+            std::string label, text;
+            describe(k, v, label, text);
+            RecRow one;
+            one.kind = RecRow::Pick;
+            one.key = k;
+            one.value = v;
+            add(label + ": " + text, trf("One of Porpoise's picks for this game: {setting}.", {{"setting", label + " " + text}}),
+                one);
+        }
     }
-    const std::vector<recommend::Fix> fixes = recommend::dolphin_fixes(game_for_->id);
-    for (const recommend::Fix &fix : fixes)
+    for (const recommend::Fix &fix : recommend::dolphin_fixes(game_for_->id))
     {
-        SettingRow r;
-        r.section = "Recommended";
-        r.label = tr(fix.label);
-        r.help = fix.why.empty() ? tr("One of Dolphin's own fixes for this game. Dolphin applies it by itself.")
-                                 : trf("Dolphin's fix: {why}", {{"why", fix.why}});
-        r.values = {tr(fix.value)};
-        rows_.push_back(r);
+        const std::string label = tr(fix.label) + ": " + tr(fix.value);
+        const std::string why = fix.why.empty() ? "" : trf("Dolphin's note: {why}", {{"why", fix.why}}) + "  ";
+        if (fix.override_key.empty())
+        {
+            /* A value, not a switch: shown as it is. */
+            SettingRow r;
+            r.section = "Recommended";
+            r.label = label;
+            r.help = why + tr("One of Dolphin's own fixes for this game. Dolphin applies it by itself.");
+            r.values = {tr("Applied")};
+            out.push_back(r);
+            continue;
+        }
+        RecRow rec;
+        rec.kind = RecRow::DolphinFix;
+        rec.key = fix.override_key;
+        rec.value = fix.raw;
+        rec.off_value = fix.off_value;
+        add(label, why + tr("Dolphin's own fix for this game, on by itself. Turning it off may help speed but can bring "
+                            "back the problem it fixes."),
+            rec);
     }
-    if (!has_pick && fixes.empty())
+    if (out.size() == 1)
     {
         SettingRow r;
         r.section = "Recommended";
@@ -429,34 +494,96 @@ void App::add_recommended_rows()
         r.help = tr("Dolphin has no fixes listed for this game, and Porpoise has no picks for it yet. The list grows "
                     "as games are tested.");
         r.values = {""};
-        rows_.push_back(r);
+        out.push_back(r);
     }
+    /* Right after This game. */
+    std::size_t at = 0;
+    while (at < rows_.size() && (rows_[at].header ? rows_[at].section == "This game" : rows_[at].section == "This game"))
+        ++at;
+    rows_.insert(rows_.begin() + std::ptrdiff_t(at), out.begin(), out.end());
 }
 
-bool App::pick_in_use(const recommend::Pick &pick) const
+bool App::rec_on(const RecRow &rec) const
 {
-    for (const auto &[k, v] : pick.values)
-    {
-        porpoise::Settings probe = game_;
-        if (!probe.set(k, v) || probe.get(k) != game_.get(k))
+    auto has = [&](const std::string &k, const std::string &v) {
+        if (std::find(game_keys_.begin(), game_keys_.end(), k) == game_keys_.end())
             return false;
+        porpoise::Settings probe = game_;
+        probe.set(k, v);
+        return probe.get(k) == game_.get(k);
+    };
+    switch (rec.kind)
+    {
+    case RecRow::DolphinFix:
+        /* On unless this game turns it off. */
+        return game_.get(rec.key).empty() || game_.get(rec.key) == rec.value;
+    case RecRow::Pick:
+        return has(rec.key, rec.value);
+    case RecRow::AllPicks:
+    {
+        recommend::Pick pick;
+        if (!recommend::pick_for(game_for_->id, pick))
+            return false;
+        for (const auto &[k, v] : pick.values)
+            if (!has(k, v))
+                return false;
+        return true;
     }
-    return true;
+    }
+    return false;
 }
 
-void App::apply_pick()
+void App::set_game_key(const std::string &key, const std::string *value)
 {
-    recommend::Pick pick;
-    if (!game_for_ || !recommend::pick_for(game_for_->id, pick))
+    const auto it = std::find(game_keys_.begin(), game_keys_.end(), key);
+    if (value)
+    {
+        game_.set(key, *value);
+        if (it == game_keys_.end())
+            game_keys_.push_back(key);
         return;
-    for (const auto &[k, v] : pick.values)
-        if (game_.set(k, v) && std::find(game_keys_.begin(), game_keys_.end(), k) == game_keys_.end())
-            game_keys_.push_back(k);
+    }
+    /* Back to what every game uses. */
+    if (key.rfind("dolphin.", 0) == 0)
+        game_.forget(key);
+    else
+        game_.set(key, settings_->get(key));
+    if (it != game_keys_.end())
+        game_keys_.erase(it);
+}
+
+void App::toggle_recommended(int index)
+{
+    if (!game_for_ || index < 0 || index >= int(rec_rows_.size()))
+        return;
+    const RecRow rec = rec_rows_[std::size_t(index)];
+    const bool on = rec_on(rec);
+    switch (rec.kind)
+    {
+    case RecRow::DolphinFix:
+        if (on)
+            set_game_key(rec.key, &rec.off_value);
+        else
+            set_game_key(rec.key, nullptr);
+        break;
+    case RecRow::Pick:
+        set_game_key(rec.key, on ? nullptr : &rec.value);
+        break;
+    case RecRow::AllPicks:
+    {
+        recommend::Pick pick;
+        if (recommend::pick_for(game_for_->id, pick))
+            for (const auto &[k, v] : pick.values)
+                set_game_key(k, on ? nullptr : &v);
+        break;
+    }
+    }
     mkdir((data_dir_ + "/game-settings").c_str(), 0777);
     game_.save_keys(game_settings_path(*game_for_), game_keys_);
     const int row = settings_row_;
     build_game_settings();
-    settings_row_ = row;
+    settings_row_ = std::clamp(row, 0, int(rows_.size()) - 1);
+    sfx(on ? Sound::MovingTab : Sound::LaunchGame);
 }
 
 int App::section_count() const
@@ -550,10 +677,7 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowAddFolder:
         open_browser("");
         return Action::None;
-    case kRowRecommended:
-        apply_pick();
-        sfx(Sound::LaunchGame);
-        return Action::None;
+
     case kRowRemoveFolder:
         if (row.folder >= 0 && row.folder < int(settings_->folders.size()))
         {
@@ -639,6 +763,13 @@ App::Action App::update_settings(bool up, bool down, bool left, bool right)
         return Action::None;
     }
     const SettingRow &row = rows_[std::size_t(settings_row_)];
+    if (row.toggle >= 0)
+    {
+        /* A recommendation's switch: Cross, or left / right toward off / on. */
+        if (pressed(BtnCross) || (left && row.toggle) || (right && !row.toggle))
+            toggle_recommended(row.rec);
+        return Action::None;
+    }
     if (row.action)
         return pressed(BtnCross) ? activate_row(row) : Action::None;
     if (!row.bool_value && !row.int_value)
@@ -712,7 +843,7 @@ void App::draw_settings()
     else if (current == "Interface")
         subtitle = tr("How Porpoise looks and reads");
     else if (current == "Recommended")
-        subtitle = tr("Dolphin's own fixes for this game, and Porpoise's picks");
+        subtitle = tr("Green is on for this game \xE2\x80\xA2 changes apply the next time it starts");
     else if (game)
         subtitle = tr("For this game only \xE2\x80\xA2 values in blue are its own");
     g.text_mid(Font::Regular, ts(26), px + 50, py + 112, kLavender, Align::Left, subtitle);
@@ -777,6 +908,31 @@ void App::draw_settings()
             }
             else
                 g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f, cy, kSoft, Align::Center, value);
+        }
+        else if (r.toggle >= 0)
+        {
+            /* A switch: a green track with the knob right when on. */
+            const bool lit = r.toggle == 1;
+            const float tw = 92, th = 44, tx = right - tw;
+            g.panel(tx, cy - th * 0.5f, tw, th, lit ? rgba(0x2FB574, 0.95f) : rgba(0x07102E, 0.6f), 0.85f, th * 0.5f,
+                    lit ? rgba(0xBDF5D8) : (on ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.85f)), on ? 2.0f : 1.4f,
+                    lit ? 8 : 0);
+            const float kx = lit ? tx + tw - th * 0.5f : tx + th * 0.5f;
+            g.blob(kx, cy, th * 0.9f, th * 0.9f, rgba(0xFFFFFF, lit ? 0.35f : 0.15f));
+            g.panel(kx - th * 0.38f, cy - th * 0.38f, th * 0.76f, th * 0.76f, lit ? kWhite : rgba(0xA9B8E8), 1,
+                    th * 0.38f);
+            const float ow = g.text_mid(Font::Bold, ts(26), tx - 18, cy, lit ? rgba(0x7CF0B4) : kLavender,
+                                        Align::Right, lit ? tr("On") : tr("Off"));
+            if (!r.tag.empty())
+            {
+                /* Where it comes from, in a small pill. */
+                const bool dolphin = r.rec >= 0 && rec_rows_[std::size_t(r.rec)].kind == RecRow::DolphinFix;
+                const float pw2 = g.measure(Font::SemiBold, ts(19), r.tag) + 26, px2 = tx - 18 - ow - 22 - pw2;
+                g.panel(px2, cy - 15, pw2, 30, dolphin ? rgba(0x2A2F6E, 0.8f) : rgba(0x0E3A6E, 0.8f), 1, 15,
+                        dolphin ? rgba(0xA9A0FF, 0.8f) : with_alpha(kCyan, 0.8f), 1.2f);
+                g.text_mid(Font::SemiBold, ts(19), px2 + pw2 * 0.5f, cy, dolphin ? rgba(0xCFC8FF) : kCyan,
+                           Align::Center, r.tag);
+            }
         }
         else if (!r.bool_value && !r.int_value)
             g.text_mid(Font::SemiBold, ts(28), right, cy, on ? kWhite : kSoft, Align::Right, value);
@@ -874,8 +1030,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMapping)
         draw_prompts({{Glyph::Cross, "Customize"}, {Glyph::Circle, "Sections"}}, {}, "");
-    else if (focus.action == kRowRecommended)
-        draw_prompts({{Glyph::Cross, "Use"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.toggle >= 0)
+        draw_prompts({{Glyph::Cross, focus.toggle ? "Turn off" : "Turn on"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action)
         draw_prompts({{Glyph::Cross, "Reset"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (info)

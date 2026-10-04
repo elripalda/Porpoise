@@ -13,6 +13,7 @@
 
 #include "porpoise_borders.hpp"
 #include "porpoise_states.hpp"
+#include "ui_recommend.hpp"
 #include "ui_app.hpp"
 #include "ui_i18n.hpp"
 #include "ui_gfx.hpp"
@@ -245,6 +246,24 @@ int main(int argc, char **argv)
     /* Two save states for the 4th game, with a cover for their pictures. */
     porpoise::states::set_data_dir(out);
     porpoise::borders::set_dirs(assets, out);
+    {
+        /* A Dolphin fix and a Porpoise pick for the preview's games (PRV...). */
+        mkdir((out + "/gs").c_str(), 0777);
+        if (std::FILE *f = std::fopen((out + "/gs/PRV.ini").c_str(), "w"))
+        {
+            std::fputs("# PRVW01 - Preview\n[Video_Hacks]\n# Fixes the entrance videos.\nEFBToTextureEnable = False\n"
+                       "[Video_Settings]\nSafeTextureCacheColorSamples = 0\n", f);
+            std::fclose(f);
+        }
+        if (std::FILE *f = std::fopen((out + "/recommended.ini").c_str(), "w"))
+        {
+            std::fputs("[PRV]\nnote = Smoother on PS5 with these.\nresolution = 2\n"
+                       "dolphin.Video_Hacks.EFBToTextureEnable = True\n"
+                       "dolphin.Video_Settings.EnableGPUTextureDecoding = True\n", f);
+            std::fclose(f);
+        }
+        porpoise::ui::recommend::set_paths(out + "/recommended.ini", out + "/gs");
+    }
     if (lib.games().size() > 3)
     {
         const std::string dir = out + "/states/" + Library::key_of(lib.games()[3]);
@@ -381,6 +400,17 @@ int main(int argc, char **argv)
     press(kRight);
     settle();
     render("game-settings", [&] { ui.draw(12.0); });
+    press(kCircle);   /* to the rail */
+    press(kDown);     /* Recommended */
+    press(kRight);
+    settle();
+    render("game-settings-recommended", [&] { ui.draw(12.0); });
+    press(kDown);     /* the first pick */
+    press(kCross);    /* off */
+    settle();
+    render("game-settings-recommended-toggled", [&] { ui.draw(12.0); });
+    press(kCircle);
+    press(1u << 0);   /* back up to This game */
     press(kCircle);
     press(kDown);  /* rail: Video */
     press(kRight);
@@ -522,8 +552,20 @@ int main(int argc, char **argv)
             }
         };
         shot("ingame-menu");
-        menu_press(1u << 1); /* Load state */
+        menu_press(1u << 4);    /* Save state...: the slot picker */
+        shot("ingame-save-pick");
+        menu_press(1u << 4);    /* slot 1 has a state: asks first */
+        shot("ingame-save-replace");
+        menu_press(1u << 5);    /* back */
+        menu_press(1u << 1);    /* Load state... */
+        menu_press(1u << 4);
         shot("ingame-menu-load");
+        menu_press(1u << 4);    /* load it: busy until the host answers */
+        shot("ingame-loading");
+        ui.take_menu_request();
+        ui.menu_state_done(porpoise::ui::App::MenuRequest::Load, 0, false);
+        menu_press(1u << 5);
+        menu_press(1u << 0, 2); /* back to Resume */
         menu_press(1u << 9); /* R1: Video */
         menu_press(1u << 1, 5); /* Screen filter */
         menu_press(1u << 3, 3); /* CRT */

@@ -106,12 +106,9 @@ public:
         } kind = None;
         int slot = 0;
     };
-    MenuRequest take_menu_request()
-    {
-        MenuRequest r = menu_request_;
-        menu_request_ = {};
-        return r;
-    }
+    MenuRequest take_menu_request();
+    /* Saving or loading is under way (the menu shows it). */
+    bool menu_busy() const { return menu_busy_.kind != MenuRequest::None; }
     void menu_state_done(MenuRequest::Kind kind, int slot, bool ok);
     /* Fast forward chosen in the menu: 1 (off), 2 or 4. Not saved. */
     int menu_fast_forward() const { return menu_ff_ == 2 ? 4 : menu_ff_ == 1 ? 2 : 1; }
@@ -151,6 +148,9 @@ private:
         int *int_value = nullptr;
         bool *bool_value = nullptr;
         std::string *text_value = nullptr; /* a text setting chosen from a list (the border) */
+        int toggle = -1;                   /* a switch: 1 on, 0 off; -1 not a switch */
+        int rec = -1;                      /* its recommendation (rec_rows_) */
+        std::string tag;                   /* a small label beside the switch: where it comes from */
         int min = 0;
         bool header = false;
         int action = 0;      /* look::RowAction */
@@ -193,8 +193,21 @@ private:
     void build_settings();
     void build_game_settings();
     void add_recommended_rows();
-    bool pick_in_use(const recommend::Pick &pick) const;
-    void apply_pick();
+    struct RecRow
+    {
+        enum Kind
+        {
+            AllPicks,
+            Pick,
+            DolphinFix,
+        } kind = Pick;
+        std::string key, value, off_value;
+    };
+    std::vector<RecRow> rec_rows_;
+    bool rec_on(const RecRow &rec) const;
+    void toggle_recommended(int index);
+    /* A game's own value for a key, or (nullptr) back to the global one. */
+    void set_game_key(const std::string &key, const std::string *value);
     void add_game_rows(Settings &target, bool per_game);
     void change_setting(int dir);
     Action update_settings(bool up, bool down, bool left, bool right);
@@ -314,7 +327,12 @@ private:
     int menu_tab_ = 0;   /* Game, Video, Graphics, Controls */
     int menu_slot_ = 0;  /* the save-state slot under focus */
     int menu_ff_ = 0;    /* fast forward: off, 2x, 4x */
-    MenuRequest menu_request_;
+    MenuRequest menu_busy_;           /* the save or load under way */
+    bool menu_busy_handed_ = false;   /* given to the host */
+    int menu_busy_frames_ = 0;        /* frames drawn showing it */
+    double menu_busy_start_ = 0;
+    int menu_slots_mode_ = 0;         /* 0 the list, 1 choosing where to save, 2 what to load */
+    bool menu_confirm_ = false;       /* the next press replaces a used slot */
     std::string menu_note_;
     double menu_note_time_ = -10;
     Texture *menu_slot_tex_[3] = {nullptr, nullptr, nullptr};

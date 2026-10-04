@@ -42,6 +42,7 @@ struct Settings
     bool crop_overscan = false;   /* dolphin_crop_overscan */
     bool custom_textures = false; /* dolphin_load_custom_textures (+ prefetch) */
     bool skip_dupes = true;       /* dolphin_skip_dupe_frames */
+    bool fast_states = true;      /* save states leave out Dolphin's GPU texture cache (GFX.ini) */
     /* Audio */
     int volume = 10; /* 0..10 */
     bool muted = false;
@@ -71,6 +72,11 @@ struct Settings
     /* Interface */
     bool reduced_motion = false;
     bool large_text = false;
+    /* Dolphin's own per-game settings set by Porpoise, as "dolphin.<Section>.<Key>"
+     * and its value (e.g. dolphin.Video_Hacks.EFBToTextureEnable = True). Kept
+     * in a game's settings file only, and written for Dolphin before the game
+     * starts (write_dolphin_game_ini). */
+    std::vector<std::pair<std::string, std::string>> dolphin;
     int ui_language = 0; /* 0 follows the PS5, 1 English, 2 Spanish, 3 French, 4 Portuguese, 5 Italian, 6 Japanese */
 
     /* Reads key = value lines. overlay: only the keys present change (a
@@ -89,6 +95,11 @@ struct Settings
      * become one of the player's layouts in global (true when global changed
      * and must be saved), Smooth / Sharp becomes the screen filter. */
     static bool migrate_game_file(const std::string &path, Settings &global);
+    /* Drops a dolphin.* setting (Dolphin's own value applies again). */
+    void forget(const std::string &key);
+    /* Writes Dolphin's per-game file (User/GameSettings/<ID>.ini) from the
+     * dolphin.* settings; removes it when there are none. */
+    bool write_dolphin_game_ini(const std::string &path) const;
     /* One setting by its key, as in the file (false: no such setting). */
     bool set(const std::string &key, const std::string &value);
     /* Its value as the file has it ("" for no such setting). */

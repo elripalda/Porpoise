@@ -803,8 +803,33 @@ bool open_display()
     return pick_display();
 }
 
+/* The GPU's memory types, once, into the trace: whether the CPU has cached
+ * memory to read the GPU's results from decides how fast Dolphin's EFB copies
+ * to RAM (and save-state pictures) are. */
+void log_memory_types()
+{
+    static bool done = false;
+    if (done || !s.gpu)
+        return;
+    done = true;
+    VkPhysicalDeviceMemoryProperties props{};
+    vkGetPhysicalDeviceMemoryProperties(s.gpu, &props);
+    for (std::uint32_t i = 0; i < props.memoryTypeCount; ++i)
+    {
+        const VkMemoryPropertyFlags f = props.memoryTypes[i].propertyFlags;
+        char line[160];
+        std::snprintf(line, sizeof line, "vk: memory type %u heap %u:%s%s%s%s", i, props.memoryTypes[i].heapIndex,
+                      (f & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) ? " device-local" : "",
+                      (f & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ? " host-visible" : "",
+                      (f & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) ? " coherent" : "",
+                      (f & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) ? " CACHED" : "");
+        ps5::debug::mark(line);
+    }
+}
+
 bool open_device(const retro_hw_render_context_negotiation_interface_vulkan *negotiation)
 {
+    log_memory_types();
     if (negotiation && negotiation->interface_type == RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN &&
         negotiation->create_device)
     {

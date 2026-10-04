@@ -50,7 +50,8 @@
         "assets/brand/*",
         "assets/borders/*",
         "assets/ui/flags.png",
-        "assets/ui/report-qr.png"
+        "assets/ui/report-qr.png",
+        "assets/recommended.ini"
       ],
       "licence": "GPL-3.0-or-later",
       "copyright": [

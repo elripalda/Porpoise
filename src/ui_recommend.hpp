@@ -28,6 +28,10 @@ struct Fix
     std::string label; /* English, for tr() */
     std::string value; /* English for On / Off and the like */
     std::string why;   /* the database's own comment, when it has one (English, not translated) */
+    std::string section, key, raw; /* as in the file: Video_Hacks, EFBToTextureEnable, False */
+    /* The Settings key that overrides it (dolphin.<section>.<key>), and the
+     * value that turns the fix off; empty when it is not an on/off setting. */
+    std::string override_key, off_value;
 };
 
 struct Pick
@@ -36,8 +40,13 @@ struct Pick
     std::vector<std::pair<std::string, std::string>> values; /* Settings keys and values */
 };
 
-/* feed: the downloaded data/recommended.ini; game_settings: Dolphin's Sys/GameSettings. */
-void set_paths(const std::string &feed, const std::string &game_settings);
+/* feed: the downloaded data/recommended.ini; bundled: the copy that ships in
+ * the app (the download wins game by game); game_settings: Dolphin's
+ * Sys/GameSettings. */
+void set_paths(const std::string &feed, const std::string &game_settings, const std::string &bundled = "");
+/* A dolphin.<Section>.<Key> setting, said plainly: its label and its value. */
+void describe_dolphin(const std::string &settings_key, const std::string &value, std::string &label,
+                      std::string &value_text);
 /* The feed was downloaded again: read it afresh next time. */
 void feed_changed();
 std::vector<Fix> dolphin_fixes(const std::string &id);
