@@ -371,7 +371,12 @@ bool Settings::migrate_game_file(const std::string &path, Settings &global)
         "map_down", "map_left", "map_right"};
     std::vector<std::string> keep;
     int map[porpoise::pad::GcCount];
-    const porpoise::pad::Mapping base = porpoise::pad::preset(porpoise::pad::LayoutGameCube);
+    /* 1.0's map_* lines changed 1.0's GameCube layout (A Cross, B Square,
+     * X Circle), so that's what they start from. */
+    porpoise::pad::Mapping base = porpoise::pad::preset(porpoise::pad::LayoutGameCube);
+    base.control[porpoise::pad::GcA] = porpoise::pad::CtlCross;
+    base.control[porpoise::pad::GcB] = porpoise::pad::CtlSquare;
+    base.control[porpoise::pad::GcX] = porpoise::pad::CtlCircle;
     for (int i = 0; i < porpoise::pad::GcCount; ++i)
         map[i] = base.control[i];
     bool old = false, saw_map = false, custom = false, saw_filter = false;

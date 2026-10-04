@@ -499,7 +499,7 @@ void read_latest_release()
     if (porpoise::update::read_cached(g_data + "/latest-release.json", r))
     {
         g_release = r;
-        g_app.set_latest_release(r.tag, r.page, r.size);
+        g_app.set_latest_release(r.tag, r.page, r.size, r.build);
     }
 }
 

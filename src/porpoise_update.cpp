@@ -503,6 +503,14 @@ bool parse(const std::string &json, Release &out)
     out = Release{};
     out.tag = field(json, 0, json.size(), "tag_name");
     out.page = field(json, 0, json.size(), "html_url");
+    /* The release's own name comes before its assets (theirs are inside them). */
+    {
+        const std::size_t assets = json.find("\"assets\"");
+        const std::string name = field(json, 0, assets == std::string::npos ? json.size() : assets, "name");
+        const std::size_t b = name.find("build ");
+        if (b != std::string::npos)
+            out.build = std::atoi(name.c_str() + b + 6);
+    }
     /* The release's Porpoise-*.zip: each asset is looked at on its own, its
      * name taken from the end of its download link. */
     const std::size_t key = json.find("\"assets\"");

@@ -1,43 +1,56 @@
 <p align="center"><img src="https://github.com/elripalda/Porpoise/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
-**Porpoise 1.1, the quality-of-life update.** Recommended settings you can switch on per game, save states, setups, fast forward, a full in-game menu, your own button layouts, nine screen filters and eight borders, favourites and play time, twelve languages, and updates from inside Porpoise.
+**Porpoise 1.1 (build 14).** This update adds save states, an in-game menu, recommended settings per game (beta), more filters and borders, twelve languages, a reworked folder browser and updates from inside Porpoise.
 
-## What's new
+## Changes
 
-- **Recommended settings you can switch on.** Supported games come with recommended settings: each game's settings open with Dolphin's own fixes for it and Porpoise's picks tested on PS5, each with an on/off switch (green is on). The first pick is for *WWE Day of Reckoning 2*, which ran at about 6 fps: it keeps EFB copies and texture decoding on the GPU. A game's Dolphin settings now also stay in force when you change graphics in the in-game menu.
-- **A real in-game menu.** Options + touch pad, then **L1 / R1** between four tabs: **Game**, **Video**, **Graphics** and **Controls**. Nearly every setting is there, takes effect at once, and is saved for that game.
-- **Save states.** Three slots per game, each with a picture of the moment that fits the game's real shape (4:3 or 16:9). Pick a slot to save or load; saving over a used slot asks first, and a spinner shows while it's written. *Fast save states* keeps Dolphin's texture cache out of them, so saving takes a moment. Start a game straight from a slot on its Details page.
-- **Setups.** Save a game's Video and Graphics settings as a setup and use it on any other game.
-- **Fast forward.** 2x or 4x from the in-game menu.
-- **Your own button layouts.** Four of them (*My layout 1–4*) beside GameCube and PlayStation. Any game can use any layout, and *Customize buttons* also works over a paused game.
-- **New controller art and button icons everywhere**, from Zacksly's *PS5 Button Icons and Controls*. The Controls tab shows the DualSense with a line to every button and the GameCube button it plays.
-- **Nine screen filters:** Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS, and new **Soft VHS**, **8-bit** and **Pocket**, each with a strength.
-- **Eight borders** for 4:3 games (widescreen off): **Porpoise**, Porpoise glass, Midnight, **Frost**, **Carbon**, and three cabinets — Arcade, **Retro** and **Synthwave**. Make your own: a 1920×1080 PNG in `/data/porpoise/borders/`.
-- **Updates from inside Porpoise:** *Settings → About → Updates* checks GitHub and installs a new Porpoise, checking every file before anything is replaced.
-- **Favourites and play time.** Options stars a game. Sort by *Most played* or *Favourites first*.
-- **DualSense light bar** in each player's colour, and a **QR code** in About for reporting bugs.
-- **Fixes:** Porpoise asks the HEN to leave the app sandbox when it starts inside it — the cause of "only a few folders in the folder browser", no `/data/porpoise` folder and games in `/data/games` not showing. Shaders compile on four threads instead of one, for less stutter.
+### Games and folders
+- **Folder browser:** *Settings → Games → Add a game folder* opens on the whole console at `/data`. Folders show how many games they hold, and game files are listed under them. **Square** adds the folder you're in (add as many as you like), **Triangle** lists your drives and Porpoise's games folder, and **Cross** on a game on a USB drive copies it to the console.
+- **Sandbox fix:** if the console starts Porpoise inside the app sandbox (only a few folders visible, no `/data/porpoise`, games not found), Porpoise asks the HEN to let it out. With etaHEN 2.4B or later, add **PPSA99764** to etaHEN's app jailbreak list (or turn on *Legacy CMD Server*) for this to work.
 
-## Languages
+### In-game menu (Options + touch pad)
+- Four tabs, switched with L1 / R1: **Game**, **Video**, **Graphics** and **Controls**. Changes apply at once and are saved for that game.
+- **Save states:** three slots per game, with pictures. Saving over a used slot asks first, and a spinner shows while the state is written. *Fast save states* (on by default) makes saving take a moment instead of several seconds. You can also start a game from a slot on its details page.
+- **Setups:** save a game's Video and Graphics settings and use them on other games.
+- **Fast forward:** 2x or 4x.
 
-**Twelve languages**, each with its flag in *Settings → Interface → Language*: English, Español (España), **Español (Latinoamérica)**, Français, **Deutsch**, **Italiano**, **Nederlands**, **Polski**, Português (Portugal), **Português (Brasil)**, **Русский** and **日本語**. Game descriptions come in Spanish, French, Portuguese, Italian, German and Dutch where GameTDB has them. The translations are first drafts; corrections are welcome (see the README).
+### Game settings
+- **Recommended (beta):** a game's settings start with Dolphin's own fixes for it and Porpoise's picks tested on PS5, each with an on/off switch. Only a few games have picks so far; more will be added as games are tested. The first is for *WWE Day of Reckoning 2*.
+- A game's Dolphin settings now stay in place when you change graphics from the in-game menu.
+
+### Controls
+- **PlayStation is now the default layout** (Cross A, Circle B). The **GameCube** layout matches Dolphin's (Circle A, Cross B). Four layouts of your own (*My layout 1–4*); 1.0's custom buttons become *My layout 1*.
+- New controller art and button icons from Zacksly's *PS5 Button Icons and Controls*.
+- The DualSense light bar shows each player's colour.
+
+### Picture
+- Screen filters: Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS, Soft VHS, 8-bit and Pocket, each with a strength.
+- Borders for 4:3 games: Porpoise, Porpoise glass, Midnight, Frost, Carbon, and Arcade, Retro and Synthwave cabinets. You can add your own 1920×1080 PNGs in `/data/porpoise/borders/`.
+
+### Languages
+English, Español (España), **Español (Latinoamérica)**, Français, **Deutsch**, **Italiano**, **Nederlands**, **Polski**, Português (Portugal), **Português (Brasil)**, **Русский** and **日本語**, each with its flag. The new translations are first drafts; corrections are welcome (see the README).
+
+### Library and other changes
+- Favourites (Options) and play time, with *Most played* and *Favourites first* sorts.
+- **Updates:** *Settings → About → Updates* checks GitHub and installs a newer Porpoise. Every file is checked before anything is replaced.
+- Shaders compile on four threads instead of one, for less stutter.
+- A QR code in About for reporting bugs.
+- About now credits **Mihawk (mihawk-99)**, who brought the Dolphin core to the PS5.
 
 ## Install or update
 
 1. Download **`Porpoise-1.1.zip`** below and unzip it. You get a folder named **`PPSA99764`**.
-2. **Updating from 1.0:** delete `/data/homebrew/PPSA99764/` on the PS5 first. Your games, saves, covers and settings live in `/data/porpoise/` and stay put. Custom buttons from 1.0 become *My layout 1*. *If your 1.0 couldn't reach `/data`* (your games were in the app's own `porpoise/games` folder), copy the new files over the old folder instead of deleting it; 1.1 moves your things to `/data/porpoise` itself.
-3. Copy the **`PPSA99764`** folder into **`/data/homebrew/`** over FTP (for example etaHEN's FTP server) or PS5 Upload.
-4. New install: register it like your other homebrew (for example with ShadowMountPlus). If Porpoise says it can't reach `/data`, add **PPSA99764** to your HEN's list of apps to jailbreak.
+2. **From 1.0:** delete `/data/homebrew/PPSA99764/` on the PS5 first. Your games, saves, covers and settings live in `/data/porpoise/` and are kept. If your 1.0 couldn't reach `/data` (your games were in the app's own `porpoise/games` folder), copy the new files over the old folder instead of deleting it.
+3. Copy the **`PPSA99764`** folder into **`/data/homebrew/`** over FTP or with PS5 Upload.
+4. New install: register it like your other homebrew (for example with ShadowMountPlus).
 
-From 1.1 on, *Settings → About → Updates* updates Porpoise for you.
+From 1.1 on, *Settings → About → Updates* can update Porpoise for you.
 
-You need a jailbroken PS5 with **etaHEN** and **kstuff** loaded. Full guide: [README](https://github.com/elripalda/Porpoise#readme) · [Changelog](https://github.com/elripalda/Porpoise/blob/main/CHANGELOG.md) · [Credits](https://github.com/elripalda/Porpoise/blob/main/CREDITS.md)
+You need a jailbroken PS5 with **etaHEN** and **kstuff**. More in the [README](https://github.com/elripalda/Porpoise#readme), the [changelog](https://github.com/elripalda/Porpoise/blob/main/CHANGELOG.md) and the [credits](https://github.com/elripalda/Porpoise/blob/main/CREDITS.md).
 
 ## Thanks
 
-The Dolphin core on PS5: **[Mihawk (mihawk-99)](https://github.com/mihawk-99)**, whose PS5 RetroArch, PS5_Vulkan and PS5_Mesa ports Porpoise is built on.
-
-Controller art and button icons: *PS5 Button Icons and Controls* by **[Zacksly](https://zacksly.itch.io)** ([@_Zacksly](https://twitter.com/_Zacksly)), licensed under CC BY 3.0 and adapted for Porpoise (rendered to PNG, PlayStation logo and labels removed).
+**[Mihawk (mihawk-99)](https://github.com/mihawk-99)**, whose PS5 RetroArch, PS5_Vulkan and PS5_Mesa ports Porpoise is built on. Controller art and button icons: *PS5 Button Icons and Controls* by **[Zacksly](https://zacksly.itch.io)** ([@_Zacksly](https://twitter.com/_Zacksly)), CC BY 3.0, adapted for Porpoise.
 
 ## Legal
 

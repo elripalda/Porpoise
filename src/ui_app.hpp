@@ -116,7 +116,8 @@ public:
     /* Fast forward chosen in the menu: 1 (off), 2 or 4. Not saved. */
     int menu_fast_forward() const { return menu_ff_ == 2 ? 4 : menu_ff_ == 1 ? 2 : 1; }
     /* The newest release on GitHub ("v1.2" and its page), for the update notice. */
-    void set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size = 0);
+    void set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size = 0,
+                            int build = 0);
     /* The updater, as porpoise::update::Phase numbers: 0 idle, 1 checking,
      * 2 downloading, 3 installing, 4 done, 5 failed, 6 checked. */
     void set_update_progress(int phase, std::size_t done, std::size_t total, const std::string &error);

@@ -53,7 +53,7 @@ struct Settings
     int sounds_volume = 8;
     /* Controls */
     /* 0 GameCube, 1 PlayStation, 2..5 the player's own layouts 1..4. */
-    int button_layout = 0;
+    int button_layout = 1; /* PlayStation by default (1.1 build 14) */
     /* The player's own layouts, kept with the global settings (a game only
      * picks one): a porpoise::pad::Control for each GameCube input, in
      * porpoise::pad::GcInput order. Each starts as the GameCube layout. */

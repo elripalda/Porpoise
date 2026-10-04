@@ -565,5 +565,8 @@
  "Copied to the console": "Copiado para a consola",
  "{game} is in Porpoise's games folder now, and in your library.": "{game} já está na pasta de jogos do Porpoise e na tua biblioteca.",
  "The copy didn't finish": "A cópia não terminou",
- "The copy didn't finish (the console may be full). Nothing was left behind.": "A cópia não terminou (a consola pode estar cheia). Não ficou nenhum ficheiro a meio."
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "A cópia não terminou (a consola pode estar cheia). Não ficou nenhum ficheiro a meio.",
+ "Beta": "Beta",
+ "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made in Customize buttons.": "PlayStation: X é A e círculo é B. GameCube: círculo é A e X é B. As minhas disposições: as tuas, criadas em Personalizar botões.",
+ "Circle A • Cross B": "Círculo A • X B"
 }

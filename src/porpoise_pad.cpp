@@ -131,7 +131,7 @@ struct Slot
 Slot g_slots[kMaxPlayers];
 PadSample g_samples[sample_capacity];
 const State g_none{};
-Mapping g_mapping = preset(LayoutGameCube);
+Mapping g_mapping = preset(LayoutPlayStation);
 std::atomic<bool> g_rumble_enabled{true};
 unsigned g_polls_since_scan = 0;
 bool g_ready = false;
@@ -319,17 +319,20 @@ namespace porpoise::pad
 Mapping preset(int layout)
 {
     Mapping m{};
-    m.control[GcA] = CtlCross;
     if (layout == LayoutPlayStation)
     {
+        /* Cross confirms, as on PlayStation. */
+        m.control[GcA] = CtlCross;
         m.control[GcB] = CtlCircle;
         m.control[GcX] = CtlSquare;
         m.control[GcY] = CtlTriangle;
     }
     else
     {
-        m.control[GcB] = CtlSquare;
-        m.control[GcX] = CtlCircle;
+        /* Dolphin's own: A on Circle, B on Cross. */
+        m.control[GcA] = CtlCircle;
+        m.control[GcB] = CtlCross;
+        m.control[GcX] = CtlSquare;
         m.control[GcY] = CtlTriangle;
     }
     m.control[GcZ] = CtlR1;

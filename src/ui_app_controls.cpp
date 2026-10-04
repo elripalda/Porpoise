@@ -583,7 +583,7 @@ void App::draw_mapping(double time)
             g.text_mid(Font::SemiBold, ts(26), row_x + 34, cy, on ? kWhite : kSoft, Align::Left,
                        tr(from_gc ? "Start over from the GameCube layout" : "Start over from the PlayStation layout"));
             g.text_mid(Font::Regular, ts(21), right, cy, with_alpha(kLavender, 0.9f), Align::Right,
-                       tr(from_gc ? "Cross A \xE2\x80\xA2 Square B" : "Cross A \xE2\x80\xA2 Circle B"));
+                       tr(from_gc ? "Circle A \xE2\x80\xA2 Cross B" : "Cross A \xE2\x80\xA2 Circle B"));
         }
         y += h_row;
     }

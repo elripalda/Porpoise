@@ -33,7 +33,7 @@ namespace porpoise::ui
 using namespace look;
 using namespace porpoise::pad;
 
-void App::set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size)
+void App::set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size, int build)
 {
     latest_size_ = zip_size;
     /* "v1.2" or "1.2.1": newer than this build? */
@@ -44,8 +44,12 @@ void App::set_latest_release(const std::string &tag, const std::string &url, std
     if (std::sscanf(t, "%d.%d.%d", &major, &minor, &patch) < 2)
         return;
     const bool newer = major > kVersionMajor || (major == kVersionMajor && minor > kVersionMinor) ||
-                       (major == kVersionMajor && minor == kVersionMinor && patch > kVersionPatch);
-    latest_version_ = newer ? std::string(t) : "";
+                       (major == kVersionMajor && minor == kVersionMinor && patch > kVersionPatch) ||
+                       (major == kVersionMajor && minor == kVersionMinor && patch == kVersionPatch && build > kBuild);
+    std::string shown = t;
+    if (build > 0 && major == kVersionMajor && minor == kVersionMinor && patch == kVersionPatch)
+        shown += " (build " + std::to_string(build) + ")";
+    latest_version_ = newer ? shown : "";
     latest_url_ = newer ? url : "";
     /* Only while the global settings are what rows_ holds: a game's settings
      * or the mapping screen keep theirs (About is built afresh later). */
@@ -253,7 +257,7 @@ void App::add_game_rows(Settings &t, bool per_game)
         for (int i = 1; i <= Settings::kPresets; ++i)
             layouts.push_back(trf("My layout {n}", {{"n", std::to_string(i)}}));
         choice("button_layout", "Button layout",
-               "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. My layouts: your own, made "
+               "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made "
                "in Customize buttons.",
                &t.button_layout, 0, layouts);
     }
@@ -997,7 +1001,15 @@ void App::draw_settings()
     /* The section's rows. */
     const float px = 500, py = 136, pw = 1330, ph = 800;
     g.panel(px, py, pw, ph, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-    g.text_mid(Font::Bold, ts(46), px + 50, py + 64, kWhite, Align::Left, tr(current));
+    const float title_w = g.text_mid(Font::Bold, ts(46), px + 50, py + 64, kWhite, Align::Left, tr(current));
+    if (current == "Recommended")
+    {
+        /* A beta: the list grows as games are tested. */
+        const std::string beta = tr("Beta");
+        const float bw = g.measure(Font::Bold, ts(20), beta) + 28;
+        g.panel(px + 50 + title_w + 18, py + 64 - 17, bw, 34, rgba(0x6A3FD8, 0.35f), 1, 17, rgba(0xB89BFF), 1.6f);
+        g.text_mid(Font::Bold, ts(20), px + 50 + title_w + 18 + bw * 0.5f, py + 64, rgba(0xE4DAFF), Align::Center, beta);
+    }
     std::string subtitle = tr("Changes apply the next time a game starts");
     if (current == "About")
         subtitle = tr("Porpoise for PS5") + " \xE2\x80\xA2 " + tr("created by @elripalda") + " \xE2\x80\xA2 www.elripalda.com";

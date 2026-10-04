@@ -565,5 +565,8 @@
  "Copied to the console": "本体にコピーしました",
  "{game} is in Porpoise's games folder now, and in your library.": "{game}がPorpoiseのゲームフォルダーとライブラリーに追加されました。",
  "The copy didn't finish": "コピーが完了しませんでした",
- "The copy didn't finish (the console may be full). Nothing was left behind.": "コピーが完了しませんでした（本体の空き容量が不足している可能性があります）。途中までのファイルは残っていません。"
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "コピーが完了しませんでした（本体の空き容量が不足している可能性があります）。途中までのファイルは残っていません。",
+ "Beta": "ベータ",
+ "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made in Customize buttons.": "PlayStation：×がA、○がBです。GameCube：○がA、×がBです。マイ配置：「ボタンをカスタマイズ」で作った自分の配置です。",
+ "Circle A • Cross B": "○がA • ×がB"
 }

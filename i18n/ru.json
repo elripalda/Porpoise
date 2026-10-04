@@ -565,5 +565,8 @@
  "Copied to the console": "Скопировано на консоль",
  "{game} is in Porpoise's games folder now, and in your library.": "Файл {game} теперь в папке игр Porpoise и в вашей библиотеке.",
  "The copy didn't finish": "Копирование не завершено",
- "The copy didn't finish (the console may be full). Nothing was left behind.": "Копирование не завершено (возможно, на консоли закончилось место). Недокопированных файлов не осталось."
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "Копирование не завершено (возможно, на консоли закончилось место). Недокопированных файлов не осталось.",
+ "Beta": "Бета",
+ "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made in Customize buttons.": "PlayStation: крестик — A, кружок — B. GameCube: кружок — A, крестик — B. Мои раскладки: ваши собственные, созданные в разделе «Настроить кнопки».",
+ "Circle A • Cross B": "Кружок A • Крестик B"
 }

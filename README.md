@@ -10,10 +10,8 @@
 </p>
 
 <p align="center">
-  <b>Porpoise</b> is a native GameCube and Wii emulator for jailbroken PS5, powered by
-  <a href="https://dolphin-emu.org">Dolphin</a>.<br>
-  Its launcher was built from scratch for the TV and the DualSense:<br>sky-blue glass, a cover-flow shelf of real box art, memory cards you can
-  hold, and original menu music.
+  <b>Porpoise</b> is a GameCube and Wii emulator for jailbroken PS5, built on
+  <a href="https://dolphin-emu.org">Dolphin</a>, with its own launcher for the TV and the DualSense.
 </p>
 
 <p align="center">
@@ -26,94 +24,74 @@
 
 ---
 
-## Why Porpoise
+## What it is
 
-Porpoise is not a front end bolted onto a general-purpose emulator menu. It is a
-single-purpose app with its own home-screen tile and its own look, inspired by
-the console menus of the early 2000s. It is meant to be picked up with a
-controller and enjoyed from the couch.
+Porpoise is a PS5 homebrew app (title ID `PPSA99764`) that runs the Dolphin
+emulator's libretro core inside its own launcher. It has a game library with
+box art, a memory-card manager, per-game settings and an in-game menu, all
+driven with a DualSense. Dolphin's x86-64 JIT runs on the console's CPU, and
+graphics go through Vulkan on Mesa's RADV driver.
 
-- **Made for one job.** One emulator and one library, with settings written in
-  plain words. There are no core lists and no config files to edit.
-- **Native on PS5.** Porpoise is a real PS5 title (`PPSA99764`). Dolphin's
-  x86-64 JIT runs directly on the console's CPU, and graphics go through Vulkan
-  on Mesa's RADV driver.
-- **Your games, presented well.** Box art, back covers, disc labels and game
-  details download automatically, so your library looks like a shelf of boxes
-  instead of a list of file names.
+It plays your own GameCube and Wii disc backups. It doesn't include any games,
+BIOS or firmware files.
 
 ## Features
 
 ### The library
-- **Cover-flow shelf:** a row of glass box-art tiles in a perspective grid room.
-  The focused box lifts and turns to show its edge, with gloss and a slow
-  reflection across the glass.
-- **Finds your games on its own.** Porpoise searches the usual folders and every
-  USB or extended drive. You can also add folders with the built-in folder
-  browser, and it searches four levels deep.
-- **Game formats:** `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`.
-- **Sort** by title (A–Z), recently played, most played or favourites first.
-  Each game shows its play time and when you last
-  played it.
+- Games are shown as a row of box-art tiles. Left and right move between them.
+- Porpoise looks for games in the usual folders and on USB and extended drives
+  (see [Adding games](#adding-games)). You can also add your own folders; each
+  is searched four levels deep.
+- Formats: `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`.
+- Sort by title, recently played, most played or favourites first. Each game
+  shows its play time and when you last played it.
 
 ### Box art and game info
-- **Automatic box art from [GameTDB](https://www.gametdb.com).** Full front and
-  back covers in the 5:7 box shape, plus the disc's label art. Covers appear one
-  by one as they arrive, with a "Getting covers 3 of 9" note while they load.
-- **Game details:** description, developer, publisher, release date, genre,
-  number of players and rating, from GameTDB's open database.
-- **Use your own art.** Drop a PNG named after the game's disc ID into the
-  covers folder and Porpoise uses it.
+- Front covers, back covers and disc art download from
+  [GameTDB](https://www.gametdb.com) while the console is online.
+- Game details from GameTDB: description, developer, publisher, release date,
+  genre, number of players and rating.
+- To use your own art, put a PNG named after the game's disc ID in the covers
+  folder.
 - Covers and info can each be turned off under **Settings → Games**.
 
 ### The details page
-- **Square** flies the box off the shelf into Details, turning it over once on
-  the way.
-- **Triangle** flips to the **back cover**, and the **right stick** turns the box
-  in your hands.
-- **L2 / R2** swipe to the previous or next game without leaving Details.
-- The disc spins beside the box, showing its real label art.
-- **Play**, **Save states**, **Game settings** and **Save data** are one press
-  away. A game with its own settings is marked *Custom*, and one with recommended
-  settings says so.
-- **Save states:** three slots per game, each with a picture of the moment it
-  was saved. Start the game straight from any of them.
-- **Options** marks a game as a **favourite** (a gold star on its box), here or
-  in the library. Details also shows your **play time**.
+- **Square** opens a game's details. **Triangle** shows the back of the box,
+  the **right stick** turns it, and **L2 / R2** move to the previous or next
+  game.
+- From here: **Play**, **Save states**, **Game settings** and **Save data**.
+- **Save states:** three slots per game, each with a picture. You can start a
+  game from any of them.
+- **Options** marks a game as a favourite, here or in the library.
 
 ### Memory cards
-- **Slot A and Slot B**, side by side like a classic memory-card manager. Each
-  save shows its own icon on a glass tile.
-- A banner bar shows the save's banner, title, description, block count and date,
-  and each slot shows its free blocks.
-- **Copy** a save to the other slot with **Square**, and **delete** it with
-  **Triangle**. Both ask first, with *Cancel* selected by default.
-- **Save data** on a game's Details page jumps straight to that game's save.
+- Slot A and Slot B side by side, with each save's icon, banner, title, block
+  count and date, and each slot's free blocks.
+- **Square** copies a save to the other slot and **Triangle** deletes it. Both
+  ask first.
+- **Save data** on a game's details page goes straight to that game's save.
 
 ### Controllers and players
-- **Up to four players.** Every controller signed in to a PS5 user is a player:
-  turn on a second controller, pick a user for it, and it joins, even in the
-  middle of a game.
-- **Button layouts.** *GameCube* (the default: Cross is A, Square is B, as on
-  the GameCube pad), *PlayStation* (Cross is A, Circle is B), and **four layouts
-  of your own** (*My layout 1–4*).
-- **Customize buttons** shows a picture of the DualSense with the GameCube
-  button each control plays. Choose which of your layouts to edit, pick a
-  GameCube button, press the DualSense button you want, and the two swap places
-  so nothing is ever left without a button. It works from inside a game too.
-- Any game can use any layout, and analog L and R follow the triggers.
-- The **light bar** shows each player's colour: blue, red, green and pink.
+- Up to four players. Every controller signed in to a PS5 user is a player,
+  and controllers can join in the middle of a game.
+- **Button layouts:** *PlayStation* (the default: Cross is A, Circle is B),
+  *GameCube* (Circle is A, Cross is B, as in Dolphin) and four layouts of your
+  own (*My layout 1–4*).
+- **Customize buttons** shows the DualSense with the GameCube button each
+  control plays. Pick a GameCube button, press the DualSense button you want,
+  and the two swap. It also works from the in-game menu.
+- Any game can use any layout. Analog L and R follow the triggers.
+- The light bar shows each player's colour.
 
 ### Settings
-Settings open on a rail of sections; inside each section, rows show their value
-as chips.
+Settings are split into sections:
 
 | Section | What's inside |
 |---|---|
 | **Video** | Internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
-| **Graphics** | Shader compilation (asynchronous ubershaders by default, for stutter-free play), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
+| **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
 | **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume |
-| **Controls** | Button layout (GameCube, PlayStation or one of your four), Customize buttons, vibration, connected controllers |
+| **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, connected controllers |
 | **System** | Emulated CPU clock (50–300%), dual core, fast disc loading, cheats, console language, progressive scan |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info |
 | **Interface** | Menu language, reduced motion, larger text, **reset all settings** |
@@ -122,8 +100,9 @@ as chips.
 - **Per-game settings.** Any game can override the Video, Graphics, Audio, Controls
   and System settings. Changed values show in blue, and *This game → Reset to
   default* clears them.
-- **Recommended settings.** Supported games come with recommended settings you
-  can switch on. A game's settings open with **Recommended**: **Dolphin's own
+- **Recommended settings (beta).** Supported games come with recommended
+  settings you can switch on. The list is small for now and will grow as more
+  games are tested. A game's settings open with **Recommended**: **Dolphin's own
   fixes** for it, from Dolphin's per-game database (on by themselves), and
   **Porpoise's picks**, settings tested on PS5. Each has an on/off switch —
   green is on — and a tag saying where it comes from; changes apply the next
@@ -155,8 +134,8 @@ as chips.
   folders and saves are kept.
 
 ### In-game menu
-Press **Options + touch pad** together while playing. The game pauses and a
-glass menu slides in from the left, with four tabs (**L1 / R1**):
+Press **Options + touch pad** together while playing. The game pauses and the
+menu opens, with four tabs (**L1 / R1**):
 
 - **Game:** Resume, **Save state…** and **Load state…** (three slots, with
   pictures: pick a slot with left and right; saving over a used slot asks for a
@@ -177,12 +156,9 @@ When you resume, the game ignores your buttons until you let go, so the press
 that closed the menu never reaches the game.
 
 ### Music and sound
-- An **original menu soundtrack** that loops seamlessly. It fades in on the
-  menus, fades out when a game starts, and returns when you quit to the library.
-- **Original sound effects** for browsing games, scrolling menus, switching tabs,
-  flipping the box and launching a game. The in-game menu has them too.
-- Music and effects each have their own switch and volume. The music starts as a
-  quiet bed at 40%.
+- Original menu music and sound effects by Ruben. The music fades out when a
+  game starts and comes back in the library.
+- Music and effects each have their own switch and volume.
 
 ### Languages
 - **Twelve languages**, each with its flag in the language list: English,
@@ -199,14 +175,15 @@ that closed the menu never reaches the game.
   translations live in [`i18n/`](i18n).
 
 ### Performance
-- **Locked to your TV's refresh.** When the display allows it, every frame is
-  shown on its own vblank for smooth, even motion. Otherwise Porpoise keeps its
-  own clock. Either way games run at their real speed, never above 60 fps, with
-  clean 48 kHz sound.
-- **Stutter-free shaders.** Dolphin compiles shaders on four background
-  threads with asynchronous ubershaders, so a game doesn't stall the first time
-  it draws something new, and the shader cache is kept between runs.
+- When the TV's refresh rate allows it, each frame is shown on its own vblank;
+  otherwise Porpoise keeps its own clock. Games run at their normal speed,
+  with 48 kHz sound.
+- Dolphin compiles shaders on four background threads with asynchronous
+  ubershaders, so games stutter less the first time they draw something new.
+  The shader cache is kept between runs.
 - Dolphin's x86-64 JIT with fastmem, and Vulkan through RADV.
+- Some games are slow on PS5 because of Dolphin's own per-game fixes; see
+  **Recommended** in a game's settings and the speed line in `core.log`.
 
 ## Requirements
 
@@ -262,7 +239,8 @@ With **Find games automatically** on (the default), Porpoise looks in:
   (`/mnt/ext0`, `/mnt/ext1`)
 
 To use any other folder, go to **Settings → Games → Add a game folder**, browse
-to it, and press **Square**. Porpoise searches that folder and four levels
+to it, and press **Square**. The browser shows the game files in each folder,
+so you can see where they are. Porpoise searches that folder and four levels
 below it. After copying new games, use **Search for games now**.
 
 ## Controls
@@ -289,18 +267,18 @@ below it. After copying new games, use **Search for games now**.
 | **Circle** (in the menu) | Resume |
 | **L1 / R1** (in the menu) | Switch tabs: Game, Video, Graphics, Controls |
 
-With the default **GameCube** layout:
+With the default **PlayStation** layout:
 
 | GameCube | DualSense |
 |---|---|
-| A / B / X / Y | Cross / Square / Circle / Triangle |
+| A / B / X / Y | Cross / Circle / Square / Triangle |
 | Z | R1 |
 | L / R (analog) | L2 / R2 |
 | Start | Options |
 | Control stick / C-stick | Left stick / right stick |
 | D-pad | D-pad |
 
-The **PlayStation** layout puts B on Circle and X on Square. To set any button
+The **GameCube** layout puts A on Circle and B on Cross. To set any button
 yourself, go to **Settings → Controls → Customize buttons** (or the in-game
 menu's Controls tab), and give a game its layout in its own settings.
 

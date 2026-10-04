@@ -28,6 +28,7 @@ struct Release
     std::string zip_url; /* Porpoise-1.2.zip */
     std::string sha256;  /* of the zip, as GitHub gives it ("" when it doesn't) */
     std::size_t size = 0;
+    int build = 0;       /* from the release's name, "Porpoise 1.1 (build 14)"; 0 when it has none */
 };
 
 /* GitHub's /releases/latest answer. */

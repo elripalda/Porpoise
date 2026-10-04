@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.1 — the quality-of-life update
+## 1.1 — 2026-10-04 (build 14)
 
-### Recommended settings
+### Recommended settings (beta)
 - Every game's settings open with **Recommended**: Dolphin's own fixes for the
   game and Porpoise's tested picks, each with an **on/off switch** — green is
   on — and a tag saying where it comes from. Picks are updated daily.
@@ -33,6 +33,9 @@
   GameCube button it plays, and opens Customize buttons over the paused game.
 
 ### Controls
+- **PlayStation is the default layout** (Cross is A, Circle is B). The
+  **GameCube** layout now matches Dolphin's: Circle is A, Cross is B (it was
+  Cross A, Square B). Saved settings keep the layout they had.
 - **Four layouts of your own** (*My layout 1–4*) beside GameCube and
   PlayStation. Any game can use any of them. 1.0's custom buttons become
   *My layout 1* (a game's own custom buttons move to a free layout).
