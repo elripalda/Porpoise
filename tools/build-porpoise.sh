@@ -6,7 +6,8 @@
 # with RetroArch removed: src/ is Porpoise's own host plus the platform layer
 # carried over from that project (core loader, threads, memory, crash report).
 #
-#   PS5_VULKAN_DIR   Mihawk's PS5_Vulkan checkout with RADV built (release)
+#   PS5_VULKAN_DIR         Mihawk's PS5_Vulkan checkout with RADV built (release); ../PS5_Vulkan
+#   PS5_PAYLOAD_SDK_FORK   Mihawk's PS5_PayloadSDK checkout; ../PS5_PayloadSDK
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
@@ -89,7 +90,8 @@ rm -rf -- "$dist/system/dolphin-emu"
 cp -a -- "$root/build/cores/stage/system/dolphin-emu" "$dist/system/dolphin-emu"
 cp -a -- "$root/config/options.ini" "$dist/porpoise/options.ini"
 
-python3 "$root/tools/stage-notices.py" "$dist" --driver radv --vulkan-dir "$vulkan_dir"
+python3 "$root/tools/stage-notices.py" "$dist" --driver radv --vulkan-dir "$vulkan_dir" \
+    --sdk-fork "${PS5_PAYLOAD_SDK_FORK:-$root/../PS5_PayloadSDK}"
 bash "$root/tools/check-manifest.sh" --record
 printf '==> [porpoise] built %s (%s files, eboot.bin %s bytes)\n' \
     "$dist" "$(find "$dist" -type f | wc -l)" "$(stat -c %s "$dist/eboot.bin")"
