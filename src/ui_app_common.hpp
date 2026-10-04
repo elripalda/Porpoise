@@ -35,6 +35,7 @@ enum RowAction
     kRowMapping,
     kRowRecommended,
     kRowUseSetup,
+    kRowUpdate,
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

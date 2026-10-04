@@ -477,7 +477,7 @@ int main(int argc, char **argv)
     render("settings-video", [&] { ui.draw(12.0); });
     press(kDown, 5); /* Interface */
     press(kRight);
-    press(kDown, 2); /* Reset all settings */
+    press(kDown, 3); /* Reset all settings */
     press(kCross);
     settle();
     render("dialog", [&] { ui.draw(12.0); });
@@ -488,6 +488,34 @@ int main(int argc, char **argv)
     press(kDown, 2);
     settle();
     render("settings-about", [&] { ui.draw(12.0); });
+    /* A newer release: the About row offers it, then the update runs. */
+    ui.set_latest_release("v1.2", "https://github.com/elripalda/Porpoise/releases/tag/v1.2", 41u << 20);
+    press(1u << 0, 1); /* up to the update row */
+    settle();
+    render("settings-about-update", [&] { ui.draw(12.0); });
+    press(kCross);
+    settle();
+    render("update-confirm", [&] { ui.draw(12.0); });
+    press(kRight);
+    press(kCross); /* Install */
+    ui.set_update_progress(2, 18u << 20, 41u << 20, "");
+    settle();
+    render("update-downloading", [&] { ui.draw(12.0); });
+    ui.set_update_progress(3, 1630, 2709, "");
+    render("update-installing", [&] { ui.draw(12.0); });
+    ui.set_update_progress(5, 0, 0, "The download doesn't match its SHA-256. Nothing was changed.");
+    settle();
+    render("update-failed", [&] { ui.draw(12.0); });
+    press(kCross);
+    ui.set_update_progress(0, 0, 0, "");
+    ui.set_update_progress(4, 2709, 2709, "");
+    render("update-done", [&] { ui.draw(12.0); });
+    ui.set_update_progress(0, 0, 0, "");
+    ui.set_latest_release("v1.1", "", 0);
+    settle();
+    press(kCircle);
+    press(kCircle); /* back to the library */
+    settle();
 
     /* Controls, and the button-mapping screen. */
     {

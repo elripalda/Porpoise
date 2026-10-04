@@ -281,6 +281,18 @@ App::Action App::update(const Input &in, double dt)
         pill_w_ = calm ? width : smooth(pill_w_, width, dt, 16.0f);
     }
 
+    if (updating())
+    {
+        /* The update holds the screen; when it's in, Cross closes Porpoise. */
+        if (update_phase_ == 4 && pressed(BtnCross))
+            return Action::Quit;
+        return Action::None;
+    }
+    if (update_failed_)
+    {
+        update_failed_ = false;
+        open_dialog(DialogKind::Info, tr("The update didn't finish"), update_error_, "");
+    }
     if (dialog_.open)
         return update_dialog(left, right);
     if (screen_ == Screen::Browse)
@@ -571,6 +583,8 @@ App::Action App::confirm_dialog(DialogKind kind)
             build_game_settings();
         }
         return Action::None;
+    case DialogKind::InstallUpdate:
+        return Action::InstallUpdate;
     case DialogKind::DeleteState:
         if (states_game_)
         {
@@ -1716,6 +1730,55 @@ void App::draw(double time)
         }
     g.set_layer();
     draw_dialog();
+    draw_update_overlay(time);
+}
+
+/* Downloading, installing, then done: a box over everything. */
+void App::draw_update_overlay(double time)
+{
+    if (!updating())
+        return;
+    Gfx &g = *g_;
+    g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.75f), 1, 0);
+    const float w = 900, h = 330, x = 960 - w * 0.5f, y = 375;
+    Glass face;
+    face.tint = rgba(0x13308A, 0.92f);
+    face.rim = rgba(0x8BD9FF);
+    face.radius = kR;
+    face.rim_w = 2.2f;
+    face.glow = 12;
+    face.phase = 0.4f;
+    glass_block(g, 960, y + h * 0.5f, w, h, 22, 0, 0, 36, face);
+    const bool done = update_phase_ == 4;
+    g.text_mid(Font::Bold, ts(40), 960, y + 74, kWhite, Align::Center,
+               done ? tr("Porpoise is updated")
+                    : trf("Updating to Porpoise {version}", {{"version", latest_version_}}));
+    if (done)
+    {
+        for (const std::string &l : wrap(g, Font::Regular, ts(26), tr("Press Cross to close Porpoise, then open it again "
+                                                                      "from the home screen."), w - 120, 2))
+        {
+            g.text_mid(Font::Regular, ts(26), 960, y + 150, kSoft, Align::Center, l);
+            break;
+        }
+        g.glyph(Glyph::Cross, 960 - 110, y + 250, 40, kWhite);
+        g.text_mid(Font::Bold, ts(28), 960 - 80, y + 250, kWhite, Align::Left, tr("Close Porpoise"));
+        return;
+    }
+    const bool installing = update_phase_ == 3;
+    const float frac = update_total_ ? float(update_done_) / float(update_total_) : 0.0f;
+    const std::string what =
+        installing ? trf("Putting the new files in place: {done} of {total}",
+                         {{"done", std::to_string(update_done_)}, {"total", std::to_string(update_total_)}})
+                   : trf("Downloading: {done} of {total} MB",
+                         {{"done", std::to_string(update_done_ >> 20)}, {"total", std::to_string(update_total_ >> 20)}});
+    g.text_mid(Font::Regular, ts(26), 960, y + 150, kSoft, Align::Center, what);
+    const float bx = x + 70, bw = w - 140, by = y + 205;
+    g.panel(bx, by, bw, 26, rgba(0x07102E, 0.7f), 1, 13, rgba(0x3D5AB0, 0.9f), 1.4f);
+    g.panel(bx + 3, by + 3, std::max(20.0f, (bw - 6) * std::clamp(frac, 0.0f, 1.0f)), 20, rgba(0x5CD3FF), 0.8f, 10);
+    (void)time;
+    g.text_mid(Font::Regular, ts(21), 960, y + 280, kLavender, Align::Center,
+               tr("Keep Porpoise open until it's done."));
 }
 
 /* ---- launch ------------------------------------------------------------------------------- */

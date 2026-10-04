@@ -38,6 +38,7 @@
 #include "porpoise_pad.hpp"
 #include "porpoise_sound.hpp"
 #include "porpoise_states.hpp"
+#include "porpoise_update.hpp"
 #include "porpoise_vk.hpp"
 #include "title_threads.hpp"
 #include "trace.hpp"
@@ -323,24 +324,15 @@ void set_ini_value(const std::string &path, const std::string &section, const st
     }
 }
 
-/* The newest release, as the last check wrote it: tag, then its page. */
+/* The newest release, as the last check wrote it: GitHub's own answer. */
+porpoise::update::Release g_release;
 void read_latest_release()
 {
-    if (std::FILE *f = std::fopen((g_data + "/latest-release.txt").c_str(), "r"))
+    porpoise::update::Release r;
+    if (porpoise::update::read_cached(g_data + "/latest-release.json", r))
     {
-        char tag[64] = {0}, url[256] = {0};
-        if (std::fgets(tag, sizeof tag, f))
-        {
-            if (!std::fgets(url, sizeof url, f))
-                url[0] = 0;
-            std::string t = tag, u = url;
-            while (!t.empty() && (t.back() == '\n' || t.back() == '\r'))
-                t.pop_back();
-            while (!u.empty() && (u.back() == '\n' || u.back() == '\r'))
-                u.pop_back();
-            g_app.set_latest_release(t, u);
-        }
-        std::fclose(f);
+        g_release = r;
+        g_app.set_latest_release(r.tag, r.page, r.size);
     }
 }
 
@@ -360,7 +352,7 @@ void fetch_covers()
     if (g_settings.download_covers || g_settings.download_info)
     {
         request.feed_path = g_data + "/recommended.ini";
-        request.release_path = g_data + "/latest-release.txt";
+        request.release_path = g_data + "/latest-release.json";
     }
     for (const porpoise::ui::Game &game : g_library.games())
         if (!game.id.empty())
@@ -695,6 +687,18 @@ int main()
             if (porpoise::covers::take_release_ready())
                 read_latest_release();
             {
+                /* The updater: checked, downloading, installing, done. */
+                const porpoise::update::Progress up = porpoise::update::progress();
+                if (up.phase == porpoise::update::Phase::Checked)
+                    read_latest_release();
+                g_app.set_update_progress(int(up.phase), up.done, up.total, up.error);
+                if (up.phase == porpoise::update::Phase::Checked || up.phase == porpoise::update::Phase::Failed)
+                {
+                    porpoise::update::acknowledge();
+                    fetch_covers(); /* the covers paused for it */
+                }
+            }
+            {
                 int phase = 0, done = 0, total = 0;
                 std::string note;
                 if (porpoise::covers::progress(phase, done, total) && phase < 4)
@@ -718,6 +722,22 @@ int main()
             }
             if (action == porpoise::ui::App::Action::Rescan)
                 rescan_library();
+            if (action == porpoise::ui::App::Action::CheckUpdate)
+            {
+                porpoise::covers::stop(); /* one download at a time: let the check go first */
+                porpoise::update::start_check(g_data + "/latest-release.json");
+            }
+            if (action == porpoise::ui::App::Action::InstallUpdate)
+            {
+                porpoise::covers::stop();
+                ps5::debug::mark(("main: updating to " + g_release.tag).c_str());
+                porpoise::update::start_install(g_release, g_data + "/update", "/app0");
+            }
+            if (action == porpoise::ui::App::Action::Quit)
+            {
+                ps5::debug::mark("main: closing after the update");
+                leave(0);
+            }
             if (action == porpoise::ui::App::Action::Launch && g_app.launch_game())
             {
                 launch = g_app.launch_game();

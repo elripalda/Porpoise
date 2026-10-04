@@ -47,6 +47,9 @@ public:
         Launch,      /* launch_game() says which */
         SettingsChanged,
         Rescan,      /* game folders changed: search again */
+        CheckUpdate, /* look for a newer Porpoise now */
+        InstallUpdate,
+        Quit,        /* close Porpoise (after an update) */
     };
 
     void set_sound_hook(void (*play)(Sound)) { sound_ = play; }
@@ -113,7 +116,11 @@ public:
     /* Fast forward chosen in the menu: 1 (off), 2 or 4. Not saved. */
     int menu_fast_forward() const { return menu_ff_ == 2 ? 4 : menu_ff_ == 1 ? 2 : 1; }
     /* The newest release on GitHub ("v1.2" and its page), for the update notice. */
-    void set_latest_release(const std::string &tag, const std::string &url);
+    void set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size = 0);
+    /* The updater, as porpoise::update::Phase numbers: 0 idle, 1 checking,
+     * 2 downloading, 3 installing, 4 done, 5 failed, 6 checked. */
+    void set_update_progress(int phase, std::size_t done, std::size_t total, const std::string &error);
+    bool updating() const { return update_phase_ == 2 || update_phase_ == 3 || update_phase_ == 4; }
     /* Back from a game to the library. */
     void return_from_game();
     /* The menu language changed (rebuilds Settings' rows). */
@@ -166,6 +173,7 @@ private:
         DeleteSave,
         CopySave,
         DeleteState,
+        InstallUpdate,
     };
     struct Dialog
     {
@@ -368,6 +376,15 @@ private:
     Screen map_return_ = Screen::Main;
     Settings *map_target_ = nullptr; /* the global settings, or a game's */
     std::string latest_version_, latest_url_; /* "1.2", from GitHub; "" when not newer */
+    std::size_t latest_size_ = 0;
+    int update_phase_ = 0;
+    std::size_t update_done_ = 0, update_total_ = 0;
+    std::string update_error_;
+    std::string update_note_; /* after a check: up to date, or what went wrong */
+    bool update_failed_ = false; /* an install failed: say so once */
+    double update_note_time_ = -100;
+    std::string update_row_value() const;
+    void draw_update_overlay(double time);
     bool update_available() const { return !latest_version_.empty(); }
     Texture *flags_ = nullptr; /* Settings > Interface > Language */
     bool flags_tried_ = false;

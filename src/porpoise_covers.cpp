@@ -38,35 +38,10 @@
 #pragma clang diagnostic pop
 
 #include "porpoise_gametdb.hpp"
+#include "porpoise_http.hpp"
 #include "title_threads.hpp"
 #include "trace.hpp"
 
-extern "C"
-{
-    int sceNetInit(void);
-    int sceNetPoolCreate(const char *name, int size, int flags);
-    int sceNetPoolDestroy(int pool);
-    int sceSslInit(std::size_t pool_size);
-    int sceSslTerm(int ctx);
-    int sceHttp2Init(int net_pool, int ssl_ctx, std::size_t pool_size, int max_requests);
-    int sceHttp2Term(int ctx);
-    int sceHttp2CreateTemplate(int ctx, const char *user_agent, int http_version, int auto_proxy);
-    int sceHttp2DeleteTemplate(int tmpl);
-    int sceHttp2CreateRequestWithURL(int tmpl, const char *method, const char *url, std::uint64_t content_length);
-    int sceHttp2DeleteRequest(int req);
-    int sceHttp2SendRequest(int req, const void *data, std::size_t size);
-    int sceHttp2GetStatusCode(int req, int *status);
-    int sceHttp2ReadData(int req, void *data, std::size_t size);
-    int sceHttp2SetResolveTimeOut(int id, std::uint32_t usec);
-    int sceHttp2SetConnectTimeOut(int id, std::uint32_t usec);
-    int sceHttp2SetSendTimeOut(int id, std::uint32_t usec);
-    int sceHttp2SetRecvTimeOut(int id, std::uint32_t usec);
-    int sceHttp2SetTimeOut(int id, std::uint32_t usec);
-    int sceHttp2SetAutoRedirect(int id, int enable);
-    int sceNetCtlInit(void);
-    void sceNetCtlTerm(void);
-    int sceNetCtlGetState(int *state);
-}
 
 namespace porpoise::covers
 {
@@ -111,92 +86,10 @@ void log(const std::string &line)
     ps5::debug::mark(("covers: " + line).c_str());
 }
 
-/* ---- HTTPS -------------------------------------------------------------------------------- */
-
-struct Http
+/* HTTPS: the shared session (porpoise_http). */
+struct Http : porpoise::http::Session
 {
-    int pool = -1, ssl = -1, ctx = -1, tmpl = -1;
-    bool netctl = false;
-
-    bool init()
-    {
-        const int nc = sceNetCtlInit();
-        netctl = nc == 0;
-        int state[4] = {-1, 0, 0, 0};
-        const int gs = sceNetCtlGetState(state);
-        if (gs == 0 && state[0] >= 0 && state[0] < 3)
-        {
-            log("the console is not online; no covers this time");
-            return false;
-        }
-        (void)sceNetInit(); /* an error only means it is up already */
-        pool = sceNetPoolCreate("porpoise-covers", 64 * 1024, 0);
-        ssl = pool >= 0 ? sceSslInit(256 * 1024) : -1;
-        ctx = ssl >= 0 ? sceHttp2Init(pool, ssl, 256 * 1024, 1) : -1;
-        tmpl = ctx >= 0 ? sceHttp2CreateTemplate(ctx, "Porpoise/1.0", 3, 1) : -1;
-        char line[160];
-        std::snprintf(line, sizeof line, "https: pool %#x ssl %#x http2 %#x template %#x", unsigned(pool),
-                      unsigned(ssl), unsigned(ctx), unsigned(tmpl));
-        log(line);
-        return tmpl >= 0;
-    }
-
-    void term()
-    {
-        if (tmpl >= 0)
-            sceHttp2DeleteTemplate(tmpl);
-        if (ctx >= 0)
-            sceHttp2Term(ctx);
-        if (ssl >= 0)
-            sceSslTerm(ssl);
-        if (pool >= 0)
-            sceNetPoolDestroy(pool);
-        if (netctl)
-            sceNetCtlTerm();
-        tmpl = ctx = ssl = pool = -1;
-        netctl = false;
-    }
-
-    /* The HTTP status, or -1 when the request could not be made. */
-    int get(const std::string &url, std::vector<std::uint8_t> &out)
-    {
-        out.clear();
-        const int req = sceHttp2CreateRequestWithURL(tmpl, "GET", url.c_str(), 0);
-        if (req < 0)
-            return -1;
-        sceHttp2SetResolveTimeOut(req, 10 * 1000 * 1000);
-        sceHttp2SetConnectTimeOut(req, 10 * 1000 * 1000);
-        sceHttp2SetSendTimeOut(req, 10 * 1000 * 1000);
-        sceHttp2SetRecvTimeOut(req, 10 * 1000 * 1000);
-        sceHttp2SetTimeOut(req, 25 * 1000 * 1000);
-        sceHttp2SetAutoRedirect(req, 1);
-        int status = -1;
-        if (sceHttp2SendRequest(req, nullptr, 0) != 0 || sceHttp2GetStatusCode(req, &status) != 0)
-            status = -1;
-        else if (status == 200)
-        {
-            std::vector<std::uint8_t> buf(64 * 1024);
-            for (;;)
-            {
-                const int n = sceHttp2ReadData(req, buf.data(), buf.size());
-                if (n < 0)
-                {
-                    status = -1;
-                    break;
-                }
-                if (n == 0)
-                    break;
-                out.insert(out.end(), buf.begin(), buf.begin() + n);
-                if (out.size() > (64u << 20)) /* the game database is the largest download */
-                {
-                    status = -1;
-                    break;
-                }
-            }
-        }
-        sceHttp2DeleteRequest(req);
-        return status;
-    }
+    Http() : porpoise::http::Session("porpoise-covers") {}
 };
 
 /* ---- covers ------------------------------------------------------------------------------- */
@@ -437,28 +330,6 @@ void *run(void *)
             const bool feed = job.kind == Job::Feed;
             const int status = http.get(feed ? kFeedUrl : kReleaseUrl, data);
             std::string text(data.begin(), data.end());
-            if (!feed && status == 200)
-            {
-                /* Only the tag and the page from GitHub's answer. */
-                auto field = [&](const char *name) {
-                    const std::string key = std::string("\"") + name + "\"";
-                    const std::size_t at = text.find(key);
-                    if (at == std::string::npos)
-                        return std::string();
-                    std::size_t colon = text.find(':', at + key.size());
-                    if (colon == std::string::npos)
-                        return std::string();
-                    std::size_t q = colon + 1;
-                    while (q < text.size() && (text[q] == ' ' || text[q] == '\t' || text[q] == '\n' || text[q] == '\r'))
-                        ++q;
-                    if (q >= text.size() || text[q] != '"') /* null, or not a string */
-                        return std::string();
-                    const std::size_t end = text.find('"', q + 1);
-                    return end == std::string::npos ? std::string() : text.substr(q + 1, end - q - 1);
-                };
-                const std::string tag = field("tag_name");
-                text = tag.empty() ? std::string() : tag + "\n" + field("html_url") + "\n";
-            }
             const std::string path = feed ? g.feed_path : g.release_path;
             if (status == 200 && text.size() > 2 && text.size() < (1u << 20))
             {

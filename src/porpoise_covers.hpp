@@ -16,9 +16,8 @@ struct Request
     bool discs = false;           /* disc label art that is missing */
     std::string info_path;        /* GameTDB's table (info.tsv), when wanted; "" = skip */
     std::string info_lang = "EN"; /* the language of its descriptions */
-    /* Once a day, when set: Porpoise's recommended settings per game, and the
-     * newest release on GitHub (its tag on the first line, its page on the
-     * second). */
+    /* Once a day, when set: Porpoise's recommended settings per game, and
+     * GitHub's answer about the newest release (porpoise_update reads it). */
     std::string feed_path;
     std::string release_path;
 };

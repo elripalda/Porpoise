@@ -29,8 +29,9 @@ namespace porpoise::ui
 using namespace look;
 using namespace porpoise::pad;
 
-void App::set_latest_release(const std::string &tag, const std::string &url)
+void App::set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size)
 {
+    latest_size_ = zip_size;
     /* "v1.2" or "1.2.1": newer than this build? */
     int major = 0, minor = 0, patch = 0;
     const char *t = tag.c_str();
@@ -46,6 +47,45 @@ void App::set_latest_release(const std::string &tag, const std::string &url)
      * or the mapping screen keep theirs (About is built afresh later). */
     if (screen_ != Screen::GameSettings && screen_ != Screen::Mapping && !map_in_game_)
         build_settings();
+}
+
+std::string App::update_row_value() const
+{
+    switch (update_phase_)
+    {
+    case 1: return tr("Checking\xE2\x80\xA6");
+    case 2:
+    case 3:
+    case 4: return tr("Updating\xE2\x80\xA6");
+    default: break;
+    }
+    if (update_available())
+        return trf("Install {version}", {{"version", latest_version_}});
+    return tr("Check now");
+}
+
+void App::set_update_progress(int phase, std::size_t done, std::size_t total, const std::string &error)
+{
+    if (phase == update_phase_ && done == update_done_ && total == update_total_)
+        return;
+    const int was = update_phase_;
+    update_phase_ = phase;
+    update_done_ = done;
+    update_total_ = total;
+    update_error_ = error;
+    if ((was == 2 || was == 3) && phase == 5)
+        update_failed_ = true;
+    if (was == 1 && phase == 5)
+    {
+        update_note_ = error;
+        update_note_time_ = time_;
+    }
+    if (was == 1 && phase == 6)
+    {
+        update_note_ = update_available() ? trf("Porpoise {version} is out.", {{"version", latest_version_}})
+                                          : tr("This is the newest Porpoise.");
+        update_note_time_ = time_;
+    }
 }
 
 std::string App::build_label() const
@@ -334,11 +374,21 @@ void App::build_settings()
            "Reset\xE2\x80\xA6", kRowResetAll);
 
     header("About");
-    if (update_available())
-        info(trf("Porpoise {version} is out", {{"version", latest_version_}}).c_str(), tr("Update available"),
-             "Download it from github.com/elripalda/Porpoise/releases. Delete the old PPSA99764 folder, then copy "
-             "the new one in its place; your games, saves and settings stay.");
     info("Porpoise", build_label(), "A GameCube and Wii emulator for PS5, powered by Dolphin.");
+    {
+        SettingRow r;
+        r.section = section;
+        r.label = update_available() ? trf("Porpoise {version} is out", {{"version", latest_version_}})
+                                     : tr("Updates");
+        r.help = update_available()
+                     ? trf("Downloads Porpoise {version} from GitHub, checks it, and puts it in place of this one. "
+                           "Your games, saves and settings stay. Porpoise closes when it's done.",
+                           {{"version", latest_version_}})
+                     : tr("Looks on GitHub for a newer Porpoise. Porpoise also looks once a day by itself.");
+        r.values = {""};
+        r.action = kRowUpdate;
+        rows_.push_back(r);
+    }
     info("Created by", "@elripalda", "Ruben - www.elripalda.com");
     info("Website", "www.elripalda.com", "Updates, news and more from the creator of Porpoise.");
     info("Report a bug", "github.com/elripalda/Porpoise",
@@ -706,6 +756,23 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowAddFolder:
         open_browser("");
         return Action::None;
+    case kRowUpdate:
+        if (updating() || update_phase_ == 1)
+            return Action::None;
+        if (update_available())
+        {
+            open_dialog(DialogKind::InstallUpdate, trf("Install Porpoise {version}?", {{"version", latest_version_}}),
+                        latest_size_ ? trf("{mb} MB from GitHub. Porpoise checks the download, puts the new files in "
+                                           "place, and then closes so you can open the new one. Your games, saves "
+                                           "and settings stay.",
+                                           {{"mb", std::to_string((latest_size_ + (1 << 20) - 1) >> 20)}})
+                                     : tr("Porpoise checks the download, puts the new files in place, and then closes "
+                                          "so you can open the new one. Your games, saves and settings stay."),
+                        tr("Install"));
+            return Action::None;
+        }
+        sfx(Sound::MenuScroll);
+        return Action::CheckUpdate;
     case kRowUseSetup:
         if (screen_ == Screen::GameSettings && game_for_)
         {
@@ -941,6 +1008,8 @@ void App::draw_settings()
         }
         const float right = row_x + row_w - 24;
         const Color value_c = own ? kCyan : (on ? kWhite : kSoft);
+        if (r.action == kRowUpdate)
+            value = update_row_value();
         if (r.action)
         {
             const bool danger = r.action == kRowResetAll || r.action == kRowResetGame;
@@ -1033,6 +1102,9 @@ void App::draw_settings()
         help = tr("Choose a section with up and down, then press Right or Cross to go into it.");
     else
         help = rows_[std::size_t(settings_row_)].help;
+    if (!on_rail_ && rows_[std::size_t(settings_row_)].action == kRowUpdate && !update_note_.empty() &&
+        time_ - update_note_time_ < 8.0)
+        help = update_note_;
     g.panel(px + 50, py + ph - 100, pw - 100, 1.5f, rgba(0x3D4F9E, 0.7f), 1, 0);
     {
         /* One line, or two smaller ones when it is long. */
@@ -1080,6 +1152,9 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMapping)
         draw_prompts({{Glyph::Cross, "Customize"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowUpdate)
+        draw_prompts({{Glyph::Cross, update_available() ? "Install" : "Check now"}, {Glyph::Circle, "Sections"}}, {},
+                     "");
     else if (focus.action == kRowUseSetup)
         draw_prompts({{Glyph::Cross, "Use"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.toggle >= 0)
