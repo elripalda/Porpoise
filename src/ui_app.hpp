@@ -15,6 +15,7 @@
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
 #include "ui_memcard.hpp"
+#include "ui_recommend.hpp"
 #include "ui_settings.hpp"
 
 namespace porpoise::ui
@@ -114,6 +115,8 @@ public:
     void menu_state_done(MenuRequest::Kind kind, int slot, bool ok);
     /* Fast forward chosen in the menu: 1 (off), 2 or 4. Not saved. */
     int menu_fast_forward() const { return menu_ff_ == 2 ? 4 : menu_ff_ == 1 ? 2 : 1; }
+    /* The newest release on GitHub ("v1.2" and its page), for the update notice. */
+    void set_latest_release(const std::string &tag, const std::string &url);
     /* Back from a game to the library. */
     void return_from_game();
     /* The menu language changed (rebuilds Settings' rows). */
@@ -189,6 +192,9 @@ private:
     /* Settings (ui_app_settings.cpp) */
     void build_settings();
     void build_game_settings();
+    void add_recommended_rows();
+    bool pick_in_use(const recommend::Pick &pick) const;
+    void apply_pick();
     void add_game_rows(Settings &target, bool per_game);
     void change_setting(int dir);
     Action update_settings(bool up, bool down, bool left, bool right);
@@ -340,6 +346,12 @@ private:
     /* Button mapping */
     Screen map_return_ = Screen::Main;
     Settings *map_target_ = nullptr; /* the global settings, or a game's */
+    std::string latest_version_, latest_url_; /* "1.2", from GitHub; "" when not newer */
+    bool update_available() const { return !latest_version_.empty(); }
+    Texture *flags_ = nullptr; /* Settings > Interface > Language */
+    bool flags_tried_ = false;
+    Texture *qr_ = nullptr; /* Settings > About: Report a bug */
+    bool qr_tried_ = false;
     std::vector<std::string> border_names_; /* the Border row's choices */
     int border_choice_ = 0;
     Game *map_game_ = nullptr;       /* the game whose settings those are, if any */

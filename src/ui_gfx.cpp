@@ -461,6 +461,8 @@ bool Gfx::build_fonts()
     if (fonts_built_)
     {
         atlas_ = upload(atlas_pixels_.data(), kAtlas, kAtlas);
+        if (!cjk_pixels_.empty())
+            cjk_atlas_ = upload(cjk_pixels_.data(), kAtlas, kAtlas);
         return atlas_ != nullptr;
     }
     static const char *const files[4] = {"Nunito-Regular.ttf", "Nunito-SemiBold.ttf", "Nunito-Bold.ttf",
@@ -472,6 +474,7 @@ bool Gfx::build_fonts()
     const unsigned char onedge = 128;
     const float dist_scale = 128.0f / kPad;
 
+    std::vector<std::uint8_t> *target = &atlas;
     auto bake = [&](FontData &fd, std::uint32_t cp, GlyphInfo &g) {
         auto *info = static_cast<stbtt_fontinfo *>(fd.info);
         int w = 0, h = 0, xoff = 0, yoff = 0;
@@ -500,7 +503,7 @@ bool Gfx::build_fonts()
         }
         for (int y = 0; y < h; ++y)
             for (int x = 0; x < w; ++x)
-                atlas[(std::size_t(pen_y + y) * kAtlas + std::size_t(pen_x + x)) * 4 + 3] = sdf[y * w + x];
+                (*target)[(std::size_t(pen_y + y) * kAtlas + std::size_t(pen_x + x)) * 4 + 3] = sdf[y * w + x];
         g.u0 = float(pen_x) / kAtlas;
         g.v0 = float(pen_y) / kAtlas;
         g.u1 = float(pen_x + w) / kAtlas;
@@ -557,6 +560,41 @@ bool Gfx::build_fonts()
     }
     atlas_ = upload(atlas.data(), kAtlas, kAtlas);
     atlas_pixels_ = std::move(atlas);
+
+    /* Japanese, when its font is there: every character the subset holds. */
+    if (read_file(init_.asset_dir + "/fonts/NotoSansJP-Porpoise.ttf", cjk_.ttf))
+    {
+        auto *info = new stbtt_fontinfo();
+        if (stbtt_InitFont(info, cjk_.ttf.data(), stbtt_GetFontOffsetForIndex(cjk_.ttf.data(), 0)))
+        {
+            cjk_.info = info;
+            /* The same em as Nunito, a touch smaller: kana and kanji fill their em. */
+            const float nunito_em = fonts_[0].scale * 1000.0f;
+            cjk_.scale = stbtt_ScaleForMappingEmToPixels(info, nunito_em * 0.92f);
+            std::vector<std::uint8_t> cjk(std::size_t(kAtlas) * kAtlas * 4, 0);
+            for (std::size_t i = 0; i < cjk.size(); i += 4)
+                cjk[i] = cjk[i + 1] = cjk[i + 2] = 255;
+            target = &cjk;
+            pen_x = pen_y = 1;
+            row_h = 0;
+            static const std::uint32_t ranges[][2] = {{0x2190, 0x27FF}, {0x2E80, 0x9FFF}, {0xF900, 0xFFEF}};
+            for (const auto &r : ranges)
+                for (std::uint32_t cp = r[0]; cp <= r[1]; ++cp)
+                {
+                    if (!stbtt_FindGlyphIndex(info, int(cp)))
+                        continue;
+                    GlyphInfo g;
+                    bake(cjk_, cp, g);
+                    g.cjk = true;
+                    if (g.present)
+                        cjk_.extra.push_back({cp, g});
+                }
+            cjk_atlas_ = upload(cjk.data(), kAtlas, kAtlas);
+            cjk_pixels_ = std::move(cjk);
+        }
+        else
+            delete info;
+    }
     fonts_built_ = true;
     return atlas_ != nullptr;
 }
@@ -595,7 +633,7 @@ void Gfx::shutdown()
     for (auto &dead : graveyard_)
         destroy_texture(dead.first);
     graveyard_.clear();
-    white_ = atlas_ = brand_mask_ = icons_ = nullptr;
+    white_ = atlas_ = brand_mask_ = icons_ = cjk_atlas_ = nullptr;
     for (std::size_t i = 0; i < vbufs_.size(); ++i)
     {
         if (vmaps_[i])
@@ -943,6 +981,15 @@ const Gfx::GlyphInfo *Gfx::find(const FontData &f, std::uint32_t cp) const
                                      [](const std::pair<std::uint32_t, GlyphInfo> &e, std::uint32_t c) { return e.first < c; });
     if (it != f.extra.end() && it->first == cp)
         return &it->second;
+    if (cjk_atlas_ && cp >= 0x2000)
+    {
+        const auto jt = std::lower_bound(cjk_.extra.begin(), cjk_.extra.end(), cp,
+                                         [](const std::pair<std::uint32_t, GlyphInfo> &e, std::uint32_t c) {
+                                             return e.first < c;
+                                         });
+        if (jt != cjk_.extra.end() && jt->first == cp)
+            return &jt->second;
+    }
     return f.glyphs['?'].present ? &f.glyphs['?'] : nullptr;
 }
 
@@ -959,7 +1006,7 @@ float Gfx::measure(Font font, float size, const std::string &s, float spacing) c
         const GlyphInfo *g = find(f, cp);
         if (!g)
             continue;
-        if (prev && f.info)
+        if (prev && f.info && !g->cjk)
             w += stbtt_GetCodepointKernAdvance(static_cast<stbtt_fontinfo *>(f.info), int(prev), int(cp)) *
                  f.scale * k;
         w += g->advance * k + spacing;
@@ -1005,7 +1052,7 @@ float Gfx::text(Font font, float size, float x, float y, Color c, Align a, const
         const GlyphInfo *g = find(f, cp);
         if (!g)
             continue;
-        if (prev && f.info)
+        if (prev && f.info && !g->cjk)
             pen += stbtt_GetCodepointKernAdvance(static_cast<stbtt_fontinfo *>(f.info), int(prev), int(cp)) *
                    f.scale * k;
         if (g->w > 0)
@@ -1023,10 +1070,12 @@ float Gfx::text(Font font, float size, float x, float y, Color c, Align a, const
                 fill(v[n].uv, {uv[n][0], uv[n][1]});
                 fill(v[n].local, {local[n][0], local[n][1]});
                 fill(v[n].color, {c.r, c.g, c.b, c.a});
-                fill(v[n].p0, {float(K_TEXT), weight, 0, 0});
+                /* Japanese has one weight: bolder fonts thicken it. */
+                const float w8 = g->cjk ? weight + 0.03f * float(int(font)) : weight;
+                fill(v[n].p0, {float(K_TEXT), w8, 0, 0});
                 fill(v[n].p1, {gw * px, gh * px, gw * px, gh * px});
             }
-            push(atlas_, v);
+            push(g->cjk ? cjk_atlas_ : atlas_, v);
         }
         pen += g->advance * k + spacing;
         prev = cp;

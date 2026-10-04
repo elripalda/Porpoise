@@ -71,7 +71,7 @@ struct Settings
     /* Interface */
     bool reduced_motion = false;
     bool large_text = false;
-    int ui_language = 0; /* 0 follows the PS5, 1 English, 2 Spanish, 3 French, 4 Portuguese */
+    int ui_language = 0; /* 0 follows the PS5, 1 English, 2 Spanish, 3 French, 4 Portuguese, 5 Italian, 6 Japanese */
 
     /* Reads key = value lines. overlay: only the keys present change (a
      * game's own settings on top of the global ones). */
@@ -85,6 +85,10 @@ struct Settings
     bool write_core_options(const std::string &options_ini) const;
     /* Back to how Porpoise ships, keeping the game folders. */
     void reset();
+    /* One setting by its key, as in the file (false: no such setting). */
+    bool set(const std::string &key, const std::string &value);
+    /* Its value as the file has it ("" for no such setting). */
+    std::string get(const std::string &key) const;
     /* The buttons in effect: a ready-made layout, or one of the player's own. */
     porpoise::pad::Mapping mapping() const;
     /* The player's own layout 0..3 being used, or -1 for a ready-made one. */

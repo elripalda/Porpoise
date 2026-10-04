@@ -683,11 +683,17 @@ void App::draw_game_menu(double time)
             else
                 g.text_mid(Font::SemiBold, ts(21), sx + sw * 0.5f, sy + sh * 0.5f, with_alpha(kLavender, 0.8f),
                            Align::Center, menu_slot_used_[i] ? tr("Saved") : tr("Empty"));
-            g.text_mid(Font::Bold, ts(19), sx + 10, sy + sh + 22, on ? kWhite : kSoft, Align::Left,
-                       trf("Slot {n}", {{"n", std::to_string(i + 1)}}));
+            const float lw = g.text_mid(Font::Bold, ts(19), sx + 4, sy + sh + 22, on ? kWhite : kSoft, Align::Left,
+                                        trf("Slot {n}", {{"n", std::to_string(i + 1)}}));
             if (menu_slot_used_[i])
-                g.text_mid(Font::Regular, ts(17), sx + sw - 6, sy + sh + 22, kLavender, Align::Right,
-                           slot_date(menu_slot_time_[i]));
+            {
+                /* The date, and the time when there is room. */
+                std::string when = slot_date(menu_slot_time_[i]);
+                if (g.measure(Font::Regular, ts(17), when) > sw - lw - 16)
+                    when = when.substr(0, when.find("  "));
+                g.text_mid(Font::Regular, ts(17), sx + sw - 2, sy + sh + 22, kLavender, Align::Right,
+                           fit(g, Font::Regular, ts(17), when, sw - lw - 14));
+            }
         }
         below += sh + 44;
     }

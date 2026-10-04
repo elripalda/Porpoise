@@ -83,6 +83,8 @@ struct Job
         Info,
         Disc,
         Back,
+        Feed,
+        Release,
     } kind;
     std::string id;
 };
@@ -93,10 +95,11 @@ struct Worker
     pthread_t thread{};
     bool running = false;
     std::atomic<bool> stopping{false};
-    std::string dir, info_path;
+    std::string dir, info_path, info_lang, feed_path, release_path;
     std::vector<Job> jobs;
     std::atomic<int> phase{0};
     std::atomic<bool> info_ready{false};
+    std::atomic<bool> feed_ready{false}, release_ready{false};
     std::deque<std::string> ready; /* guarded by mutex */
     std::atomic<int> done{0}, total{0};
     std::atomic<bool> active{false};
@@ -414,9 +417,9 @@ void *run(void *)
         if (job.kind == Job::Info)
         {
             std::vector<std::uint8_t> zip;
-            const int status = http.get(gametdb::kDatabaseUrl, zip);
+            const int status = http.get(gametdb::database_url(g.info_lang), zip);
             std::string error;
-            const int n = status == 200 ? gametdb::zip_to_table(zip, g.info_path, error) : -1;
+            const int n = status == 200 ? gametdb::zip_to_table(zip, g.info_path, error, g.info_lang) : -1;
             if (n > 0)
             {
                 log("game info: " + std::to_string(n) + " games");
@@ -424,6 +427,46 @@ void *run(void *)
             }
             else
                 log("game info: " + (status == 200 ? error : "download failed, status " + std::to_string(status)));
+            ++g.done;
+            continue;
+        }
+
+        if (job.kind == Job::Feed || job.kind == Job::Release)
+        {
+            std::vector<std::uint8_t> data;
+            const bool feed = job.kind == Job::Feed;
+            const int status = http.get(feed ? kFeedUrl : kReleaseUrl, data);
+            std::string text(data.begin(), data.end());
+            if (!feed && status == 200)
+            {
+                /* Only the tag and the page from GitHub's answer. */
+                auto field = [&](const char *name) {
+                    const std::string key = std::string("\"") + name + "\"";
+                    std::size_t at = text.find(key);
+                    if (at == std::string::npos)
+                        return std::string();
+                    at = text.find('"', text.find(':', at + key.size()) + 1);
+                    const std::size_t end = at == std::string::npos ? at : text.find('"', at + 1);
+                    return end == std::string::npos ? std::string() : text.substr(at + 1, end - at - 1);
+                };
+                text = field("tag_name") + "\n" + field("html_url") + "\n";
+            }
+            const std::string path = feed ? g.feed_path : g.release_path;
+            if (status == 200 && text.size() > 2 && text.size() < (1u << 20))
+            {
+                const std::string tmp = path + ".part";
+                if (std::FILE *f = std::fopen(tmp.c_str(), "wb"))
+                {
+                    std::fwrite(text.data(), 1, text.size(), f);
+                    std::fclose(f);
+                    if (std::rename(tmp.c_str(), path.c_str()) == 0)
+                        (feed ? g.feed_ready : g.release_ready) = true;
+                }
+                log(std::string(feed ? "recommended settings" : "newest release") + ": updated");
+            }
+            else
+                log(std::string(feed ? "recommended settings" : "newest release") + ": status " +
+                    std::to_string(status));
             ++g.done;
             continue;
         }
@@ -477,7 +520,19 @@ void start(const Request &request)
     g.stopping = false;
     g.dir = request.dir;
     g.info_path = request.info_path;
+    g.info_lang = request.info_lang;
+    g.feed_path = request.feed_path;
+    g.release_path = request.release_path;
     g.jobs.clear();
+    /* The small daily ones first. */
+    auto stale = [](const std::string &path) {
+        struct stat st;
+        return stat(path.c_str(), &st) != 0 || (long long)std::time(nullptr) - (long long)st.st_mtime > 20LL * 60 * 60;
+    };
+    if (!request.feed_path.empty() && stale(request.feed_path))
+        g.jobs.push_back({Job::Feed, ""});
+    if (!request.release_path.empty() && stale(request.release_path))
+        g.jobs.push_back({Job::Release, ""});
     std::vector<std::string> ids;
     for (const std::string &id : request.ids)
         if (id.size() == 6 && std::find(ids.begin(), ids.end(), id) == ids.end())
@@ -534,6 +589,16 @@ bool take_info_ready()
     return g.info_ready.exchange(false);
 }
 
+bool take_feed_ready()
+{
+    return g.feed_ready.exchange(false);
+}
+
+bool take_release_ready()
+{
+    return g.release_ready.exchange(false);
+}
+
 std::string status()
 {
     if (!g.active.load())
@@ -541,6 +606,8 @@ std::string status()
     const int phase = g.phase.load();
     if (phase == Job::Info)
         return "Getting game info";
+    if (phase == Job::Feed || phase == Job::Release)
+        return "";
     return std::string(phase == Job::Disc ? "Getting disc art " : "Getting covers ") +
            std::to_string(std::min(g.done.load() + 1, g.total.load())) + " of " + std::to_string(g.total.load());
 }

@@ -43,6 +43,7 @@
 #include "ui_gfx.hpp"
 #include "ui_i18n.hpp"
 #include "ui_library.hpp"
+#include "ui_recommend.hpp"
 #include "ui_settings.hpp"
 
 extern "C"
@@ -194,6 +195,32 @@ void begin_ui_frame(float dim)
                 float(porpoise::vk::screen_height()), float(g_time), dim, g_settings.reduced_motion);
 }
 
+/* GameTDB's descriptions in the menus' language: Spanish, French, Portuguese
+ * and Italian have their own table; English and Japanese use the English one
+ * (the Japanese font holds only the menus' own characters). */
+const char *info_lang()
+{
+    switch (porpoise::ui::language())
+    {
+    case porpoise::ui::Language::Spanish: return "ES";
+    case porpoise::ui::Language::French: return "FR";
+    case porpoise::ui::Language::Portuguese: return "PT";
+    case porpoise::ui::Language::Italian: return "IT";
+    default: return "EN";
+    }
+}
+
+std::string info_path()
+{
+    const std::string lang = info_lang();
+    if (lang == "EN")
+        return g_data + "/info.tsv";
+    std::string lower = lang;
+    for (char &c : lower)
+        c = char(c - 'A' + 'a');
+    return g_data + "/info-" + lower + ".tsv";
+}
+
 /* Where games are looked for: the usual folders and drives (unless the player
  * turned that off) and every folder the player added in Settings. */
 porpoise::ui::LibraryPaths library_paths()
@@ -213,8 +240,29 @@ porpoise::ui::LibraryPaths library_paths()
     paths.deep = g_settings.folders;
     paths.covers = g_data + "/covers";
     paths.state = g_data + "/library.txt";
-    paths.info = g_data + "/info.tsv";
+    paths.info = info_path();
     return paths;
+}
+
+/* The newest release, as the last check wrote it: tag, then its page. */
+void read_latest_release()
+{
+    if (std::FILE *f = std::fopen((g_data + "/latest-release.txt").c_str(), "r"))
+    {
+        char tag[64] = {0}, url[256] = {0};
+        if (std::fgets(tag, sizeof tag, f))
+        {
+            if (!std::fgets(url, sizeof url, f))
+                url[0] = 0;
+            std::string t = tag, u = url;
+            while (!t.empty() && (t.back() == '\n' || t.back() == '\r'))
+                t.pop_back();
+            while (!u.empty() && (u.back() == '\n' || u.back() == '\r'))
+                u.pop_back();
+            g_app.set_latest_release(t, u);
+        }
+        std::fclose(f);
+    }
 }
 
 void fetch_covers()
@@ -224,9 +272,13 @@ void fetch_covers()
     request.covers = g_settings.download_covers;
     request.discs = g_settings.download_info;
     if (g_settings.download_info)
-        request.info_path = g_data + "/info.tsv";
-    if (!request.covers && !request.discs && request.info_path.empty())
-        return;
+    {
+        request.info_path = info_path();
+        request.info_lang = info_lang();
+    }
+    /* Recommended settings and the update check ride along, once a day. */
+    request.feed_path = g_data + "/recommended.ini";
+    request.release_path = g_data + "/latest-release.txt";
     for (const porpoise::ui::Game &game : g_library.games())
         if (!game.id.empty())
             request.ids.push_back(game.id);
@@ -475,6 +527,8 @@ int main()
     porpoise::sound::load("/app0/assets");
     porpoise::states::set_data_dir(g_data);
     porpoise::borders::set_dirs("/app0/assets", g_data);
+    porpoise::ui::recommend::set_paths(g_data + "/recommended.ini", "/app0/system/dolphin-emu/Sys/GameSettings");
+    read_latest_release();
     apply_settings();
     porpoise::sound::fade_music(1.0f, 2.5f);
     fetch_covers();
@@ -500,10 +554,14 @@ int main()
                 g_app.cover_arrived(cover_id);
             if (porpoise::covers::take_info_ready())
                 g_library.load_info();
+            if (porpoise::covers::take_feed_ready())
+                porpoise::ui::recommend::feed_changed();
+            if (porpoise::covers::take_release_ready())
+                read_latest_release();
             {
                 int phase = 0, done = 0, total = 0;
                 std::string note;
-                if (porpoise::covers::progress(phase, done, total))
+                if (porpoise::covers::progress(phase, done, total) && phase < 4)
                     note = phase == 1 ? porpoise::ui::tr("Getting game info")
                                       : porpoise::ui::trf(phase == 2 ? "Getting disc art {done} of {total}"
                                                                      : "Getting covers {done} of {total}",
@@ -514,6 +572,12 @@ int main()
             if (action == porpoise::ui::App::Action::SettingsChanged)
             {
                 apply_settings();
+                if (g_library.paths().info != info_path())
+                {
+                    /* The menus changed language: descriptions in it too. */
+                    g_library.set_info_path(info_path());
+                    g_library.load_info();
+                }
                 fetch_covers(); /* in case covers were just turned on */
             }
             if (action == porpoise::ui::App::Action::Rescan)
@@ -576,7 +640,12 @@ int main()
         core_paths.options = g_options_path.c_str();
         core_paths.options_reference = g_options_reference.c_str();
         core_paths.log = g_core_log.c_str();
+        porpoise::core::set_fast_forward(1);
+        const long long played_from = now_ns();
         const porpoise::core::Exit exit = porpoise::core::run_game(launch->path.c_str(), core_paths, hooks, playback);
+        /* Play time: the whole visit, loading included, as consoles count it. */
+        if (exit != porpoise::core::Exit::Failed)
+            g_library.add_play_time(*launch, (now_ns() - played_from) / 1000000000LL);
         g_playing = nullptr;
         g_menu_open = false;
         if (exit == porpoise::core::Exit::Home)

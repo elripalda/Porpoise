@@ -21,11 +21,14 @@ enum class Language
     Spanish,
     French,
     Portuguese,
+    Italian,
+    Japanese,
 };
 
 /* The PS5's language (sceSystemServiceParamGetInt 1), told once at start. */
 void set_system_language(int ps5_language);
-/* setting: 0 follows the console, 1 English, 2 Spanish, 3 French, 4 Portuguese. */
+/* setting: 0 follows the console, 1 English, 2 Spanish, 3 French, 4 Portuguese,
+ * 5 Italian, 6 Japanese. */
 void apply_language(int setting, const std::string &override_dir = "");
 Language language();
 /* The choices for the Language setting, each in its own language. */

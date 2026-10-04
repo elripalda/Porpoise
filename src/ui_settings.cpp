@@ -76,7 +76,7 @@ const Field kFields[] = {
     {"progressive", nullptr, &Settings::progressive, 0, 1},
     {"reduced_motion", nullptr, &Settings::reduced_motion, 0, 1},
     {"large_text", nullptr, &Settings::large_text, 0, 1},
-    {"ui_language", &Settings::ui_language, nullptr, 0, 4},
+    {"ui_language", &Settings::ui_language, nullptr, 0, 6},
 };
 
 /* Settings kept as text rather than numbers. */
@@ -288,6 +288,33 @@ std::vector<std::string> Settings::keys_in(const std::string &path)
     }
     std::fclose(f);
     return keys;
+}
+
+bool Settings::set(const std::string &key, const std::string &value)
+{
+    if (key == "border")
+    {
+        border = value;
+        return true;
+    }
+    const Field *fd = field(key);
+    if (!fd)
+        return false;
+    if (fd->i)
+        this->*fd->i = std::clamp(std::atoi(value.c_str()), fd->min, fd->max);
+    else
+        this->*fd->b = as_bool(value);
+    return true;
+}
+
+std::string Settings::get(const std::string &key) const
+{
+    if (key == "border")
+        return border;
+    const Field *fd = field(key);
+    if (!fd)
+        return "";
+    return fd->i ? std::to_string(this->*fd->i) : (this->*fd->b ? "1" : "0");
 }
 
 porpoise::pad::Mapping Settings::mapping() const

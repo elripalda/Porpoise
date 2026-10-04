@@ -22,6 +22,8 @@ struct Game
     std::string region;    /* USA, Europe, Japan, ... */
     std::uint64_t bytes = 0;
     long long last_played = 0; /* unix time, 0 = never */
+    long long play_seconds = 0; /* time played in Porpoise, all told */
+    bool favourite = false;
     Texture *cover = nullptr;
     bool cover_tried = false;
     /* From GameTDB, when downloaded (Settings > Games > Download game info). */
@@ -57,6 +59,8 @@ public:
     {
         Title,
         Recent,
+        MostPlayed,
+        Favourites, /* favourites first, then by title */
     };
     void sort(Sort how);
     Sort sort_order() const { return sort_; }
@@ -65,6 +69,8 @@ public:
     std::string selected_id() const { return selected_; }
     void set_selected(const std::string &key) { selected_ = key; }
     void mark_played(Game &g);
+    void add_play_time(Game &g, long long seconds);
+    void toggle_favourite(Game &g);
     void save() const;
 
     static std::string key_of(const Game &g) { return g.id.empty() ? g.file : g.id; }
@@ -73,6 +79,8 @@ public:
     std::string back_path(const Game &g) const; /* <covers>/<ID>.back.png, or "" */
     /* Reads info.tsv into the games (after a scan, or when it was downloaded). */
     void load_info();
+    /* Another info.tsv (the descriptions in another language). */
+    void set_info_path(const std::string &path) { paths_.info = path; }
 
 private:
     void load_state();
@@ -80,10 +88,15 @@ private:
     std::vector<Game> games_;
     std::string selected_;
     Sort sort_ = Sort::Title;
+    /* History of games not found in this search (a USB drive that's out):
+     * kept, so it is there when they are back. */
+    std::vector<std::string> kept_lines_;
 };
 
 /* Reads a disc image's header: ID, title, platform. Returns false if the
  * format keeps its header compressed (GCZ, WBFS). Public for the preview tool. */
 bool read_disc_header(const std::string &path, Game &g);
 std::string relative_time(long long then, long long now);
+/* "3 h 20 min", "45 min", "Less than a minute" (translated). */
+std::string play_time_text(long long seconds);
 } // namespace porpoise::ui

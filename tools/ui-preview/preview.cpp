@@ -565,6 +565,37 @@ int main(int argc, char **argv)
             ui.draw_game_menu(12.0);
         });
     }
+    /* Japanese and Italian. */
+    for (int lang : {6, 5})
+    {
+        const std::string tag = lang == 6 ? "ja-" : "it-";
+        porpoise::ui::apply_language(lang);
+        ui.language_changed();
+        press(kCircle, 3);
+        settle();
+        render((tag + "library").c_str(), [&] { ui.draw(12.0); });
+        press(kSquare);
+        settle();
+        render((tag + "details").c_str(), [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(kR1, 2);
+        press(1u << 0, 9);
+        press(kDown, 6); /* Interface */
+        press(kRight);
+        settle();
+        render((tag + "settings-interface").c_str(), [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(kR1);
+        settle();
+        porpoise::Settings play = settings;
+        ui.open_game_menu(&lib.games()[3], &play);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        render((tag + "ingame-menu").c_str(), [&] {
+            gfx.background();
+            ui.draw_game_menu(12.0);
+        });
+    }
     porpoise::ui::apply_language(1);
     ui.language_changed();
 

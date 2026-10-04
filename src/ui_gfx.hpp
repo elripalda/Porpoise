@@ -60,6 +60,8 @@ enum class Glyph
     Arrow = 4,   /* filled triangle, rotated */
     Pointer = 5, /* outlined triangle pointing up */
     DPad = 6,
+    Star = 7,        /* filled: a favourite */
+    StarOutline = 8, /* outlined */
     /* The DualSense's other controls, drawn from the button icons. */
     L1 = 10,
     R1 = 11,
@@ -210,6 +212,7 @@ private:
         float u0, v0, u1, v1;   /* atlas UVs */
         float xoff, yoff, w, h; /* at base size, pixels */
         float advance;
+        bool cjk = false; /* in the Japanese font's atlas */
     };
     struct FontData
     {
@@ -259,6 +262,11 @@ private:
     std::uint64_t frame_no_ = 0;
     FontData fonts_[4];
     std::vector<std::uint8_t> atlas_pixels_; /* kept across device changes */
+    /* Japanese: one weight of Noto Sans JP, subset to the characters the menus
+     * use, in an atlas of its own; any font falls back to it. */
+    FontData cjk_;
+    Texture *cjk_atlas_ = nullptr;
+    std::vector<std::uint8_t> cjk_pixels_;
     bool fonts_built_ = false;
 
     unsigned slot_ = 0;

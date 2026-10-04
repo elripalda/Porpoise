@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# Porpoise - draws assets/ui/flags.png, the flags beside the languages in
+# Settings > Interface > Language: six 96x64 cells in a row, in the setting's
+# order after System: English (US), Spanish (Spain), French, Portuguese
+# (Portugal), Italian, Japanese. Simplified for a 40-pixel flag on a TV.
+# Needs Pillow.  SPDX-License-Identifier: GPL-3.0-or-later
+import math
+import os
+import sys
+
+from PIL import Image, ImageDraw
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "assets", "ui", "flags.png")
+W, H, S = 96, 64, 4  # cell, supersampling
+
+
+def star(d, cx, cy, r, fill):
+    pts = []
+    for i in range(10):
+        a = -math.pi / 2 + i * math.pi / 5
+        rr = r if i % 2 == 0 else r * 0.4
+        pts.append((cx + math.cos(a) * rr, cy + math.sin(a) * rr))
+    d.polygon(pts, fill=fill)
+
+
+def us(d, w, h):
+    for i in range(13):
+        d.rectangle([0, i * h / 13, w, (i + 1) * h / 13], fill=(178, 34, 52) if i % 2 == 0 else (255, 255, 255))
+    cw, ch = w * 0.42, h * 7 / 13
+    d.rectangle([0, 0, cw, ch], fill=(60, 59, 110))
+    for row in range(5):
+        for col in range(6 if row % 2 == 0 else 5):
+            x = cw * (col + (0.5 if row % 2 == 0 else 1.0)) / 6
+            y = ch * (row + 0.75) / 5.5
+            star(d, x, y, w * 0.018, (255, 255, 255))
+
+
+def es(d, w, h):
+    d.rectangle([0, 0, w, h], fill=(170, 21, 27))
+    d.rectangle([0, h * 0.25, w, h * 0.75], fill=(241, 191, 0))
+    # A plain mark where the arms sit.
+    d.rounded_rectangle([w * 0.24, h * 0.36, w * 0.34, h * 0.62], radius=w * 0.02, fill=(170, 21, 27))
+
+
+def fr(d, w, h):
+    for i, c in enumerate([(0, 85, 164), (255, 255, 255), (239, 65, 53)]):
+        d.rectangle([i * w / 3, 0, (i + 1) * w / 3, h], fill=c)
+
+
+def pt(d, w, h):
+    d.rectangle([0, 0, w * 0.4, h], fill=(0, 102, 0))
+    d.rectangle([w * 0.4, 0, w, h], fill=(255, 0, 0))
+    cx, cy, r = w * 0.4, h * 0.5, h * 0.22
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(255, 221, 0), width=int(S * 3))
+    d.rounded_rectangle([cx - r * 0.5, cy - r * 0.6, cx + r * 0.5, cy + r * 0.6], radius=r * 0.2,
+                        fill=(255, 255, 255), outline=(255, 0, 0), width=int(S * 1.5))
+
+
+def it(d, w, h):
+    for i, c in enumerate([(0, 146, 70), (255, 255, 255), (206, 43, 55)]):
+        d.rectangle([i * w / 3, 0, (i + 1) * w / 3, h], fill=c)
+
+
+def ja(d, w, h):
+    d.rectangle([0, 0, w, h], fill=(255, 255, 255))
+    r = h * 0.3
+    d.ellipse([w / 2 - r, h / 2 - r, w / 2 + r, h / 2 + r], fill=(188, 0, 45))
+
+
+sheet = Image.new("RGBA", (W * 6, H), (0, 0, 0, 0))
+for i, fn in enumerate([us, es, fr, pt, it, ja]):
+    big = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    flag = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 255))
+    fn(ImageDraw.Draw(flag), W * S, H * S)
+    mask = Image.new("L", (W * S, H * S), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, W * S - 1, H * S - 1], radius=8 * S, fill=255)
+    big.paste(flag, (0, 0), mask)
+    # A thin light edge, so white flags show on the glass.
+    ImageDraw.Draw(big).rounded_rectangle([S, S, W * S - S - 1, H * S - S - 1], radius=8 * S,
+                                          outline=(255, 255, 255, 110), width=S * 2)
+    sheet.alpha_composite(big.resize((W, H), Image.LANCZOS), (i * W, 0))
+sheet.save(OUT, optimize=True)
+print("wrote", OUT)

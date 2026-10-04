@@ -15,7 +15,16 @@ struct Request
     bool covers = true;           /* front covers that are missing */
     bool discs = false;           /* disc label art that is missing */
     std::string info_path;        /* GameTDB's table (info.tsv), when wanted; "" = skip */
+    std::string info_lang = "EN"; /* the language of its descriptions */
+    /* Once a day, when set: Porpoise's recommended settings per game, and the
+     * newest release on GitHub (its tag on the first line, its page on the
+     * second). */
+    std::string feed_path;
+    std::string release_path;
 };
+/* Where they come from. */
+constexpr const char *kFeedUrl = "https://raw.githubusercontent.com/elripalda/Porpoise/main/data/recommended.ini";
+constexpr const char *kReleaseUrl = "https://api.github.com/repos/elripalda/Porpoise/releases/latest";
 /* Starts a worker for whatever of that is missing. Covers first, then the
  * game info, then disc art. Does nothing when nothing is missing. */
 void start(const Request &request);
@@ -23,6 +32,9 @@ void start(const Request &request);
 bool take_ready(std::string &id);
 /* The game info table was just written. */
 bool take_info_ready();
+/* The recommended settings / the newest release were just written. */
+bool take_feed_ready();
+bool take_release_ready();
 /* "Getting covers 3 of 12", or empty when idle. */
 std::string status();
 /* The same as numbers, for a translated line: phase 0 covers, 1 game info,

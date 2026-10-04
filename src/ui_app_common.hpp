@@ -20,7 +20,8 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "1.0 (build 12)";
+constexpr const char *kVersion = "1.1 (build 13)";
+constexpr int kVersionMajor = 1, kVersionMinor = 1;
 
 /* What a settings row does when pressed, besides changing a value. */
 enum RowAction
@@ -32,6 +33,7 @@ enum RowAction
     kRowResetAll,
     kRowResetGame,
     kRowMapping,
+    kRowRecommended,
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

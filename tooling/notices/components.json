@@ -42,13 +42,15 @@
     },
     {
       "id": "porpoise-media",
-      "name": "Porpoise menu music, sound effects and logo",
+      "name": "Porpoise menu music, sound effects, logo, borders, flags and QR code",
       "kind": "asset",
       "always": true,
       "artifacts": [
         "assets/sounds/*",
         "assets/brand/*",
-        "assets/borders/*"
+        "assets/borders/*",
+        "assets/ui/flags.png",
+        "assets/ui/report-qr.png"
       ],
       "licence": "GPL-3.0-or-later",
       "copyright": [
@@ -406,6 +408,31 @@
         "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
       },
       "modifications": "Static Regular, SemiBold, Bold and ExtraBold instances cut from the variable font with fontTools; outlines unchanged. Upstream: https://github.com/googlefonts/nunito."
+    },
+    {
+      "id": "noto-sans-jp",
+      "name": "Noto Sans JP font (Japanese menus)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/NotoSansJP-Porpoise.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/NotoSansJP-OFL.txt",
+          "to": "OFL-NotoSansJP.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 600 instance of the variable font, subset to kana, CJK punctuation and the characters of Porpoise's Japanese menus with fontTools (tools/make-jp-font.py). Upstream: https://github.com/google/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosansjp."
     },
     {
       "id": "zacksly-ps5-icons",

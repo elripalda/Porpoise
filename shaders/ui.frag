@@ -131,6 +131,22 @@ vec4 background()
     return vec4(col, 1.0);
 }
 
+/* A five-pointed star (after Inigo Quilez's sdStar5), point up on screen. */
+float sdStar5(vec2 p, float r, float rf)
+{
+    const vec2 k1 = vec2(0.809016994375, -0.587785252292);
+    const vec2 k2 = vec2(-k1.x, k1.y);
+    p.y = -p.y;
+    p.x = abs(p.x);
+    p -= 2.0 * max(dot(k1, p), 0.0) * k1;
+    p -= 2.0 * max(dot(k2, p), 0.0) * k2;
+    p.x = abs(p.x);
+    p.y -= r;
+    vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0.0, 1.0);
+    float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
+    return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+}
+
 vec4 glyph(vec2 p, float r)
 {
     int subtype = int(v_p2.z + 0.5);
@@ -157,6 +173,10 @@ vec4 glyph(vec2 p, float r)
         d = sdTriangleUp(rotate(p, -v_p2.w), r * 0.85);
     else if (subtype == 5) /* outlined pointer triangle */
         d = abs(sdTriangleUp(p, r * 0.80)) - t * 1.3;
+    else if (subtype == 7) /* filled star */
+        d = sdStar5(p + vec2(0.0, -r * 0.06), r * 0.92, 0.45) - r * 0.04;
+    else if (subtype == 8) /* outlined star */
+        d = abs(sdStar5(p + vec2(0.0, -r * 0.06), r * 0.88, 0.45)) - t;
     else /* d-pad outline */
     {
         float arm = r * 0.30;

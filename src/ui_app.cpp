@@ -68,6 +68,10 @@ void App::forget_textures()
     pad_art_tried_ = false;
     lines_art_ = nullptr;
     lines_art_tried_ = false;
+    qr_ = nullptr;
+    qr_tried_ = false;
+    flags_ = nullptr;
+    flags_tried_ = false;
     for (Texture *&t : menu_slot_tex_)
         t = nullptr;
 }
@@ -291,13 +295,13 @@ App::Action App::update(const Input &in, double dt)
     {
         if (up || down)
         {
-            sort_row_ = 1 - sort_row_;
+            sort_row_ = (sort_row_ + (up ? 3 : 1)) % 4;
             sfx(Sound::MenuScroll);
         }
         if (pressed(BtnCross))
         {
             const std::string key = games.empty() ? "" : Library::key_of(games[selected_]);
-            lib_->sort(sort_row_ == 0 ? Library::Sort::Title : Library::Sort::Recent);
+            lib_->sort(Library::Sort(sort_row_));
             for (std::size_t i = 0; i < games.size(); ++i)
                 if (Library::key_of(games[i]) == key)
                     selected_ = int(i);
@@ -372,6 +376,11 @@ App::Action App::update(const Input &in, double dt)
             box_back_ = !box_back_; /* the back of the box */
             sfx(Sound::DetailsFlip);
         }
+        if (pressed(BtnOptions) && !games.empty())
+        {
+            lib_->toggle_favourite(games[std::size_t(selected_)]);
+            sfx(games[std::size_t(selected_)].favourite ? Sound::LaunchGame : Sound::MovingTab);
+        }
         if (pressed(BtnCross) && !games.empty())
         {
             if (details_row_ == 0)
@@ -425,6 +434,11 @@ App::Action App::update(const Input &in, double dt)
             action = Action::Launch;
             sfx(Sound::LaunchGame);
         }
+        if (pressed(BtnOptions))
+        {
+            lib_->toggle_favourite(games[std::size_t(selected_)]);
+            sfx(games[std::size_t(selected_)].favourite ? Sound::LaunchGame : Sound::MovingTab);
+        }
         if (pressed(BtnSquare))
         {
             open_screen(Screen::Details);
@@ -440,7 +454,7 @@ App::Action App::update(const Input &in, double dt)
         {
             sfx(Sound::MenuScroll);
             screen_ = Screen::Sort;
-            sort_row_ = lib_->sort_order() == Library::Sort::Title ? 0 : 1;
+            sort_row_ = int(lib_->sort_order());
         }
         lib_->set_selected(Library::key_of(games[selected_]));
     }
@@ -1109,6 +1123,15 @@ void App::draw_tile(Game *game, float cx, float cy, float w, float h, float yaw,
     gloss.fade = alpha;
     gloss.phase = cx / 1920.0f;
     g.glass(c, w, h, 0, gloss);
+
+    /* A favourite: a gold star on the top right corner. */
+    if (game && game->favourite)
+    {
+        const Corner tr_corner = project(cx, cy, w * 0.5f - 30, -h * 0.5f + 30, yaw);
+        const float s = w * 0.15f / tr_corner.w;
+        g.blob(tr_corner.x, tr_corner.y, s * 1.9f, s * 1.9f, rgba(0x0A1236, 0.55f * alpha));
+        g.glyph(Glyph::Star, tr_corner.x, tr_corner.y, s, rgba(0xFFD45C, alpha));
+    }
 }
 
 /* ---- library ------------------------------------------------------------------------------ */
@@ -1142,6 +1165,16 @@ void App::draw_library(double time)
     if (!note_.empty())
         g.text(Font::Regular, ts(26), 92 + cw + 24, 205, with_alpha(kIcy, 0.85f), Align::Left,
                "\xE2\x80\xA2  " + note_);
+    if (update_available())
+    {
+        /* A newer Porpoise is out: a small pill at the right. */
+        const std::string text = trf("Porpoise {version} is out", {{"version", latest_version_}});
+        const float tw = g.measure(Font::SemiBold, ts(24), text) + 44;
+        g.panel(1866 - tw, 150, tw, 46, rgba(0x0E2A6E, 0.8f), 0.8f, 23, with_alpha(kCyan, 0.9f), 1.6f, 8);
+        g.text_mid(Font::SemiBold, ts(24), 1866 - tw * 0.5f, 173, kWhite, Align::Center, text);
+        g.text_mid(Font::Regular, ts(20), 1866 - tw * 0.5f, 214, kLavender, Align::Center,
+                   tr("Settings > About"));
+    }
 
     /* Layout of a tile at offset k from the selection (k may be fractional
      * while sliding): x, scale and yaw. */
@@ -1206,9 +1239,16 @@ void App::draw_library(double time)
     /* Title, details, play. */
     Game &sel = games[std::size_t(selected_)];
     g.text(Font::Bold, ts(46), kCx, 748, kWhite, Align::Center, sel.title);
-    const std::string meta =
+    std::string meta =
         sel.platform + "   \xE2\x80\xA2   " + relative_time(sel.last_played, (long long)std::time(nullptr));
+    if (sel.play_seconds >= 60)
+        meta += "   \xE2\x80\xA2   " + play_time_text(sel.play_seconds);
     g.text(Font::SemiBold, ts(28), kCx, 812, kLavender, Align::Center, meta);
+    if (sel.favourite)
+    {
+        const float tw = g.measure(Font::Bold, ts(46), sel.title);
+        g.glyph(Glyph::Star, kCx - tw * 0.5f - 34, 732, 34, rgba(0xFFD45C));
+    }
 
     /* Play: the Cross and the word, centred together in the button. */
     const float ph = 64, py = 864, gsize = 42, gap = 14;
@@ -1222,25 +1262,27 @@ void App::draw_library(double time)
     char pos[32];
     std::snprintf(pos, sizeof pos, "%02d / %02zu", selected_ + 1, games.size());
     draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Play"}},
-                 {{Glyph::Square, "Details"}, {Glyph::Triangle, "Sort"}}, pos);
+                 {{Glyph::Options, sel.favourite ? "Unfavourite" : "Favourite"}, {Glyph::Square, "Details"},
+                  {Glyph::Triangle, "Sort"}},
+                 pos);
 }
 
 void App::draw_sort()
 {
     Gfx &g = *g_;
     g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.55f), 1, 0);
-    const float w = 560, h = 300, x = 960 - w * 0.5f, y = 390;
+    const float w = 600, h = 460, x = 960 - w * 0.5f, y = 310;
     g.panel(x, y, w, h, rgba(0x13256F, 0.92f), 0.65f, kR, rgba(0x6FAEFF), 2.0f, 10, 0.25f);
     g.text_mid(Font::Bold, ts(36), x + 40, y + 62, kWhite, Align::Left, tr("Sort games"));
-    const std::string labels[2] = {tr("Title A-Z"), tr("Recently played")};
-    for (int i = 0; i < 2; ++i)
+    const std::string labels[4] = {tr("Title A-Z"), tr("Recently played"), tr("Most played"), tr("Favourites first")};
+    for (int i = 0; i < 4; ++i)
     {
         const float ry = y + 112 + i * 80, rh = 62, cy = ry + rh * 0.5f;
         const bool on = sort_row_ == i;
         g.panel(x + 40, ry, w - 80, rh, on ? rgba(0x1D3FA8, 0.9f) : rgba(0x0E1C55, 0.6f), 0.8f, kR,
                 on ? kIcy : rgba(0x3D5AB0, 0.8f), on ? 2.4f : 1.4f, on ? 10 : 0);
         g.text_mid(Font::SemiBold, ts(30), x + 72, cy, on ? kWhite : kSoft, Align::Left, labels[i]);
-        const bool current = (lib_->sort_order() == Library::Sort::Title) == (i == 0);
+        const bool current = int(lib_->sort_order()) == i;
         if (current)
             g.text_mid(Font::SemiBold, ts(24), x + w - 72, cy, kCyan, Align::Right, tr("Current"));
     }
@@ -1328,6 +1370,8 @@ void App::draw_details(double time)
     if (game.players > 0) facts.push_back({tr("Players"), std::to_string(game.players)});
     if (!game.rating.empty()) facts.push_back({tr("Rating"), game.rating});
     facts.push_back({tr("Last played"), relative_time(game.last_played, (long long)std::time(nullptr))});
+    if (game.play_seconds > 0)
+        facts.push_back({tr("Play time"), play_time_text(game.play_seconds)});
     facts.push_back({tr("File"), game.format + "  \xE2\x80\xA2  " + human_size(game.bytes)});
     if (facts.size() > 9)
         facts.resize(9);
@@ -1370,6 +1414,13 @@ void App::draw_details(double time)
                        plural(details_states_, "1 saved", "{n} saved"));
         if (i == 2 && details_custom_)
             g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right, tr("Custom"));
+        else if (i == 2)
+        {
+            recommend::Pick pick;
+            if (recommend::pick_for(game.id, pick))
+                g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right,
+                           tr("Recommended settings"));
+        }
         if (on)
             g.glyph(Glyph::Arrow, rx - 26, ry + rh * 0.5f, 32, kWhite, kPi * 0.5f);
     }

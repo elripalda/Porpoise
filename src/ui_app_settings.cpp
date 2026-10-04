@@ -7,6 +7,7 @@
  * Cross go into it, Circle comes back out. A game's own settings use the same
  * screen with the global values underneath and its changes on top. */
 #include <algorithm>
+#include <cstdio>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -14,6 +15,7 @@
 #include "ui_app.hpp"
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
+#include "ui_recommend.hpp"
 
 #if defined(__has_include)
 #if __has_include("title_build_identity.h")
@@ -25,6 +27,22 @@ namespace porpoise::ui
 {
 using namespace look;
 using namespace porpoise::pad;
+
+void App::set_latest_release(const std::string &tag, const std::string &url)
+{
+    /* "v1.2" or "1.2.1": newer than this build? */
+    int major = 0, minor = 0, patch = 0;
+    const char *t = tag.c_str();
+    while (*t && (*t < '0' || *t > '9'))
+        ++t;
+    if (std::sscanf(t, "%d.%d.%d", &major, &minor, &patch) < 2)
+        return;
+    const bool newer = major > kVersionMajor || (major == kVersionMajor && minor > kVersionMinor) ||
+                       (major == kVersionMajor && minor == kVersionMinor && patch > 0);
+    latest_version_ = newer ? std::string(t) : "";
+    latest_url_ = newer ? url : "";
+    build_settings();
+}
 
 std::string App::build_label() const
 {
@@ -294,7 +312,7 @@ void App::build_settings()
         r.label = tr("Language");
         r.help = tr("The language of Porpoise's menus. System follows your PS5.");
         r.int_value = &settings_->ui_language;
-        for (int i = 0; i < 5; ++i)
+        for (int i = 0; i < 7; ++i)
             r.values.push_back(language_choice(i));
         rows_.push_back(r);
     }
@@ -305,11 +323,16 @@ void App::build_settings()
            "Reset\xE2\x80\xA6", kRowResetAll);
 
     header("About");
+    if (update_available())
+        info(trf("Porpoise {version} is out", {{"version", latest_version_}}).c_str(), tr("Update available"),
+             "Download it from github.com/elripalda/Porpoise/releases. Delete the old PPSA99764 folder, then copy "
+             "the new one in its place; your games, saves and settings stay.");
     info("Porpoise", build_label(), "A GameCube and Wii emulator for PS5, powered by Dolphin.");
     info("Created by", "@elripalda", "Ruben - www.elripalda.com");
     info("Website", "www.elripalda.com", "Updates, news and more from the creator of Porpoise.");
     info("Report a bug", "github.com/elripalda/Porpoise",
-         "Found a problem? Open an issue there with the game, what happened and porpoise/core.log.");
+         "Found a problem? Scan the code with your phone and open an issue with the game, what happened and "
+         "porpoise/core.log.");
     info("Music and sounds", "@elripalda", "The menu music and sound effects, made for Porpoise by Ruben.");
     info("Controller art", "Zacksly",
          "PS5 Button Icons and Controls by Zacksly - zacksly.itch.io, @_Zacksly on Twitter. CC BY 3.0, adapted for "
@@ -355,10 +378,82 @@ void App::build_game_settings()
     reset.values = {tr("Reset\xE2\x80\xA6")};
     reset.action = kRowResetGame;
     rows_.push_back(reset);
+    add_recommended_rows();
     add_game_rows(game_, true);
     if (settings_row_ < 0 || settings_row_ >= int(rows_.size()) || rows_[std::size_t(settings_row_)].header)
         settings_row_ = 1;
     rail_ = std::clamp(rail_, 0, std::max(0, section_count() - 1));
+}
+
+/* What's recommended for this game: Porpoise's picks, to apply, and Dolphin's
+ * own fixes, which it applies by itself. */
+void App::add_recommended_rows()
+{
+    if (!game_for_)
+        return;
+    SettingRow h;
+    h.section = "Recommended";
+    h.header = true;
+    rows_.push_back(h);
+    recommend::Pick pick;
+    const bool has_pick = recommend::pick_for(game_for_->id, pick);
+    if (has_pick)
+    {
+        SettingRow r;
+        r.section = "Recommended";
+        r.label = tr("Porpoise's picks");
+        r.help = pick.note.empty() ? tr("Settings that run this game best on PS5, as tested.") : pick.note;
+        r.values = {pick_in_use(pick) ? tr("In use") : tr("Use\xE2\x80\xA6")};
+        r.action = kRowRecommended;
+        rows_.push_back(r);
+    }
+    const std::vector<recommend::Fix> fixes = recommend::dolphin_fixes(game_for_->id);
+    for (const recommend::Fix &fix : fixes)
+    {
+        SettingRow r;
+        r.section = "Recommended";
+        r.label = tr(fix.label);
+        r.help = fix.why.empty() ? tr("One of Dolphin's own fixes for this game. Dolphin applies it by itself.")
+                                 : trf("Dolphin's fix: {why}", {{"why", fix.why}});
+        r.values = {tr(fix.value)};
+        rows_.push_back(r);
+    }
+    if (!has_pick && fixes.empty())
+    {
+        SettingRow r;
+        r.section = "Recommended";
+        r.label = tr("Nothing needed");
+        r.help = tr("Dolphin has no fixes listed for this game, and Porpoise has no picks for it yet. The list grows "
+                    "as games are tested.");
+        r.values = {""};
+        rows_.push_back(r);
+    }
+}
+
+bool App::pick_in_use(const recommend::Pick &pick) const
+{
+    for (const auto &[k, v] : pick.values)
+    {
+        porpoise::Settings probe = game_;
+        if (!probe.set(k, v) || probe.get(k) != game_.get(k))
+            return false;
+    }
+    return true;
+}
+
+void App::apply_pick()
+{
+    recommend::Pick pick;
+    if (!game_for_ || !recommend::pick_for(game_for_->id, pick))
+        return;
+    for (const auto &[k, v] : pick.values)
+        if (game_.set(k, v) && std::find(game_keys_.begin(), game_keys_.end(), k) == game_keys_.end())
+            game_keys_.push_back(k);
+    mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+    game_.save_keys(game_settings_path(*game_for_), game_keys_);
+    const int row = settings_row_;
+    build_game_settings();
+    settings_row_ = row;
 }
 
 int App::section_count() const
@@ -451,6 +546,10 @@ App::Action App::activate_row(const SettingRow &row)
     {
     case kRowAddFolder:
         open_browser("");
+        return Action::None;
+    case kRowRecommended:
+        apply_pick();
+        sfx(Sound::LaunchGame);
         return Action::None;
     case kRowRemoveFolder:
         if (row.folder >= 0 && row.folder < int(settings_->folders.size()))
@@ -609,6 +708,8 @@ void App::draw_settings()
         subtitle = tr("Values in blue are this game's own");
     else if (current == "Interface")
         subtitle = tr("How Porpoise looks and reads");
+    else if (current == "Recommended")
+        subtitle = tr("Dolphin's own fixes for this game, and Porpoise's picks");
     else if (game)
         subtitle = tr("For this game only \xE2\x80\xA2 values in blue are its own");
     g.text_mid(Font::Regular, ts(26), px + 50, py + 112, kLavender, Align::Left, subtitle);
@@ -682,7 +783,26 @@ void App::draw_settings()
             const float cw = std::max(270.0f, vw + 110), ch = 50, cx = right - cw;
             g.panel(cx, cy - ch * 0.5f, cw, ch, rgba(0x07102E, on ? 0.55f : 0.40f), 1, kR,
                     own ? with_alpha(kCyan, 0.9f) : (on ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.75f)), on ? 1.8f : 1.4f);
-            g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f, cy, value_c, Align::Center, value);
+            if (r.key == "ui_language" && r.int_value)
+            {
+                /* The language's flag beside its name; System shows the one it follows. */
+                if (!flags_tried_)
+                {
+                    flags_tried_ = true;
+                    flags_ = g.texture_file(g.asset_dir() + "/ui/flags.png");
+                }
+                const int lang = *r.int_value > 0 ? *r.int_value : int(language()) + 1;
+                const float vw = g.measure(Font::Bold, ts(28), value), fw = 42, fh = 28, gap = 12;
+                const float x0 = cx + (cw - (fw + gap + vw)) * 0.5f;
+                if (flags_ && lang >= 1 && lang <= 6)
+                {
+                    const float uv[4] = {float(lang - 1) / 6.0f, 0, float(lang) / 6.0f, 1};
+                    g.image_part(flags_, x0, cy - fh * 0.5f, fw, fh, uv);
+                }
+                g.text_mid(Font::Bold, ts(28), x0 + fw + gap, cy, value_c, Align::Left, value);
+            }
+            else
+                g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f, cy, value_c, Align::Center, value);
             if (on)
             {
                 const bool at_min = r.int_value && vi <= 0;
@@ -705,8 +825,35 @@ void App::draw_settings()
     else
         help = rows_[std::size_t(settings_row_)].help;
     g.panel(px + 50, py + ph - 100, pw - 100, 1.5f, rgba(0x3D4F9E, 0.7f), 1, 0);
-    g.text_mid(Font::Regular, ts(26), px + 50, py + ph - 50, kLavender, Align::Left,
-               fit(g, Font::Regular, ts(26), help, pw - 100));
+    {
+        /* One line, or two smaller ones when it is long. */
+        const auto one = wrap(g, Font::Regular, ts(26), help, pw - 100, 2);
+        if (one.size() <= 1)
+            g.text_mid(Font::Regular, ts(26), px + 50, py + ph - 50, kLavender, Align::Left, help);
+        else
+        {
+            const auto two = wrap(g, Font::Regular, ts(23), help, pw - 100, 2);
+            for (std::size_t i = 0; i < two.size(); ++i)
+                g.text_mid(Font::Regular, ts(23), px + 50, py + ph - 66 + float(i) * 32, kLavender, Align::Left,
+                           two[i]);
+        }
+    }
+    /* About > Report a bug: a QR code to the issues, for a phone. */
+    if (!on_rail_ && settings_row_ >= 0 && settings_row_ < int(rows_.size()) &&
+        rows_[std::size_t(settings_row_)].label == tr("Report a bug"))
+    {
+        if (!qr_tried_)
+        {
+            qr_tried_ = true;
+            qr_ = g.texture_file(g.asset_dir() + "/ui/report-qr.png");
+        }
+        if (qr_)
+        {
+            const float qs = 150, qx = px + pw - qs - 50, qy = py + 24;
+            g.panel(qx - 8, qy - 8, qs + 16, qs + 16, rgba(0x07102E, 0.5f), 1, kR, with_alpha(kCyan, 0.9f), 1.6f, 8);
+            g.image(qr_, qx, qy, qs, qs, kWhite, 10);
+        }
+    }
 
     if (on_rail_)
     {
@@ -724,6 +871,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMapping)
         draw_prompts({{Glyph::Cross, "Customize"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowRecommended)
+        draw_prompts({{Glyph::Cross, "Use"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action)
         draw_prompts({{Glyph::Cross, "Reset"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (info)

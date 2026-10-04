@@ -207,7 +207,7 @@ std::string genres(const std::string &g)
 }
 } // namespace
 
-int xml_to_table(const std::string &xml, const std::string &tsv_path, std::string &error)
+int xml_to_table(const std::string &xml, const std::string &tsv_path, std::string &error, const std::string &lang)
 {
     const std::string tmp = tsv_path + ".part";
     std::FILE *f = std::fopen(tmp.c_str(), "w");
@@ -242,6 +242,18 @@ int xml_to_table(const std::string &xml, const std::string &tsv_path, std::strin
             title = entities(child(xml, loc, loc_end, "title"));
             synopsis = tidy(entities(child(xml, loc, loc_end, "synopsis")));
         }
+        if (lang != "EN")
+        {
+            /* The description in the player's language, when there is one. */
+            const std::size_t own = xml.find("<locale lang=\"" + lang + "\"", start);
+            const std::size_t own_end = own == std::string::npos ? own : xml.find("</locale>", own);
+            if (own != std::string::npos && own < end && own_end != std::string::npos && own_end < end)
+            {
+                const std::string text = tidy(entities(child(xml, own, own_end, "synopsis")));
+                if (!text.empty())
+                    synopsis = text;
+            }
+        }
         const std::string rating_type = attribute(xml, start, end, "rating", "type");
         const std::string rating_value = attribute(xml, start, end, "rating", "value");
         const std::string players = attribute(xml, start, end, "input", "players");
@@ -271,7 +283,8 @@ int xml_to_table(const std::string &xml, const std::string &tsv_path, std::strin
     return count;
 }
 
-int zip_to_table(const std::vector<std::uint8_t> &zip, const std::string &tsv_path, std::string &error)
+int zip_to_table(const std::vector<std::uint8_t> &zip, const std::string &tsv_path, std::string &error,
+                 const std::string &lang)
 {
     /* End of central directory: the last 22+ bytes. */
     if (zip.size() < 22)
@@ -336,7 +349,7 @@ int zip_to_table(const std::vector<std::uint8_t> &zip, const std::string &tsv_pa
             return -1;
         }
         (void)usize;
-        return xml_to_table(xml, tsv_path, error);
+        return xml_to_table(xml, tsv_path, error, lang);
     }
     error = "no .xml in the zip";
     return -1;

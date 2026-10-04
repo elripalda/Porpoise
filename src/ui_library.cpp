@@ -222,6 +222,16 @@ std::string relative_time(long long then, long long now)
     return tr("Last played a while ago");
 }
 
+std::string play_time_text(long long seconds)
+{
+    if (seconds < 60)
+        return tr("Less than a minute");
+    const long long m = seconds / 60, h = m / 60;
+    if (h == 0)
+        return trf("{m} min", {{"m", std::to_string(m)}});
+    return trf("{h} h {m} min", {{"h", std::to_string(h)}, {"m", std::to_string(m % 60)}});
+}
+
 void Library::scan(const LibraryPaths &paths)
 {
     paths_ = paths;
@@ -345,6 +355,10 @@ void Library::sort(Sort how)
     std::stable_sort(games_.begin(), games_.end(), [how](const Game &a, const Game &b) {
         if (how == Sort::Recent && a.last_played != b.last_played)
             return a.last_played > b.last_played;
+        if (how == Sort::MostPlayed && a.play_seconds != b.play_seconds)
+            return a.play_seconds > b.play_seconds;
+        if (how == Sort::Favourites && a.favourite != b.favourite)
+            return a.favourite;
         return lower(a.title) < lower(b.title);
     });
 }
@@ -374,8 +388,37 @@ void Library::mark_played(Game &g)
     save();
 }
 
+void Library::add_play_time(Game &g, long long seconds)
+{
+    if (seconds <= 0)
+        return;
+    g.play_seconds += seconds;
+    save();
+}
+
+void Library::toggle_favourite(Game &g)
+{
+    g.favourite = !g.favourite;
+    save();
+}
+
+namespace
+{
+const char *sort_name(Library::Sort s)
+{
+    switch (s)
+    {
+    case Library::Sort::Recent: return "recent";
+    case Library::Sort::MostPlayed: return "time";
+    case Library::Sort::Favourites: return "favourites";
+    default: return "title";
+    }
+}
+} // namespace
+
 void Library::load_state()
 {
+    kept_lines_.clear();
     std::FILE *f = std::fopen(paths_.state.c_str(), "r");
     if (!f)
         return;
@@ -388,17 +431,35 @@ void Library::load_state()
         if (s.rfind("selected=", 0) == 0)
             selected_ = s.substr(9);
         else if (s.rfind("sort=", 0) == 0)
-            sort_ = s.substr(5) == "recent" ? Sort::Recent : Sort::Title;
-        else if (s.rfind("played=", 0) == 0)
         {
-            const auto sp = s.rfind(' ');
-            if (sp == std::string::npos)
+            const std::string v = s.substr(5);
+            sort_ = v == "recent" ? Sort::Recent : v == "time" ? Sort::MostPlayed
+                                               : v == "favourites" ? Sort::Favourites : Sort::Title;
+        }
+        else if (s.rfind("played=", 0) == 0 || s.rfind("time=", 0) == 0 || s.rfind("fav=", 0) == 0)
+        {
+            /* played=<key> <unix time>, time=<key> <seconds>, fav=<key> */
+            const auto eq = s.find('=');
+            const bool fav = s[0] == 'f';
+            const auto sp = fav ? std::string::npos : s.rfind(' ');
+            if (!fav && sp == std::string::npos)
                 continue;
-            const std::string key = s.substr(7, sp - 7);
-            const long long when = std::atoll(s.c_str() + sp + 1);
+            const std::string key = fav ? s.substr(eq + 1) : s.substr(eq + 1, sp - eq - 1);
+            const long long n = fav ? 0 : std::atoll(s.c_str() + sp + 1);
+            bool found = false;
             for (Game &g : games_)
                 if (key_of(g) == key)
-                    g.last_played = when;
+                {
+                    found = true;
+                    if (fav)
+                        g.favourite = true;
+                    else if (s[0] == 'p')
+                        g.last_played = n;
+                    else
+                        g.play_seconds = n;
+                }
+            if (!found)
+                kept_lines_.push_back(s);
         }
     }
     std::fclose(f);
@@ -409,10 +470,18 @@ void Library::save() const
     std::FILE *f = std::fopen(paths_.state.c_str(), "w");
     if (!f)
         return;
-    std::fprintf(f, "selected=%s\nsort=%s\n", selected_.c_str(), sort_ == Sort::Recent ? "recent" : "title");
+    std::fprintf(f, "selected=%s\nsort=%s\n", selected_.c_str(), sort_name(sort_));
     for (const Game &g : games_)
+    {
         if (g.last_played > 0)
             std::fprintf(f, "played=%s %lld\n", key_of(g).c_str(), g.last_played);
+        if (g.play_seconds > 0)
+            std::fprintf(f, "time=%s %lld\n", key_of(g).c_str(), g.play_seconds);
+        if (g.favourite)
+            std::fprintf(f, "fav=%s\n", key_of(g).c_str());
+    }
+    for (const std::string &l : kept_lines_)
+        std::fprintf(f, "%s\n", l.c_str());
     std::fclose(f);
 }
 } // namespace porpoise::ui
