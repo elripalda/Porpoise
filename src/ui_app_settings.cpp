@@ -16,6 +16,7 @@
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
 #include "ui_recommend.hpp"
+#include "ui_setups.hpp"
 
 #if defined(__has_include)
 #if __has_include("title_build_identity.h")
@@ -161,6 +162,9 @@ void App::add_game_rows(Settings &t, bool per_game)
         rows_.push_back(r);
     }
     toggle("fps_overlay", "FPS overlay", "Shows the frame rate in the corner while you play.", &t.fps_overlay);
+
+    if (!per_game)
+        add_setup_rows(false);
 
     header("Graphics");
     choice("shader_mode", "Shader compilation",
@@ -385,11 +389,36 @@ void App::build_game_settings()
     reset.values = {tr("Reset\xE2\x80\xA6")};
     reset.action = kRowResetGame;
     rows_.push_back(reset);
+    add_setup_rows(true);
     add_game_rows(game_, true);
     add_recommended_rows();
     if (settings_row_ < 0 || settings_row_ >= int(rows_.size()) || rows_[std::size_t(settings_row_)].header)
         settings_row_ = 1;
     rail_ = std::clamp(rail_, 0, std::max(0, section_count() - 1));
+}
+
+/* One row for each saved setup: Cross puts its Video and Graphics settings on
+ * this game (per_game) or on every game. */
+void App::add_setup_rows(bool per_game)
+{
+    const std::string section = per_game ? "This game" : "Video";
+    for (int i = 0; i < setups::kCount; ++i)
+    {
+        const setups::Setup su = setups::get(i);
+        if (!su.exists)
+            continue;
+        SettingRow r;
+        r.section = section;
+        r.label = trf("Use setup {n}", {{"n", std::to_string(i + 1)}});
+        r.help = per_game ? trf("Puts setup {n}'s Video and Graphics settings on this game. It was saved from {game}.",
+                                {{"n", std::to_string(i + 1)}, {"game", su.from}})
+                          : trf("Puts setup {n}'s Video and Graphics settings on every game. It was saved from {game}.",
+                                {{"n", std::to_string(i + 1)}, {"game", su.from}});
+        r.values = {su.from.empty() ? tr("Use") : su.from};
+        r.action = kRowUseSetup;
+        r.setup = i;
+        rows_.push_back(r);
+    }
 }
 
 /* What's recommended for this game, as switches: Porpoise's picks (all at
@@ -676,6 +705,27 @@ App::Action App::activate_row(const SettingRow &row)
     {
     case kRowAddFolder:
         open_browser("");
+        return Action::None;
+    case kRowUseSetup:
+        if (screen_ == Screen::GameSettings && game_for_)
+        {
+            if (setups::apply(row.setup, game_, &game_keys_))
+            {
+                mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+                game_.save_keys(game_settings_path(*game_for_), game_keys_);
+                build_game_settings();
+                sfx(Sound::LaunchGame);
+            }
+            return Action::None;
+        }
+        if (setups::apply(row.setup, *settings_))
+        {
+            settings_->save(settings_path_);
+            settings_->write_core_options(options_path_);
+            build_settings();
+            sfx(Sound::LaunchGame);
+            return Action::SettingsChanged;
+        }
         return Action::None;
 
     case kRowRemoveFolder:
@@ -1030,6 +1080,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMapping)
         draw_prompts({{Glyph::Cross, "Customize"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowUseSetup)
+        draw_prompts({{Glyph::Cross, "Use"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.toggle >= 0)
         draw_prompts({{Glyph::Cross, focus.toggle ? "Turn off" : "Turn on"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action)

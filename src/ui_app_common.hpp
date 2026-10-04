@@ -34,6 +34,7 @@ enum RowAction
     kRowResetGame,
     kRowMapping,
     kRowRecommended,
+    kRowUseSetup,
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

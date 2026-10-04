@@ -46,6 +46,7 @@
 #include "ui_i18n.hpp"
 #include "ui_library.hpp"
 #include "ui_recommend.hpp"
+#include "ui_setups.hpp"
 #include "ui_settings.hpp"
 
 extern "C"
@@ -477,6 +478,13 @@ int menu_paused(void *)
         porpoise::audio::set_volume(g_play.volume / 10.0f);
     else if (key == "screen_filter" || key == "filter_strength")
         porpoise::core::set_picture(g_play.screen_filter, g_play.filter_strength / 10.0f);
+    else if (key == "setup")
+    {
+        /* A whole setup: the picture and every Dolphin option. */
+        porpoise::core::set_picture(g_play.screen_filter, g_play.filter_strength / 10.0f);
+        for (const auto &[k, v] : g_play.core_options())
+            porpoise::core::set_option(k.c_str(), v.c_str());
+    }
     else if (key == "button_layout")
         porpoise::pad::set_mapping(g_play.mapping());
     else if (key == "fast_forward")
@@ -644,6 +652,7 @@ int main()
     porpoise::sound::load("/app0/assets");
     porpoise::states::set_data_dir(g_data);
     porpoise::borders::set_dirs("/app0/assets", g_data);
+    porpoise::ui::setups::set_dir(g_data);
     porpoise::ui::recommend::set_paths(g_data + "/recommended.ini", "/app0/system/dolphin-emu/Sys/GameSettings",
                                        "/app0/assets/recommended.ini");
     read_latest_release();

@@ -14,6 +14,7 @@
 #include "porpoise_borders.hpp"
 #include "porpoise_states.hpp"
 #include "ui_recommend.hpp"
+#include "ui_setups.hpp"
 #include "ui_app.hpp"
 #include "ui_i18n.hpp"
 #include "ui_gfx.hpp"
@@ -246,6 +247,8 @@ int main(int argc, char **argv)
     /* Two save states for the 4th game, with a cover for their pictures. */
     porpoise::states::set_data_dir(out);
     porpoise::borders::set_dirs(assets, out);
+    porpoise::ui::setups::set_dir(out);
+    porpoise::ui::setups::save(0, settings, "Kart Party");
     {
         /* A Dolphin fix and a Porpoise pick for the preview's games (PRV...). */
         mkdir((out + "/gs").c_str(), 0777);
@@ -571,7 +574,9 @@ int main(int argc, char **argv)
         menu_press(1u << 3, 3); /* CRT */
         shot("ingame-video");
         menu_press(1u << 9); /* Graphics */
+        menu_press(1u << 1, 9); /* Use a setup */
         shot("ingame-graphics");
+        menu_press(1u << 0, 9);
         menu_press(1u << 9); /* Controls */
         shot("ingame-controls");
         menu_press(1u << 1);

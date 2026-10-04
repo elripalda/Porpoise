@@ -24,6 +24,7 @@
 #include "ui_app.hpp"
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
+#include "ui_setups.hpp"
 
 namespace porpoise::ui
 {
@@ -52,6 +53,8 @@ enum class Kind
     Library,
     Home,
     Customize,
+    SaveSetup, /* this game's video and graphics, kept as a setup */
+    UseSetup,  /* a setup's settings for this game */
     Int,  /* a setting with a list of values */
     Bool, /* a setting that is on or off */
     Border,
@@ -117,6 +120,8 @@ std::vector<Row> rows_for(int tab, Settings &p)
         r.push_back({Kind::Bool, "disable_fog", "Disable fog", nullptr, &p.disable_fog, 0, {"Off", "On"}});
         r.push_back({Kind::Bool, "crop_overscan", "Crop overscan", nullptr, &p.crop_overscan, 0, {"Off", "On"}});
         r.push_back({Kind::Bool, "skip_dupes", "Skip duplicate frames", nullptr, &p.skip_dupes, 0, {"Off", "On"}});
+        r.push_back({Kind::SaveSetup, "", "Save as a setup", nullptr, nullptr, 0, {}, true});
+        r.push_back({Kind::UseSetup, "", "Use a setup"});
         break;
     case kTabControls:
         r.push_back({Kind::Int, "button_layout", "Button layout", &p.button_layout, nullptr, 0,
@@ -149,6 +154,10 @@ const char *help_for(const Row &row, const Settings &p)
         return "Choose one of three slots to save this moment in.";
     if (row.kind == Kind::Load)
         return "Choose a saved moment to go back to.";
+    if (row.kind == Kind::SaveSetup)
+        return "Keeps this game's Video and Graphics settings as a setup, to use on other games.";
+    if (row.kind == Kind::UseSetup)
+        return "Puts a setup's Video and Graphics settings on this game.";
     if (row.kind == Kind::Customize)
         return "Your own layouts: change any button on a picture of the DualSense.";
     return "Changes here are saved for this game.";
@@ -461,6 +470,56 @@ int App::update_game_menu(const Input &in, double dt)
         if (cross)
             open_mapping_in_game();
         break;
+    case Kind::SaveSetup:
+    case Kind::UseSetup:
+        if (left || right)
+        {
+            menu_setup_ = (menu_setup_ + (left ? setups::kCount - 1 : 1)) % setups::kCount;
+            menu_confirm_ = false;
+            sfx(Sound::MenuScroll);
+        }
+        else if (cross)
+        {
+            const setups::Setup su = setups::get(menu_setup_);
+            const std::string n = std::to_string(menu_setup_ + 1);
+            if (row.kind == Kind::SaveSetup)
+            {
+                if (su.exists && !menu_confirm_)
+                {
+                    menu_confirm_ = true;
+                    menu_note_ = trf("Press Cross again to replace setup {n}.", {{"n", n}});
+                    menu_note_time_ = time_;
+                    sfx(Sound::MovingTab);
+                    break;
+                }
+                menu_confirm_ = false;
+                const bool ok = setups::save(menu_setup_, p, menu_game_ ? menu_game_->title : "");
+                menu_note_ = ok ? trf("Saved as setup {n}.", {{"n", n}}) : tr("The setup couldn't be saved.");
+                menu_note_time_ = time_;
+                sfx(ok ? Sound::LaunchGame : Sound::MovingTab);
+            }
+            else if (!su.exists)
+            {
+                menu_note_ = tr("That setup is empty.");
+                menu_note_time_ = time_;
+                sfx(Sound::MovingTab);
+            }
+            else if (menu_game_)
+            {
+                std::vector<std::string> keys = Settings::keys_in(game_settings_path(*menu_game_));
+                if (setups::apply(menu_setup_, p, &keys))
+                {
+                    mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+                    p.save_keys(game_settings_path(*menu_game_), keys);
+                    menu_change_ = "setup";
+                    menu_borders_ = porpoise::borders::list();
+                    menu_note_ = trf("Setup {n} is on for this game.", {{"n", n}});
+                    menu_note_time_ = time_;
+                    sfx(Sound::LaunchGame);
+                }
+            }
+        }
+        break;
     case Kind::Int:
         if (dir)
         {
@@ -692,6 +751,17 @@ void App::draw_game_menu(double time)
         case Kind::FastForward:
             value = menu_ff_ == 0 ? tr("Off") : menu_ff_ == 1 ? "2x" : "4x";
             break;
+        case Kind::SaveSetup:
+        case Kind::UseSetup:
+        {
+            const setups::Setup su = setups::get(menu_setup_);
+            value = trf("Setup {n}", {{"n", std::to_string(menu_setup_ + 1)}});
+            if (su.exists && !su.from.empty())
+                value += "  \xE2\x80\xA2  " + su.from;
+            else if (!su.exists)
+                value += "  \xE2\x80\xA2  " + tr("Empty");
+            break;
+        }
         case Kind::Int:
             value = tr(row.values[std::size_t(std::clamp(*row.iv - row.min, 0, int(row.values.size()) - 1))]);
             if (row.key == std::string("button_layout") && *row.iv >= LayoutOwn)

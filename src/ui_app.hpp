@@ -151,6 +151,7 @@ private:
         int toggle = -1;                   /* a switch: 1 on, 0 off; -1 not a switch */
         int rec = -1;                      /* its recommendation (rec_rows_) */
         std::string tag;                   /* a small label beside the switch: where it comes from */
+        int setup = -1;                    /* kRowUseSetup: which setup */
         int min = 0;
         bool header = false;
         int action = 0;      /* look::RowAction */
@@ -193,6 +194,7 @@ private:
     void build_settings();
     void build_game_settings();
     void add_recommended_rows();
+    void add_setup_rows(bool per_game);
     struct RecRow
     {
         enum Kind
@@ -327,6 +329,7 @@ private:
     int menu_tab_ = 0;   /* Game, Video, Graphics, Controls */
     int menu_slot_ = 0;  /* the save-state slot under focus */
     int menu_ff_ = 0;    /* fast forward: off, 2x, 4x */
+    int menu_setup_ = 0; /* the setup under focus in the Graphics tab */
     MenuRequest menu_busy_;           /* the save or load under way */
     bool menu_busy_handed_ = false;   /* given to the host */
     int menu_busy_frames_ = 0;        /* frames drawn showing it */
