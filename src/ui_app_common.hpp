@@ -20,7 +20,7 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "1.2 Wii test 7";
+constexpr const char *kVersion = "1.2 Wii test 8";
 constexpr int kBuild = 1; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 1, kVersionMinor = 2, kVersionPatch = 0;
 

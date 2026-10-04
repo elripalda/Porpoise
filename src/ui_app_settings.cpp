@@ -294,6 +294,19 @@ void App::add_game_rows(Settings &t, bool per_game)
         rows_.push_back(r);
     }
     if (!per_game)
+    {
+        std::vector<std::string> presets = {"None"};
+        const auto &names = Settings::wii_preset_names();
+        for (int i = 0; i < Settings::kWiiPresets; ++i)
+        {
+            const Settings::WiiPreset &w = settings_->wii_presets[i];
+            presets.push_back(std::to_string(i + 1) + ": " + (w.used ? names[std::size_t(w.name)] : "empty"));
+        }
+        choice("wii_preset", "Wii preset",
+               "A whole Wii Remote set-up kept under a name: made in the setup's Fine-tune page (Advanced).",
+               &t.wii_preset, 0, presets);
+    }
+    if (!per_game)
         toggle("wii_setup_ask", "Setup before each Wii game",
                "Shows the Wii Remote setup when a Wii game starts; Triangle there plays straight away.",
                &t.wii_setup_ask);
@@ -312,7 +325,7 @@ void App::add_game_rows(Settings &t, bool per_game)
            "held pointing at the TV, with its motion. Sideways: held like an NES pad, tilt to steer. Two "
            "controllers (beta): the second DualSense is the Nunchuk.",
            &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
-                                  "Two controllers (beta)"});
+                                  "Two controllers (alpha)"});
     choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to centre it.",
            &t.wii_pointer, 0, {"Gyro", "Touch pad", "Right stick"});
     choice("wii_speed", "Pointer speed",
@@ -837,6 +850,12 @@ void App::change_setting(int dir)
         game_.save_keys(game_settings_path(*game_for_), game_keys_);
         rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
         return;
+    }
+    if (r.key == "wii_preset" && settings_->wii_preset > 0)
+    {
+        /* A preset brings its whole set-up. */
+        settings_->use_wii_preset(settings_->wii_preset - 1);
+        build_settings();
     }
     settings_->save(settings_path_);
     settings_->write_core_options(options_path_);

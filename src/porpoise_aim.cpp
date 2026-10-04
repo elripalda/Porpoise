@@ -271,19 +271,72 @@ void sensor_bar_at(float x, float y, float roll, Dot out[2])
 
 void sensor_bar(float x, float y, float roll, Dot out[2])
 {
-    sensor_bar_at(x, y, roll, out);
-    /* On the screen (up to a little past its edges) both lights must stay in
-     * view, or the game loses the pointer in a corner: when one slips out,
-     * the picture is the one a touch nearer the middle. Further out, they go,
-     * as when a real Remote points away from the TV. */
-    if ((out[0].visible && out[1].visible) || std::fabs(x) > 1.15f || std::fabs(y) > 1.15f)
+    /* Up to a little past the screen's edges the game's cursor stays pinned
+     * at the edge (a real Remote would lose the bar there, but on a menu's
+     * top row that only makes the cursor blink away); further out, the lights
+     * go, as when a Remote points away from the TV. The roll the camera sees
+     * is held to 30 degrees: enough for the cursor to tilt with the hand,
+     * without turning the bar out of the camera's narrow view. */
+    if (std::fabs(x) > 1.3f || std::fabs(y) > 1.3f)
+    {
+        out[0] = out[1] = Dot{};
         return;
-    for (int i = 1; i <= 12; ++i)
+    }
+    x = std::clamp(x, -1.06f, 1.06f);
+    y = std::clamp(y, -1.06f, 1.06f);
+    roll = std::clamp(roll, -0.52f, 0.52f);
+    sensor_bar_at(x, y, roll, out);
+    for (int i = 1; i <= 20 && !(out[0].visible && out[1].visible); ++i)
     {
         const float k = 1.0f - 0.02f * float(i);
-        sensor_bar_at(x * k, y * k, roll, out);
-        if (out[0].visible && out[1].visible)
-            return;
+        sensor_bar_at(x * k, y * k, roll * k, out);
     }
+}
+
+void Smoother::reset()
+{
+    started = false;
+}
+
+void Smoother::step(float &x, float &y, float dt, int strength)
+{
+    /* A "one euro" filter: strong when the pointer is nearly still (hand
+     * tremor), light when it moves (no lag on a sweep). */
+    static constexpr float kMin[4] = {0, 3.0f, 1.6f, 0.9f}, kBeta[4] = {0, 0.35f, 0.18f, 0.09f};
+    strength = std::clamp(strength, 0, 3);
+    if (strength == 0 || dt <= 0)
+    {
+        sx = x;
+        sy = y;
+        started = true;
+        return;
+    }
+    if (!started)
+    {
+        sx = x;
+        sy = y;
+        dx = dy = 0;
+        started = true;
+        return;
+    }
+    auto alpha = [&](float cutoff) {
+        const float tau = 1.0f / (2 * kPi * cutoff);
+        return 1.0f / (1.0f + tau / dt);
+    };
+    const float ad = alpha(1.0f);
+    dx += ((x - sx) / dt - dx) * ad;
+    dy += ((y - sy) / dt - dy) * ad;
+    const float speed = std::sqrt(dx * dx + dy * dy);
+    const float a = alpha(kMin[strength] + kBeta[strength] * speed);
+    /* A jump (a re-centring, back from off the screen) is taken at once. */
+    if (std::fabs(x - sx) > 0.8f || std::fabs(y - sy) > 0.8f)
+        sx = x, sy = y;
+    else
+    {
+        sx += (x - sx) * a;
+        sy += (y - sy) * a;
+    }
+    x = sx;
+    y = sy;
 }
 } // namespace porpoise::aim

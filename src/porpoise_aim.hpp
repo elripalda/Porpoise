@@ -97,4 +97,14 @@ struct Dot
     bool visible = false;
 };
 void sensor_bar(float x, float y, float roll, Dot out[2]);
+
+/* Smoothing for the pointer (0 off .. 3 strong): steadies a still hand,
+ * stays quick when it moves. */
+struct Smoother
+{
+    float sx = 0, sy = 0, dx = 0, dy = 0;
+    bool started = false;
+    void reset();
+    void step(float &x, float &y, float dt, int strength);
+};
 } // namespace porpoise::aim

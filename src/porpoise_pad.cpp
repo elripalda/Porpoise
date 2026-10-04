@@ -168,6 +168,7 @@ struct Slot
     unsigned centre_seq = 0; /* the Remote's centrings seen (two-controller play's Nunchuk) */
     float centre_hold = 0;   /* how long R1 (L1) has been held, calmly */
     bool centre_request = false; /* centre_now */
+    aim::Smoother smoother;
     unsigned centrings = 0;  /* for the "centred" note on screen */
 };
 
@@ -583,7 +584,10 @@ Motion read_motion(Slot &slot, std::int32_t count)
         m.rel_yaw = dyaw;
         m.rel_pitch = now.pitch - slot.centre.pitch;
     }
-    const aim::Scale scale = aim::scale_for(g_wii.speed, g_wii.half_x, g_wii.half_y);
+    aim::Scale scale = aim::scale_for(g_wii.speed, g_wii.half_x, g_wii.half_y);
+    const float reach = float(std::clamp(g_wii.reach, 50, 200)) / 100.0f;
+    scale.half_x /= reach;
+    scale.half_y /= reach;
     if (g_wii.pointer == PointerGyro)
     {
         float x = 0, y = 0;
@@ -593,6 +597,7 @@ Motion read_motion(Slot &slot, std::int32_t count)
             if (turning < 0.5f)
                 aim::ease_edge(now, slot.centre, scale, elapsed);
             aim::pointer(now, slot.centre, scale, x, y);
+            slot.smoother.step(x, y, elapsed, g_wii.smooth);
         }
         m.aim_x = g_wii.invert_x ? -x : x;
         m.aim_y = g_wii.invert_y ? -y : y;

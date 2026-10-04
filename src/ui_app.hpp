@@ -382,27 +382,39 @@ private:
     float draw_wii_list(const porpoise::pad::WiiLayout &lay, float lx, float ly, float lw, int columns, float alpha);
     /* Settings > Wii Remote > How to hold it. */
     void open_wii_guide();
+    void open_wii_setup_in_game(bool recalibrate_only);
     Action update_wii_guide(bool left, bool right);
     void draw_wii_guide(double time);
-    /* The Wii Remote setup (before a Wii game, or from Settings). */
+    /* The Wii Remote setup (before a Wii game, from Settings, or from the
+     * pause menu). */
     Action start_game(Game *g, const std::string &state);
     void open_wii_setup(Game *g, bool launch, const std::string &state);
-    Action update_wii_setup(bool left, bool right);
+    Action update_wii_setup(bool up, bool down, bool left, bool right);
     void draw_wii_setup(double time);
     void wii_setup_apply_pad();
+    void close_wii_setup();
+    Settings &ws_settings();
+    void ws_store(const char *key, int value);
     enum WiiStep
     {
         kWsController,
         kWsHold,
+        kWsScreen, /* advanced: corners, or size and distance */
         kWsCentre,
         kWsTopLeft,
         kWsBottomRight,
         kWsTry,
+        kWsTune, /* advanced: smoothing, reach, grip, presets */
     };
     int ws_step_ = kWsController;
     int ws_controller_ = 0;
     Game *ws_game_ = nullptr;
     bool ws_launch_ = false;
+    bool ws_in_game_ = false;    /* over the paused game */
+    bool ws_recal_only_ = false; /* the pause menu's "recalibrate": centre, corners, try */
+    int ws_row_ = 0;
+    int ws_size_mode_ = 0;       /* 0 corners, 1 size and distance */
+    int ws_preset_slot_ = 0, ws_preset_name_ = 0;
     std::string ws_state_;
     Screen ws_return_ = Screen::Main;
     double ws_hold_from_ = -1;     /* Cross held since, calmly (centring) */

@@ -550,7 +550,8 @@ int main(int argc, char **argv)
         render("settings-wii-remote", [&] { ui.draw(12.0); });
         press(kCross); /* Wii Remote setup */
         settle();
-        for (int i = 0; i < 6; ++i)
+        press(kSquare); /* Advanced */
+        for (int i = 0; i < 8; ++i)
         {
             ui.preview_setup_step(i);
             const std::string shot_name = "wii-setup-" + std::to_string(i);

@@ -679,7 +679,7 @@ const char *wii_controller_name(int controller)
     case WiiRemote: return "Remote";
     case WiiSideways: return "Remote sideways";
     case WiiClassic: return "Classic Controller";
-    case WiiTwoControllers: return "Two controllers (beta)";
+    case WiiTwoControllers: return "Two controllers (alpha)";
     default: return "Remote + Nunchuk";
     }
 }
@@ -1183,8 +1183,19 @@ App::Action App::start_game(Game *g, const std::string &state)
     return Action::Launch;
 }
 
+/* The settings the setup changes: the game's (in game), else the global ones. */
+Settings &App::ws_settings()
+{
+    return ws_in_game_ && menu_play_ ? *menu_play_ : *settings_;
+}
+
 void App::wii_setup_apply_pad()
 {
+    if (ws_in_game_)
+    {
+        menu_change_ = "wii_setup"; /* main hands the pad and the core the new set-up */
+        return;
+    }
     Settings eff = *settings_;
     if (ws_game_)
         eff.load(game_settings_path(*ws_game_), true);
@@ -1194,65 +1205,131 @@ void App::wii_setup_apply_pad()
     porpoise::pad::set_wii(c);
 }
 
+/* A Wii value for every game (the global settings), and for the game being
+ * set up when it has its own value of that key, so the global one shows. */
+void App::ws_store(const char *key, int value)
+{
+    settings_->set(key, std::to_string(value));
+    settings_->save(settings_path_);
+    if (ws_in_game_ && menu_play_)
+        menu_play_->set(key, std::to_string(value));
+    if (ws_game_)
+    {
+        const std::string path = game_settings_path(*ws_game_);
+        std::vector<std::string> keys = Settings::keys_in(path);
+        if (std::find(keys.begin(), keys.end(), key) != keys.end())
+        {
+            Settings eff = *settings_;
+            eff.load(path, true);
+            eff.set(key, std::to_string(value));
+            eff.save_keys(path, keys);
+        }
+    }
+}
+
 void App::open_wii_setup(Game *g, bool launch, const std::string &state)
 {
     ws_game_ = g;
     ws_launch_ = launch;
     ws_state_ = state;
+    ws_in_game_ = false;
+    ws_recal_only_ = false;
     ws_return_ = screen_ == Screen::States ? Screen::Details : screen_;
     Settings eff = *settings_;
     if (g)
         eff.load(game_settings_path(*g), true);
     ws_controller_ = std::clamp(eff.wii_controller, 0, int(WiiControllerCount) - 1);
     ws_step_ = kWsController;
+    ws_row_ = 0;
     ws_hold_from_ = -1;
     ws_note_.clear();
+    ws_size_mode_ = 0;
     wii_setup_apply_pad();
     sfx(Sound::DetailsFlip);
     open_screen(Screen::WiiSetup);
 }
 
-App::Action App::update_wii_setup(bool left, bool right)
+void App::open_wii_setup_in_game(bool recalibrate_only)
+{
+    if (!menu_play_)
+        return;
+    ws_game_ = menu_game_;
+    ws_launch_ = false;
+    ws_in_game_ = true;
+    ws_recal_only_ = recalibrate_only;
+    ws_controller_ = std::clamp(menu_play_->wii_controller, 0, int(WiiControllerCount) - 1);
+    ws_step_ = recalibrate_only ? (points(ws_controller_) ? kWsCentre : kWsHold) : kWsController;
+    ws_row_ = 0;
+    ws_hold_from_ = -1;
+    ws_note_.clear();
+    ws_size_mode_ = 0;
+    sfx(Sound::DetailsFlip);
+}
+
+void App::close_wii_setup()
+{
+    ws_hold_from_ = -1;
+    if (ws_in_game_)
+    {
+        ws_in_game_ = false;
+        menu_change_ = "wii_setup";
+        return;
+    }
+    porpoise::pad::set_wii(WiiConfig{});
+    if (ws_return_ == Screen::GameSettings)
+    {
+        build_game_settings();
+        open_screen(Screen::GameSettings);
+    }
+    else
+        open_screen(ws_return_ == Screen::WiiSetup ? Screen::Main : ws_return_);
+}
+
+App::Action App::update_wii_setup(bool up, bool down, bool left, bool right)
 {
     const Motion m = porpoise::pad::snapshot(0).motion;
     const float turning = std::sqrt(m.gyro[0] * m.gyro[0] + m.gyro[1] * m.gyro[1] + m.gyro[2] * m.gyro[2]);
     const bool pointing = points(ws_controller_);
+    const bool advanced = settings_->wii_setup_advanced;
+    Settings &t = ws_settings();
     auto note = [&](const char *text) {
         ws_note_ = tr(text);
         ws_note_time_ = time_;
     };
     auto finish = [&]() -> Action {
         sfx(Sound::LaunchGame);
-        if (ws_return_ == Screen::GameSettings)
+        const bool launch = ws_launch_ && ws_game_ && !ws_in_game_;
+        close_wii_setup();
+        if (launch)
         {
-            build_game_settings();
-            open_screen(Screen::GameSettings);
-        }
-        else
-            open_screen(ws_return_ == Screen::WiiSetup ? Screen::Main : ws_return_);
-        if (ws_launch_ && ws_game_)
-        {
+            porpoise::pad::set_wii(WiiConfig{});
             launch_ = ws_game_;
             launch_state_ = ws_state_;
             return Action::Launch;
         }
-        porpoise::pad::set_wii(WiiConfig{});
-        return Action::None;
+        return ws_in_game_ ? Action::None : Action::SettingsChanged;
     };
+    /* After the corners (or the size and distance): try it. */
+    auto after_measure = [&]() { ws_step_ = kWsTry; };
 
     if (pressed(BtnCircle))
     {
         sfx(Sound::DetailsFlip);
-        if (ws_step_ == kWsController)
-        {
-            porpoise::pad::set_wii(WiiConfig{});
-            open_screen(ws_return_ == Screen::WiiSetup ? Screen::Main : ws_return_);
-            if (ws_return_ == Screen::GameSettings)
-                build_game_settings();
-        }
-        else
-            ws_step_ = ws_step_ == kWsTry ? kWsCentre : std::max(int(kWsController), ws_step_ - 1);
         ws_hold_from_ = -1;
+        const bool first = ws_step_ == kWsController || (ws_recal_only_ && (ws_step_ == kWsCentre || ws_step_ == kWsHold));
+        if (first)
+            close_wii_setup();
+        else if (ws_step_ == kWsTry || ws_step_ == kWsTopLeft || ws_step_ == kWsBottomRight)
+            ws_step_ = kWsCentre;
+        else if (ws_step_ == kWsCentre)
+            ws_step_ = advanced && !ws_recal_only_ ? kWsScreen : kWsHold;
+        else if (ws_step_ == kWsScreen)
+            ws_step_ = kWsHold;
+        else if (ws_step_ == kWsTune)
+            ws_step_ = kWsTry;
+        else
+            ws_step_ = kWsController;
+        ws_row_ = 0;
         return Action::None;
     }
 
@@ -1262,7 +1339,14 @@ App::Action App::update_wii_setup(bool left, bool right)
         if (left || right)
         {
             ws_controller_ = (ws_controller_ + (left ? WiiControllerCount - 1 : 1)) % WiiControllerCount;
-            wii_setup_apply_pad();
+            if (!ws_in_game_)
+                wii_setup_apply_pad();
+            sfx(Sound::MovingTab);
+        }
+        if (pressed(BtnSquare))
+        {
+            settings_->wii_setup_advanced = !settings_->wii_setup_advanced;
+            settings_->save(settings_path_);
             sfx(Sound::MovingTab);
         }
         if (ws_launch_ && pressed(BtnTriangle))
@@ -1270,7 +1354,7 @@ App::Action App::update_wii_setup(bool left, bool right)
         if (pressed(BtnCross))
         {
             /* Keep the choice: for this game, or for every game from Settings. */
-            Action changed = Action::None;
+            t.wii_controller = ws_controller_;
             if (ws_game_)
             {
                 const std::string path = game_settings_path(*ws_game_);
@@ -1287,21 +1371,61 @@ App::Action App::update_wii_setup(bool left, bool right)
             {
                 settings_->wii_controller = ws_controller_;
                 settings_->save(settings_path_);
-                changed = Action::SettingsChanged;
             }
+            wii_setup_apply_pad();
             ws_step_ = kWsHold;
             sfx(Sound::MenuScroll);
-            return changed;
+            return ws_game_ || ws_in_game_ ? Action::None : Action::SettingsChanged;
         }
         break;
     case kWsHold:
         if (pressed(BtnCross))
         {
+            ws_step_ = advanced && pointing && !ws_recal_only_ ? kWsScreen : kWsCentre;
+            ws_row_ = 0;
+            ws_hold_from_ = -1;
+            sfx(Sound::MenuScroll);
+        }
+        break;
+    case kWsScreen:
+    {
+        /* Advanced: how to size the pointer - the corners, or the screen's size
+         * and distance. */
+        constexpr int kRows = 4;
+        if (up && ws_row_ > 0)
+            --ws_row_, sfx(Sound::MenuScroll);
+        if (down && ws_row_ + 1 < kRows)
+            ++ws_row_, sfx(Sound::MenuScroll);
+        const int dir = left ? -1 : right ? 1 : 0;
+        if (dir)
+        {
+            if (ws_row_ == 0)
+                ws_size_mode_ = 1 - ws_size_mode_;
+            else if (ws_row_ == 1)
+                ws_store("wii_size", std::clamp(settings_->wii_size + dir, 10, 150));
+            else if (ws_row_ == 2)
+                ws_store("wii_distance", std::clamp(settings_->wii_distance + dir * 5, 5, 250));
+            sfx(Sound::MovingTab);
+        }
+        if (pressed(BtnCross))
+        {
+            if (ws_size_mode_ == 1)
+            {
+                /* A 16:9 screen: width 0.872 of the diagonal, height 0.490. */
+                const float d = float(settings_->wii_distance) * 1.2f; /* tenths of a foot -> inches */
+                const float hx = std::atan(float(settings_->wii_size) * 0.8716f * 0.5f / d);
+                const float hy = std::atan(float(settings_->wii_size) * 0.4903f * 0.5f / d);
+                ws_store("wii_screen_x", int(std::lround(hx * kDeg * 10)));
+                ws_store("wii_screen_y", int(std::lround(hy * kDeg * 10)));
+                ws_store("wii_speed", 0);
+                wii_setup_apply_pad();
+            }
             ws_step_ = kWsCentre;
             ws_hold_from_ = -1;
             sfx(Sound::MenuScroll);
         }
         break;
+    }
     case kWsCentre:
         /* Hold Cross a moment, still: that hold, pointing at the middle, is level. */
         if ((raw_held_ & BtnCross) && turning < 0.6f)
@@ -1312,8 +1436,13 @@ App::Action App::update_wii_setup(bool left, bool right)
             {
                 porpoise::pad::centre_now(0);
                 ws_hold_from_ = -1;
-                ws_step_ = pointing ? kWsTopLeft : kWsTry;
                 sfx(Sound::LaunchGame);
+                if (!pointing)
+                    ws_step_ = kWsTry;
+                else if (advanced && ws_size_mode_ == 1 && !ws_recal_only_)
+                    after_measure();
+                else
+                    ws_step_ = kWsTopLeft;
             }
         }
         else
@@ -1353,25 +1482,75 @@ App::Action App::update_wii_setup(bool left, bool right)
             }
             /* The middle is half way between the corners. */
             porpoise::pad::shift_centre(0, (m.rel_yaw + ws_tl_[0]) * 0.5f, (m.rel_pitch + ws_tl_[1]) * 0.5f);
-            settings_->wii_screen_x = int(std::lround(half_x * kDeg * 10));
-            settings_->wii_screen_y = int(std::lround(half_y * kDeg * 10));
-            settings_->wii_speed = 0;
-            settings_->save(settings_path_);
+            ws_store("wii_screen_x", int(std::lround(half_x * kDeg * 10)));
+            ws_store("wii_screen_y", int(std::lround(half_y * kDeg * 10)));
+            ws_store("wii_speed", 0);
             wii_setup_apply_pad();
-            ws_step_ = kWsTry;
+            after_measure();
             sfx(Sound::LaunchGame);
-            return Action::SettingsChanged;
+            return ws_in_game_ ? Action::None : Action::SettingsChanged;
         }
         break;
-    default: /* kWsTry */
+    case kWsTry:
         if (pressed(BtnSquare) && pointing)
         {
             ws_step_ = kWsCentre;
             sfx(Sound::MenuScroll);
         }
+        else if (pressed(BtnTriangle) && advanced)
+        {
+            ws_step_ = kWsTune;
+            ws_row_ = 0;
+            ws_preset_slot_ = std::max(0, settings_->wii_preset - 1);
+            sfx(Sound::MenuScroll);
+        }
         else if (pressed(BtnCross))
             return finish();
         break;
+    default: /* kWsTune */
+    {
+        /* Advanced: smoothing, reach, grip; keep it all as a named preset. */
+        constexpr int kRows = 7;
+        if (up && ws_row_ > 0)
+            --ws_row_, sfx(Sound::MenuScroll);
+        if (down && ws_row_ + 1 < kRows)
+            ++ws_row_, sfx(Sound::MenuScroll);
+        const int dir = left ? -1 : right ? 1 : 0;
+        const int names = int(Settings::wii_preset_names().size());
+        if (dir)
+        {
+            switch (ws_row_)
+            {
+            case 0: ws_store("wii_smooth", std::clamp(t.wii_smooth + dir, 0, 3)); break;
+            case 1: ws_store("wii_reach", std::clamp(t.wii_reach + dir * 5, 70, 150)); break;
+            case 2: ws_store("wii_grip", (t.wii_grip + dir + GripCount) % GripCount); break;
+            case 3: ws_preset_slot_ = (ws_preset_slot_ + dir + Settings::kWiiPresets) % Settings::kWiiPresets; break;
+            case 4: ws_preset_name_ = (ws_preset_name_ + dir + names) % names; break;
+            default: break;
+            }
+            if (ws_row_ <= 2)
+                wii_setup_apply_pad();
+            sfx(Sound::MovingTab);
+        }
+        if (pressed(BtnCross))
+        {
+            if (ws_row_ == 5)
+            {
+                /* Everything as set now, under the name. */
+                Settings snapshot = t;
+                settings_->wii_presets[ws_preset_slot_] = {};
+                snapshot.save_wii_preset(ws_preset_slot_, ws_preset_name_);
+                settings_->wii_presets[ws_preset_slot_] = snapshot.wii_presets[ws_preset_slot_];
+                settings_->wii_preset = ws_preset_slot_ + 1;
+                settings_->save(settings_path_);
+                note("Saved.");
+                sfx(Sound::LaunchGame);
+            }
+            else if (ws_row_ == 6)
+                return finish();
+        }
+        break;
+    }
     }
     return Action::None;
 }
@@ -1379,36 +1558,52 @@ App::Action App::update_wii_setup(bool left, bool right)
 void App::draw_wii_setup(double time)
 {
     Gfx &g = *g_;
-    g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.92f), 1, 0);
+    g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.93f), 1, 0);
     const bool pointing = points(ws_controller_);
+    const bool advanced = settings_->wii_setup_advanced;
+    const Settings &t = ws_in_game_ && menu_play_ ? *menu_play_ : *settings_;
     const Motion m = porpoise::pad::snapshot(0).motion;
     const float pulse = settings_->reduced_motion ? 1.0f : 0.8f + 0.2f * std::sin(float(time) * 4.0f);
 
-    /* The title, Beta, the game, and the steps (not while pointing at the
-     * corners: the screen is all target then). */
+    /* The title, Beta / Alpha, the game, and where we are. */
     const bool corners = ws_step_ == kWsTopLeft || ws_step_ == kWsBottomRight;
     if (!corners)
-        g.text_mid(Font::Bold, ts(40), 90, 70, kWhite, Align::Left, tr("Wii Remote setup"));
-    if (!corners)
     {
-        const std::string beta = tr("Beta");
-        const float bw = g.measure(Font::Bold, ts(19), beta) + 26;
-        const float bx = 90 + g.measure(Font::Bold, ts(40), tr("Wii Remote setup")) + 18;
-        g.panel(bx, 70 - 16, bw, 32, rgba(0xFFC85C, 0.9f), 0.8f, 16, rgba(0xFFE7B0), 1.4f);
-        g.text_mid(Font::Bold, ts(19), bx + bw * 0.5f, 70, rgba(0x2A1A00), Align::Center, beta);
-    }
-    if (ws_game_ && !corners)
-        g.text_mid(Font::Regular, ts(24), 90, 112, kLavender, Align::Left,
-                   fit(g, Font::Regular, ts(24), ws_game_->title, 900));
-    {
-        const int steps = pointing ? 6 : 4;
-        const int at = pointing ? ws_step_ : (ws_step_ == kWsTry ? 3 : std::min(ws_step_, 2));
-        for (int i = 0; i < steps; ++i)
+        const std::string title = ws_recal_only_ ? tr("Recalibrate the pointer") : tr("Wii Remote setup");
+        g.text_mid(Font::Bold, ts(40), 90, 70, kWhite, Align::Left, title);
+        const bool alpha = ws_controller_ == WiiTwoControllers;
+        const std::string tag = alpha ? tr("Alpha") : tr("Beta");
+        const float bw = g.measure(Font::Bold, ts(19), tag) + 26;
+        const float bx = 90 + g.measure(Font::Bold, ts(40), title) + 18;
+        g.panel(bx, 70 - 16, bw, 32, alpha ? rgba(0xFF8A5C, 0.92f) : rgba(0xFFC85C, 0.9f), 0.8f, 16, rgba(0xFFE7B0), 1.4f);
+        g.text_mid(Font::Bold, ts(19), bx + bw * 0.5f, 70, rgba(0x2A1A00), Align::Center, tag);
+        std::string sub = ws_game_ ? ws_game_->title : std::string();
+        if (!ws_recal_only_)
+            sub += (sub.empty() ? "" : "   \xE2\x80\xA2   ") + (advanced ? tr("Advanced") : tr("Simple"));
+        g.text_mid(Font::Regular, ts(24), 90, 112, kLavender, Align::Left, fit(g, Font::Regular, ts(24), sub, 1100));
+        /* The steps. */
+        std::vector<int> steps;
+        if (!ws_recal_only_)
+            steps = {kWsController, kWsHold};
+        if (advanced && pointing && !ws_recal_only_)
+            steps.push_back(kWsScreen);
+        steps.push_back(kWsCentre);
+        if (pointing && !(advanced && ws_size_mode_ == 1 && !ws_recal_only_))
+            steps.push_back(kWsTopLeft);
+        steps.push_back(kWsTry);
+        if (advanced && !ws_recal_only_)
+            steps.push_back(kWsTune);
+        const int now = ws_step_ == kWsBottomRight ? kWsTopLeft : ws_step_;
+        int at = 0;
+        for (std::size_t i = 0; i < steps.size(); ++i)
+            if (steps[i] == now)
+                at = int(i);
+        for (std::size_t i = 0; i < steps.size(); ++i)
         {
-            const float cx = 1830 - float(steps - 1 - i) * 44, cy = 74;
-            const bool done = i < at, now = i == at;
-            g.panel(cx - 14, cy - 14, 28, 28, now ? kCyan : done ? rgba(0x6BE3A8) : rgba(0x3D4F9E, 0.8f), 0.9f, 14,
-                    now ? kWhite : rgba(0x8BD9FF, 0.6f), 1.4f);
+            const float cx = 1830 - float(steps.size() - 1 - i) * 44, cy = 74;
+            const bool done = int(i) < at, cur = int(i) == at;
+            g.panel(cx - 14, cy - 14, 28, 28, cur ? kCyan : done ? rgba(0x6BE3A8) : rgba(0x3D4F9E, 0.8f), 0.9f, 14,
+                    cur ? kWhite : rgba(0x8BD9FF, 0.6f), 1.4f);
             g.text_mid(Font::Bold, ts(16), cx, cy, rgba(0x0A1236), Align::Center, std::to_string(i + 1));
         }
     }
@@ -1432,16 +1627,46 @@ void App::draw_wii_setup(double time)
             g.panel(x - r, y - r, 2 * r, 2 * r, rgba(0x6BE3A8, 0.55f), 0.9f, r);
         }
     };
+    /* A left-hand panel with a heading and paragraphs. */
+    const float lx = 90, ly = 160, lw = 750, lh = 780;
+    float ty = 0;
+    auto left_panel = [&](const std::string &heading) {
+        g.panel(lx, ly, lw, lh, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
+        g.text_mid(Font::Bold, ts(34), lx + 44, ly + 56, kWhite, Align::Left, heading);
+        ty = ly + 120;
+    };
+    auto para = [&](const std::string &text, Color c) {
+        for (const std::string &l : wrap(g, Font::Regular, ts(26), text, lw - 90, 10))
+        {
+            g.text_mid(Font::Regular, ts(26), lx + 44, ty, c, Align::Left, l);
+            ty += 38;
+        }
+        ty += 14;
+    };
+    /* A list of rows (advanced pages): label left, value right, focus glow. */
+    auto row = [&](int i, const std::string &label, const std::string &value, float x, float y, float w) {
+        const bool on = i == ws_row_;
+        if (on)
+            g.panel(x, y - 28, w, 56, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.2f, 8, 0.18f);
+        g.text_mid(Font::SemiBold, ts(27), x + 28, y, on ? kWhite : kSoft, Align::Left, label);
+        if (!value.empty())
+        {
+            g.text_mid(Font::Bold, ts(27), x + w - 28, y, on ? kWhite : kLavender, Align::Right, value);
+            if (on && value[0] != '[')
+            {
+                const float vw = g.measure(Font::Bold, ts(27), value);
+                g.glyph(Glyph::Arrow, x + w - 28 - vw - 22, y, 16, kCyan, -kPi * 0.5f);
+            }
+        }
+    };
 
-    WiiConfig cfg = settings_->wii_config(false);
+    WiiConfig cfg = t.wii_config(false);
     cfg.controller = ws_controller_;
     switch (ws_step_)
     {
     case kWsController:
     {
-        const float lx = 90, ly = 160, lw = 750, lh = 780;
-        g.panel(lx, ly, lw, lh, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-        g.text_mid(Font::Bold, ts(34), lx + 44, ly + 56, kWhite, Align::Left, tr("Which Wii controller?"));
+        left_panel(tr("Which Wii controller?"));
         const std::string name = tr(wii_controller_name(ws_controller_));
         const float ny = ly + 130;
         g.panel(lx + 40, ny - 32, lw - 80, 64, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.2f, 8, 0.18f);
@@ -1449,54 +1674,31 @@ void App::draw_wii_setup(double time)
         const float nw = g.measure(Font::Bold, ts(31), name);
         g.glyph(Glyph::Arrow, lx + lw * 0.5f - nw * 0.5f - 34, ny, 20, kCyan, -kPi * 0.5f);
         g.glyph(Glyph::Arrow, lx + lw * 0.5f + nw * 0.5f + 34, ny, 20, kCyan, kPi * 0.5f);
-        float ty = ny + 70;
+        ty = ny + 70;
         if (const Advice *a = advice_for(ws_game_))
         {
             const bool match = a->controller == ws_controller_;
-            const auto lines = wrap(g, Font::SemiBold, ts(25),
-                                    (match ? tr("Recommended. ") : tr("Recommended: ") +
-                                                                       tr(wii_controller_name(a->controller)) + ". ") +
-                                        tr(a->note),
-                                    lw - 90, 3);
-            for (const std::string &l : lines)
-            {
-                g.text_mid(Font::SemiBold, ts(25), lx + 44, ty, match ? rgba(0x6BE3A8) : rgba(0xFFC85C),
-                           Align::Left, l);
-                ty += 36;
-            }
-            ty += 14;
+            para((match ? tr("Recommended. ") : tr("Recommended: ") + tr(wii_controller_name(a->controller)) + ". ") +
+                     tr(a->note),
+                 match ? rgba(0x6BE3A8) : rgba(0xFFC85C));
         }
-        const auto lines = wrap(g, Font::Regular, ts(25), tr(wii_howto(ws_controller_)), lw - 90, 12);
-        for (const std::string &l : lines)
-        {
-            g.text_mid(Font::Regular, ts(25), lx + 44, ty, kSoft, Align::Left, l);
-            ty += 37;
-        }
+        if (ws_controller_ == WiiTwoControllers)
+            para(tr("Alpha: still rough. Two DualSenses, one for each hand."), rgba(0xFF8A5C));
+        para(tr(wii_howto(ws_controller_)), kSoft);
         draw_wii_controls(870, 160, 960, 780, cfg, 1.0f);
+        std::vector<std::pair<Glyph, std::string>> prompts = {{Glyph::DPad, "Wii controller"}, {Glyph::Cross, "Next"}};
         if (ws_launch_)
-            draw_prompts({{Glyph::DPad, "Wii controller"}, {Glyph::Cross, "Next"}, {Glyph::Triangle, "Play now"},
-                          {Glyph::Circle, "Back"}},
-                         {}, "");
-        else
-            draw_prompts({{Glyph::DPad, "Wii controller"}, {Glyph::Cross, "Next"}, {Glyph::Circle, "Back"}}, {}, "");
+            prompts.push_back({Glyph::Triangle, "Play now"});
+        prompts.push_back({Glyph::Square, advanced ? "Simple" : "Advanced"});
+        prompts.push_back({Glyph::Circle, "Back"});
+        draw_prompts(prompts, {}, "");
         break;
     }
     case kWsHold:
     {
-        const float lx = 90, ly = 160, lw = 750, lh = 780;
-        g.panel(lx, ly, lw, lh, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-        g.text_mid(Font::Bold, ts(34), lx + 44, ly + 56, kWhite, Align::Left, tr("Pick it up like this"));
-        float ty = ly + 120;
-        auto para = [&](const std::string &text, Color c) {
-            for (const std::string &l : wrap(g, Font::Regular, ts(26), text, lw - 90, 8))
-            {
-                g.text_mid(Font::Regular, ts(26), lx + 44, ty, c, Align::Left, l);
-                ty += 38;
-            }
-            ty += 16;
-        };
+        left_panel(tr("Pick it up like this"));
         para(tr(pose_words(expected_pose(cfg, false))) + ".", kSoft);
-        if (m.valid && points(ws_controller_))
+        if (m.valid && pointing)
             para(tr("Porpoise sees: ") + tr(pose_words(m.pose)) + ".", rgba(0x6BE3A8));
         if (ws_controller_ == WiiTwoControllers)
         {
@@ -1505,10 +1707,38 @@ void App::draw_wii_setup(double time)
                         : tr("Second controller: not found. Sign in a second user and turn their controller on."),
                  second ? rgba(0x6BE3A8) : rgba(0xFFC85C));
         }
+        para(tr("Porpoise reads how you hold it, so tilts, swings and the pointer come out the right way."),
+             with_alpha(kLavender, 0.85f));
         para(tr("Then press Cross."), kLavender);
         const porpoise::pad::Motion m2 = porpoise::pad::snapshot(1).motion;
         draw_wii_controls(870, 160, 960, 780, cfg, 1.0f, m.valid ? m.pose : -1, m2.valid ? m2.pose : -1);
         draw_prompts({{Glyph::Cross, "Next"}, {Glyph::Circle, "Back"}}, {}, "");
+        break;
+    }
+    case kWsScreen:
+    {
+        left_panel(tr("Your screen"));
+        para(tr("The pointer is sized to your screen and how far you sit. Pointing at two corners measures both "
+                "at once; or give the size and the distance."),
+             kSoft);
+        float ry = ty + 30;
+        const float rx = lx + 30, rw = lw - 60;
+        row(0, tr("Size the pointer by"), ws_size_mode_ ? tr("Size and distance") : tr("Pointing at corners"), rx, ry,
+            rw);
+        ry += 64;
+        if (ws_size_mode_)
+        {
+            row(1, tr("Screen size"), std::to_string(settings_->wii_size) + "\"", rx, ry, rw);
+            ry += 64;
+            char d[48];
+            std::snprintf(d, sizeof d, "%.1f ft (%.1f m)", settings_->wii_distance / 10.0,
+                          settings_->wii_distance * 0.03048);
+            row(2, tr("Distance to it"), d, rx, ry, rw);
+            ry += 64;
+        }
+        row(3, ws_size_mode_ ? tr("Next: centre") : tr("Next: centre, then the corners"), "", rx, ry, rw);
+        draw_wii_controls(870, 160, 960, 780, cfg, 1.0f, m.valid ? m.pose : -1);
+        draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Cross, "Next"}, {Glyph::Circle, "Back"}}, {}, "");
         break;
     }
     case kWsCentre:
@@ -1519,15 +1749,15 @@ void App::draw_wii_setup(double time)
         big_line(tr("Then hold Cross, keeping still."), 830, kLavender);
         if (ws_controller_ == WiiTwoControllers)
             big_line(tr("Hold the second controller as you'll play, too."), 900, kLavender);
-        draw_prompts({{Glyph::Cross, "Hold to centre"}, {Glyph::Circle, "Back"}}, {}, "");
+        draw_prompts({{Glyph::Cross, "Hold to centre"}, {Glyph::Circle, ws_recal_only_ ? "Close" : "Back"}}, {}, "");
         break;
     }
     case kWsTopLeft:
     case kWsBottomRight:
     {
         const bool tl = ws_step_ == kWsTopLeft;
-        const float tx = 960 + (tl ? -kCorner : kCorner) * 960, ty = 540 + (tl ? -kCorner : kCorner) * 540;
-        target(tx, ty, 0);
+        const float tx = 960 + (tl ? -kCorner : kCorner) * 960, ty2 = 540 + (tl ? -kCorner : kCorner) * 540;
+        target(tx, ty2, 0);
         big_line(tl ? tr("Now point at the dot in the top-left corner") : tr("And the dot in the bottom-right corner"),
                  470, kWhite);
         big_line(tr("and press Cross."), 540, kLavender);
@@ -1536,19 +1766,19 @@ void App::draw_wii_setup(double time)
         draw_prompts({{Glyph::Cross, "This is the corner"}, {Glyph::Circle, "Back"}}, {}, "");
         break;
     }
-    default: /* kWsTry */
+    case kWsTry:
     {
         if (pointing)
         {
             /* The screen's edge, and the pointer, live. */
             g.panel(24, 24, 1872, 1032, rgba(0xFFFFFF, 0.0f), 0, kR, rgba(0x3D4F9E, 0.9f), 2.0f);
             big_line(tr("Try it: the pointer should be right where you point."), 470, kWhite);
-            if (settings_->wii_screen_x > 0)
+            if (t.wii_screen_x > 0 && t.wii_speed == 0)
                 big_line(trf("Your screen: {x}\xC2\xB0 to the sides, {y}\xC2\xB0 up and down.",
-                             {{"x", std::to_string(settings_->wii_screen_x / 10)},
-                              {"y", std::to_string(settings_->wii_screen_y / 10)}}),
+                             {{"x", std::to_string(t.wii_screen_x / 10)}, {"y", std::to_string(t.wii_screen_y / 10)}}),
                          540, kLavender);
-            big_line(tr("If it wanders while you play, hold R1 a moment to centre it."), 610, with_alpha(kLavender, 0.8f));
+            big_line(tr("If it wanders while you play, hold R1 a moment to centre it."), 610,
+                     with_alpha(kLavender, 0.8f));
             if (m.centred)
             {
                 const float px = 960 + std::clamp(m.aim_x, -1.05f, 1.05f) * 960;
@@ -1557,21 +1787,70 @@ void App::draw_wii_setup(double time)
                 g.panel(px - 20, py - 20, 40, 40, rgba(0xFFFFFF, 0.0f), 0, 20, rgba(0xFFC85C), 3.5f);
                 g.panel(px - 4, py - 4, 8, 8, rgba(0xFFC85C), 1, 4);
             }
-            draw_prompts({{Glyph::Cross, ws_launch_ ? "Play" : "Done"}, {Glyph::Square, "Measure again"},
-                          {Glyph::Circle, "Back"}},
-                         {}, "");
         }
         else
         {
             big_line(tr("All set."), 500, kWhite);
             big_line(tr("Tilt and flick the controller: the game feels it."), 570, kLavender);
-            draw_prompts({{Glyph::Cross, ws_launch_ ? "Play" : "Done"}, {Glyph::Circle, "Back"}}, {}, "");
         }
+        std::vector<std::pair<Glyph, std::string>> prompts = {
+            {Glyph::Cross, ws_launch_ ? "Play" : ws_in_game_ ? "Back to the game" : "Done"}};
+        if (pointing)
+            prompts.push_back({Glyph::Square, "Measure again"});
+        if (advanced && !ws_recal_only_)
+            prompts.push_back({Glyph::Triangle, "Fine-tune"});
+        prompts.push_back({Glyph::Circle, "Back"});
+        draw_prompts(prompts, {}, "");
+        break;
+    }
+    default: /* kWsTune */
+    {
+        left_panel(tr("Fine-tune"));
+        para(tr("Changes show on the pointer at once. Keep the whole set-up as a preset to switch to it later "
+                "(Settings > Wii Remote, or the pause menu)."),
+             kSoft);
+        static const char *const kSmooth[] = {"Off", "Light", "Medium", "Strong"};
+        static const char *const kGrips[] = {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"};
+        const auto &names = Settings::wii_preset_names();
+        float ry = ty + 20;
+        const float rx = lx + 30, rw = lw - 60;
+        row(0, tr("Smoothing"), tr(kSmooth[std::clamp(t.wii_smooth, 0, 3)]), rx, ry, rw);
+        ry += 62;
+        row(1, tr("Reach"), std::to_string(t.wii_reach) + "%", rx, ry, rw);
+        ry += 62;
+        row(2, tr("Grip"), tr(kGrips[std::clamp(t.wii_grip, 0, 3)]), rx, ry, rw);
+        ry += 62;
+        const Settings::WiiPreset &slot = settings_->wii_presets[ws_preset_slot_];
+        row(3, tr("Preset"),
+            trf("{n}: {name}", {{"n", std::to_string(ws_preset_slot_ + 1)},
+                                {"name", slot.used ? tr(names[std::size_t(slot.name)]) : tr("empty")}}),
+            rx, ry, rw);
+        ry += 62;
+        row(4, tr("Name"), tr(names[std::size_t(std::clamp(ws_preset_name_, 0, int(names.size()) - 1))]), rx, ry, rw);
+        ry += 62;
+        row(5, tr("Save as this preset"), "", rx, ry, rw);
+        ry += 62;
+        row(6, ws_launch_ ? tr("Play") : tr("Done"), "", rx, ry, rw);
+        /* The pointer, live, so the changes show. */
+        if (pointing)
+        {
+            g.text_mid(Font::SemiBold, ts(30), 1350, 520, with_alpha(kLavender, 0.85f), Align::Center,
+                       tr("Move the controller: the pointer shows your changes."));
+        }
+        if (m.centred && pointing)
+        {
+            const float px = 960 + std::clamp(m.aim_x, -1.05f, 1.05f) * 960;
+            const float py = 540 + std::clamp(m.aim_y, -1.05f, 1.05f) * 540;
+            g.blob(px, py, 90, 90, rgba(0xFFC85C, 0.45f));
+            g.panel(px - 20, py - 20, 40, 40, rgba(0xFFFFFF, 0.0f), 0, 20, rgba(0xFFC85C), 3.5f);
+        }
+        draw_prompts({{Glyph::DPad, "Change"}, {Glyph::Cross, "Choose"}, {Glyph::Circle, "Back"}}, {}, "");
         break;
     }
     }
-    /* A short note (a corner that didn't take, and so on). */
+    /* A short note (a corner that didn't take, a preset saved). */
     if (!ws_note_.empty() && time_ - ws_note_time_ < 3.5)
         big_line(ws_note_, 960, rgba(0xFFC85C));
 }
+
 } // namespace porpoise::ui

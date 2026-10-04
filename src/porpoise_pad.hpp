@@ -183,6 +183,8 @@ struct WiiConfig
     /* The screen as measured by the Wii Remote setup: radians from its middle
      * to its edges (0: use speed). */
     float half_x = 0, half_y = 0;
+    int smooth = 1;  /* pointer smoothing: 0 off, 1 light, 2 medium, 3 strong */
+    int reach = 100; /* percent: more reaches the edges with less turning */
 };
 void set_wii(const WiiConfig &config);
 /* Centre player's pointer now, as R1 held would (the Wii Remote setup), and

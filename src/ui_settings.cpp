@@ -80,6 +80,12 @@ const Field kFields[] = {
     {"wii_screen_x", &Settings::wii_screen_x, nullptr, 0, 900},
     {"wii_screen_y", &Settings::wii_screen_y, nullptr, 0, 900},
     {"wii_setup_ask", nullptr, &Settings::wii_setup_ask, 0, 1},
+    {"wii_setup_advanced", nullptr, &Settings::wii_setup_advanced, 0, 1},
+    {"wii_smooth", &Settings::wii_smooth, nullptr, 0, 3},
+    {"wii_reach", &Settings::wii_reach, nullptr, 50, 200},
+    {"wii_size", &Settings::wii_size, nullptr, 10, 150},
+    {"wii_distance", &Settings::wii_distance, nullptr, 5, 250},
+    {"wii_preset", &Settings::wii_preset, nullptr, 0, 4},
     {"motion_readout", nullptr, &Settings::motion_readout, 0, 1},
     {"debug_logs", nullptr, &Settings::debug_logs, 0, 1},
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
@@ -196,6 +202,30 @@ bool Settings::load(const std::string &path, bool overlay)
             set(k, v);
             continue;
         }
+        if (k.size() == 10 && k.rfind("wiipreset", 0) == 0 && k[9] >= '1' && k[9] <= '4')
+        {
+            /* A Wii preset: name controller grip pointer speed screen_x screen_y smooth reach. */
+            if (overlay)
+                continue;
+            WiiPreset &w = wii_presets[k[9] - '1'];
+            int n[9] = {};
+            const int got = std::sscanf(v.c_str(), "%d %d %d %d %d %d %d %d %d", &n[0], &n[1], &n[2], &n[3], &n[4],
+                                        &n[5], &n[6], &n[7], &n[8]);
+            if (got == 9)
+            {
+                w.used = true;
+                w.name = std::clamp(n[0], 0, int(wii_preset_names().size()) - 1);
+                w.controller = std::clamp(n[1], 0, int(porpoise::pad::WiiControllerCount) - 1);
+                w.grip = std::clamp(n[2], 0, int(porpoise::pad::GripCount) - 1);
+                w.pointer = std::clamp(n[3], 0, 2);
+                w.speed = std::clamp(n[4], 0, 10);
+                w.screen_x = std::clamp(n[5], 0, 900);
+                w.screen_y = std::clamp(n[6], 0, 900);
+                w.smooth = std::clamp(n[7], 0, 3);
+                w.reach = std::clamp(n[8], 50, 200);
+            }
+            continue;
+        }
         if (k.size() == 7 && k.rfind("layout", 0) == 0 && k[6] >= '1' && k[6] <= '4')
         {
             /* One of the player's own layouts: twelve controls. */
@@ -275,6 +305,13 @@ bool Settings::save(const std::string &path) const
         for (int i = 0; i < porpoise::pad::GcCount; ++i)
             std::fprintf(f, " %d", presets[p][i]);
         std::fprintf(f, "\n");
+    }
+    for (int p = 0; p < kWiiPresets; ++p)
+    {
+        const WiiPreset &w = wii_presets[p];
+        if (w.used)
+            std::fprintf(f, "wiipreset%d = %d %d %d %d %d %d %d %d %d\n", p + 1, w.name, w.controller, w.grip,
+                         w.pointer, w.speed, w.screen_x, w.screen_y, w.smooth, w.reach);
     }
     for (const std::string &folder : folders)
         std::fprintf(f, "folder = %s\n", folder.c_str());
@@ -518,6 +555,49 @@ std::string Settings::get(const std::string &key) const
     return fd->i ? std::to_string(this->*fd->i) : (this->*fd->b ? "1" : "0");
 }
 
+const std::vector<std::string> &Settings::wii_preset_names()
+{
+    static const std::vector<std::string> kNames = {"Living room", "Desk", "Bedroom", "Couch",  "Party",
+                                                    "Boxing",      "Tennis", "Racing", "Bowling", "Kids",
+                                                    "Guest",       "Mine"};
+    return kNames;
+}
+
+void Settings::save_wii_preset(int slot, int name)
+{
+    if (slot < 0 || slot >= kWiiPresets)
+        return;
+    WiiPreset &w = wii_presets[slot];
+    w.used = true;
+    w.name = std::clamp(name, 0, int(wii_preset_names().size()) - 1);
+    w.controller = wii_controller;
+    w.grip = wii_grip;
+    w.pointer = wii_pointer;
+    w.speed = wii_speed;
+    w.screen_x = wii_screen_x;
+    w.screen_y = wii_screen_y;
+    w.smooth = wii_smooth;
+    w.reach = wii_reach;
+    wii_preset = slot + 1;
+}
+
+bool Settings::use_wii_preset(int slot)
+{
+    if (slot < 0 || slot >= kWiiPresets || !wii_presets[slot].used)
+        return false;
+    const WiiPreset &w = wii_presets[slot];
+    wii_controller = w.controller;
+    wii_grip = w.grip;
+    wii_pointer = w.pointer;
+    wii_speed = w.speed;
+    wii_screen_x = w.screen_x;
+    wii_screen_y = w.screen_y;
+    wii_smooth = w.smooth;
+    wii_reach = w.reach;
+    wii_preset = slot + 1;
+    return true;
+}
+
 porpoise::pad::WiiConfig Settings::wii_config(bool active) const
 {
     porpoise::pad::WiiConfig c;
@@ -538,6 +618,8 @@ porpoise::pad::WiiConfig Settings::wii_config(bool active) const
     c.grip = std::clamp(wii_grip, 0, int(porpoise::pad::GripCount) - 1);
     c.motion = wii_motion;
     c.shake = wii_shake;
+    c.smooth = std::clamp(wii_smooth, 0, 3);
+    c.reach = std::clamp(wii_reach, 50, 200);
     c.invert_x = wii_invert_x;
     c.invert_y = wii_invert_y;
     return c;

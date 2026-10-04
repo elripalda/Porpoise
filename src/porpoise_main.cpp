@@ -685,7 +685,7 @@ int menu_paused(void *)
         /* The Wii Remote: the pad and the core's ports; the pointer's source
          * is also a Dolphin option. */
         porpoise::core::set_wii(g_play.wii_config(true));
-        if (key == "wii_pointer")
+        if (key == "wii_pointer" || key == "wii_setup")
             for (const auto &[k, v] : g_play.core_options())
                 porpoise::core::set_option(k.c_str(), v.c_str());
     }

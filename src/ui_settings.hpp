@@ -75,6 +75,22 @@ struct Settings
      * whether to offer the setup before each Wii game. */
     int wii_screen_x = 0, wii_screen_y = 0;
     bool wii_setup_ask = true;
+    bool wii_setup_advanced = false; /* the setup's extra pages: size and distance, fine-tuning, presets */
+    int wii_smooth = 1;              /* pointer smoothing: off, light, medium, strong */
+    int wii_reach = 100;             /* percent */
+    int wii_size = 27, wii_distance = 30; /* the screen's diagonal (inches) and how far away (tenths of feet) */
+    /* Wii presets: a whole Wii Remote set-up kept under a name (global only). */
+    static constexpr int kWiiPresets = 4;
+    struct WiiPreset
+    {
+        bool used = false;
+        int name = 0; /* index into wii_preset_names() */
+        int controller = 0, grip = 0, pointer = 0, speed = 5, screen_x = 0, screen_y = 0, smooth = 1, reach = 100;
+    };
+    WiiPreset wii_presets[kWiiPresets];
+    int wii_preset = 0; /* the one in use: 0 none, 1..4 */
+    void save_wii_preset(int slot, int name);
+    bool use_wii_preset(int slot);
     bool motion_readout = false; /* in a game: the controller's motion on screen (testing) */
     bool debug_logs = true;      /* test builds: /data/porpoise/debug */
     /* System */
@@ -121,6 +137,7 @@ struct Settings
     std::string get(const std::string &key) const;
     /* The Wii Remote's settings, for a Wii game (active) or not. */
     porpoise::pad::WiiConfig wii_config(bool active) const;
+    static const std::vector<std::string> &wii_preset_names();
     /* The buttons in effect: a ready-made layout, or one of the player's own. */
     porpoise::pad::Mapping mapping() const;
     /* The player's own layout 0..3 being used, or -1 for a ready-made one. */

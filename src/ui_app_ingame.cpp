@@ -124,16 +124,31 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
         r.push_back({Kind::UseSetup, "", "Use a setup"});
         break;
     case kTabControls:
-        r.push_back({Kind::Int, "button_layout", "Button layout", &p.button_layout, nullptr, 0,
-                     {"GameCube", "PlayStation", "My layout 1", "My layout 2", "My layout 3", "My layout 4"}});
-        r.push_back({Kind::Customize, "", "Customize buttons"});
-        r.push_back({Kind::Bool, "rumble", "Vibration", nullptr, &p.rumble, 0, {"Off", "On"}});
+        if (!wii)
+        {
+            r.push_back({Kind::Int, "button_layout", "Button layout", &p.button_layout, nullptr, 0,
+                         {"GameCube", "PlayStation", "My layout 1", "My layout 2", "My layout 3", "My layout 4"}});
+            r.push_back({Kind::Customize, "", "Customize buttons"});
+        }
         if (wii)
         {
-            /* The Wii Remote, tried while playing. */
+            /* The Wii Remote: put right while playing. */
+            r.push_back({Kind::Customize, "wii_recal", "Recalibrate the pointer"});
+            r.push_back({Kind::Customize, "wii_setup", "Wii Remote setup"});
+            {
+                std::vector<std::string> presets = {"None"};
+                const auto &names = Settings::wii_preset_names();
+                for (int i = 0; i < Settings::kWiiPresets; ++i)
+                {
+                    const Settings::WiiPreset &w = p.wii_presets[i];
+                    presets.push_back(std::to_string(i + 1) + ": " +
+                                      (w.used ? tr(names[std::size_t(w.name)]) : tr("empty")));
+                }
+                r.push_back({Kind::Int, "wii_preset", "Wii preset", &p.wii_preset, nullptr, 0, presets});
+            }
             r.push_back({Kind::Int, "wii_controller", "Wii controller", &p.wii_controller, nullptr, 0,
                          {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
-                          "Two controllers (beta)"}});
+                          "Two controllers (alpha)"}});
             r.push_back({Kind::Int, "wii_pointer", "Pointer", &p.wii_pointer, nullptr, 0,
                          {"Gyro", "Touch pad", "Right stick"}});
             r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 0,
@@ -145,6 +160,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
             r.push_back({Kind::Bool, "motion_readout", "Motion readout", nullptr, &p.motion_readout, 0,
                          {"Off", "On"}});
         }
+        r.push_back({Kind::Bool, "rumble", "Vibration", nullptr, &p.rumble, 0, {"Off", "On"}});
         break;
     default:
         break;
@@ -175,6 +191,12 @@ const char *help_for(const Row &row, const Settings &p)
         return "Keeps this game's Video and Graphics settings as a setup, to use on other games.";
     if (row.kind == Kind::UseSetup)
         return "Puts a setup's Video and Graphics settings on this game.";
+    if (row.kind == Kind::Customize && row.key == std::string("wii_recal"))
+        return "Point at the middle and two corners again: after moving, or if the pointer feels off.";
+    if (row.kind == Kind::Customize && row.key == std::string("wii_setup"))
+        return "The whole setup: the Wii controller, how to hold it, your screen, and (advanced) fine-tuning.";
+    if (row.key == std::string("wii_preset"))
+        return "A Wii Remote set-up kept under a name (made in the setup's Fine-tune page, Advanced).";
     if (row.kind == Kind::Customize)
         return "Your own layouts: change any button on a picture of the DualSense.";
     return "Changes here are saved for this game.";
@@ -340,10 +362,15 @@ int App::update_game_menu(const Input &in, double dt)
     const bool up = nav(BtnUp, rep_up_, dt), down = nav(BtnDown, rep_down_, dt);
     const bool left = nav(BtnLeft, rep_left_, dt), right = nav(BtnRight, rep_right_, dt);
 
-    /* The mapping screen, over the game. */
+    /* The mapping screen or the Wii Remote setup, over the game. */
     if (map_in_game_)
     {
         update_mapping(up, down, left, right);
+        return 0;
+    }
+    if (ws_in_game_)
+    {
+        update_wii_setup(up, down, left, right);
         return 0;
     }
     /* Saving or loading: nothing to do but wait. */
@@ -490,7 +517,11 @@ int App::update_game_menu(const Input &in, double dt)
         }
         break;
     case Kind::Customize:
-        if (cross)
+        if (cross && row.key == "wii_recal")
+            open_wii_setup_in_game(true);
+        else if (cross && row.key == "wii_setup")
+            open_wii_setup_in_game(false);
+        else if (cross)
             open_mapping_in_game();
         break;
     case Kind::SaveSetup:
@@ -579,15 +610,26 @@ int App::update_game_menu(const Input &in, double dt)
         }
         break;
     }
+    std::vector<std::string> also;
+    if (key == "wii_preset")
+    {
+        /* A preset brings its whole set-up. */
+        if (p.wii_preset > 0 && p.use_wii_preset(p.wii_preset - 1))
+            also = {"wii_controller", "wii_grip", "wii_pointer", "wii_speed", "wii_screen_x", "wii_screen_y",
+                    "wii_smooth", "wii_reach"};
+    }
     if (!key.empty() && menu_game_)
     {
         /* Saved as this game's own setting, so it sticks next time. */
         std::vector<std::string> keys = Settings::keys_in(game_settings_path(*menu_game_));
         if (std::find(keys.begin(), keys.end(), key) == keys.end())
             keys.push_back(key);
+        for (const std::string &k : also)
+            if (std::find(keys.begin(), keys.end(), k) == keys.end())
+                keys.push_back(k);
         mkdir((data_dir_ + "/game-settings").c_str(), 0777);
         p.save_keys(game_settings_path(*menu_game_), keys);
-        menu_change_ = key;
+        menu_change_ = key == "wii_preset" ? std::string("wii_setup") : key;
         sfx(Sound::MenuScroll);
     }
     return 0;
@@ -672,6 +714,12 @@ void App::draw_game_menu(double time)
     if (!menu_play_)
         return;
     Gfx &g = *g_;
+    if (ws_in_game_)
+    {
+        g.set_layer();
+        draw_wii_setup(time);
+        return;
+    }
     if (map_in_game_)
     {
         g.set_layer();

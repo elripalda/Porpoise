@@ -305,7 +305,7 @@ App::Action App::update(const Input &in, double dt)
     if (screen_ == Screen::WiiGuide)
         return update_wii_guide(left, right);
     if (screen_ == Screen::WiiSetup)
-        return update_wii_setup(left, right);
+        return update_wii_setup(up, down, left, right);
     if (screen_ == Screen::States)
         return update_states(left, right);
     if (screen_ == Screen::Sort)

@@ -993,8 +993,11 @@ void set_wii(const porpoise::pad::WiiConfig &config)
     porpoise::pad::set_wii(h.wii);
     h.wii_changed |= device_changed;
     if (h.log)
-        std::fprintf(h.log, "[porpoise] Wii controller now %d, pointer %d, grip %d, speed %d\n", h.wii.controller,
-                     h.wii.pointer, h.wii.grip, h.wii.speed);
+        std::fprintf(h.log,
+                     "[porpoise] Wii controller now %d, pointer %d, grip %d, speed %d, screen %.1f x %.1f deg, "
+                     "smoothing %d, reach %d%%\n",
+                     h.wii.controller, h.wii.pointer, h.wii.grip, h.wii.speed, h.wii.half_x * 57.29578f,
+                     h.wii.half_y * 57.29578f, h.wii.smooth, h.wii.reach);
 }
 
 void set_fast_forward(int factor)
@@ -1253,9 +1256,12 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             h.api.set_controller_port_device(unsigned(port), port_device(port));
     }
     if (h.wii.active && h.log)
-        std::fprintf(h.log, "[porpoise] Wii controller %d, pointer %d, grip %d, motion %s, shake %s\n",
+        std::fprintf(h.log,
+                     "[porpoise] Wii controller %d, pointer %d, grip %d, motion %s, shake %s, speed %d, screen %.1f x "
+                     "%.1f deg, smoothing %d, reach %d%%\n",
                      h.wii.controller, h.wii.pointer, h.wii.grip, h.wii.motion ? "on" : "off",
-                     h.wii.shake ? "on" : "off");
+                     h.wii.shake ? "on" : "off", h.wii.speed, h.wii.half_x * 57.29578f, h.wii.half_y * 57.29578f,
+                     h.wii.smooth, h.wii.reach);
     ps5::debug::mark_value("core: controllers plugged in", porpoise::pad::connected_count());
 
     retro_system_av_info av{};
