@@ -154,11 +154,11 @@ void App::close_mapping()
     sfx(Sound::DetailsFlip);
 }
 
-void App::save_mapping()
+void App::save_mapping(const std::vector<std::string> &keys)
 {
     if (map_target_ == &game_ && game_for_)
     {
-        for (const std::string &k : Settings::mapping_keys())
+        for (const std::string &k : keys.empty() ? Settings::mapping_keys() : keys)
             if (std::find(game_keys_.begin(), game_keys_.end(), k) == game_keys_.end())
                 game_keys_.push_back(k);
         mkdir((data_dir_ + "/game-settings").c_str(), 0777);
@@ -170,12 +170,9 @@ void App::save_mapping()
 
 void App::use_layout(int layout)
 {
-    Settings &s = *map_target_;
-    s.button_layout = layout;
-    const Mapping m = preset(layout);
-    for (int gc = 0; gc < GcCount; ++gc)
-        *s.map_slot(gc) = m.control[gc];
-    save_mapping();
+    /* Only the layout changes: the custom buttons stay, for a return to Custom. */
+    map_target_->button_layout = layout;
+    save_mapping({"button_layout"});
     map_note_ = trf("The {layout} layout is on.", {{"layout", tr(layout_name(layout))}});
     map_note_time_ = time_;
 }
@@ -217,9 +214,18 @@ App::Action App::update_mapping(bool up, bool down)
         /* The press that started the capture doesn't count: wait for every
          * button to be let go, then take the first one pressed. */
         const std::uint32_t mask = 0xFFFFu;
+        if (time_ - map_capture_start_ > kCaptureSeconds)
+        {
+            map_capture_ = false;
+            map_note_ = tr("Nothing pressed; the button is unchanged.");
+            map_note_time_ = time_;
+            return Action::None;
+        }
         if (!map_armed_)
         {
             map_armed_ = (raw_held_ & mask) == 0;
+            if (map_armed_)
+                map_capture_start_ = time_; /* the countdown starts once the hands are free */
             return Action::None;
         }
         const std::uint32_t fresh = (raw_held_ & ~raw_prev_) & mask;
@@ -232,12 +238,6 @@ App::Action App::update_mapping(bool up, bool down)
                     sfx(Sound::LaunchGame);
                     return global ? Action::SettingsChanged : Action::None;
                 }
-        if (time_ - map_capture_start_ > kCaptureSeconds)
-        {
-            map_capture_ = false;
-            map_note_ = tr("Nothing pressed; the button is unchanged.");
-            map_note_time_ = time_;
-        }
         return Action::None;
     }
 

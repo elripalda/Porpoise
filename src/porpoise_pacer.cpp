@@ -17,6 +17,7 @@ namespace
 constexpr int kProbeSkip = 20;     /* the first presents find free images anyway */
 constexpr int kProbeFrames = 120;  /* about two seconds */
 constexpr double kHeldMs = 0.25;   /* a present that waited at least this was held */
+constexpr long long kReprobeNs = 20000000000LL; /* on its own clock, try the vblank again this often */
 } // namespace
 
 long long now_ns()
@@ -52,7 +53,8 @@ void Pacer::start(double content_hz, const char *who)
     /* The display can be the clock when it runs at the content's own rate
      * (59.94 against 60 is close enough; 50 against 60 or 120 is not). */
     const double ratio = display / content;
-    mode_ = (ratio > 0.995 && ratio < 1.012) ? Mode::Probing : Mode::Clock;
+    compatible_ = ratio > 0.995 && ratio < 1.012;
+    mode_ = compatible_ ? Mode::Probing : Mode::Clock;
     probe_frames_ = probe_held_ = 0;
     char line[160];
     std::snprintf(line, sizeof line, "pacer: %s at %.3f Hz on a %.3f Hz display: %s", who_, content, display,
@@ -63,6 +65,7 @@ void Pacer::start(double content_hz, const char *who)
 
 void Pacer::resync()
 {
+    clock_since_ns_ = now_ns();
     last_ns_ = deadline_ns_ = window_start_ns_ = now_ns();
     window_frames_ = 0;
     if (mode_ == Mode::Probing)
@@ -71,6 +74,14 @@ void Pacer::resync()
 
 void Pacer::frame_done()
 {
+    if (mode_ == Mode::Clock && compatible_ && now_ns() - clock_since_ns_ > kReprobeNs)
+    {
+        /* A slow stretch (loading, a heavy scene) can make the probe miss a
+         * display that does hold the loop: try again now and then. */
+        mode_ = Mode::Probing;
+        probe_frames_ = probe_held_ = 0;
+        last_ns_ = now_ns();
+    }
     if (mode_ == Mode::Clock)
     {
         deadline_ns_ += period_ns_;
@@ -92,6 +103,7 @@ void Pacer::frame_done()
         {
             const bool held = probe_held_ * 2 >= kProbeFrames;
             mode_ = held ? Mode::Locked : Mode::Clock;
+            clock_since_ns_ = now_ns();
             char line[160];
             std::snprintf(line, sizeof line, "pacer: %s: the display held %d of %d presents: %s", who_, probe_held_,
                           kProbeFrames, held ? "locked to the vblank" : "own clock");
@@ -112,9 +124,10 @@ void Pacer::frame_done()
         if (span >= 3000000000LL)
         {
             const double rate = window_frames_ * 1e9 / double(span);
-            if (rate > 1.03e9 / double(vblank_ns_))
+            if (rate > 1.012e9 / double(vblank_ns_))
             {
                 mode_ = Mode::Clock;
+                clock_since_ns_ = now;
                 char line[128];
                 std::snprintf(line, sizeof line, "pacer: %s ran at %.1f frames/s, faster than the display: own clock",
                               who_, rate);
@@ -127,8 +140,10 @@ void Pacer::frame_done()
             window_frames_ = 0;
         }
     }
-    /* The floor: never faster than 80% of a vblank, held or not. */
-    sleep_until_ns(last_ns_ + vblank_ns_ * 4 / 5);
+    /* The floor: a frame never takes less than 96% of a vblank. A loop the
+     * display holds waits in the acquire anyway; one it doesn't can run at
+     * most 4% fast until the checks above catch it. */
+    sleep_until_ns(last_ns_ + vblank_ns_ * 24 / 25);
     last_ns_ = now_ns();
 }
 } // namespace porpoise::pacer

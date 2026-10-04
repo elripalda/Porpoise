@@ -38,6 +38,22 @@ std::string App::build_label() const
     return label;
 }
 
+/* A game's own settings, counted as the player sees them: its custom buttons
+ * are one change, not one per button. */
+long long App::change_count() const
+{
+    long long n = 0;
+    bool buttons = false;
+    for (const std::string &k : game_keys_)
+    {
+        if (k.rfind("map_", 0) == 0 || k == "button_layout")
+            buttons = true;
+        else
+            ++n;
+    }
+    return n + (buttons ? 1 : 0);
+}
+
 std::string App::game_settings_path(const Game &g) const
 {
     return data_dir_ + "/game-settings/" + Library::key_of(g) + ".ini";
@@ -293,7 +309,7 @@ void App::build_game_settings()
     r.section = "This game";
     r.label = tr("Own settings");
     r.help = tr("Changes here apply to this game only. Everything else follows your settings.");
-    r.values = {game_keys_.empty() ? tr("None yet") : plural((long long)game_keys_.size(), "1 change", "{n} changes")};
+    r.values = {game_keys_.empty() ? tr("None yet") : plural(change_count(), "1 change", "{n} changes")};
     rows_.push_back(r);
     SettingRow reset;
     reset.section = "This game";
@@ -377,7 +393,7 @@ void App::change_setting(int dir)
             game_keys_.push_back(r.key);
         mkdir((data_dir_ + "/game-settings").c_str(), 0777);
         game_.save_keys(game_settings_path(*game_for_), game_keys_);
-        rows_[1].values = {plural((long long)game_keys_.size(), "1 change", "{n} changes")};
+        rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
         return;
     }
     settings_->save(settings_path_);

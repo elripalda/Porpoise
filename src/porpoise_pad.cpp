@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <mutex>
 
 #include "libretro.h"
 #include "trace.hpp"
@@ -128,6 +129,10 @@ Mapping g_mapping = preset(LayoutGameCube);
 std::atomic<bool> g_rumble_enabled{true};
 unsigned g_polls_since_scan = 0;
 bool g_ready = false;
+std::int32_t g_initial_user = -1; /* player 1, always */
+/* Dolphin reads input and sets rumble from its own CPU thread while the main
+ * thread polls and players come and go: slots change under this lock. */
+std::recursive_mutex g_lock;
 
 std::int16_t stick(std::uint8_t value)
 {
@@ -209,10 +214,14 @@ void rescan()
     for (int player = 1; player < kMaxPlayers; ++player)
         if (g_slots[player].handle >= 0 && !signed_in(g_slots[player].user))
             close_slot(player);
+    /* Player 1 is the user who started Porpoise, even if the pad service was
+     * late for them at start. */
+    if (g_slots[0].handle < 0 && g_initial_user >= 0)
+        open_slot(0, g_initial_user, 1);
     for (int i = 0; i < 4; ++i)
     {
         const std::int32_t user = ids[i];
-        if (user < 0)
+        if (user < 0 || user == g_initial_user)
             continue;
         bool taken = false;
         for (const Slot &s : g_slots)
@@ -248,12 +257,31 @@ State read_slot(Slot &slot)
     for (int c = 0; c < CtlCount; ++c)
         if (b & kControlPadBit[c])
             next.buttons |= kControlButton[c];
+    bool mapped[CtlCount] = {};
     for (int gc = 0; gc < GcCount; ++gc)
     {
         const int c = g_mapping.control[gc];
-        if (c >= 0 && c < CtlCount && (b & kControlPadBit[c]))
+        if (c < 0 || c >= CtlCount)
+            continue;
+        mapped[c] = true;
+        if (b & kControlPadBit[c])
             next.joypad |= static_cast<std::uint16_t>(1u << kGcRetro[gc]);
     }
+    /* Controls no GameCube button uses keep the libretro meaning Dolphin gives
+     * them: the Wii's minus (Select) and Home (R3), the GameCube's soft L / R
+     * (L3 / R3) and the Triforce's test and coin (L, Select). */
+    struct Pass
+    {
+        int control;
+        unsigned retro;
+    };
+    constexpr Pass kPass[] = {{CtlL1, RETRO_DEVICE_ID_JOYPAD_L},
+                              {CtlTouch, RETRO_DEVICE_ID_JOYPAD_SELECT},
+                              {CtlL3, RETRO_DEVICE_ID_JOYPAD_L3},
+                              {CtlR3, RETRO_DEVICE_ID_JOYPAD_R3}};
+    for (const Pass &pass : kPass)
+        if (!mapped[pass.control] && (b & kControlPadBit[pass.control]))
+            next.joypad |= static_cast<std::uint16_t>(1u << pass.retro);
     next.left_x = stick(newest->left_x);
     next.left_y = stick(newest->left_y);
     next.right_x = stick(newest->right_x);
@@ -323,7 +351,9 @@ bool open()
         ps5::debug::mark("pad: scePadInit failed");
         return false;
     }
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
     g_ready = true;
+    g_initial_user = user_id;
     open_slot(0, user_id, 10);
     rescan();
     return g_slots[0].handle >= 0;
@@ -331,6 +361,7 @@ bool open()
 
 void close()
 {
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
     for (int player = 0; player < kMaxPlayers; ++player)
         close_slot(player);
     g_ready = false;
@@ -338,18 +369,21 @@ void close()
 
 void set_mapping(const Mapping &mapping)
 {
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
     g_mapping = mapping;
 }
 
 void set_rumble_enabled(bool enabled)
 {
     g_rumble_enabled.store(enabled, std::memory_order_relaxed);
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
     for (Slot &slot : g_slots)
         push_rumble(slot);
 }
 
 const State &poll()
 {
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
     if (g_ready && ++g_polls_since_scan >= polls_per_scan)
     {
         g_polls_since_scan = 0;
@@ -363,6 +397,12 @@ const State &poll()
 const State &state(int player)
 {
     return player >= 0 && player < kMaxPlayers ? g_slots[player].state : g_none;
+}
+
+State snapshot(int player)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    return player >= 0 && player < kMaxPlayers ? g_slots[player].state : State{};
 }
 
 bool connected(int player)
@@ -382,6 +422,7 @@ void set_rumble(int player, bool strong, std::uint16_t strength)
 {
     if (player < 0 || player >= kMaxPlayers)
         return;
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
     Slot &slot = g_slots[player];
     const std::uint8_t level = static_cast<std::uint8_t>(strength >> 8);
     std::uint8_t &motor = strong ? slot.motor_large : slot.motor_small;

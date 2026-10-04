@@ -114,6 +114,8 @@ void set_rumble_enabled(bool enabled);
 /* Read every controller. Call once a frame; returns player 1. */
 const State &poll();
 const State &state(int player = 0);
+/* A copy taken under the lock, for the core's own thread. */
+State snapshot(int player);
 bool connected(int player);
 int connected_count();
 /* libretro rumble for one player: strength 0..0xffff per motor. */

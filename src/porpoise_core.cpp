@@ -502,7 +502,7 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
     if (port >= unsigned(porpoise::pad::kMaxPlayers) || (port == 0 && h.hold_input))
         return 0;
-    const porpoise::pad::State &pad = porpoise::pad::state(int(port));
+    const porpoise::pad::State pad = porpoise::pad::snapshot(int(port));
     switch (device)
     {
     case RETRO_DEVICE_JOYPAD:
@@ -860,10 +860,9 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 porpoise::audio::set_source_rate(h.sample_rate);
             }
             if (now_av.timing.fps > 10.0 && now_av.timing.fps < 200.0 && std::fabs(now_av.timing.fps - h.fps) > 0.5)
-            {
-                h.fps = now_av.timing.fps;
-                pacer.start(content_hz(), "game"); /* a PAL game shows its 50 Hz only now */
-            }
+                h.fps = now_av.timing.fps; /* a PAL game shows its 50 Hz only now */
+            /* Judge the vblank on the game itself, not on its boot. */
+            pacer.start(content_hz(), "game");
         }
 
         if (hooks.frame)

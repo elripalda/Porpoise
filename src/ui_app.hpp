@@ -171,6 +171,7 @@ private:
     void draw_browser();
     Action update_browser(bool up, bool down);
     std::string build_label() const;
+    long long change_count() const;
 
     /* Button mapping (ui_app_controls.cpp) */
     void open_mapping();
@@ -179,7 +180,7 @@ private:
     void draw_mapping(double time);
     void assign_control(int gc_input, int control);
     void use_layout(int layout);
-    void save_mapping();
+    void save_mapping(const std::vector<std::string> &keys = {});
     void draw_keycap(float right, float cy, const std::string &label, bool on, float height = 40);
 
     /* Dialogs */

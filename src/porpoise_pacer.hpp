@@ -15,7 +15,7 @@
  * swapchain really does hold it (the present waits) for its first couple of
  * seconds; if it doesn't, or the rates don't match (a 50 Hz game, a 120 Hz
  * mode), it falls back to a clock of its own, the way Porpoise always paced.
- * A floor of 80% of a vblank keeps a loop that is not held from racing.
+ * A floor of 96% of a vblank keeps a loop that is not held from racing.
  *
  * Locked to the display, a 59.94 Hz game runs 0.1% fast; the audio
  * resampler's rate control absorbs that without anyone hearing it. */
@@ -49,6 +49,8 @@ private:
     int probe_frames_ = 0, probe_held_ = 0;
     long long window_start_ns_ = 0; /* locked: frames over the last window, to catch a loop the display stopped holding */
     int window_frames_ = 0;
+    bool compatible_ = false;       /* the display runs at the content's rate */
+    long long clock_since_ns_ = 0;  /* when the own clock took over */
     const char *who_ = "";
 };
 
