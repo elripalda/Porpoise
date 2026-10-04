@@ -91,8 +91,12 @@ struct Settings
     int wii_preset = 0; /* the one in use: 0 none, 1..4 */
     void save_wii_preset(int slot, int name);
     bool use_wii_preset(int slot);
-    bool motion_readout = false; /* in a game: the controller's motion on screen (testing) */
+    bool motion_readout = false; /* in a game: the controller's motion on screen (developer options) */
     bool debug_logs = true;      /* test builds: /data/porpoise/debug */
+    /* Developer options: unlocked in About, for tuning the Wii Remote. Without
+     * them the readout, inverted pointer and motion logs are off. */
+    bool developer = false;
+    bool motion_logs = true; /* a CSV of the controller's motion per Wii game (developer options) */
     /* System */
     int cpu_clock = 5;       /* index into the clock list (50% .. 300%): 100% */
     bool dual_core = true;   /* dolphin_main_cpu_thread */
@@ -103,6 +107,7 @@ struct Settings
     /* Interface */
     bool reduced_motion = false;
     bool large_text = false;
+    int ui_theme = 0; /* the look: 0 Porpoise, 1 Revolution (a bright grid of tiles and a pointer) */
     /* Dolphin's own per-game settings set by Porpoise, as "dolphin.<Section>.<Key>"
      * and its value (e.g. dolphin.Video_Hacks.EFBToTextureEnable = True). Kept
      * in a game's settings file only, and written for Dolphin before the game

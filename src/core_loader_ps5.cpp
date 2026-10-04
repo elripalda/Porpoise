@@ -222,6 +222,38 @@ void release(Module *m)
     std::free(m);
 }
 
+/* Dolphin sizes its custom-texture memory from the machine's (Common::
+ * MemPhysical, the FreeBSD path: sysctl CTL_HW / HW_REALMEM). Inside a PS5
+ * app that comes back empty, Dolphin allows no memory at all, and no texture
+ * pack ever loads ("Not enough system memory for custom resources"). The core
+ * is given this sysctl instead: those questions get a 4 GiB answer (so 2 GiB
+ * for textures, Dolphin keeping half back), everything else goes through. */
+using SysctlFn = int (*)(const int *, unsigned, void *, size_t *, const void *, size_t);
+SysctlFn g_real_sysctl = nullptr;
+
+int porpoise_core_sysctl(const int *name, unsigned namelen, void *oldp, size_t *oldlenp, const void *newp,
+                                    size_t newlen)
+{
+    constexpr int kCtlHw = 6, kHwPhysmem = 5, kHwRealmem = 12, kHwUsermem = 6;
+    if (name && namelen == 2 && name[0] == kCtlHw &&
+        (name[1] == kHwPhysmem || name[1] == kHwRealmem || name[1] == kHwUsermem) && !newp && oldlenp)
+    {
+        constexpr uint64_t kMemory = uint64_t(4) << 30;
+        if (oldp && *oldlenp >= sizeof(uint64_t))
+            std::memcpy(oldp, &kMemory, sizeof kMemory);
+        else if (oldp && *oldlenp >= sizeof(uint32_t))
+        {
+            const uint32_t small = 0xFFFFFFFFu;
+            std::memcpy(oldp, &small, sizeof small);
+        }
+        *oldlenp = *oldlenp >= sizeof(uint64_t) ? sizeof(uint64_t) : *oldlenp;
+        return 0;
+    }
+    if (!g_real_sysctl)
+        return -1;
+    return g_real_sysctl(name, namelen, oldp, oldlenp, newp, newlen);
+}
+
 bool symbol_address(Module *m, size_t index, uintptr_t &address)
 {
     if (index >= m->symbol_count)
@@ -236,6 +268,11 @@ bool symbol_address(Module *m, size_t index, uintptr_t &address)
     if (s.st_shndx == SHN_UNDEF)
     {
         address = reinterpret_cast<uintptr_t>(ps5_core_import(name));
+        if (address && std::strcmp(name, "sysctl") == 0)
+        {
+            g_real_sysctl = reinterpret_cast<SysctlFn>(address);
+            address = reinterpret_cast<uintptr_t>(&porpoise_core_sysctl);
+        }
         if (!address && ELF64_ST_BIND(s.st_info) != STB_WEAK)
             return fail("unresolved native runtime import: %s", name);
         return true;

@@ -1173,7 +1173,11 @@ bool points(int controller)
 
 App::Action App::start_game(Game *g, const std::string &state)
 {
-    if (g && g->platform == "Wii" && settings_->wii_setup_ask)
+    /* The game's own choice, else the global one. */
+    Settings eff = *settings_;
+    if (g)
+        eff.load(game_settings_path(*g), true);
+    if (g && g->platform == "Wii" && eff.wii_setup_ask)
     {
         open_wii_setup(g, true, state);
         return Action::None;
@@ -1239,6 +1243,7 @@ void App::open_wii_setup(Game *g, bool launch, const std::string &state)
     if (g)
         eff.load(game_settings_path(*g), true);
     ws_controller_ = std::clamp(eff.wii_controller, 0, int(WiiControllerCount) - 1);
+    ws_ask_ = eff.wii_setup_ask;
     ws_step_ = kWsController;
     ws_row_ = 0;
     ws_hold_from_ = -1;
@@ -1336,17 +1341,40 @@ App::Action App::update_wii_setup(bool up, bool down, bool left, bool right)
     switch (ws_step_)
     {
     case kWsController:
-        if (left || right)
+    {
+        /* Rows: the Wii controller; Simple or Advanced; for a game, whether
+         * this page comes up before it starts. */
+        const int rows = ws_game_ && !ws_in_game_ ? 3 : 2;
+        if (up && ws_row_ > 0)
+            --ws_row_, sfx(Sound::MenuScroll);
+        if (down && ws_row_ + 1 < rows)
+            ++ws_row_, sfx(Sound::MenuScroll);
+        if ((left || right) && ws_row_ == 0)
         {
             ws_controller_ = (ws_controller_ + (left ? WiiControllerCount - 1 : 1)) % WiiControllerCount;
             if (!ws_in_game_)
                 wii_setup_apply_pad();
             sfx(Sound::MovingTab);
         }
-        if (pressed(BtnSquare))
+        if (((left || right) && ws_row_ == 1) || pressed(BtnSquare))
         {
             settings_->wii_setup_advanced = !settings_->wii_setup_advanced;
             settings_->save(settings_path_);
+            sfx(Sound::MovingTab);
+        }
+        if ((left || right) && ws_row_ == 2 && ws_game_)
+        {
+            /* This game's own choice (its settings show it too). */
+            const std::string path = game_settings_path(*ws_game_);
+            Settings eff = *settings_;
+            eff.load(path, true);
+            eff.wii_setup_ask = !eff.wii_setup_ask;
+            std::vector<std::string> keys = Settings::keys_in(path);
+            if (std::find(keys.begin(), keys.end(), "wii_setup_ask") == keys.end())
+                keys.push_back("wii_setup_ask");
+            mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+            eff.save_keys(path, keys);
+            ws_ask_ = eff.wii_setup_ask;
             sfx(Sound::MovingTab);
         }
         if (ws_launch_ && pressed(BtnTriangle))
@@ -1374,10 +1402,12 @@ App::Action App::update_wii_setup(bool up, bool down, bool left, bool right)
             }
             wii_setup_apply_pad();
             ws_step_ = kWsHold;
+            ws_row_ = 0;
             sfx(Sound::MenuScroll);
             return ws_game_ || ws_in_game_ ? Action::None : Action::SettingsChanged;
         }
         break;
+    }
     case kWsHold:
         if (pressed(BtnCross))
         {
@@ -1667,14 +1697,18 @@ void App::draw_wii_setup(double time)
     case kWsController:
     {
         left_panel(tr("Which Wii controller?"));
-        const std::string name = tr(wii_controller_name(ws_controller_));
-        const float ny = ly + 130;
-        g.panel(lx + 40, ny - 32, lw - 80, 64, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.2f, 8, 0.18f);
-        g.text_mid(Font::Bold, ts(31), lx + lw * 0.5f, ny, kWhite, Align::Center, name);
-        const float nw = g.measure(Font::Bold, ts(31), name);
-        g.glyph(Glyph::Arrow, lx + lw * 0.5f - nw * 0.5f - 34, ny, 20, kCyan, -kPi * 0.5f);
-        g.glyph(Glyph::Arrow, lx + lw * 0.5f + nw * 0.5f + 34, ny, 20, kCyan, kPi * 0.5f);
-        ty = ny + 70;
+        const float rx = lx + 30, rw = lw - 60;
+        float ry = ly + 128;
+        row(0, tr("Wii controller"), tr(wii_controller_name(ws_controller_)), rx, ry, rw);
+        ry += 62;
+        row(1, tr("Setup"), advanced ? tr("Advanced") : tr("Simple"), rx, ry, rw);
+        ry += 62;
+        if (ws_game_ && !ws_in_game_)
+        {
+            row(2, tr("Before this game"), ws_ask_ ? tr("Show this setup") : tr("Don't show"), rx, ry, rw);
+            ry += 62;
+        }
+        ty = ry + 10;
         if (const Advice *a = advice_for(ws_game_))
         {
             const bool match = a->controller == ws_controller_;
@@ -1684,12 +1718,20 @@ void App::draw_wii_setup(double time)
         }
         if (ws_controller_ == WiiTwoControllers)
             para(tr("Alpha: still rough. Two DualSenses, one for each hand."), rgba(0xFF8A5C));
+        if (ws_row_ == 1)
+            para(advanced ? tr("Advanced adds your screen's size and distance, smoothing, reach and presets.")
+                          : tr("Simple: centre, two corners, and play."),
+                 kLavender);
+        else if (ws_row_ == 2)
+            para(ws_ask_ ? tr("This page comes up each time this game starts.")
+                         : tr("This game starts straight away. Its settings (Square on it, then Settings) can bring "
+                              "this page back."),
+                 kLavender);
         para(tr(wii_howto(ws_controller_)), kSoft);
         draw_wii_controls(870, 160, 960, 780, cfg, 1.0f);
-        std::vector<std::pair<Glyph, std::string>> prompts = {{Glyph::DPad, "Wii controller"}, {Glyph::Cross, "Next"}};
+        std::vector<std::pair<Glyph, std::string>> prompts = {{Glyph::DPad, "Change"}, {Glyph::Cross, "Next"}};
         if (ws_launch_)
             prompts.push_back({Glyph::Triangle, "Play now"});
-        prompts.push_back({Glyph::Square, advanced ? "Simple" : "Advanced"});
         prompts.push_back({Glyph::Circle, "Back"});
         draw_prompts(prompts, {}, "");
         break;

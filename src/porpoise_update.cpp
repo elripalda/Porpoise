@@ -442,6 +442,7 @@ void *install_worker(void *)
         set(Phase::Installing, written.size(), files.size());
     }
     /* 4. All of them in place: eboot.bin, then the manifest, last. */
+    set(Phase::Finishing, files.size(), files.size());
     std::stable_sort(written.begin(), written.end(), [](const std::string &a, const std::string &b) {
         auto rank = [](const std::string &rel) { return rel == "manifest.sha256" ? 2 : rel == "eboot.bin" ? 1 : 0; };
         return rank(a) < rank(b);

@@ -14,6 +14,8 @@ enum class Effect
     MovingTab,   /* Library / Memory Cards / Settings */
     DetailsFlip, /* into and out of a game's details, the in-game menu */
     LaunchGame,  /* Play */
+    HomeHover,   /* the Revolution look: the pointer lands on a tile */
+    HomePage,    /* the Revolution look: a page turns */
     Count,
 };
 

@@ -512,7 +512,8 @@ Motion read_motion(Slot &slot, std::int32_t count)
     /* R1 has to be held a moment with the controller fairly still: a squeeze
      * of the grip mid-swing (R1 sits just above R2) never centres. */
     const bool centre_held = (last.buttons & (pose_left_hand(slot.pose) ? pad_l1 : pad_r1)) != 0;
-    const bool centre_button = g_wii.controller != WiiSideways && g_wii.controller != WiiClassic && !second;
+    const bool centre_button =
+        g_wii.controller != WiiSideways && g_wii.controller != WiiClassic && !second && !g_wii.menu;
     bool pressed_centre = false;
     if (!centre_held || !centre_button)
     {

@@ -68,6 +68,22 @@ public:
     void sort(Sort how);
     Sort sort_order() const { return sort_; }
 
+    /* Which games the library shows: sort() puts them first, in order, and the
+     * rest after them; shown() says how many there are. */
+    enum class Show
+    {
+        All,
+        GameCube,
+        Wii,
+    };
+    void set_show(Show what) { show_ = what; sort(sort_); }
+    Show show() const { return show_; }
+    int shown() const { return shown_; }
+    bool shows(const Game &g) const
+    {
+        return show_ == Show::All || (show_ == Show::Wii) == (g.platform == "Wii");
+    }
+
     /* Selection and play history, kept across launches. */
     std::string selected_id() const { return selected_; }
     void set_selected(const std::string &key) { selected_ = key; }
@@ -98,6 +114,8 @@ private:
     std::vector<Game> games_;
     std::string selected_;
     Sort sort_ = Sort::Title;
+    Show show_ = Show::All;
+    int shown_ = 0;
     /* History of games not found in this search (a USB drive that's out):
      * kept, so it is there when they are back. */
     std::vector<std::string> kept_lines_;

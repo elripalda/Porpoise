@@ -20,13 +20,18 @@ struct Request
      * GitHub's answer about the newest release (porpoise_update reads it). */
     std::string feed_path;
     std::string release_path;
+    /* Asked for by the player: the game info again even if it is recent, and
+     * art GameTDB lacked last time looked for again. */
+    bool force = false;
 };
 /* Where they come from. */
 constexpr const char *kFeedUrl = "https://raw.githubusercontent.com/elripalda/Porpoise/main/data/recommended.ini";
 constexpr const char *kReleaseUrl = "https://api.github.com/repos/elripalda/Porpoise/releases/latest";
-/* Starts a worker for whatever of that is missing. Covers first, then the
- * game info, then disc art. Does nothing when nothing is missing. */
-void start(const Request &request);
+/* Starts a worker for whatever of that is missing: covers first, then the
+ * game info, then disc art. False when a run is still going (ask again when
+ * busy() turns false); true when it started or nothing is missing. */
+bool start(const Request &request);
+bool busy();
 /* Art that has just been saved for this ID (main thread polls every frame). */
 bool take_ready(std::string &id);
 /* The game info table was just written. */

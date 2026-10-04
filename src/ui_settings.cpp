@@ -88,6 +88,8 @@ const Field kFields[] = {
     {"wii_preset", &Settings::wii_preset, nullptr, 0, 4},
     {"motion_readout", nullptr, &Settings::motion_readout, 0, 1},
     {"debug_logs", nullptr, &Settings::debug_logs, 0, 1},
+    {"developer", nullptr, &Settings::developer, 0, 1},
+    {"motion_logs", nullptr, &Settings::motion_logs, 0, 1},
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
     {"dual_core", nullptr, &Settings::dual_core, 0, 1},
     {"fast_disc", nullptr, &Settings::fast_disc, 0, 1},
@@ -96,6 +98,7 @@ const Field kFields[] = {
     {"progressive", nullptr, &Settings::progressive, 0, 1},
     {"reduced_motion", nullptr, &Settings::reduced_motion, 0, 1},
     {"large_text", nullptr, &Settings::large_text, 0, 1},
+    {"ui_theme", &Settings::ui_theme, nullptr, 0, 1},
     {"ui_language", &Settings::ui_language, nullptr, 0, 12},
 };
 
@@ -620,8 +623,8 @@ porpoise::pad::WiiConfig Settings::wii_config(bool active) const
     c.shake = wii_shake;
     c.smooth = std::clamp(wii_smooth, 0, 3);
     c.reach = std::clamp(wii_reach, 50, 200);
-    c.invert_x = wii_invert_x;
-    c.invert_y = wii_invert_y;
+    c.invert_x = developer && wii_invert_x; /* developer options only */
+    c.invert_y = developer && wii_invert_y;
     return c;
 }
 
@@ -663,7 +666,8 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
         {"dolphin_disable_fog", on_off(disable_fog)},
         {"dolphin_crop_overscan", on_off(crop_overscan)},
         {"dolphin_load_custom_textures", on_off(custom_textures)},
-        {"dolphin_cache_custom_textures", on_off(custom_textures)},
+        /* Not prefetched: a whole pack read into memory at once can run a PS5 app out. */
+        {"dolphin_cache_custom_textures", "disabled"},
         {"dolphin_skip_dupe_frames", on_off(skip_dupes)},
         {"dolphin_enable_rumble", on_off(rumble)},
         {"dolphin_cpu_clock_rate", kCpuClocks[std::clamp(cpu_clock, 0, 9)]},

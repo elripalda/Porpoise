@@ -14,6 +14,7 @@
  * Changes are saved as the game's own settings and take effect at once
  * (main applies them as take_menu_change() reports them). */
 #include <algorithm>
+#include <cstring>
 #include <cmath>
 #include <ctime>
 #include <sys/stat.h>
@@ -157,8 +158,9 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
                          {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"}});
             r.push_back({Kind::Bool, "wii_motion", "Motion", nullptr, &p.wii_motion, 0, {"Off", "On"}});
             r.push_back({Kind::Bool, "wii_shake", "Flick to shake", nullptr, &p.wii_shake, 0, {"Off", "On"}});
-            r.push_back({Kind::Bool, "motion_readout", "Motion readout", nullptr, &p.motion_readout, 0,
-                         {"Off", "On"}});
+            if (p.developer)
+                r.push_back({Kind::Bool, "motion_readout", "Motion readout", nullptr, &p.motion_readout, 0,
+                             {"Off", "On"}});
         }
         r.push_back({Kind::Bool, "rumble", "Vibration", nullptr, &p.rumble, 0, {"Off", "On"}});
         break;
@@ -517,9 +519,9 @@ int App::update_game_menu(const Input &in, double dt)
         }
         break;
     case Kind::Customize:
-        if (cross && row.key == "wii_recal")
+        if (cross && std::strcmp(row.key, "wii_recal") == 0)
             open_wii_setup_in_game(true);
-        else if (cross && row.key == "wii_setup")
+        else if (cross && std::strcmp(row.key, "wii_setup") == 0)
             open_wii_setup_in_game(false);
         else if (cross)
             open_mapping_in_game();

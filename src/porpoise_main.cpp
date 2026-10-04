@@ -528,25 +528,32 @@ std::string install_dir()
     return same ? home : "/app0";
 }
 
-void fetch_covers()
+bool g_covers_again = false; /* a request came while a run was going: ask again once it ends */
+bool g_covers_force = false; /* the player asked for covers and info now (Sort & filter) */
+
+void fetch_covers(bool force = false)
 {
+    g_covers_force |= force;
     /* Not while the updater is online: one download at a time, and it goes first. */
     const porpoise::update::Phase updating = porpoise::update::progress().phase;
     if (updating == porpoise::update::Phase::Checking || updating == porpoise::update::Phase::Downloading ||
-        updating == porpoise::update::Phase::Installing)
+        updating == porpoise::update::Phase::Installing || updating == porpoise::update::Phase::Finishing)
         return;
     porpoise::covers::Request request;
     request.dir = g_data + "/covers";
-    request.covers = g_settings.download_covers;
-    request.discs = g_settings.download_info;
-    if (g_settings.download_info)
+    /* Asked for, it gets both, whatever the settings say about doing it by itself. */
+    const bool covers = g_settings.download_covers || g_covers_force, info = g_settings.download_info || g_covers_force;
+    request.force = g_covers_force;
+    request.covers = covers;
+    request.discs = info;
+    if (info)
     {
         request.info_path = info_path();
         request.info_lang = info_lang();
     }
     /* Recommended settings and the update check ride along, once a day,
      * when the player lets Porpoise go online for covers or game info. */
-    if (g_settings.download_covers || g_settings.download_info)
+    if (covers || info)
     {
         request.feed_path = g_data + "/recommended.ini";
         request.release_path = g_data + "/latest-release.json";
@@ -554,7 +561,13 @@ void fetch_covers()
     for (const porpoise::ui::Game &game : g_library.games())
         if (!game.id.empty())
             request.ids.push_back(game.id);
-    porpoise::covers::start(request);
+    /* Games added while a run is going (the daily checks at start, often)
+     * used to wait for the next start of Porpoise: now they follow it. */
+    g_covers_again = !porpoise::covers::start(request);
+    if (g_covers_again && g_covers_force)
+        porpoise::covers::stop(); /* the run going now ends early, and this one follows it */
+    if (!g_covers_again)
+        g_covers_force = false;
 }
 
 void rescan_library()
@@ -861,7 +874,7 @@ void launch_frame(bool core_frame, double fps, void *)
         g_gfx.text_mid(porpoise::ui::Font::Bold, 28, 111, 55, porpoise::ui::rgba(0xF4F7FF),
                    porpoise::ui::Align::Center, text);
     }
-    if (g_play.motion_readout && !g_menu_open)
+    if (g_play.motion_readout && g_play.developer && !g_menu_open)
         draw_motion_readout();
     if (!g_menu_open)
         draw_wii_hint();
@@ -1011,6 +1024,8 @@ int main()
                                                           {{"done", std::to_string(done)}, {"total", std::to_string(total)}});
                 g_app.set_note(note);
             }
+            if (g_covers_again && !porpoise::covers::busy())
+                fetch_covers();
             const auto action = g_app.update(in, dt);
             if (action == porpoise::ui::App::Action::SettingsChanged)
             {
@@ -1025,6 +1040,8 @@ int main()
             }
             if (action == porpoise::ui::App::Action::Rescan)
                 rescan_library();
+            if (action == porpoise::ui::App::Action::FetchCovers)
+                fetch_covers(true);
             if (action == porpoise::ui::App::Action::CheckUpdate)
             {
                 porpoise::covers::stop(); /* one download at a time: let the check go first */
@@ -1134,14 +1151,14 @@ int main()
         if (g_settings.debug_logs)
         {
             playback.debug_dir = debug_dir.c_str();
+            playback.motion_log = g_settings.developer && g_settings.motion_logs;
             mkdir(debug_dir.c_str(), 0777);
             if (std::FILE *f = std::fopen((debug_dir + "/README.txt").c_str(), "w"))
             {
-                std::fputs("Porpoise's debug folder (test builds; turn it off in Settings > System > Debug logs).\n\n"
-                           "motion.csv  Each frame of the last Wii game: what the DualSense's motion sensors and touch "
-                           "pad read, what Porpoise gave the game as the Wii Remote, the pointer and shakes.\n\n"
+                std::fputs("Porpoise's debug folder (turn it off in Settings > System > Debug logs).\n\n"
+                           "WiimoteNew.ini  The Wii Remote set-up Dolphin was given for the last Wii game.\n\n"
                            "Send it with /data/homebrew/PPSA99764/trace.txt and "
-                           "/data/homebrew/PPSA99764/porpoise/core.log when you report how the Wii Remote felt.\n",
+                           "/data/homebrew/PPSA99764/porpoise/core.log when you report a problem.\n",
                            f);
                 std::fclose(f);
             }

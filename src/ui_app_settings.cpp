@@ -64,7 +64,8 @@ std::string App::update_row_value() const
     case 1: return tr("Checking\xE2\x80\xA6");
     case 2:
     case 3:
-    case 4: return tr("Updating\xE2\x80\xA6");
+    case 4:
+    case 7: return tr("Updating\xE2\x80\xA6");
     default: break;
     }
     if (update_available())
@@ -228,7 +229,9 @@ void App::add_game_rows(Settings &t, bool per_game)
     toggle("crop_overscan", "Crop overscan", "Hides the black borders some games draw at the edges.",
            &t.crop_overscan);
     toggle("custom_textures", "Custom textures",
-           "Loads texture packs from /data/porpoise/saves/User/Load/Textures/<game ID>.", &t.custom_textures);
+           "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in "
+           "/data/porpoise/saves/User/Load/Textures. A game's Details say when its pack is found.",
+           &t.custom_textures);
     toggle("skip_dupes", "Skip duplicate frames", "Saves work when a game shows the same frame twice.",
            &t.skip_dupes);
     toggle("fast_states", "Fast save states",
@@ -306,10 +309,15 @@ void App::add_game_rows(Settings &t, bool per_game)
                "A whole Wii Remote set-up kept under a name: made in the setup's Fine-tune page (Advanced).",
                &t.wii_preset, 0, presets);
     }
-    if (!per_game)
+    if (per_game)
+        toggle("wii_setup_ask", "Setup before this game",
+               "Shows the Wii Remote setup when this game starts; Triangle there plays straight away.",
+               &t.wii_setup_ask, "Don't show", "Show");
+    else
         toggle("wii_setup_ask", "Setup before each Wii game",
-               "Shows the Wii Remote setup when a Wii game starts; Triangle there plays straight away.",
-               &t.wii_setup_ask);
+               "Shows the Wii Remote setup when a Wii game starts; Triangle there plays straight away. A game "
+               "can have its own choice in its settings.",
+               &t.wii_setup_ask, "Don't show", "Show");
     {
         SettingRow r;
         r.section = section;
@@ -336,12 +344,6 @@ void App::add_game_rows(Settings &t, bool per_game)
            {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"});
     toggle("wii_motion", "Motion", "The DualSense's motion is the Remote's: tilt, swing and point.", &t.wii_motion);
     toggle("wii_shake", "Flick to shake", "A quick flick of the controller shakes the Remote.", &t.wii_shake);
-    toggle("wii_invert_x", "Invert pointer left / right", "For testing: if the gyro pointer moves the wrong way.",
-           &t.wii_invert_x);
-    toggle("wii_invert_y", "Invert pointer up / down", "For testing: if the gyro pointer moves the wrong way.",
-           &t.wii_invert_y);
-    toggle("motion_readout", "Motion readout", "For testing: the controller's motion and the pointer, over the game.",
-           &t.motion_readout);
 
     header("System");
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
@@ -357,8 +359,28 @@ void App::add_game_rows(Settings &t, bool per_game)
     toggle("progressive", "Progressive scan", "480p output, as on a component cable.", &t.progressive);
     if (!per_game)
         toggle("debug_logs", "Debug logs",
-               "For testing: Wii games write the controller's motion to /data/porpoise/debug/motion.csv.",
+               "For testing: Porpoise keeps notes on what it did in /data/porpoise/debug, for bug reports.",
                &t.debug_logs);
+    if (!per_game && settings_->developer)
+    {
+        header("Developer");
+        toggle("motion_readout", "Motion readout", "The controller's motion and the pointer, over the game.",
+               &t.motion_readout);
+        toggle("wii_invert_x", "Invert pointer left / right", "If the gyro pointer moves the wrong way.",
+               &t.wii_invert_x);
+        toggle("wii_invert_y", "Invert pointer up / down", "If the gyro pointer moves the wrong way.",
+               &t.wii_invert_y);
+        toggle("motion_logs", "Motion logs",
+               "Each Wii game writes the controller's motion to /data/porpoise/debug/motion-<date>.csv.",
+               &t.motion_logs);
+        SettingRow r;
+        r.section = section;
+        r.label = tr("Turn off developer options");
+        r.help = tr("Hides this section again. Its settings go back to off.");
+        r.values = {tr("Turn off")};
+        r.action = kRowDeveloperOff;
+        rows_.push_back(r);
+    }
 }
 
 void App::build_settings()
@@ -443,6 +465,17 @@ void App::build_settings()
             r.values.push_back(language_choice(i));
         rows_.push_back(r);
     }
+    {
+        SettingRow r;
+        r.section = section;
+        r.key = "ui_theme";
+        r.label = tr("Look");
+        r.help = tr("Porpoise: the cover flow. Revolution: a bright grid of game tiles you point at by moving the "
+                    "controller, with the date and time below.");
+        r.int_value = &settings_->ui_theme;
+        r.values = {tr("Porpoise"), tr("Revolution")};
+        rows_.push_back(r);
+    }
     toggle("reduced_motion", "Reduced motion", "Stops the moving lights and shortens animations.",
            &settings_->reduced_motion);
     toggle("large_text", "Larger text", "Bigger labels across Porpoise.", &settings_->large_text);
@@ -466,6 +499,7 @@ void App::build_settings()
         rows_.push_back(r);
     }
     info("Created by", "@elripalda", "Ruben - www.elripalda.com");
+    rows_.back().key = "creator"; /* three presses: developer options (not advertised) */
     info("Dolphin on PS5", "Mihawk (mihawk-99)",
          "Mihawk (mihawk-99) brought the Dolphin core to the PS5. Porpoise is built on his port of Dolphin and "
          "RetroArch.");
@@ -943,6 +977,15 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowWiiSetup:
         open_wii_setup(screen_ == Screen::GameSettings ? game_for_ : nullptr, false, "");
         return Action::None;
+    case kRowDeveloperOff:
+        settings_->developer = false;
+        settings_->motion_readout = settings_->wii_invert_x = settings_->wii_invert_y = false;
+        settings_->save(settings_path_);
+        build_settings();
+        on_rail_ = true;
+        rail_ = std::min(rail_, section_count() - 1);
+        sfx(Sound::MovingTab);
+        return Action::SettingsChanged;
     case kRowResetGame:
         open_dialog(DialogKind::ResetGame, tr("Reset this game's settings?"),
                     tr("It forgets its own settings and follows your settings again."), tr("Reset"), true);
@@ -1018,6 +1061,32 @@ App::Action App::update_settings(bool up, bool down, bool left, bool right)
     }
     if (row.action)
         return pressed(BtnCross) ? activate_row(row) : Action::None;
+    if (row.key == "creator" && pressed(BtnCross) && !game)
+    {
+        /* Cross three times on the creator's name: developer options. */
+        creator_presses_ = time_ - creator_time_ < 1.5 ? creator_presses_ + 1 : 1;
+        creator_time_ = time_;
+        if (creator_presses_ >= 3)
+        {
+            creator_presses_ = 0;
+            update_note_ = settings_->developer ? tr("Developer options are already on.")
+                                                : tr("Developer options are on: Settings now has a Developer section.");
+            update_note_time_ = time_;
+            if (!settings_->developer)
+            {
+                settings_->developer = true;
+                settings_->save(settings_path_);
+                build_settings();
+                for (int i = 0; i < int(rows_.size()); ++i)
+                    if (rows_[std::size_t(i)].key == "creator")
+                        settings_row_ = i;
+                sfx(Sound::LaunchGame);
+                return Action::SettingsChanged;
+            }
+        }
+        sfx(Sound::MenuScroll);
+        return Action::None;
+    }
     if (!row.bool_value && !row.int_value)
         return Action::None;
     Action action = Action::None;
@@ -1096,6 +1165,8 @@ void App::draw_settings()
         subtitle = tr("Values in blue are this game's own");
     else if (current == "Interface")
         subtitle = tr("How Porpoise looks and reads");
+    else if (current == "Developer")
+        subtitle = tr("For tuning the Wii Remote; nothing here is needed to play");
     else if (current == "Recommended")
         subtitle = tr("Green is on for this game \xE2\x80\xA2 changes apply the next time it starts");
     else if (game)
@@ -1243,7 +1314,9 @@ void App::draw_settings()
         help = tr("Choose a section with up and down, then press Right or Cross to go into it.");
     else
         help = rows_[std::size_t(settings_row_)].help;
-    if (!on_rail_ && rows_[std::size_t(settings_row_)].action == kRowUpdate && !update_note_.empty() &&
+    if (!on_rail_ &&
+        (rows_[std::size_t(settings_row_)].action == kRowUpdate || rows_[std::size_t(settings_row_)].key == "creator") &&
+        !update_note_.empty() &&
         time_ - update_note_time_ < 8.0)
         help = update_note_;
     g.panel(px + 50, py + ph - 100, pw - 100, 1.5f, rgba(0x3D4F9E, 0.7f), 1, 0);

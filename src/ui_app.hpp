@@ -36,6 +36,8 @@ enum class Sound
     MovingTab,
     DetailsFlip,
     LaunchGame,
+    HomeHover, /* the Revolution look (porpoise::sound::Effect's order) */
+    HomePage,
 };
 
 class App
@@ -47,6 +49,7 @@ public:
         Launch,      /* launch_game() says which */
         SettingsChanged,
         Rescan,      /* game folders changed: search again */
+        FetchCovers, /* covers and game info now (Sort & filter) */
         CheckUpdate, /* look for a newer Porpoise now */
         InstallUpdate,
         Quit,        /* close Porpoise (after an update) */
@@ -61,6 +64,12 @@ public:
     Game *launch_game() { return launch_; }
 #ifdef PORPOISE_HOST_PREVIEW
     void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
+    void preview_pointer(float x, float y) /* tools/ui-preview: the home screen's pointer there */
+    {
+        preview_px_ = x;
+        preview_py_ = y;
+    }
+    void preview_home_page(int page) { home_page_ = page, home_scroll_ = float(page), home_synced_ = true; }
 #endif
     /* The save state to start it from ("" for none); asking clears it. */
     std::string take_launch_state()
@@ -83,6 +92,12 @@ public:
     void cover_arrived(const std::string &id);
     /* A short line under the game count, e.g. "Getting covers 3 of 9". */
     void set_note(const std::string &note) { note_ = note; }
+    /* A line by the game count for a few seconds ("Covers and game info are up to date."). */
+    void flash_note(const std::string &note)
+    {
+        flash_note_ = note;
+        flash_time_ = time_;
+    }
     /* Where a game's own settings are kept (they may not exist). */
     std::string game_settings_path(const Game &g) const;
 
@@ -124,7 +139,7 @@ public:
     /* The updater, as porpoise::update::Phase numbers: 0 idle, 1 checking,
      * 2 downloading, 3 installing, 4 done, 5 failed, 6 checked. */
     void set_update_progress(int phase, std::size_t done, std::size_t total, const std::string &error);
-    bool updating() const { return update_phase_ == 2 || update_phase_ == 3 || update_phase_ == 4; }
+    bool updating() const { return update_phase_ == 2 || update_phase_ == 3 || update_phase_ == 4 || update_phase_ == 7; }
     /* Back from a game to the library. */
     void return_from_game();
     /* The menu language changed (rebuilds Settings' rows). */
@@ -291,6 +306,26 @@ private:
     Texture *save_icon(Save &s);
     Texture *save_banner(Save &s);
     void draw_empty();
+
+    /* The Revolution look's home screen (ui_app_home.cpp): a grid of tiles,
+     * twelve to a page, pointed at with the controller's motion. */
+    bool revolution() const { return settings_ && settings_->ui_theme == 1; }
+    bool home_showing() const
+    {
+        return revolution() && tab_ == Tab::Library && (screen_ == Screen::Main || screen_ == Screen::Sort);
+    }
+    struct HomeItem
+    {
+        int game = -1;       /* index into the library */
+        bool resume = false; /* the first tile: the game played last */
+    };
+    std::vector<HomeItem> home_items() const;
+    void home_pad_sync();
+    int home_hit(float x, float y, int items, int pages) const;
+    void home_tile_rect(int slot, float scroll_dx, float &x, float &y, float &w, float &h) const;
+    void update_home(bool left, bool right, bool up, bool down, bool &play, bool &details, bool &fav, double dt);
+    void draw_home(double time);
+    void draw_home_pointer();
     std::string clock_text() const;
     float ts(float size) const { return settings_ && settings_->large_text ? size * 1.15f : size; }
 
@@ -299,6 +334,7 @@ private:
     Library *lib_ = nullptr;
     Settings *settings_ = nullptr;
     std::string settings_path_, options_path_, saves_dir_, data_dir_;
+    std::string details_tex_for_, details_tex_; /* the Details game's texture pack folder, if any */
 
     Tab tab_ = Tab::Library;
     Screen screen_ = Screen::Main;
@@ -314,7 +350,10 @@ private:
     float right_x_ = 0;
     float layer_dx_ = 0, layer_dy_ = 0, layer_fade_ = 1; /* the screen's motion, this frame */
     bool details_custom_ = false; /* the game has its own settings */
-    int sort_row_ = 0;
+    int sort_row_ = 0;         /* Sort & filter: 0 sort, 1 show, 2 covers and info */
+    void keep_selection(const std::string &key); /* after the order changed */
+    std::string library_count() const;          /* "12 games", "5 Wii games" */
+    std::string library_note() const;           /* covers being fetched, or a flash */
 
     /* Settings: the rail of sections, then the rows of one. */
     std::vector<SettingRow> rows_;
@@ -412,6 +451,7 @@ private:
     bool ws_launch_ = false;
     bool ws_in_game_ = false;    /* over the paused game */
     bool ws_recal_only_ = false; /* the pause menu's "recalibrate": centre, corners, try */
+    bool ws_ask_ = true; /* the setup's game: offer the setup before it starts */
     int ws_row_ = 0;
     int ws_size_mode_ = 0;       /* 0 corners, 1 size and distance */
     int ws_preset_slot_ = 0, ws_preset_name_ = 0;
@@ -469,6 +509,24 @@ private:
     int swipe_from_ = -1;
     float rep_l2_ = 0, rep_r2_ = 0;
     std::string note_;
+    std::string flash_note_;
+    /* The home screen (Revolution look). Focus: a tile 0..11 on the page, or
+     * one of the buttons (kHome* in ui_app_home.cpp), -1 none. */
+    int home_page_ = 0;
+    float home_scroll_ = 0;
+    int home_focus_ = 0;
+    bool home_synced_ = false; /* the focus has been put on the selected game */
+    float home_grow_[16] = {};
+    bool home_pointing_ = false; /* the pointer leads (else the D-pad) */
+    float home_px_ = 960, home_py_ = 540, home_roll_ = 0;
+    float home_hide_x_ = 0, home_hide_y_ = 0;
+    double home_buzz_until_ = -1;
+#ifdef PORPOISE_HOST_PREVIEW
+    float preview_px_ = -1, preview_py_ = -1;
+#endif
+    int creator_presses_ = 0; /* About: Cross on the creator's name (developer options) */
+    double creator_time_ = -100;
+    double flash_time_ = -100;
 
     /* Motion: the content slides in when the tab changes; screens fade in. */
     float tab_anim_ = 0;

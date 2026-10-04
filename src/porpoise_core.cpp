@@ -1132,7 +1132,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     h.nunchuk_tries = 0;
     porpoise::pad::set_nunchuk_motion(false);
     h.debug_dir = playback.debug_dir ? playback.debug_dir : "";
-    if (playback.debug_dir && h.wii.active)
+    if (playback.debug_dir && playback.motion_log && h.wii.active)
     {
         mkdir(playback.debug_dir, 0777);
         /* One file per launch (motion-<date>-<time>.csv), the newest eight kept. */

@@ -20,7 +20,7 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "1.2 Wii test 8";
+constexpr const char *kVersion = "1.2 test 9";
 constexpr int kBuild = 1; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 1, kVersionMinor = 2, kVersionPatch = 0;
 
@@ -39,6 +39,7 @@ enum RowAction
     kRowRecommended,
     kRowUseSetup,
     kRowUpdate,
+    kRowDeveloperOff,
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

@@ -80,9 +80,11 @@ struct Playback
     const char *load_state = nullptr; /* a save state to load once the game is up */
     /* A Wii game: how the DualSense plays the Wii Remote (pad.hpp). */
     porpoise::pad::WiiConfig wii;
-    /* When set: a line per frame of the controller's motion goes to
-     * <debug_dir>/motion.csv, for tuning (a test build's debug folder). */
+    /* The debug folder (Settings > System > Debug logs), or null. With
+     * motion_log, a line per frame of the controller's motion goes to
+     * <debug_dir>/motion-<date>-<time>.csv, for tuning (developer options). */
     const char *debug_dir = nullptr;
+    bool motion_log = false;
 };
 /* The Wii Remote's settings changed in the in-game menu. */
 void set_wii(const porpoise::pad::WiiConfig &config);

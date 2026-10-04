@@ -103,8 +103,8 @@ bool load_wav(const std::string &path, Clip &clip)
 
 bool load(const std::string &asset_dir)
 {
-    static const char *const names[int(Effect::Count)] = {"game-row", "menu-scroll", "moving-tab", "details-flip",
-                                                          "launch-game"};
+    static const char *const names[int(Effect::Count)] = {"game-row",    "menu-scroll", "moving-tab", "details-flip",
+                                                          "launch-game", "home-hover",  "home-page"};
     int ok = 0;
     for (int i = 0; i < int(Effect::Count); ++i)
         ok += load_wav(asset_dir + "/sounds/" + names[i] + ".wav", g_clips[i]) ? 1 : 0;

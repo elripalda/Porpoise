@@ -70,6 +70,7 @@ struct Worker
     pthread_t thread{};
     bool running = false;
     std::atomic<bool> stopping{false};
+    bool force = false;
     std::string dir, info_path, info_lang, feed_path, release_path;
     std::vector<Job> jobs;
     std::atomic<int> phase{0};
@@ -294,7 +295,7 @@ void *run(void *)
         bool recent_miss = false;
         for (const auto &m : misses)
             recent_miss |= m.first == miss_key && now - m.second < kMissRetrySeconds;
-        if (recent_miss)
+        if (recent_miss && !g.force)
         {
             ++g.done;
             continue;
@@ -386,16 +387,22 @@ void *run(void *)
 }
 } // namespace
 
-void start(const Request &request)
+bool busy()
+{
+    return g.active.load();
+}
+
+bool start(const Request &request)
 {
     if (g.active.load())
-        return;
+        return false;
     if (g.running)
     {
         pthread_join(g.thread, nullptr); /* the last run has finished */
         g.running = false;
     }
     g.stopping = false;
+    g.force = request.force;
     g.dir = request.dir;
     g.info_path = request.info_path;
     g.info_lang = request.info_lang;
@@ -425,7 +432,7 @@ void start(const Request &request)
         struct stat st;
         const bool fresh = stat(request.info_path.c_str(), &st) == 0 &&
                            (long long)std::time(nullptr) - (long long)st.st_mtime < 30LL * 24 * 60 * 60;
-        if (!fresh && !ids.empty())
+        if ((!fresh || request.force) && !ids.empty())
             g.jobs.push_back({Job::Info, ""});
     }
     if (request.discs)
@@ -438,7 +445,7 @@ void start(const Request &request)
             if (exists(g.dir + "/" + id + ".png") && !exists(g.dir + "/" + id + ".back.png"))
                 g.jobs.push_back({Job::Back, id});
     if (g.jobs.empty())
-        return;
+        return true;
     mkdir(g.dir.c_str(), 0777);
     int daily = 0;
     for (const Job &j : g.jobs)
@@ -450,6 +457,7 @@ void start(const Request &request)
     if (!g.running)
         g.active = false;
     log("fetching " + std::to_string(g.jobs.size()) + " items");
+    return true;
 }
 
 bool take_ready(std::string &id)

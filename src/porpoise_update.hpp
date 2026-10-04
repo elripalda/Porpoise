@@ -44,6 +44,7 @@ enum class Phase
     Done,   /* installed: Porpoise must be opened again */
     Failed, /* error() says why; nothing was changed unless installing had begun */
     Checked,
+    Finishing, /* every file written: swapping them in and tidying up */
 };
 struct Progress
 {

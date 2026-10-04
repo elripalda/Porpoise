@@ -5,6 +5,7 @@
  */
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -212,6 +213,9 @@ int main(int argc, char **argv)
         {"PRVW05", "Sky Sail", "GameCube"},         {"PRVW06", "Mech Hunter", "GameCube"},
         {"PRVW07", "Kart Party", "GameCube"},       {"PRVW08", "Garden Critters", "GameCube"},
         {"NOCOVR", "A Game Without Cover Art", "GameCube"},
+        {"PRVW09", "Tiny Tennis", "Wii"},           {"PRVW10", "Bowling Night", "Wii"},
+        {"PRVW11", "Puzzle Lab", "GameCube"},       {"PRVW12", "Star Pilots", "Wii"},
+        {"PRVW13", "Rhythm Farm", "Wii"},
     };
     for (auto &t : titles)
     {
@@ -225,6 +229,7 @@ int main(int argc, char **argv)
         g.bytes = 1400ull << 20;
         lib.games().push_back(g);
     }
+    lib.sort(lib.sort_order()); /* as a scan leaves it: Sort & filter's count too */
     lib.games()[3].last_played = (long long)std::time(nullptr) - 30 * 3600;
     for (Game &g : lib.games())
         if (g.id == "PRVW03")
@@ -428,7 +433,89 @@ int main(int argc, char **argv)
     press(kTriangle);
     settle();
     render("sort", [&] { ui.draw(12.0); });
+    press(kDown); /* Show */
+    press(kRight); /* GameCube */
+    settle();
+    render("sort-gamecube", [&] { ui.draw(12.0); });
     press(kCircle);
+    settle();
+    render("library-gamecube", [&] { ui.draw(12.0); });
+    press(kTriangle);
+    press(kDown);
+    press(kRight); /* Wii */
+    press(kCircle);
+    settle();
+    render("library-wii", [&] { ui.draw(12.0); });
+    press(kTriangle);
+    press(kDown);
+    press(kRight); /* All */
+    press(kDown); /* Get covers and info now */
+    settle();
+    render("sort-covers", [&] { ui.draw(12.0); });
+    press(kCircle);
+    settle();
+
+    /* The Revolution look: the home screen, pointed at and with the D-pad. */
+    {
+        settings.ui_theme = 1;
+        settle();
+        ui.preview_pointer(1010, 360);
+        settle();
+        render("home-pointer", [&] { ui.draw(12.0); });
+        ui.preview_pointer(-1, -1);
+        press(kDown);
+        settle();
+        render("home-dpad", [&] { ui.draw(12.0); });
+        ui.preview_pointer(156, 1000);
+        settle();
+        render("home-settings-button", [&] { ui.draw(12.0); });
+        ui.preview_pointer(-1, -1);
+        ui.preview_home_page(1);
+        settle();
+        render("home-page-2", [&] { ui.draw(12.0); });
+        press(kTriangle);
+        settle();
+        render("home-sort", [&] { ui.draw(12.0); });
+        press(kCircle);
+        ui.preview_home_page(0);
+        press(1u << 0, 3);
+        press(1u << 2, 3);
+        press(kRight, 2); /* a Wii game */
+        settle();
+        press(kCross); /* its setup, first */
+        settle();
+        render("wii-setup-game", [&] { ui.draw(12.0); });
+        press(kDown, 2); /* Before this game */
+        settle();
+        render("wii-setup-game-ask", [&] { ui.draw(12.0); });
+        press(kCircle);
+        settle();
+        ui.preview_pointer(1100, 470);
+        settle();
+        render("home-pointer-tile", [&] { ui.draw(12.0); });
+        ui.preview_pointer(-1, -1);
+        settings.ui_theme = 0;
+        settle();
+        /* Developer options (Cross three times on the creator's name, in About). */
+        settings.developer = true;
+        ui.language_changed();
+        press(kR1, 2);
+        press(1u << 0, 12);
+        press(kDown, 7);
+        press(kRight);
+        settle();
+        render("settings-developer", [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(kCircle);
+        settings.developer = false;
+        ui.language_changed();
+        settle();
+    }
+    if (const char *only = std::getenv("PREVIEW_ONLY"); only && *only) /* just the scenes above */
+    {
+        gfx.shutdown();
+        return 0;
+    }
 
     press(kR1);
     settle();

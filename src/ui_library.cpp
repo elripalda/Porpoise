@@ -367,6 +367,8 @@ void Library::sort(Sort how)
             return a.favourite;
         return lower(a.title) < lower(b.title);
     });
+    const auto split = std::stable_partition(games_.begin(), games_.end(), [this](const Game &g) { return shows(g); });
+    shown_ = int(split - games_.begin());
 }
 
 std::string Library::cover_path(const Game &g) const
@@ -451,6 +453,8 @@ void Library::load_state()
             sort_ = v == "recent" ? Sort::Recent : v == "time" ? Sort::MostPlayed
                                                : v == "favourites" ? Sort::Favourites : Sort::Title;
         }
+        else if (s.rfind("show=", 0) == 0)
+            show_ = s == "show=wii" ? Show::Wii : s == "show=gamecube" ? Show::GameCube : Show::All;
         else if (s.rfind("played=", 0) == 0 || s.rfind("time=", 0) == 0 || s.rfind("fav=", 0) == 0)
         {
             /* played=<key> <unix time>, time=<key> <seconds>, fav=<key> */
@@ -486,6 +490,8 @@ void Library::save() const
     if (!f)
         return;
     std::fprintf(f, "selected=%s\nsort=%s\n", selected_.c_str(), sort_name(sort_));
+    if (show_ != Show::All)
+        std::fprintf(f, "show=%s\n", show_ == Show::Wii ? "wii" : "gamecube");
     /* One line of each kind per key, however many copies of a game there are. */
     std::vector<std::string> done;
     for (const Game &g : games_)
