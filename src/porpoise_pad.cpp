@@ -556,15 +556,20 @@ Motion read_motion(Slot &slot, std::int32_t count)
     aim::Basis motion_basis = slot.basis;
     if (g_wii.controller == WiiSideways)
     {
-        /* Held sideways the Remote's own axes are a quarter turn round: x
-         * toward the TV, y to the left, z up. The core turns a sideways
-         * Remote's motion back itself (Input.cpp UpdateAccelerometer, and
-         * Dolphin's "Sideways Wii Remote"), so it wants exactly these. */
+        /* Held sideways (like an NES pad: the D-pad under the left thumb, so
+         * the Remote's pointing end to the left) the Remote's own axes are a
+         * quarter turn round: x (its left side) toward the player, y (its
+         * back) to the right, z up.
+         * The core and Dolphin's "Sideways Wii Remote" turn a sideways
+         * Remote's motion a quarter each way (Input.cpp UpdateAccelerometer,
+         * WiimoteEmu GetOrientation), cancelling out, so the core wants
+         * exactly these axes. (Test 7 had the pointing end to the right: the
+         * steering came out reversed.) */
         for (int c = 0; c < 3; ++c)
         {
-            motion_basis.m[0][c] = -slot.basis.m[1][c];
-            motion_basis.m[1][c] = slot.basis.m[0][c];
-            motion_basis.m[2][c] = slot.basis.m[2][c];
+            motion_basis.m[0][c] = slot.basis.m[1][c];  /* the Remote's left: toward the player */
+            motion_basis.m[1][c] = -slot.basis.m[0][c]; /* its back: to the right */
+            motion_basis.m[2][c] = slot.basis.m[2][c];  /* its top: up */
         }
     }
     aim::to_remote(motion_basis, m.raw_accel, m.accel);
