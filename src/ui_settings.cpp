@@ -290,6 +290,98 @@ std::vector<std::string> Settings::keys_in(const std::string &path)
     return keys;
 }
 
+bool Settings::migrate_game_file(const std::string &path, Settings &global)
+{
+    /* 1.0 kept a game's own buttons as map_* lines with button_layout = 2
+     * (Custom), and its Smooth / Sharp choice as sharp. 1.1 has the player's
+     * four layouts in the global settings, and screen_filter. */
+    std::FILE *f = std::fopen(path.c_str(), "r");
+    if (!f)
+        return false;
+    static const char *const kNames[porpoise::pad::GcCount] = {
+        "map_a", "map_b", "map_x", "map_y", "map_z", "map_l", "map_r", "map_start", "map_up",
+        "map_down", "map_left", "map_right"};
+    std::vector<std::string> keep;
+    int map[porpoise::pad::GcCount];
+    const porpoise::pad::Mapping base = porpoise::pad::preset(porpoise::pad::LayoutGameCube);
+    for (int i = 0; i < porpoise::pad::GcCount; ++i)
+        map[i] = base.control[i];
+    bool old = false, saw_map = false, custom = false, saw_filter = false;
+    int sharp = -1;
+    char line[1024];
+    while (std::fgets(line, sizeof line, f))
+    {
+        const std::string t = trim(line);
+        const auto eq = t.find('=');
+        const std::string k = eq == std::string::npos ? "" : trim(t.substr(0, eq));
+        const std::string v = eq == std::string::npos ? "" : trim(t.substr(eq + 1));
+        bool drop = false;
+        for (int i = 0; i < porpoise::pad::GcCount; ++i)
+            if (k == kNames[i])
+            {
+                map[i] = std::clamp(std::atoi(v.c_str()), 0, porpoise::pad::CtlCount - 1);
+                saw_map = drop = old = true;
+            }
+        if (k == "sharp")
+        {
+            sharp = as_bool(v) ? 1 : 0;
+            drop = old = true;
+        }
+        if (k == "screen_filter")
+            saw_filter = true;
+        if (k == "button_layout" && std::atoi(v.c_str()) == 2)
+        {
+            custom = true;
+            drop = true; /* written again below */
+        }
+        if (!drop)
+            keep.push_back(t);
+    }
+    std::fclose(f);
+    if (!old)
+        return false;
+    bool global_changed = false;
+    if (custom && saw_map)
+    {
+        /* The same layout among the player's, or a free one (still the
+         * GameCube layout it started as), else the last. */
+        int use = -1;
+        for (int p = 0; p < kPresets && use < 0; ++p)
+            if (std::equal(map, map + porpoise::pad::GcCount, global.presets[p]))
+                use = p;
+        for (int p = 1; p < kPresets && use < 0; ++p)
+        {
+            bool fresh = true;
+            for (int i = 0; i < porpoise::pad::GcCount; ++i)
+                fresh &= global.presets[p][i] == base.control[i];
+            if (fresh)
+                use = p;
+        }
+        if (use < 0)
+            use = kPresets - 1;
+        if (!std::equal(map, map + porpoise::pad::GcCount, global.presets[use]))
+        {
+            std::copy(map, map + porpoise::pad::GcCount, global.presets[use]);
+            global_changed = true;
+        }
+        keep.push_back("button_layout = " + std::to_string(2 + use));
+    }
+    else if (custom)
+        keep.push_back("button_layout = 2");
+    if (sharp >= 0 && !saw_filter)
+        keep.push_back(std::string("screen_filter = ") + (sharp ? "1" : "0"));
+    const std::string tmp = path + ".part";
+    if (std::FILE *o = std::fopen(tmp.c_str(), "w"))
+    {
+        for (const std::string &l : keep)
+            if (!l.empty())
+                std::fprintf(o, "%s\n", l.c_str());
+        std::fclose(o);
+        std::rename(tmp.c_str(), path.c_str());
+    }
+    return global_changed;
+}
+
 bool Settings::set(const std::string &key, const std::string &value)
 {
     if (key == "border")

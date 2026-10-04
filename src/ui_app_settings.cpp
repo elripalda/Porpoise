@@ -41,7 +41,10 @@ void App::set_latest_release(const std::string &tag, const std::string &url)
                        (major == kVersionMajor && minor == kVersionMinor && patch > 0);
     latest_version_ = newer ? std::string(t) : "";
     latest_url_ = newer ? url : "";
-    build_settings();
+    /* Only while the global settings are what rows_ holds: a game's settings
+     * or the mapping screen keep theirs (About is built afresh later). */
+    if (screen_ != Screen::GameSettings && screen_ != Screen::Mapping && !map_in_game_)
+        build_settings();
 }
 
 std::string App::build_label() const
@@ -74,7 +77,7 @@ long long App::change_count() const
 
 std::string App::game_settings_path(const Game &g) const
 {
-    return data_dir_ + "/game-settings/" + Library::key_of(g) + ".ini";
+    return data_dir_ + "/game-settings/" + Library::settings_key_of(g) + ".ini";
 }
 
 /* ---- the rows ------------------------------------------------------------------------------ */

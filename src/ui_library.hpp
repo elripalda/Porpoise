@@ -16,6 +16,7 @@ struct Game
     std::string path;
     std::string file;      /* file name */
     std::string id;        /* six-character disc ID, e.g. GABE01; empty if unreadable */
+    int disc_number = 0;   /* 0 the first disc, 1 the second (both have the same ID) */
     std::string title;     /* from the disc header, else the file name */
     std::string format;    /* ISO, RVZ, CISO, ... */
     std::string platform;  /* GameCube or Wii */
@@ -73,7 +74,14 @@ public:
     void toggle_favourite(Game &g);
     void save() const;
 
-    static std::string key_of(const Game &g) { return g.id.empty() ? g.file : g.id; }
+    /* What a game is known by in the library's state and its save states: its
+     * ID, and the disc for a second disc. settings_key_of() leaves the disc
+     * out, so both discs share their settings. */
+    static std::string key_of(const Game &g)
+    {
+        return settings_key_of(g) + (g.disc_number > 0 ? "-disc" + std::to_string(g.disc_number + 1) : "");
+    }
+    static std::string settings_key_of(const Game &g) { return g.id.empty() ? g.file : g.id; }
     std::string cover_path(const Game &g) const;
     std::string disc_path(const Game &g) const; /* <covers>/<ID>.disc.png, or "" */
     std::string back_path(const Game &g) const; /* <covers>/<ID>.back.png, or "" */

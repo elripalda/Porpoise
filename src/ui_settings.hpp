@@ -85,6 +85,10 @@ struct Settings
     bool write_core_options(const std::string &options_ini) const;
     /* Back to how Porpoise ships, keeping the game folders. */
     void reset();
+    /* A game's settings file from 1.0, brought up to date: its own buttons
+     * become one of the player's layouts in global (true when global changed
+     * and must be saved), Smooth / Sharp becomes the screen filter. */
+    static bool migrate_game_file(const std::string &path, Settings &global);
     /* One setting by its key, as in the file (false: no such setting). */
     bool set(const std::string &key, const std::string &value);
     /* Its value as the file has it ("" for no such setting). */

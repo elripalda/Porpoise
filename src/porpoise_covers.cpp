@@ -442,14 +442,22 @@ void *run(void *)
                 /* Only the tag and the page from GitHub's answer. */
                 auto field = [&](const char *name) {
                     const std::string key = std::string("\"") + name + "\"";
-                    std::size_t at = text.find(key);
+                    const std::size_t at = text.find(key);
                     if (at == std::string::npos)
                         return std::string();
-                    at = text.find('"', text.find(':', at + key.size()) + 1);
-                    const std::size_t end = at == std::string::npos ? at : text.find('"', at + 1);
-                    return end == std::string::npos ? std::string() : text.substr(at + 1, end - at - 1);
+                    std::size_t colon = text.find(':', at + key.size());
+                    if (colon == std::string::npos)
+                        return std::string();
+                    std::size_t q = colon + 1;
+                    while (q < text.size() && (text[q] == ' ' || text[q] == '\t' || text[q] == '\n' || text[q] == '\r'))
+                        ++q;
+                    if (q >= text.size() || text[q] != '"') /* null, or not a string */
+                        return std::string();
+                    const std::size_t end = text.find('"', q + 1);
+                    return end == std::string::npos ? std::string() : text.substr(q + 1, end - q - 1);
                 };
-                text = field("tag_name") + "\n" + field("html_url") + "\n";
+                const std::string tag = field("tag_name");
+                text = tag.empty() ? std::string() : tag + "\n" + field("html_url") + "\n";
             }
             const std::string path = feed ? g.feed_path : g.release_path;
             if (status == 200 && text.size() > 2 && text.size() < (1u << 20))
@@ -467,8 +475,7 @@ void *run(void *)
             else
                 log(std::string(feed ? "recommended settings" : "newest release") + ": status " +
                     std::to_string(status));
-            ++g.done;
-            continue;
+            continue; /* not counted in the progress */
         }
 
         const int got = fetch_art(http, job);
@@ -562,7 +569,10 @@ void start(const Request &request)
     if (g.jobs.empty())
         return;
     mkdir(g.dir.c_str(), 0777);
-    g.total = int(g.jobs.size());
+    int daily = 0;
+    for (const Job &j : g.jobs)
+        daily += j.kind == Job::Feed || j.kind == Job::Release;
+    g.total = int(g.jobs.size()) - daily;
     g.done = 0;
     g.active = true;
     g.running = create_title_thread(&g.thread, run, nullptr) == 0;

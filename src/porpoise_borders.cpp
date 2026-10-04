@@ -90,11 +90,20 @@ std::string path_of(const std::string &name)
 {
     if (name.empty() || name.find('/') != std::string::npos || name.find("..") != std::string::npos)
         return "";
-    const std::string mine = g_data + "/borders/" + name + ".png";
-    if (exists(mine))
-        return mine;
-    if (exists(g_data + "/borders/" + name + ".PNG"))
-        return g_data + "/borders/" + name + ".PNG";
+    /* The player's file, whatever the case of its .png (as list() finds it). */
+    if (DIR *d = opendir((g_data + "/borders").c_str()))
+    {
+        std::string found;
+        while (dirent *e = readdir(d))
+        {
+            const std::string n = e->d_name;
+            if (ends_with_png(n) && n.compare(0, n.size() - 4, name) == 0 && n.size() - 4 == name.size())
+                found = g_data + "/borders/" + n;
+        }
+        closedir(d);
+        if (!found.empty() && exists(found))
+            return found;
+    }
     const std::string shipped = g_assets + "/borders/" + name + ".png";
     return exists(shipped) ? shipped : "";
 }

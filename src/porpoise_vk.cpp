@@ -919,14 +919,17 @@ bool capture_picture(unsigned width, unsigned height, std::vector<std::uint8_t> 
         vkGetBufferMemoryRequirements(s.device, buffer, &req);
         VkPhysicalDeviceMemoryProperties props{};
         vkGetPhysicalDeviceMemoryProperties(s.gpu, &props);
+        /* Memory the CPU reads quickly (cached), else any it can read. */
         std::uint32_t type = UINT32_MAX;
         const VkMemoryPropertyFlags want = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        for (std::uint32_t i = 0; i < props.memoryTypeCount; ++i)
-            if ((req.memoryTypeBits & (1u << i)) && (props.memoryTypes[i].propertyFlags & want) == want)
-            {
-                type = i;
+        for (const VkMemoryPropertyFlags flags : {want | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, want})
+        {
+            for (std::uint32_t i = 0; i < props.memoryTypeCount && type == UINT32_MAX; ++i)
+                if ((req.memoryTypeBits & (1u << i)) && (props.memoryTypes[i].propertyFlags & flags) == flags)
+                    type = i;
+            if (type != UINT32_MAX)
                 break;
-            }
+        }
         if (type == UINT32_MAX)
             break;
         VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
@@ -983,13 +986,14 @@ bool capture_picture(unsigned width, unsigned height, std::vector<std::uint8_t> 
         void *mapped = nullptr;
         if (vkMapMemory(s.device, memory, 0, bytes, 0, &mapped) != VK_SUCCESS)
             break;
+        /* One straight copy out of the mapping (uncached memory reads slowly
+         * byte by byte), then the channels put in order in place. */
         rgba.resize(std::size_t(bytes));
-        const std::uint8_t *src = static_cast<const std::uint8_t *>(mapped);
+        std::memcpy(rgba.data(), mapped, std::size_t(bytes));
         for (std::size_t i = 0; i < std::size_t(width) * height; ++i)
         {
-            rgba[i * 4 + 0] = src[i * 4 + (bgra ? 2 : 0)];
-            rgba[i * 4 + 1] = src[i * 4 + 1];
-            rgba[i * 4 + 2] = src[i * 4 + (bgra ? 0 : 2)];
+            if (bgra)
+                std::swap(rgba[i * 4 + 0], rgba[i * 4 + 2]);
             rgba[i * 4 + 3] = 255;
         }
         vkUnmapMemory(s.device, memory);

@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cxxabi.h>
+#include <dirent.h>
 #include <exception>
 #include <pthread.h>
 #include <string>
@@ -210,6 +211,16 @@ const char *info_lang()
     }
 }
 
+std::string info_path();
+
+/* The table the library shows: the language's, or English until it is here. */
+std::string shown_info_path()
+{
+    const std::string own = info_path();
+    struct stat st;
+    return stat(own.c_str(), &st) == 0 ? own : g_data + "/info.tsv";
+}
+
 std::string info_path()
 {
     const std::string lang = info_lang();
@@ -240,7 +251,7 @@ porpoise::ui::LibraryPaths library_paths()
     paths.deep = g_settings.folders;
     paths.covers = g_data + "/covers";
     paths.state = g_data + "/library.txt";
-    paths.info = info_path();
+    paths.info = shown_info_path();
     return paths;
 }
 
@@ -276,9 +287,13 @@ void fetch_covers()
         request.info_path = info_path();
         request.info_lang = info_lang();
     }
-    /* Recommended settings and the update check ride along, once a day. */
-    request.feed_path = g_data + "/recommended.ini";
-    request.release_path = g_data + "/latest-release.txt";
+    /* Recommended settings and the update check ride along, once a day,
+     * when the player lets Porpoise go online for covers or game info. */
+    if (g_settings.download_covers || g_settings.download_info)
+    {
+        request.feed_path = g_data + "/recommended.ini";
+        request.release_path = g_data + "/latest-release.txt";
+    }
     for (const porpoise::ui::Game &game : g_library.games())
         if (!game.id.empty())
             request.ids.push_back(game.id);
@@ -446,10 +461,13 @@ void launch_frame(bool core_frame, double fps, void *)
     if (g_app.menu_fast_forward() > 1 && !g_menu_open)
     {
         /* Fast forward is on: say so, top right. */
-        const char *text = g_app.menu_fast_forward() >= 4 ? "\xE2\x96\xB6\xE2\x96\xB6 4x" : "\xE2\x96\xB6\xE2\x96\xB6 2x";
+        const char *text = g_app.menu_fast_forward() >= 4 ? "4x" : "2x";
         g_gfx.panel(1884 - 150, 30, 150, 50, porpoise::ui::rgba(0x0A1236, 0.72f), 0.9f, 14,
                     porpoise::ui::rgba(0xFFC85C, 0.9f), 1.6f);
-        g_gfx.text_mid(porpoise::ui::Font::Bold, 28, 1884 - 75, 55, porpoise::ui::rgba(0xFFE7B0),
+        const float kHalfPi = 1.5707963f;
+        g_gfx.glyph(porpoise::ui::Glyph::Arrow, 1884 - 116, 55, 20, porpoise::ui::rgba(0xFFE7B0), kHalfPi);
+        g_gfx.glyph(porpoise::ui::Glyph::Arrow, 1884 - 100, 55, 20, porpoise::ui::rgba(0xFFE7B0), kHalfPi);
+        g_gfx.text_mid(porpoise::ui::Font::Bold, 28, 1884 - 52, 55, porpoise::ui::rgba(0xFFE7B0),
                        porpoise::ui::Align::Center, text);
     }
     if (g_play.fps_overlay && !g_menu_open)
@@ -503,6 +521,22 @@ int main()
 
     choose_data_dir();
     g_settings.load(g_settings_path);
+    {
+        /* Games' own settings from 1.0, brought up to date once. */
+        bool changed = false;
+        if (DIR *d = opendir((g_data + "/game-settings").c_str()))
+        {
+            while (dirent *e = readdir(d))
+            {
+                const std::string n = e->d_name;
+                if (n.size() > 4 && n.compare(n.size() - 4, 4, ".ini") == 0)
+                    changed |= porpoise::Settings::migrate_game_file(g_data + "/game-settings/" + n, g_settings);
+            }
+            closedir(d);
+        }
+        if (changed)
+            g_settings.save(g_settings_path);
+    }
     g_settings.write_core_options(g_options_path);
     apply_settings();
     {
@@ -553,7 +587,10 @@ int main()
             while (porpoise::covers::take_ready(cover_id))
                 g_app.cover_arrived(cover_id);
             if (porpoise::covers::take_info_ready())
+            {
+                g_library.set_info_path(shown_info_path());
                 g_library.load_info();
+            }
             if (porpoise::covers::take_feed_ready())
                 porpoise::ui::recommend::feed_changed();
             if (porpoise::covers::take_release_ready())
@@ -572,10 +609,10 @@ int main()
             if (action == porpoise::ui::App::Action::SettingsChanged)
             {
                 apply_settings();
-                if (g_library.paths().info != info_path())
+                if (g_library.paths().info != shown_info_path())
                 {
                     /* The menus changed language: descriptions in it too. */
-                    g_library.set_info_path(info_path());
+                    g_library.set_info_path(shown_info_path());
                     g_library.load_info();
                 }
                 fetch_covers(); /* in case covers were just turned on */

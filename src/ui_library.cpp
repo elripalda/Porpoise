@@ -187,6 +187,7 @@ bool read_disc_header(const std::string &path, Game &g)
     for (int i = 0; i < 6; ++i)
         id += std::isalnum(head[i]) ? char(head[i]) : '_';
     g.id = id;
+    g.disc_number = head[6] <= 4 ? head[6] : 0; /* the disc number byte, 0 for the first */
     g.region = region_of(char(head[3]));
 
     std::string title;
@@ -392,13 +393,22 @@ void Library::add_play_time(Game &g, long long seconds)
 {
     if (seconds <= 0)
         return;
-    g.play_seconds += seconds;
+    const long long total = g.play_seconds + seconds;
+    const std::string key = key_of(g);
+    for (Game &other : games_)
+        if (key_of(other) == key)
+            other.play_seconds = std::max(other.play_seconds, total);
     save();
 }
 
 void Library::toggle_favourite(Game &g)
 {
-    g.favourite = !g.favourite;
+    /* Every copy of the game (an ISO and an RVZ of the same disc) with it. */
+    const bool on = !g.favourite;
+    const std::string key = key_of(g);
+    for (Game &other : games_)
+        if (key_of(other) == key)
+            other.favourite = on;
     save();
 }
 
@@ -471,14 +481,29 @@ void Library::save() const
     if (!f)
         return;
     std::fprintf(f, "selected=%s\nsort=%s\n", selected_.c_str(), sort_name(sort_));
+    /* One line of each kind per key, however many copies of a game there are. */
+    std::vector<std::string> done;
     for (const Game &g : games_)
     {
-        if (g.last_played > 0)
-            std::fprintf(f, "played=%s %lld\n", key_of(g).c_str(), g.last_played);
-        if (g.play_seconds > 0)
-            std::fprintf(f, "time=%s %lld\n", key_of(g).c_str(), g.play_seconds);
-        if (g.favourite)
-            std::fprintf(f, "fav=%s\n", key_of(g).c_str());
+        const std::string key = key_of(g);
+        if (std::find(done.begin(), done.end(), key) != done.end())
+            continue;
+        done.push_back(key);
+        long long played = 0, seconds = 0;
+        bool fav = false;
+        for (const Game &o : games_)
+            if (key_of(o) == key)
+            {
+                played = std::max(played, o.last_played);
+                seconds = std::max(seconds, o.play_seconds);
+                fav |= o.favourite;
+            }
+        if (played > 0)
+            std::fprintf(f, "played=%s %lld\n", key.c_str(), played);
+        if (seconds > 0)
+            std::fprintf(f, "time=%s %lld\n", key.c_str(), seconds);
+        if (fav)
+            std::fprintf(f, "fav=%s\n", key.c_str());
     }
     for (const std::string &l : kept_lines_)
         std::fprintf(f, "%s\n", l.c_str());
