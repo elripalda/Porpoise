@@ -1,0 +1,253 @@
+/*
+ * PS5 RetroArch - create a core's threads from a stack without core frames.
+ *
+ * Copyright (C) 2026 Mihawk
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The console's libkernel attributes a new thread to the module that asked for
+ * it: pthread_create walks the caller's frame-pointer chain, takes a return
+ * address two frames up, looks it up in the table of loaded modules and reads
+ * the record without checking for a miss (docs/PHASE_LOG.md, the PPSSPP thread
+ * investigation: pthread_get_specificarray_np+0x3b from pthread_create_name_np,
+ * fault address 0x70). This title loads cores itself, into anonymous memory that
+ * is not a registered module, so a core that creates a thread directly - PPSSPP's
+ * thread pool does, through std::thread - hands libkernel an address it cannot
+ * resolve and the title dies. Every thread creation the title itself makes
+ * succeeds, including ones whose entry point is core code.
+ *
+ * So a core's pthread_create is bound here (tools/core-imports.py) and forwarded
+ * to one factory thread the title starts before any core loads: the factory calls
+ * the real pthread_create from its own stack, which holds title frames only, and
+ * hands back the result. Attributes and the start routine pass through unchanged;
+ * the caller waits, so the pointers it passes stay valid until the factory is done.
+ */
+
+#include <atomic>
+#include <cerrno>
+#include <condition_variable>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <mutex>
+
+#include <pthread.h>
+#include <ps5platform/libc.h>
+#include "title_threads.hpp"
+
+extern "C" void ps5_sampler_add_thread(pthread_t thread, const void *start);
+
+namespace
+{
+/* A core thread's smallest stack. The console's default is far smaller than a
+ * desktop's, and PPSSPP's shader workers run glslang's parser, whose recursion
+ * overflowed it (yyparse faulting below its stack). Stacks come out of the
+ * title's small flexible-memory budget, and PPSSPP starts about 32 threads: 8
+ * MiB each left too little for its 144 MB guest memory, so the minimum is 2 MiB.
+ * Asked-for sizes above it are kept. */
+constexpr size_t core_minimum_stack = 2u * 1024u * 1024u;
+
+/* Core threads alive: started through the trampoline below and not yet returned
+ * from their start routine. A core's code must stay mapped while any of them
+ * runs -- PPSSPP detaches the threads of its dedicated tasks, so nothing joins
+ * them before RetroArch closes the core -- and the loader asks before it unmaps
+ * one (src/core_loader_ps5.cpp). */
+std::atomic<unsigned> live_core_threads{0};
+
+struct Start
+{
+    void *(*start)(void *);
+    void *argument;
+};
+
+void core_thread_finished(void *)
+{
+    live_core_threads.fetch_sub(1, std::memory_order_acq_rel);
+}
+
+/* A core thread counts as finished after its C++ thread_local destructors,
+ * which are the core's code: registered before any of them, the count's own
+ * runs last, whether the start routine returns or the thread calls
+ * pthread_exit (bound to ps5_pthread_exit, which runs them first). RPCS3's
+ * threads end in pthread_exit and were counted as running for ever, so the
+ * loader kept RPCS3 mapped after Close Content and mapped a second copy on the
+ * reload. A start routine that returns ends the thread the same way, so its
+ * destructors run while its thread-local storage is whole, as the platform's
+ * own threads do, not from libkernel's key destructors (no set order, and
+ * emulated TLS frees a thread's storage from one of them). */
+void *core_thread_trampoline(void *opaque)
+{
+    const Start run = *static_cast<Start *>(opaque);
+    std::free(opaque);
+    const bool registered =
+        ps5___cxa_thread_atexit_impl(core_thread_finished, nullptr, nullptr) == 0;
+    void *const result = run.start(run.argument);
+    if (!registered)
+        core_thread_finished(nullptr);
+    ps5_pthread_exit(result);
+}
+
+/* The attributes a core's thread is created with: the core's own, with the stack
+ * raised to the minimum. */
+int create_core_thread(pthread_t *thread, const pthread_attr_t *attributes,
+                       void *(*core_start)(void *), void *core_argument)
+{
+    auto *const run = static_cast<Start *>(std::malloc(sizeof(Start)));
+    if (run == nullptr)
+        return EAGAIN;
+    *run = {core_start, core_argument};
+    void *(*const start)(void *) = core_thread_trampoline;
+    void *const argument = run;
+    live_core_threads.fetch_add(1, std::memory_order_acq_rel);
+    pthread_attr_t own;
+    if (attributes != nullptr)
+    {
+        own = *attributes;
+    }
+    else if (pthread_attr_init(&own) != 0)
+    {
+        const int result = pthread_create(thread, nullptr, start, argument);
+        if (result != 0)
+        {
+            live_core_threads.fetch_sub(1, std::memory_order_acq_rel);
+            std::free(run);
+        }
+        return result;
+    }
+    size_t stack = 0;
+    if (pthread_attr_getstacksize(&own, &stack) != 0 || stack < core_minimum_stack)
+        pthread_attr_setstacksize(&own, core_minimum_stack);
+    /* EAGAIN is the console saying the stack could not be had right now: the
+     * title's flexible memory is small, and other threads hold large transient
+     * pieces of it (the Vulkan driver's 32 MiB shader-compile stack among them).
+     * PPSSPP's thread pool starts while the frontend compiles its first shaders,
+     * and std::thread turns a refusal into a C++ terminate, which killed about
+     * one launch in three ("thread constructor failed: Resource temporarily
+     * unavailable", 2026-09-24). A refusal is retried for up to two seconds
+     * before it is passed on. */
+    int result = pthread_create(thread, &own, start, argument);
+    for (int attempt = 0; result == EAGAIN && attempt < 200; ++attempt)
+    {
+        const timespec pause = {0, 10 * 1000 * 1000};
+        nanosleep(&pause, nullptr);
+        result = pthread_create(thread, &own, start, argument);
+    }
+    if (attributes == nullptr)
+        pthread_attr_destroy(&own);
+    if (result == 0)
+    {
+        ps5_sampler_add_thread(*thread, reinterpret_cast<const void *>(core_start));
+    }
+    else
+    {
+        live_core_threads.fetch_sub(1, std::memory_order_acq_rel);
+        std::free(run);
+    }
+    return result;
+}
+
+struct Request
+{
+    pthread_t *thread = nullptr;
+    const pthread_attr_t *attributes = nullptr;
+    void *(*start)(void *) = nullptr;
+    void *argument = nullptr;
+    int result = 0;
+    bool pending = false;
+    bool done = false;
+};
+
+std::mutex callers; // one request at a time
+std::mutex lock;
+std::condition_variable wake;
+Request request;
+bool factory_running = false;
+
+void *factory(void *)
+{
+    std::unique_lock<std::mutex> guard(lock);
+    for (;;)
+    {
+        wake.wait(guard, [] { return request.pending; });
+        request.pending = false;
+        request.result =
+            create_core_thread(request.thread, request.attributes, request.start, request.argument);
+        request.done = true;
+        wake.notify_all();
+    }
+    return nullptr;
+}
+} // namespace
+
+/* How many core threads are still running their start routine. */
+extern "C" unsigned ps5_core_threads_live()
+{
+    return live_core_threads.load(std::memory_order_acquire);
+}
+
+extern "C" void ps5_core_threads_start()
+{
+    std::lock_guard<std::mutex> guard(lock);
+    if (factory_running)
+        return;
+    pthread_t thread;
+    if (create_title_thread(&thread, factory, nullptr) == 0)
+    {
+        pthread_detach(thread);
+        factory_running = true;
+    }
+    else
+    {
+        std::fputs("core threads: the factory thread could not start; cores create their own\n",
+                   stderr);
+    }
+}
+
+/* The pthread_create a core is bound to. */
+extern "C" int ps5_core_pthread_create(pthread_t *thread, const pthread_attr_t *attributes,
+                                       void *(*start)(void *), void *argument)
+{
+    std::lock_guard<std::mutex> one_at_a_time(callers);
+    std::unique_lock<std::mutex> guard(lock);
+    if (!factory_running)
+    {
+        guard.unlock();
+        return create_core_thread(thread, attributes, start, argument);
+    }
+    request.thread = thread;
+    request.attributes = attributes;
+    request.start = start;
+    request.argument = argument;
+    request.done = false;
+    request.pending = true;
+    wake.notify_all();
+    wake.wait(guard, [] { return request.done; });
+    return request.result;
+}
+
+/* The same lookup runs in libkernel's thread-specific-data calls: a core's
+ * std::thread start routine calls pthread_setspecific itself, and the console
+ * faulted there, with the core's return address as the unresolvable one (klog of
+ * the first v1.20.4 PPSSPP run: __thread_proxy+0x2a). These wrappers make a title
+ * frame the caller libkernel inspects. They must stay real calls - a tail call
+ * would leave the core's return address in place - hence disable_tail_calls. */
+#define PS5_CORE_WRAPPER extern "C" __attribute__((noinline, disable_tail_calls))
+
+PS5_CORE_WRAPPER int ps5_core_pthread_key_create(pthread_key_t *key, void (*destructor)(void *))
+{
+    return pthread_key_create(key, destructor);
+}
+
+PS5_CORE_WRAPPER int ps5_core_pthread_key_delete(pthread_key_t key)
+{
+    return pthread_key_delete(key);
+}
+
+PS5_CORE_WRAPPER void *ps5_core_pthread_getspecific(pthread_key_t key)
+{
+    return pthread_getspecific(key);
+}
+
+PS5_CORE_WRAPPER int ps5_core_pthread_setspecific(pthread_key_t key, const void *value)
+{
+    return pthread_setspecific(key, value);
+}

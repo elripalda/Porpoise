@@ -1,0 +1,66 @@
+# Credits
+
+Porpoise would not exist without the people and projects below. Thank you.
+
+## Porpoise
+
+**Ruben ([@elripalda](https://www.elripalda.com))**: creator. The idea, the
+design direction, the logo and artwork, the menu music and every sound effect,
+and all of the testing on real hardware.
+
+## Emulation
+
+| Project | Role in Porpoise | Licence |
+|---|---|---|
+| [Dolphin](https://dolphin-emu.org) by the Dolphin Emulator Project and contributors | The GameCube and Wii emulator. Every game runs on Dolphin. | GPL-2.0-or-later |
+| [libretro/dolphin](https://github.com/libretro/dolphin) | Dolphin packaged as a libretro core, tracking upstream Dolphin | GPL-2.0-or-later |
+| [libretro / RetroArch](https://www.libretro.com) | The libretro API (`libretro.h`) that Porpoise uses to host the Dolphin core | MIT (API headers) |
+| [libretro-core-info](https://github.com/libretro/libretro-core-info) | The Dolphin core's `.info` metadata | MIT |
+
+Porpoise builds Dolphin from libretro/dolphin revision
+`c6630001e05780b7c03e661a4a539b59ef716ebc` with one patch,
+[`patches/dolphin/ps5-port.patch`](patches/dolphin/ps5-port.patch).
+
+## PS5 platform
+
+| Project | Role in Porpoise | Licence |
+|---|---|---|
+| [PS5 RetroArch](https://github.com/mihawk-99/PS5_RetroArch) by **Mihawk** | Porpoise began as a fork of it. The Dolphin PS5 port patch, the in-process core loader, threads, memory, crash reports and the build scripts all come from there. | GPL-3.0-or-later |
+| [PS5_Vulkan](https://github.com/mihawk-99/PS5_Vulkan) by **Mihawk** | Vulkan on PS5: the RADV link recipe and linker script | GPL-3.0-or-later |
+| [PS5_Mesa](https://github.com/mihawk-99/PS5_Mesa) by **Mihawk**, on [Mesa](https://mesa3d.org) | Mesa's **RADV** Vulkan driver with a PS5 winsys: everything Porpoise and Dolphin draw goes through it | MIT and per-file licences |
+| [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) by **John Törnblom** and contributors, with [Mihawk's fork](https://github.com/mihawk-99/PS5_PayloadSDK) | The toolchain, headers and platform layer | GPL-3.0-or-later |
+| **BlackBearReloaded**: ps5-native-app-boilerplate and ProsperoLight | The native title pipeline: ELF to signed `eboot.bin`, the generated `libc.prx` loader companion | GPL-3.0-or-later |
+| [LLVM](https://llvm.org) libc++, libc++abi, libunwind, compiler-rt | The C++ runtime, linked from the SDK release | Apache-2.0 WITH LLVM-exception |
+| [zlib](https://zlib.net) by Jean-loup Gailly and Mark Adler | Compression | Zlib |
+| [dlmalloc](https://gee.cs.oswego.edu/dl/html/malloc.html) by Doug Lea | The overflow heap | MIT |
+
+## Launcher
+
+| Project | Role in Porpoise | Licence |
+|---|---|---|
+| [GameTDB](https://www.gametdb.com) and its contributors | Box art, back covers, disc art and game details, downloaded on the console. Nothing from GameTDB ships with Porpoise. | GameTDB terms |
+| [Nunito](https://github.com/googlefonts/nunito) by Vernon Adams, Jacques Le Bailly and contributors | Every word on screen | SIL Open Font License 1.1 |
+| [stb](https://github.com/nothings/stb) by Sean Barrett | `stb_truetype`, `stb_image` and `stb_vorbis`: text, images and the menu music | MIT or public domain |
+
+## The PS5 scene
+
+- **etaHEN**, **kstuff** and **ShadowMountPlus**, which make running homebrew
+  like Porpoise possible.
+- **PS5SX2** and **ProsperoEden**, PS5 homebrew front ends that showed the way
+  and inspired Porpoise's approach.
+
+## Trademarks
+
+Nintendo, GameCube and Wii are trademarks of Nintendo. PlayStation, PS5 and
+DualSense are trademarks of Sony Interactive Entertainment Inc. Porpoise is not
+affiliated with, endorsed by or sponsored by either company, and contains no
+material from them.
+
+---
+
+Every component that ships inside the app, with its licence text and the exact
+source revision it was built from, is listed in `licenses/README.txt` and
+`licenses/components.json` in the release folder.
+
+If you think someone is missing from this page, please
+[open an issue](https://github.com/elripalda/Porpoise/issues).

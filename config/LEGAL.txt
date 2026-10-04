@@ -1,0 +1,25 @@
+Porpoise - legal use
+====================
+
+PIRACY IS NOT CONDONED. Porpoise contains no games, no console BIOS, IPL or
+firmware files, and no decryption keys, and none will ever be provided or
+linked to. Play only games you own, as backups you made yourself from your
+own discs. Downloading or sharing games you do not own is piracy: do not do
+it, and do not ask for help with it.
+
+NOT AFFILIATED WITH NINTENDO OR SONY. Porpoise is an independent, free and
+open-source project. It is not affiliated with, endorsed by or sponsored by
+Nintendo Co., Ltd. or Sony Interactive Entertainment. Nintendo, GameCube and
+Wii are trademarks of Nintendo. PlayStation and PS5 are trademarks of Sony
+Interactive Entertainment Inc. These names are used only to describe what
+Porpoise is compatible with. Porpoise contains no code, artwork, sounds or
+other material from Nintendo or Sony.
+
+Emulation is Dolphin's (https://dolphin-emu.org, GPL-2.0-or-later), run as
+a libretro core (https://github.com/libretro/dolphin). Box art and game
+details are downloaded on your console from GameTDB.com when you turn that
+on; they are not part of this release.
+
+Licences: every part of this title, its licence and its source are listed
+in licenses/README.txt. Porpoise itself is GPL-3.0-or-later, and its source
+is at https://github.com/elripalda/Porpoise.

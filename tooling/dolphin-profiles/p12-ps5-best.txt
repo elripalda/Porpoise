@@ -1,0 +1,15 @@
+# Profile 12, the PS5 defaults (patches/dolphin/ps5-port.patch): the best picture
+# that holds full speed. 6x internal resolution, asynchronous ubershaders (exact
+# ubershaders draw while the specialised shaders compile in the background, so
+# nothing is skipped and nothing stalls), 16x anisotropic filtering, texture
+# decoding on the GPU; every accuracy setting at Dolphin's default.
+dolphin_renderer=Hardware
+dolphin_cpu_core=1
+dolphin_fastmem=enabled
+dolphin_cpu_clock_rate=1.00
+dolphin_efb_scale=6
+dolphin_shader_compilation_mode=2
+dolphin_wait_for_shaders=disabled
+dolphin_max_anisotropy=4
+dolphin_anti_aliasing=0
+dolphin_gpu_texture_decoding=enabled

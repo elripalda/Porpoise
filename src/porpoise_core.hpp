@@ -1,0 +1,71 @@
+/* Porpoise - the emulator core, hosted through the libretro API.
+ * Copyright (C) 2026 Ruben (Project Porpoise)
+ * SPDX-License-Identifier: GPL-3.0-or-later */
+#pragma once
+
+namespace porpoise::core
+{
+struct Paths
+{
+    const char *core = "/app0/cores/dolphin_libretro.so";
+    const char *system = "/app0/system";       /* Dolphin reads <system>/dolphin-emu/Sys */
+    const char *saves = "/app0/savefiles";
+    const char *assets = "/app0/content";
+    const char *options = "/app0/porpoise/options.ini";
+    const char *options_reference = "/app0/porpoise/options-reference.txt";
+    const char *log = "/app0/porpoise/core.log";
+};
+
+/* What the launcher does while the game starts and runs. All optional. */
+struct Hooks
+{
+    void *user = nullptr;
+    /* A step of the launch, to show on the launch screen (draw and present). */
+    void (*status)(const char *text, void *user) = nullptr;
+    /* The launcher's device is about to go / the core's device is ready. */
+    void (*device_closing)(void *user) = nullptr;
+    void (*device_ready)(void *user) = nullptr;
+    /* Called before each presented frame: core_frame is false until the game
+     * has drawn its first picture (show the launch screen until then). */
+    void (*frame)(bool core_frame, double fps, void *user) = nullptr;
+    /* The in-game menu (Options + touch pad). opened: the game has just been
+     * paused. paused: called once a frame while it is, after the pad was read;
+     * returns what to do next. */
+    void (*opened)(void *user) = nullptr;
+    int (*paused)(void *user) = nullptr;
+};
+
+/* What the paused hook can answer. */
+enum Menu
+{
+    kMenuStay = 0,   /* keep the menu up */
+    kMenuResume = 1, /* back to the game */
+    kMenuLibrary = 2,
+    kMenuHome = 3,   /* close Porpoise */
+};
+
+/* How a game ended. */
+enum class Exit
+{
+    Failed,  /* it never started */
+    Library, /* back to Porpoise's library */
+    Home,    /* close Porpoise */
+};
+
+/* While a game runs: a Dolphin option changed from the in-game menu (the core
+ * picks it up on its next frame), and Porpoise's own picture scaling. */
+void set_option(const char *key, const char *value);
+void set_sharp(bool sharp);
+
+struct Playback
+{
+    float volume = 1.0f;
+    bool muted = false;
+    bool sharp = false;
+};
+
+/* Load the core, boot the game, run it until the player leaves it. The
+ * core is unloaded again afterwards, so the next game starts it fresh. */
+Exit run_game(const char *game_path, const Paths &paths = Paths{}, const Hooks &hooks = Hooks{},
+              const Playback &playback = Playback{});
+} // namespace porpoise::core

@@ -1,0 +1,1217 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 01b03ecee5..30a51970cc 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -652,7 +652,7 @@ if(ENABLE_EVDEV)
+   endif()
+ endif()
+ 
+-if(UNIX)
++if(UNIX AND NOT DOLPHIN_PS5)
+   message(STATUS "Using named pipes as controller inputs")
+   add_definitions(-DUSE_PIPES=1)
+   message(STATUS "Watching game memory for changes")
+@@ -780,7 +780,9 @@ if(ENABLE_CUBEB)
+   add_definitions(-DHAVE_CUBEB)
+ endif()
+ 
+-if(NOT ANDROID AND NOT IOS AND NOT WEBOS)
++# PS5: no USB passthrough and no real Wii Remotes; a core reaches the pad only
++# through the frontend (libusb, hidapi and cpp-ipc are not built).
++if(NOT ANDROID AND NOT IOS AND NOT WEBOS AND NOT DOLPHIN_PS5)
+   dolphin_find_optional_system_library(LibUSB Externals/libusb)
+   add_definitions(-D__LIBUSB__)
+ endif()
+@@ -801,7 +803,7 @@ dolphin_find_optional_system_library(MBEDTLS Externals/mbedtls 2.28)
+ 
+ dolphin_find_optional_system_library(CURL Externals/curl)
+ 
+-if(NOT ANDROID AND NOT IOS)
++if(NOT ANDROID AND NOT IOS AND NOT DOLPHIN_PS5)
+   dolphin_find_optional_system_library(HIDAPI Externals/hidapi)
+ endif()
+ 
+@@ -848,7 +850,7 @@ if (NOT IOS)
+ endif()
+ 
+ # Any other platform or BSD is currently unsupported by cpp-ipc
+-if(WIN32 OR LINUX OR CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "QNX")
++if((WIN32 OR LINUX OR CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "QNX") AND NOT DOLPHIN_PS5)
+   add_subdirectory(Externals/cpp-ipc)
+   add_definitions(-DHAVE_CPPIPC)
+ endif()
+diff --git a/Source/Core/Common/MemArena.h b/Source/Core/Common/MemArena.h
+index 1a3093cc4d..22a59f7a47 100644
+--- a/Source/Core/Common/MemArena.h
++++ b/Source/Core/Common/MemArena.h
+@@ -14,6 +14,10 @@
+ #include "Common/CommonTypes.h"
+ #include "Common/DynamicLibrary.h"
+ 
++#ifdef __PROSPERO__
++#include <ps5platform/shm.h>
++#endif
++
+ namespace Common
+ {
+ #ifdef _WIN32
+@@ -152,6 +156,11 @@ private:
+   int m_shm_fd = 0;
+   void* m_reserved_region = nullptr;
+   std::size_t m_reserved_region_size = 0;
++#ifdef __PROSPERO__
++  // PS5: guest memory is one direct-memory object of the platform layer
++  // (MemArenaUnix.cpp, ps5platform/shm.h).
++  ps5_shm m_shm{};
++#endif
+ #endif
+ };
+ 
+diff --git a/Source/Core/Common/MemArenaUnix.cpp b/Source/Core/Common/MemArenaUnix.cpp
+index 26a123c081..b8c89961af 100644
+--- a/Source/Core/Common/MemArenaUnix.cpp
++++ b/Source/Core/Common/MemArenaUnix.cpp
+@@ -21,6 +21,24 @@
+ #include "Common/Logging/Log.h"
+ #include "Common/MsgHandler.h"
+ 
++#ifdef __PROSPERO__
++// PS5: guest memory is direct memory, through the platform layer (my payload SDK
++// fork, ps5platform/shm.h), rather than a shared-memory object. Every view of a
++// shared-memory object was charged to the title's flexible memory (448 MiB for
++// the whole title), and Wind Waker's fake-VMEM mirrors - one 32 MiB region
++// mapped at up to 28 logical addresses - exhausted it: the mappings failed and a
++// fastmem access faulted through a missing view (2026-09-24). A direct-memory
++// object is charged to nothing but the 12 GiB direct pool, and can be mapped at
++// any number of addresses, which is what a mirror is.
++namespace
++{
++int ps5_protection(bool writeable)
++{
++  return PS5_SHM_READ | (writeable ? PS5_SHM_WRITE : 0);
++}
++}  // namespace
++#endif
++
+ namespace Common
+ {
+ MemArena::MemArena() = default;
+@@ -28,6 +46,13 @@ MemArena::~MemArena() = default;
+ 
+ void MemArena::GrabSHMSegment(size_t size, std::string_view base_name)
+ {
++#ifdef __PROSPERO__
++  const int result = ps5_shm_create(size, &m_shm);
++  if (result != 0)
++    PanicAlertFmt("PS5: allocating {:#x} bytes of direct memory for guest RAM failed: {:#010x}",
++                  size, static_cast<u32>(result));
++  return;
++#endif
+   const std::string file_name = fmt::format("/{}.{}", base_name, getpid());
+   m_shm_fd = shm_open(file_name.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
+   if (m_shm_fd == -1)
+@@ -42,11 +67,28 @@ void MemArena::GrabSHMSegment(size_t size, std::string_view base_name)
+ 
+ void MemArena::ReleaseSHMSegment()
+ {
++#ifdef __PROSPERO__
++  ps5_shm_destroy(&m_shm);
++  return;
++#endif
+   close(m_shm_fd);
+ }
+ 
+ void* MemArena::CreateView(s64 offset, size_t size)
+ {
++#ifdef __PROSPERO__
++  // Anywhere outside the Vulkan driver's GPU window.
++  void* view = nullptr;
++  const int result = ps5_shm_map(&m_shm, static_cast<size_t>(offset), size, nullptr,
++                                 ps5_protection(true), 0, &view);
++  if (result != 0)
++  {
++    ERROR_LOG_FMT(MEMMAP, "PS5: mapping a view of {:#x} bytes at offset {:#x} failed: {:#010x}",
++                  size, offset, static_cast<u32>(result));
++    return nullptr;
++  }
++  return view;
++#endif
+   void* retval = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, m_shm_fd, offset);
+   if (retval == MAP_FAILED)
+   {
+@@ -61,11 +103,45 @@ void* MemArena::CreateView(s64 offset, size_t size)
+ 
+ void MemArena::ReleaseView(void* view, size_t size)
+ {
++#ifdef __PROSPERO__
++  ps5_shm_unmap(view, size, 0);
++  return;
++#endif
+   munmap(view, size);
+ }
+ 
+ u8* MemArena::ReserveMemoryRegion(size_t memory_size)
+ {
++#ifdef __PROSPERO__
++  // PS5: an anonymous PROT_NONE mapping of this size is charged to the title's
++  // small flexible-memory budget and fails. The platform layer reserves the
++  // range without backing it, outside the Vulkan driver's GPU window, and the
++  // views are mapped into it at fixed addresses as upstream does.
++  //
++  // RetroArch unloads a core when content closes. A reservation an earlier
++  // instance left behind (a core that did not reach ReleaseMemoryRegion) holds
++  // the hint; the range is this arena's alone, so it is released and asked for
++  // again rather than taken elsewhere.
++  void* const ps5_arena_hint = reinterpret_cast<void*>(0x10'0000'0000);
++  void* address = nullptr;
++  int result = ps5_vrange_reserve(memory_size, ps5_arena_hint, 0x10000, &address);
++  if (result == 0 && address != ps5_arena_hint)
++  {
++    ps5_vrange_release(address, memory_size);
++    ps5_vrange_release(ps5_arena_hint, memory_size);
++    result = ps5_vrange_reserve(memory_size, ps5_arena_hint, 0x10000, &address);
++  }
++  if (result != 0)
++  {
++    PanicAlertFmt("PS5: reserving {:#x} bytes of address space failed: {:#010x}", memory_size,
++                  static_cast<u32>(result));
++    return nullptr;
++  }
++  INFO_LOG_FMT(MEMMAP, "PS5: fastmem arena reserved at {} ({:#x} bytes)", address, memory_size);
++  m_reserved_region = address;
++  m_reserved_region_size = memory_size;
++  return static_cast<u8*>(address);
++#endif
+   const int flags = MAP_ANON | MAP_PRIVATE;
+   void* base = mmap(nullptr, memory_size, PROT_NONE, flags, -1, 0);
+   if (base == MAP_FAILED)
+@@ -82,13 +158,30 @@ void MemArena::ReleaseMemoryRegion()
+ {
+   if (m_reserved_region)
+   {
++#ifdef __PROSPERO__
++    ps5_vrange_release(m_reserved_region, m_reserved_region_size);
++#else
+     munmap(m_reserved_region, m_reserved_region_size);
++#endif
+     m_reserved_region = nullptr;
+   }
+ }
+ 
+ void* MemArena::MapInMemoryRegion(s64 offset, size_t size, void* base, bool writeable)
+ {
++#ifdef __PROSPERO__
++  // Fixed, over the reservation (ReserveMemoryRegion) or a view unmapped from it.
++  void* view = nullptr;
++  const int result = ps5_shm_map(&m_shm, static_cast<size_t>(offset), size, base,
++                                 ps5_protection(writeable), PS5_SHM_FIXED, &view);
++  if (result != 0)
++  {
++    ERROR_LOG_FMT(MEMMAP, "PS5: mapping {:#x} bytes of guest RAM at {} failed: {:#010x}", size,
++                  base, static_cast<u32>(result));
++    return nullptr;
++  }
++  return view;
++#endif
+   int prot = PROT_READ;
+   if (writeable)
+     prot |= PROT_WRITE;
+@@ -96,7 +189,8 @@ void* MemArena::MapInMemoryRegion(s64 offset, size_t size, void* base, bool writ
+   void* retval = mmap(base, size, prot, MAP_SHARED | MAP_FIXED, m_shm_fd, offset);
+   if (retval == MAP_FAILED)
+   {
+-    NOTICE_LOG_FMT(MEMMAP, "mmap failed");
++    ERROR_LOG_FMT(MEMMAP, "mmap of {:#x} bytes at {} (offset {:#x}) failed: {}", size, base,
++                  offset, strerror(errno));
+     return nullptr;
+   }
+   else
+@@ -119,9 +213,15 @@ bool MemArena::ChangeMappingProtection(void* view, size_t size, bool writeable)
+ 
+ void MemArena::UnmapFromMemoryRegion(void* view, size_t size)
+ {
++#ifdef __PROSPERO__
++  // The hole stays reserved, so nothing else is mapped into the arena.
++  if (ps5_shm_unmap(view, size, PS5_SHM_KEEP_RESERVED) != 0)
++    ERROR_LOG_FMT(MEMMAP, "PS5: unmapping the view at {} failed", view);
++  return;
++#endif
+   void* retval = mmap(view, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+   if (retval == MAP_FAILED)
+-    NOTICE_LOG_FMT(MEMMAP, "mmap failed");
++    ERROR_LOG_FMT(MEMMAP, "unmapping {:#x} bytes at {} failed: {}", size, view, strerror(errno));
+ }
+ 
+ size_t MemArena::GetPageSize() const
+diff --git a/Source/Core/Common/MemoryUtil.cpp b/Source/Core/Common/MemoryUtil.cpp
+index 5d5085aa09..48afb09fac 100644
+--- a/Source/Core/Common/MemoryUtil.cpp
++++ b/Source/Core/Common/MemoryUtil.cpp
+@@ -3,6 +3,8 @@
+ 
+ #include "Common/MemoryUtil.h"
+ 
++#include <cstdio>
++
+ #include <cstddef>
+ #include <cstdlib>
+ 
+@@ -10,6 +12,10 @@
+ #include "Common/Logging/Log.h"
+ #include "Common/MsgHandler.h"
+ 
++#ifdef __PROSPERO__
++#include <ps5platform/exec.h>
++#endif
++
+ #ifdef _WIN32
+ #include <windows.h>
+ #include "Common/StringUtil.h"
+@@ -103,7 +109,20 @@ void* AllocateExecutableMemory(size_t size)
+ 
+   int map_prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+ 
++#ifdef __PROSPERO__
++  // PS5: code lives in direct memory through the platform layer (my payload SDK
++  // fork, ps5platform/exec.h): read, write and execute at once, within a 32-bit
++  // displacement of this core's own code, and out of the 12 GiB direct pool
++  // rather than the title's 448 MiB of flexible memory -- which is why the code
++  // caches are upstream's size again (Jit64Constants.h, FarCodeCache.h).
++  (void)map_prot;
++  (void)map_flags;
++  void* ptr = ps5_exec_allocate(size, reinterpret_cast<uintptr_t>(&AllocateExecutableMemory));
++  if (ptr == nullptr)
++    fprintf(stderr, "dolphin ps5: no executable memory for %zu bytes\n", size);
++#else
+   void* ptr = mmap(nullptr, size, map_prot, map_flags, -1, 0);
++#endif
+   if (ptr == MAP_FAILED)
+     ptr = nullptr;
+ #endif
+@@ -236,6 +255,13 @@ bool FreeMemoryPages(void* ptr, size_t size)
+ {
+   if (ptr)
+   {
++#ifdef __PROSPERO__
++    // Code blocks free their executable memory here (CodeBlock.h, off iOS):
++    // what the platform layer handed out goes back to it, direct memory and
++    // all, rather than being only unmapped.
++    if (ps5_exec_release(ptr) == 0)
++      return true;
++#endif
+ #ifdef _WIN32
+     if (!VirtualFree(ptr, 0, MEM_RELEASE))
+     {
+@@ -436,6 +462,11 @@ void FreeExecutableMemory(void* ptr, size_t size)
+       return;
+     }
+   }
++#endif
++#ifdef __PROSPERO__
++  (void)size;
++  ps5_exec_release(ptr);
++  return;
+ #endif
+   munmap(ptr, size);
+ }
+diff --git a/Source/Core/Common/Thread.cpp b/Source/Core/Common/Thread.cpp
+index 41afff087b..a5750cca86 100644
+--- a/Source/Core/Common/Thread.cpp
++++ b/Source/Core/Common/Thread.cpp
+@@ -177,6 +177,11 @@ void SetCurrentThreadName(const char* name)
+ {
+ #ifdef __APPLE__
+   pthread_setname_np(name);
++#elif defined(__PROSPERO__)
++  // PS5 defines __FreeBSD__, but its libkernel's pthread_set_name_np faults when
++  // a title calls it on a fresh thread (the PPSSPP port found this); the name is
++  // not needed.
++  (void)name;
+ #elif defined __FreeBSD__ || defined __OpenBSD__
+   pthread_set_name_np(pthread_self(), name);
+ #elif defined(__NetBSD__)
+diff --git a/Source/Core/Core/Config/MainSettings.cpp b/Source/Core/Core/Config/MainSettings.cpp
+index f0cc8511b7..ffbcace60a 100644
+--- a/Source/Core/Core/Config/MainSettings.cpp
++++ b/Source/Core/Core/Config/MainSettings.cpp
+@@ -46,7 +46,14 @@ const Info<bool> MAIN_JIT_FOLLOW_BRANCH{{System::Main, "Core", "JITFollowBranch"
+ const Info<bool> MAIN_FASTMEM{{System::Main, "Core", "Fastmem"}, true};
+ const Info<bool> MAIN_PAGE_TABLE_FASTMEM{{System::Main, "Core", "PageTableFastmem"}, true};
+ const Info<bool> MAIN_FASTMEM_ARENA{{System::Main, "Core", "FastmemArena"}, true};
++// PS5: the large map is a 64 GiB lazily committed anonymous mapping, which the
++// console charges up front against a far smaller budget; the JIT's own fallback
++// lookup is used instead.
++#ifdef __PROSPERO__
++const Info<bool> MAIN_LARGE_ENTRY_POINTS_MAP{{System::Main, "Core", "LargeEntryPointsMap"}, false};
++#else
+ const Info<bool> MAIN_LARGE_ENTRY_POINTS_MAP{{System::Main, "Core", "LargeEntryPointsMap"}, true};
++#endif
+ const Info<bool> MAIN_ACCURATE_CPU_CACHE{{System::Main, "Core", "AccurateCPUCache"}, false};
+ const Info<bool> MAIN_DSP_HLE{{System::Main, "Core", "DSPHLE"}, true};
+ const Info<int> MAIN_MAX_FALLBACK{{System::Main, "Core", "MaxFallback"}, 100};
+diff --git a/Source/Core/Core/Core.cpp b/Source/Core/Core/Core.cpp
+index cda66bffd1..627791a960 100644
+--- a/Source/Core/Core/Core.cpp
++++ b/Source/Core/Core/Core.cpp
+@@ -97,6 +97,8 @@ static bool s_wants_determinism;
+ 
+ #ifdef __LIBRETRO__
+ static std::vector<Common::ScopeGuard<Common::MoveOnlyFunction<void()>>> s_emu_thread_scope_guards;
++// A single-core FIFO playback's injected CPU core; removed first in Shutdown.
++static std::optional<Common::ScopeGuard<Common::MoveOnlyFunction<void()>>> s_fifo_player_guard;
+ std::unique_ptr<BootParameters> g_boot_params;
+ #endif
+ // Declarations and definitions
+@@ -456,6 +458,23 @@ static void FifoPlayerThread(Core::System& system, const std::optional<std::stri
+ 
+     CPUSetInitialExecutionState(system);
+ 
++#ifdef __LIBRETRO__
++    // Single core: like CpuThread, return to retro_run, whose RunSingleFrame runs the
++    // injected core up to the next field. The core stays injected until Shutdown,
++    // ahead of the guards that tear the hardware down. Running CPU::Run() here
++    // instead, as the dual-core path does, never returns in single-core libretro
++    // mode: playback of a FIFO log (.dff) hung before its first frame.
++    if (!system.IsDualCoreMode())
++    {
++      std::shared_ptr<CPUCoreBase> core(std::move(cpu_core));
++      s_fifo_player_guard.emplace(Common::MoveOnlyFunction<void()>([&system, core] {
++        system.GetPowerPC().InjectExternalCPUCore(nullptr);
++        system.GetFifoPlayer().Close();
++      }));
++      return;
++    }
++#endif
++
+     system.GetCPU().Run();
+ 
+     system.GetPowerPC().InjectExternalCPUCore(nullptr);
+@@ -1036,6 +1055,7 @@ void Shutdown(Core::System& system)
+   if (s_emu_thread.joinable())
+     s_emu_thread.join();
+ #ifdef __LIBRETRO__
++  s_fifo_player_guard.reset();
+   for (auto& g : s_emu_thread_scope_guards)
+     g.Exit();
+   s_emu_thread_scope_guards.clear();
+diff --git a/Source/Core/Core/FifoPlayer/FifoPlayer.cpp b/Source/Core/Core/FifoPlayer/FifoPlayer.cpp
+index f0c62d4e3f..bbb4cb7791 100644
+--- a/Source/Core/Core/FifoPlayer/FifoPlayer.cpp
++++ b/Source/Core/Core/FifoPlayer/FifoPlayer.cpp
+@@ -4,11 +4,14 @@
+ #include "Core/FifoPlayer/FifoPlayer.h"
+ 
+ #include <algorithm>
++#include <cstdio>
++#include <cstdlib>
+ #include <cstring>
+ #include <type_traits>
+ 
+ #include "Common/Assert.h"
+ #include "Common/CommonTypes.h"
++#include "Common/Logging/Log.h"
+ #include "Common/MsgHandler.h"
+ #include "Core/Config/MainSettings.h"
+ #include "Core/Core.h"
+@@ -32,6 +35,10 @@
+ // TODO: Move texMem somewhere else so this isn't an issue.
+ #include "VideoCommon/TextureDecoder.h"
+ 
++#ifdef __PROSPERO__
++bool Ps5DolphinObjectRange(unsigned* first, unsigned* last);  // VideoCommon/PixelShaderGen.cpp
++#endif
++
+ namespace
+ {
+ class FifoPlaybackAnalyzer : public OpcodeDecoder::Callback
+@@ -188,6 +195,25 @@ bool FifoPlayer::Open(const std::string& filename)
+     FifoPlaybackAnalyzer::AnalyzeFrames(m_File.get(), m_FrameInfo);
+ 
+     m_FrameRangeEnd = m_File->GetFrameCount() - 1;
++
++    // PS5 bring-up aid: play only objects "first last" of each frame, to bisect a
++    // frame against desktop Dolphin playing the same log -- the console's debug
++    // mode "objects A B" (VideoCommon/PixelShaderGen.cpp), $FIFO_OBJECTS on the host.
++    unsigned first = 0, last = 0;
++#ifdef __PROSPERO__
++    const bool ranged = Ps5DolphinObjectRange(&first, &last);
++#else
++    const char* const range = std::getenv("FIFO_OBJECTS");
++    const bool ranged = range && std::sscanf(range, "%u %u", &first, &last) == 2;
++#endif
++    if (ranged)
++    {
++      m_ObjectRangeStart = first;
++      m_ObjectRangeEnd = last;
++      for (u32 frame = 0; frame < m_FrameInfo.size(); ++frame)
++        NOTICE_LOG_FMT(BOOT, "FIFO frame {}: {} objects; playing {}-{}", frame,
++                       GetFrameObjectCount(frame), m_ObjectRangeStart, m_ObjectRangeEnd);
++    }
+   }
+ 
+   if (m_FileLoadedCb)
+diff --git a/Source/Core/Core/MemTools.cpp b/Source/Core/Core/MemTools.cpp
+index 871bb3f615..bad7c5d42a 100644
+--- a/Source/Core/Core/MemTools.cpp
++++ b/Source/Core/Core/MemTools.cpp
+@@ -260,14 +260,17 @@ bool IsExceptionHandlerSupported()
+ #elif defined(_POSIX_VERSION) && !defined(_M_GENERIC) && !(defined(TARGET_OS_TV) && TARGET_OS_TV)
+ 
+ static struct sigaction old_sa_segv;
+-#if defined(__APPLE__)
++// PS5: an access to a reserved but unmapped page may arrive as SIGBUS, as on
++// Apple platforms, so both are taken there.
++#if defined(__APPLE__) || defined(__PROSPERO__)
++#define DOLPHIN_FASTMEM_SIGBUS 1
+ static struct sigaction old_sa_bus;
+ #endif
+ 
+ static void sigsegv_handler(int sig, siginfo_t* info, void* raw_context)
+ {
+   if (sig != SIGSEGV
+-#if defined(__APPLE__)
++#if defined(DOLPHIN_FASTMEM_SIGBUS)
+       && sig != SIGBUS
+ #endif
+   )
+@@ -298,7 +301,7 @@ static void sigsegv_handler(int sig, siginfo_t* info, void* raw_context)
+ 
+   // If JIT didn't handle the signal, restore the original handler and invoke it.
+   const auto& old_sa =
+-#if defined(__APPLE__)
++#if defined(DOLPHIN_FASTMEM_SIGBUS)
+       (sig == SIGBUS) ? old_sa_bus :
+ #endif
+                         old_sa_segv;
+@@ -324,7 +327,7 @@ void InstallExceptionHandler()
+   sa.sa_flags = SA_SIGINFO;
+   sigemptyset(&sa.sa_mask);
+   sigaction(SIGSEGV, &sa, &old_sa_segv);
+-#ifdef __APPLE__
++#ifdef DOLPHIN_FASTMEM_SIGBUS
+   sigaction(SIGBUS, &sa, &old_sa_bus);
+ #endif
+ }
+@@ -339,7 +342,7 @@ void UninstallExceptionHandler()
+     free(old_stack.ss_sp);
+   }
+   sigaction(SIGSEGV, &old_sa_segv, nullptr);
+-#ifdef __APPLE__
++#ifdef DOLPHIN_FASTMEM_SIGBUS
+   sigaction(SIGBUS, &old_sa_bus, nullptr);
+ #endif
+ }
+diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
+index c53281053f..885cdfac84 100644
+--- a/Source/Core/DolphinLibretro/Boot.cpp
++++ b/Source/Core/DolphinLibretro/Boot.cpp
+@@ -280,6 +280,8 @@ bool retro_load_game(const struct retro_game_info* game)
+   UICommon::Init();
+   Libretro::Log::Init();
+ 
++  // The GBA settings exist only when libmgba is built (USE_MGBA).
++#ifdef HAS_LIBMGBA
+   if (Libretro::GBPlayer_active)
+   {
+     Config::SetBase(Config::MAIN_GBA_ROM_PATHS[Config::GBPLAYER_GBA_INDEX], Libretro::GBPlayer_rom_path);
+@@ -294,7 +296,31 @@ bool retro_load_game(const struct retro_game_info* game)
+   {
+     Config::SetBase(Config::MAIN_GBA_ROM_PATHS[Config::GBPLAYER_GBA_INDEX], std::string{});
+   }
++#endif
+ 
++#ifdef __PROSPERO__
++  // The fog debug mode (VideoCommon/PixelShaderGen.cpp) changes shader code
++  // without changing a shader's key, so the disk cache would hand back the
++  // ordinary shaders: it is off for such a run.
++  {
++    extern int Ps5DolphinDebugMode();
++    if (Ps5DolphinDebugMode() != 0)
++      Config::SetBase(Config::GFX_SHADER_CACHE, false);
++    // "dump": every frame as an image in the user directory's Dump/Frames, to
++    // compare with desktop Dolphin playing the same FIFO log.
++    // "swloader": Dolphin's software vertex loader instead of the x86-64 JIT one.
++    if (Ps5DolphinDebugMode() == 4)
++      Config::SetBase(Config::GFX_VERTEX_LOADER_TYPE, VertexLoaderType::Software);
++    // "cmploader": both loaders, every mismatch logged (VertexLoaderTester).
++    if (Ps5DolphinDebugMode() == 5)
++      Config::SetBase(Config::GFX_VERTEX_LOADER_TYPE, VertexLoaderType::Compare);
++    if (Ps5DolphinDebugMode() == 3)
++    {
++      Config::SetBase(Config::MAIN_MOVIE_DUMP_FRAMES, true);
++      Config::SetBase(Config::GFX_DUMP_FRAMES_AS_IMAGES, true);
++    }
++  }
++#endif
+   Discord::SetDiscordPresenceEnabled(false);
+   Common::SetEnableAlert(false);
+   Common::SetAbortOnPanicAlert(false);
+@@ -303,6 +329,18 @@ bool retro_load_game(const struct retro_game_info* game)
+   {
+     // Log the message instead of showing a popup
+     WARN_LOG_FMT(COMMON, "Suppressed popup: {} - {}", caption, text);
++#ifdef __PROSPERO__
++    // The title's trace carries the first alerts too: on screen they last two
++    // seconds, and a run is judged from its trace. Bounded, since an alert a
++    // frame would otherwise be a line a frame.
++    static int ps5_alerts;
++    if (ps5_alerts < 32)
++    {
++      ++ps5_alerts;
++      std::fprintf(stderr, "dolphin alert: %s - %s\n", caption ? caption : "",
++                   text ? text : "");
++    }
++#endif
+     Libretro::Log::LogFrontEnd(style, caption, text, 2000);
+     return true; // Always "continue"
+   });
+diff --git a/Source/Core/DolphinLibretro/Common/Options.cpp b/Source/Core/DolphinLibretro/Common/Options.cpp
+index 7d27a1ea3c..0d882dcb74 100644
+--- a/Source/Core/DolphinLibretro/Common/Options.cpp
++++ b/Source/Core/DolphinLibretro/Common/Options.cpp
+@@ -1,6 +1,13 @@
+ 
+ #include <libretro.h>
++#include <cstdio>
+ #include <cstdlib>
++#include <cstring>
++#ifdef __PROSPERO__
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#endif
+ #include "DolphinLibretro/Common/Options.h"
+ 
+ namespace Libretro
+@@ -1870,9 +1877,61 @@ void Init()
+   CheckForUpdatedVariables();
+ }
+ 
++#ifdef __PROSPERO__
++// PS5 port: the defaults are the best picture that holds full speed on the
++// console (tooling/dolphin-profiles/p12-ps5-best.txt in the title's repository):
++// 6x internal resolution, asynchronous ubershaders -- exact ubershaders draw
++// while the specialised shaders compile in the background, so nothing is
++// skipped and nothing stalls -- 16x anisotropic filtering, and texture decoding
++// on the GPU. Every accuracy setting keeps Dolphin's default. Resident Evil 4,
++// Melee, Wind Waker and Mario Kart Wii held 100% in every window after boot.
++static void Ps5ApplyDefaultProfile()
++{
++  static const struct
++  {
++    const char* key;
++    const char* value;
++  } profile[] = {
++      {Libretro::Options::gfx_settings::EFB_SCALE, "6"},
++      {Libretro::Options::gfx_settings::SHADER_COMPILATION_MODE, "2"},
++      {Libretro::Options::gfx_enhancements::MAX_ANISOTROPY, "4"},
++      {Libretro::Options::gfx_settings::GPU_TEXTURE_DECODING, "enabled"},
++  };
++  for (retro_core_option_v2_definition* def = option_defs; def->key; ++def)
++    for (const auto& entry : profile)
++      if (!std::strcmp(def->key, entry.key))
++        def->default_value = entry.value;
++
++  // Once: an options file saved by an earlier core keeps its values over these
++  // defaults (RetroArch reads it when the options are set, just after this), so
++  // the first run of this profile sets it aside, recoverable, as the PPSSPP port
++  // does. The folder is made first, open to FTP, so the marker exists even on a
++  // console that has never saved Dolphin's options.
++  const char* const folder = "/app0/config/dolphin-emu";
++  const char* const saved = "/app0/config/dolphin-emu/dolphin-emu.opt";
++  const char* const marker = "/app0/config/dolphin-emu/ps5-default-profile-v1";
++  struct stat status;
++  if (stat(marker, &status) == 0)
++    return;
++  if (mkdir(folder, 0777) == 0)
++    chmod(folder, 0777);
++  if (stat(saved, &status) == 0)
++    std::rename(saved, "/app0/config/dolphin-emu/dolphin-emu.opt.before-ps5-profile");
++  const int fd = open(marker, O_WRONLY | O_CREAT | O_TRUNC, 0666);
++  if (fd >= 0)
++  {
++    fchmod(fd, 0666);
++    close(fd);
++  }
++}
++#endif
++
+ void SetVariables()
+ {
+   unsigned version = 0;
++#ifdef __PROSPERO__
++  Ps5ApplyDefaultProfile();
++#endif
+ 
+   struct retro_core_options_v2 options_us = {
+     const_cast<retro_core_option_v2_category*>(option_cats),
+diff --git a/Source/Core/DolphinLibretro/Main.cpp b/Source/Core/DolphinLibretro/Main.cpp
+index cd8753b666..85271453ba 100644
+--- a/Source/Core/DolphinLibretro/Main.cpp
++++ b/Source/Core/DolphinLibretro/Main.cpp
+@@ -35,6 +35,12 @@
+ #include "Core/PatchEngine.h"
+ #include "Core/State.h"
+ #include "Core/System.h"
++#include "Core/FifoPlayer/FifoDataFile.h"
++#include "Core/FifoPlayer/FifoRecorder.h"
++#ifdef __PROSPERO__
++int Ps5DolphinDebugMode();  // VideoCommon/PixelShaderGen.cpp
++unsigned Ps5DolphinFifoFrame();  // VideoCommon/PixelShaderGen.cpp
++#endif
+ #include "DolphinLibretro/Audio.h"
+ #include "DolphinLibretro/Input.h"
+ #include "DolphinLibretro/Common/Options.h"
+@@ -82,10 +88,61 @@ extern void reload_cheats_from_ini();
+ extern unsigned msg_interface_version;
+ }  // namespace Libretro
+ 
++#ifdef __PROSPERO__
++// PS5 test aid: /app0/dolphin-options.txt, when present, holds key=value lines
++// that answer RETRO_ENVIRONMENT_GET_VARIABLE for those keys instead of the
++// frontend, so a test run sets core options without a person at the pad (the
++// console's FTP server cannot reach the frontend's options folder). The file is
++// never shipped, and the title deletes it on any launch that is not a test run.
++namespace
++{
++retro_environment_t s_ps5_frontend_environ;
++std::vector<std::pair<std::string, std::string>> s_ps5_option_overrides;
++
++bool Ps5EnvironCallback(unsigned cmd, void* data)
++{
++  if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE && data)
++  {
++    auto* var = static_cast<retro_variable*>(data);
++    for (const auto& [key, value] : s_ps5_option_overrides)
++    {
++      if (var->key && key == var->key)
++      {
++        var->value = value.c_str();
++        return true;
++      }
++    }
++  }
++  return s_ps5_frontend_environ(cmd, data);
++}
++
++retro_environment_t Ps5WrapEnvironment(retro_environment_t cb)
++{
++  s_ps5_frontend_environ = cb;
++  s_ps5_option_overrides.clear();
++  std::ifstream file("/app0/dolphin-options.txt");
++  std::string line;
++  while (std::getline(file, line))
++  {
++    while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
++      line.pop_back();
++    const size_t equals = line.find('=');
++    if (equals == std::string::npos || equals == 0)
++      continue;
++    s_ps5_option_overrides.emplace_back(line.substr(0, equals), line.substr(equals + 1));
++  }
++  return s_ps5_option_overrides.empty() ? cb : Ps5EnvironCallback;
++}
++}  // namespace
++#endif
++
+ extern "C" {
+ 
+ void retro_set_environment(retro_environment_t cb)
+ {
++#ifdef __PROSPERO__
++  cb = Ps5WrapEnvironment(cb);
++#endif
+   Libretro::environ_cb = cb;
+ #ifdef PERF_TEST
+   environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf_cb);
+@@ -203,8 +260,39 @@ void retro_reset(void)
+   Core::System::GetInstance().GetProcessorInterface().ResetButton_Tap();
+ }
+ 
++#ifdef __PROSPERO__
++// The FIFO-log debug mode (VideoCommon/PixelShaderGen.cpp, "fifo" or "fifo N"):
++// 300 frames (or N) after launch, ten frames of GPU commands are recorded and saved as
++// /app0/savefiles/ps5-fifo.dff, which desktop Dolphin plays back as a reference
++// for the same frames. Test runs only.
++static void Ps5FifoRecording()
++{
++  static unsigned frame = 0;
++  if (Ps5DolphinDebugMode() != 2)
++    return;
++  ++frame;
++  // The same frames dumped as images on the console, to compare with desktop
++  // Dolphin's playback of the log (a couple of frames either side).
++  const unsigned start = Ps5DolphinFifoFrame();
++  if (frame + 2 >= start && frame < start + 12)
++    Core::SaveScreenShot(fmt::format("ps5-frame-{}", frame));
++  if (frame != start)
++    return;
++  auto& recorder = Core::System::GetInstance().GetFifoRecorder();
++  recorder.StartRecording(10, [&recorder] {
++    FifoDataFile* const file = recorder.GetRecordedFile();
++    const bool saved = file != nullptr && file->Save("/app0/savefiles/ps5-fifo.dff");
++    fprintf(stderr, "dolphin ps5: FIFO log of 10 frames %s\n", saved ? "saved" : "NOT saved");
++  });
++  fprintf(stderr, "dolphin ps5: FIFO recording started at frame %u\n", start);
++}
++#endif
++
+ void retro_run(void)
+ {
++#ifdef __PROSPERO__
++  Ps5FifoRecording();
++#endif
+   Libretro::Input::InitSensors();
+   Libretro::Options::CheckForUpdatedVariables();
+   Libretro::FrameTiming::CheckForFastForwarding();
+@@ -482,6 +570,7 @@ void retro_run(void)
+   RETRO_PERFORMANCE_INIT(dolphin_main_func);
+   RETRO_PERFORMANCE_START(dolphin_main_func);
+ 
++  Libretro::Video::BeginRun();
+   if (system.IsDualCoreMode())
+   {
+     Core::DoFrameStep(system);
+@@ -491,6 +580,7 @@ void retro_run(void)
+   {
+     system.GetCPU().RunSingleFrame();
+   }
++  Libretro::Video::EndRun();
+ 
+   RETRO_PERFORMANCE_STOP(dolphin_main_func);
+ 
+diff --git a/Source/Core/DolphinLibretro/Video.cpp b/Source/Core/DolphinLibretro/Video.cpp
+index b4003b25b1..0275157ec2 100644
+--- a/Source/Core/DolphinLibretro/Video.cpp
++++ b/Source/Core/DolphinLibretro/Video.cpp
+@@ -71,6 +71,52 @@ static Common::DynamicLibrary d3d11_library;
+ static Common::DynamicLibrary d3d12_library;
+ #endif
+ 
++// libretro asks for one video_cb per retro_run, NULL for a frame that repeats
++// the last: the frontend presents it again, and presenting is what paces
++// retro_run to the display. Dolphin's presenters call video_cb only for a frame
++// they draw, and with bSkipPresentingDuplicateXFBs (the default) a field that
++// repeats its XFB draws none, so a 30 FPS game's every other run returned
++// without one: nothing waited for the display, and those runs were paced by the
++// audio writes alone. On the PS5 at 119.88 Hz with a swap interval of 2, Wind
++// Waker's present periods then crossed 40 ms 14-17 times in 130 seconds.
++//
++// The duplicate goes out where Dolphin would have presented the field
++// (Presenter::ViSwap), inside the GPU loop while the CPU thread emulates on. At
++// the end of the run instead, the frontend's present waited on the display
++// after the frame step had stopped the CPU thread, and the time it lost there
++// left the audio short (Wind Waker: 37-7268 silent frames a ten-second window).
++// EndRun covers a run in which no field was output at all.
++static retro_video_refresh_t s_frontend_video_cb;
++static bool s_frame_sent;
++static unsigned s_frame_width;
++static unsigned s_frame_height;
++
++static void SendFrame(const void* data, unsigned width, unsigned height, size_t pitch)
++{
++  s_frame_sent = true;
++  s_frame_width = width;
++  s_frame_height = height;
++  s_frontend_video_cb(data, width, height, pitch);
++}
++
++void SendDuplicate()
++{
++  // Before the first frame there is nothing to repeat.
++  if (s_frontend_video_cb && s_frame_width != 0)
++    SendFrame(nullptr, s_frame_width, s_frame_height, 0);
++}
++
++void BeginRun()
++{
++  s_frame_sent = false;
++}
++
++void EndRun()
++{
++  if (!s_frame_sent)
++    SendDuplicate();
++}
++
+ int GetAdjustedBaseHeight()
+ {
+   const bool crop_overscan = Libretro::Options::GetCached<bool>(
+@@ -556,6 +602,8 @@ void ContextDestroy(void)
+   DEBUG_LOG_FMT(VIDEO, "Video - ContextDestroy!");
+ 
+   g_context_status.MarkDestroyed();
++  // The frame a duplicate would repeat belonged to this context.
++  s_frame_width = 0;
+ 
+ #ifdef HAS_OPENGL
+   if (g_gfx &&
+@@ -724,5 +772,6 @@ bool CreateDevice(retro_vulkan_context* context, VkInstance instance, VkPhysical
+ 
+ void retro_set_video_refresh(retro_video_refresh_t cb)
+ {
+-  Libretro::Video::video_cb = cb;
++  Libretro::Video::s_frontend_video_cb = cb;
++  Libretro::Video::video_cb = cb ? &Libretro::Video::SendFrame : nullptr;
+ }
+diff --git a/Source/Core/DolphinLibretro/Video.h b/Source/Core/DolphinLibretro/Video.h
+index 8df1a7e320..2892601cf7 100644
+--- a/Source/Core/DolphinLibretro/Video.h
++++ b/Source/Core/DolphinLibretro/Video.h
+@@ -42,6 +42,10 @@ bool Video_InitializeBackend();
+ bool SetHWRender(retro_hw_context_type type, const int version_major = -1, const int version_minor = -1);
+ void ContextReset(void);
+ void ContextDestroy(void);
++// retro_run brackets its frame with these: a run that handed the frontend no
++// frame passes a duplicate (NULL), so the frontend presents -- and paces -- it.
++void BeginRun();
++void EndRun();
+ 
+ class SWGfx : public SW::SWGfx
+ {
+diff --git a/Source/Core/VideoBackends/Vulkan/VKMain.cpp b/Source/Core/VideoBackends/Vulkan/VKMain.cpp
+index 6338e52e3d..10539c661e 100644
+--- a/Source/Core/VideoBackends/Vulkan/VKMain.cpp
++++ b/Source/Core/VideoBackends/Vulkan/VKMain.cpp
+@@ -66,7 +66,15 @@ void VideoBackend::InitBackendInfo(const WindowSystemInfo& wsi)
+   }
+   else
+   {
++#ifdef __LIBRETRO__
++    // A libretro core renders through the frontend's Vulkan device, which it is
++    // handed later (DolphinLibretro/Vulkan.cpp); this probe of a host library is
++    // not needed, and on a platform with no loadable library (the PS5) its
++    // failure is expected rather than an alert.
++    INFO_LOG_FMT(VIDEO, "No Vulkan library to probe; the frontend supplies the device.");
++#else
+     PanicAlertFmt("Failed to load Vulkan library.");
++#endif
+   }
+ }
+ 
+diff --git a/Source/Core/VideoCommon/CommandProcessor.cpp b/Source/Core/VideoCommon/CommandProcessor.cpp
+index 1dbf466f1c..bae595786b 100644
+--- a/Source/Core/VideoCommon/CommandProcessor.cpp
++++ b/Source/Core/VideoCommon/CommandProcessor.cpp
+@@ -252,9 +252,18 @@ void CommandProcessorManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
+     fifo_rw_distance_lo_r =
+         MMIO::DirectRead<u16>(MMIO::Utils::LowPart(&m_fifo.CPReadWriteDistance));
+   }
++#ifdef __LIBRETRO__
++  mmio->Register(base | FIFO_RW_DISTANCE_LO, fifo_rw_distance_lo_r,
++                 MMIO::ComplexWrite<u16>([WMASK_LO_ALIGN_32BIT](Core::System& system_, u32, u16 val) {
++                   auto& fifo_ = system_.GetCommandProcessor().GetFifo();
++                   fifo_.register_writes.fetch_add(1, std::memory_order_seq_cst);
++                   *MMIO::Utils::LowPart(&fifo_.CPReadWriteDistance) = val & WMASK_LO_ALIGN_32BIT;
++                 }));
++#else
+   mmio->Register(base | FIFO_RW_DISTANCE_LO, fifo_rw_distance_lo_r,
+                  MMIO::DirectWrite<u16>(MMIO::Utils::LowPart(&m_fifo.CPReadWriteDistance),
+                                         WMASK_LO_ALIGN_32BIT));
++#endif
+ 
+   MMIO::ReadHandlingMethod<u16>* fifo_rw_distance_hi_r;
+   if (is_on_thread)
+@@ -291,6 +300,9 @@ void CommandProcessorManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
+                  MMIO::ComplexWrite<u16>([WMASK_HI_RESTRICT](Core::System& system_, u32, u16 val) {
+                    auto& fifo_ = system_.GetCommandProcessor().GetFifo();
+                    system_.GetFifo().SyncGPUForRegisterAccess();
++#ifdef __LIBRETRO__
++                   fifo_.register_writes.fetch_add(1, std::memory_order_seq_cst);
++#endif
+                    WriteHigh(fifo_.CPReadWriteDistance, val & WMASK_HI_RESTRICT);
+                    system_.GetFifo().RunGpu();
+                  }));
+@@ -299,7 +311,15 @@ void CommandProcessorManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
+       base | FIFO_READ_POINTER_LO,
+       is_on_thread ? MMIO::DirectRead<u16>(MMIO::Utils::LowPart(&m_fifo.SafeCPReadPointer)) :
+                      MMIO::DirectRead<u16>(MMIO::Utils::LowPart(&m_fifo.CPReadPointer)),
++#ifdef __LIBRETRO__
++      MMIO::ComplexWrite<u16>([WMASK_LO_ALIGN_32BIT](Core::System& system_, u32, u16 val) {
++        auto& fifo_ = system_.GetCommandProcessor().GetFifo();
++        fifo_.register_writes.fetch_add(1, std::memory_order_seq_cst);
++        *MMIO::Utils::LowPart(&fifo_.CPReadPointer) = val & WMASK_LO_ALIGN_32BIT;
++      }));
++#else
+       MMIO::DirectWrite<u16>(MMIO::Utils::LowPart(&m_fifo.CPReadPointer), WMASK_LO_ALIGN_32BIT));
++#endif
+ 
+   MMIO::ReadHandlingMethod<u16>* fifo_read_hi_r;
+   MMIO::WriteHandlingMethod<u16>* fifo_read_hi_w;
+@@ -314,6 +334,9 @@ void CommandProcessorManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
+         MMIO::ComplexWrite<u16>([WMASK_HI_RESTRICT](Core::System& system_, u32, u16 val) {
+           auto& fifo_ = system_.GetCommandProcessor().GetFifo();
+           system_.GetFifo().SyncGPUForRegisterAccess();
++#ifdef __LIBRETRO__
++          fifo_.register_writes.fetch_add(1, std::memory_order_seq_cst);
++#endif
+           WriteHigh(fifo_.CPReadPointer, val & WMASK_HI_RESTRICT);
+           fifo_.SafeCPReadPointer.store(fifo_.CPReadPointer.load(std::memory_order_relaxed),
+                                         std::memory_order_relaxed);
+@@ -330,6 +353,9 @@ void CommandProcessorManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
+         MMIO::ComplexWrite<u16>([WMASK_HI_RESTRICT](Core::System& system_, u32, u16 val) {
+           auto& fifo_ = system_.GetCommandProcessor().GetFifo();
+           system_.GetFifo().SyncGPUForRegisterAccess();
++#ifdef __LIBRETRO__
++          fifo_.register_writes.fetch_add(1, std::memory_order_seq_cst);
++#endif
+           WriteHigh(fifo_.CPReadPointer, val & WMASK_HI_RESTRICT);
+         });
+   }
+diff --git a/Source/Core/VideoCommon/CommandProcessor.h b/Source/Core/VideoCommon/CommandProcessor.h
+index 976592c829..8684ae12e7 100644
+--- a/Source/Core/VideoCommon/CommandProcessor.h
++++ b/Source/Core/VideoCommon/CommandProcessor.h
+@@ -49,6 +49,15 @@ struct SCPFifoStruct
+   std::atomic<u32> bFF_LoWatermark = 0;
+   std::atomic<u32> bFF_HiWatermark = 0;
+ 
++#ifdef __LIBRETRO__
++  // The CPU's writes to the read pointer and the read/write distance, counted
++  // before each write lands. The dual-core GPU loop commits a chunk's read
++  // pointer and distance only if none came while the chunk was in flight: the
++  // CPU's values win, as they do on the hardware (Fifo.cpp, CommitChunk). Not
++  // saved; it only orders the two threads.
++  std::atomic<u32> register_writes = 0;
++#endif
++
+   void Init();
+   void DoState(PointerWrap& p);
+ };
+diff --git a/Source/Core/VideoCommon/Fifo.cpp b/Source/Core/VideoCommon/Fifo.cpp
+index d40bd0e8db..d5d588054d 100644
+--- a/Source/Core/VideoCommon/Fifo.cpp
++++ b/Source/Core/VideoCommon/Fifo.cpp
+@@ -288,6 +288,42 @@ void FifoManager::ResetVideoBuffer()
+   m_fifo_aux_read_ptr = m_fifo_aux_data;
+ }
+ 
++#ifdef __LIBRETRO__
++// A chunk the dual-core GPU loop has run advances the read pointer past it and
++// shortens the read/write distance by it -- unless the CPU rewrote either
++// register while the chunk was in flight, in which case the CPU's values stand,
++// as a CPU write replaces the hardware's own. The game can reset its FIFO (read
++// enable off, the distance to 0, a new read pointer) the moment it runs again,
++// and here the GPU loop resumes with it at every field, with a chunk or more
++// still queued: the loop's unconditional subtraction then took a zeroed distance
++// to -32, which the loop reads as more to fetch, and it fetched the FIFO's stale
++// words as commands until one faulted (Rogue Leader's attract sequence, every
++// run at the same point). A gather-pipe burst only adds to the distance and is
++// retried; a register write is not.
++static void CommitChunk(CommandProcessor::SCPFifoStruct& fifo, u32 writes, u32 fetched, u32 next)
++{
++  if (fifo.register_writes.load(std::memory_order_seq_cst) != writes)
++    return;
++  u32 expected = fetched;
++  if (!fifo.CPReadPointer.compare_exchange_strong(expected, next, std::memory_order_seq_cst))
++    return;
++  u32 distance = fifo.CPReadWriteDistance.load(std::memory_order_seq_cst);
++  for (;;)
++  {
++    if (fifo.register_writes.load(std::memory_order_seq_cst) != writes)
++      return;
++    ASSERT_MSG(COMMANDPROCESSOR, distance >= GPFifo::GATHER_PIPE_SIZE,
++               "fifo.CPReadWriteDistance = {} is shorter than the chunk the FIFO loop ran",
++               distance);
++    if (distance < GPFifo::GATHER_PIPE_SIZE)
++      return;
++    if (fifo.CPReadWriteDistance.compare_exchange_weak(
++            distance, distance - GPFifo::GATHER_PIPE_SIZE, std::memory_order_seq_cst))
++      return;
++  }
++}
++#endif
++
+ // Description: Main FIFO update loop
+ // Purpose: Keep the Core HW updated about the CPU-GPU distance
+ void FifoManager::RunGpuLoop()
+@@ -330,6 +366,10 @@ void FifoManager::RunGpuLoop()
+               break;
+ 
+             u32 cyclesExecuted = 0;
++#ifdef __LIBRETRO__
++            const u32 writes = fifo.register_writes.load(std::memory_order_seq_cst);
++            const u32 fetchedPtr = fifo.CPReadPointer.load(std::memory_order_relaxed);
++#endif
+             u32 readPtr = fifo.CPReadPointer.load(std::memory_order_relaxed);
+             ReadDataFromFifo(readPtr);
+ 
+@@ -338,6 +378,7 @@ void FifoManager::RunGpuLoop()
+             else
+               readPtr += GPFifo::GATHER_PIPE_SIZE;
+ 
++#ifndef __LIBRETRO__
+             const s32 distance =
+                 static_cast<s32>(fifo.CPReadWriteDistance.load(std::memory_order_relaxed)) -
+                 GPFifo::GATHER_PIPE_SIZE;
+@@ -345,13 +386,18 @@ void FifoManager::RunGpuLoop()
+                        "Negative fifo.CPReadWriteDistance = {} in FIFO Loop !\nThat can produce "
+                        "instability in the game. Please report it.",
+                        distance);
++#endif
+ 
+             u8* write_ptr = m_video_buffer_write_ptr;
+             m_video_buffer_read_ptr = OpcodeDecoder::RunFifo(
+                 DataReader(m_video_buffer_read_ptr, write_ptr), &cyclesExecuted);
+ 
++#ifdef __LIBRETRO__
++            CommitChunk(fifo, writes, fetchedPtr, readPtr);
++#else
+             fifo.CPReadPointer.store(readPtr, std::memory_order_relaxed);
+             fifo.CPReadWriteDistance.fetch_sub(GPFifo::GATHER_PIPE_SIZE, std::memory_order_seq_cst);
++#endif
+             if ((write_ptr - m_video_buffer_read_ptr) == 0)
+             {
+               fifo.SafeCPReadPointer.store(fifo.CPReadPointer.load(std::memory_order_relaxed),
+diff --git a/Source/Core/VideoCommon/PixelShaderGen.cpp b/Source/Core/VideoCommon/PixelShaderGen.cpp
+index 5ce120e9ff..8b3e4f4540 100644
+--- a/Source/Core/VideoCommon/PixelShaderGen.cpp
++++ b/Source/Core/VideoCommon/PixelShaderGen.cpp
+@@ -3,6 +3,70 @@
+ 
+ #include "VideoCommon/PixelShaderGen.h"
+ 
++#ifdef __PROSPERO__
++#include <cstdio>
++#include <cstring>
++// PS5 test aid: /app0/dolphin-debug.txt naming "fifo" records a FIFO log
++// (DolphinLibretro/Main.cpp), naming "dump" dumps every frame as an image
++// (DolphinLibretro/Boot.cpp); naming "fog" makes every fogged pixel
++// show its fog intermediates as its colour -- red gl_FragCoord.z, green the top
++// byte of zCoord, blue the fog factor -- so a console run
++// can compare the GPU's values with the constants the CPU uploaded (logged by
++// PixelShaderManager); naming "objects A B" plays only objects A to B of each
++// frame of a FIFO log (Core/FifoPlayer/FifoPlayer.cpp), to bisect a frame. Never
++// shipped; the title deletes the file on any launch that is not a test run.
++static unsigned s_ps5_first_object, s_ps5_last_object;
++static unsigned s_ps5_fifo_frame = 300;
++int Ps5DolphinDebugMode()
++{
++  static int mode = -1;
++  if (mode < 0)
++  {
++    mode = 0;
++    if (FILE* file = std::fopen("/app0/dolphin-debug.txt", "rb"))
++    {
++      char word[32] = {};
++      if (std::fscanf(file, "%31s", word) == 1 && std::strcmp(word, "fog") == 0)
++        mode = 1;
++      else if (std::strcmp(word, "fifo") == 0)
++      {
++        // "fifo N" starts the log at frame N rather than 300.
++        mode = 2;
++        unsigned frame = 0;
++        if (std::fscanf(file, "%u", &frame) == 1 && frame != 0)
++          s_ps5_fifo_frame = frame;
++      }
++      else if (std::strcmp(word, "dump") == 0)
++        mode = 3;
++      else if (std::strcmp(word, "swloader") == 0)
++        mode = 4;
++      else if (std::strcmp(word, "cmploader") == 0)
++        mode = 5;
++      else if (std::strcmp(word, "objects") == 0 &&
++               std::fscanf(file, "%u %u", &s_ps5_first_object, &s_ps5_last_object) == 2)
++        mode = 6;
++      std::fclose(file);
++    }
++  }
++  return mode;
++}
++
++unsigned Ps5DolphinFifoFrame()
++{
++  Ps5DolphinDebugMode();
++  return s_ps5_fifo_frame;
++}
++
++bool Ps5DolphinObjectRange(unsigned* first, unsigned* last)
++{
++  if (Ps5DolphinDebugMode() != 6)
++    return false;
++  *first = s_ps5_first_object;
++  *last = s_ps5_last_object;
++  return true;
++}
++#endif
++
+ #include "Common/Assert.h"
+ #include "Common/CommonTypes.h"
+ #include "Common/EnumMap.h"
+@@ -1732,6 +1796,14 @@ static void WriteFog(ShaderCode& out, const pixel_shader_uid_data* uid_data)
+       WARN_LOG_FMT(VIDEO, "Unknown Fog Type! {}", uid_data->fog_fsel);
+   }
+ 
++#ifdef __PROSPERO__
++  if (Ps5DolphinDebugMode() == 1)
++  {
++    out.Write("\tprev.rgb = int3(iround(clamp(rawpos.z, 0.0, 1.0) * 255.0), (zCoord >> 16) & 255, "
++              "iround(fog * 255.0));\n");
++    return;
++  }
++#endif
+   out.Write("\tint ifog = iround(fog * 256.0);\n");
+   out.Write("\tprev.rgb = (prev.rgb * (256 - ifog) + " I_FOGCOLOR ".rgb * ifog) >> 8;\n");
+ }
+diff --git a/Source/Core/VideoCommon/PixelShaderManager.cpp b/Source/Core/VideoCommon/PixelShaderManager.cpp
+index d2bdadb9c8..eb084b4c8c 100644
+--- a/Source/Core/VideoCommon/PixelShaderManager.cpp
++++ b/Source/Core/VideoCommon/PixelShaderManager.cpp
+@@ -3,6 +3,7 @@
+ 
+ #include "VideoCommon/PixelShaderManager.h"
+ 
++#include <cstdio>
+ #include <iterator>
+ 
+ #include "Common/ChunkFile.h"
+@@ -406,6 +407,19 @@ void PixelShaderManager::SetFogParamChanged()
+     constants.fogi[1] = bpmem.fog.b_magnitude;
+     constants.fogi[3] = bpmem.fog.b_shift;
+     constants.fogParam3 = bpmem.fog.c_proj_fsel.hex;
++#ifdef __PROSPERO__
++    // The debug mode's CPU half (PixelShaderGen.cpp): the constants the fog
++    // shader is given, on each change, up to twenty lines.
++    extern int Ps5DolphinDebugMode();
++    static int logged = 0;
++    if (Ps5DolphinDebugMode() == 1 && logged < 20)
++    {
++      ++logged;
++      fprintf(stderr, "dolphin ps5 fog: A=%g C=%g b_magnitude=%d b_shift=%d fsel/proj=0x%x\n",
++              constants.fogf[0], constants.fogf[1], constants.fogi[1], constants.fogi[3],
++              constants.fogParam3);
++    }
++#endif
+   }
+   else
+   {
+diff --git a/Source/Core/VideoCommon/Present.cpp b/Source/Core/VideoCommon/Present.cpp
+index 95c2e83755..18ab44f05e 100644
+--- a/Source/Core/VideoCommon/Present.cpp
++++ b/Source/Core/VideoCommon/Present.cpp
+@@ -26,6 +26,11 @@
+ #ifdef __LIBRETRO__
+ #include "Core/Config/MainSettings.h"
+ #include "VideoCommon/VideoBackendBase.h"
++
++namespace Libretro::Video
++{
++void SendDuplicate();  // DolphinLibretro/Video.cpp
++}
+ #endif
+ 
+ std::unique_ptr<VideoCommon::Presenter> g_presenter;
+@@ -244,6 +249,13 @@ void Presenter::ViSwap(u32 xfb_addr, u32 fb_width, u32 fb_stride, u32 fb_height,
+ 
+     video_events.after_present_event.Trigger(present_info);
+   }
++#ifdef __LIBRETRO__
++  else
++  {
++    // The frontend repeats the last frame where Dolphin would have drawn it.
++    Libretro::Video::SendDuplicate();
++  }
++#endif
+ }
+ 
+ void Presenter::ImmediateSwap(u32 xfb_addr, u32 fb_width, u32 fb_stride, u32 fb_height)

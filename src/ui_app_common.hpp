@@ -1,0 +1,266 @@
+/* Porpoise UI - what the launcher's screens share: sizes, colours, the room's
+ * perspective, glass blocks and text helpers.
+ * Copyright (C) 2026 Ruben (Project Porpoise)
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * Design: Ruben's Porpoise UI direction (sapphire glass blocks in a grid room,
+ * cover flow library, controller-first). Layout is in 1920x1080 design pixels.
+ * Every rounded shape uses the same corner radius (kR), and every label that
+ * sits inside a shape is centred on its capital letters (Gfx::text_mid). */
+#pragma once
+
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <string>
+#include <vector>
+
+#include "ui_gfx.hpp"
+
+namespace porpoise::ui::look
+{
+constexpr const char *kVersion = "1.0 (build 11)";
+
+/* What a settings row does when pressed, besides changing a value. */
+enum RowAction
+{
+    kRowNone = 0,
+    kRowAddFolder,
+    kRowRemoveFolder,
+    kRowRescan,
+    kRowResetAll,
+    kRowResetGame,
+};
+
+constexpr float kPi = 3.14159265f;
+constexpr float kR = 14.0f;      /* the one corner radius */
+constexpr float kCx = 960.0f;    /* cover flow centre */
+constexpr float kCy = 470.0f;
+constexpr float kTileW = 320.0f; /* box art: 5 wide for 7 high */
+constexpr float kTileH = 448.0f;
+constexpr float kFocal = 1500.0f;
+constexpr float kBarY = 38.0f, kBarH = 58.0f; /* top bar */
+constexpr float kBarCy = kBarY + kBarH * 0.5f;
+constexpr float kPromptY = 1010.0f;
+
+/* Memory cards */
+constexpr int kMcCols = 4, kMcRows = 3;
+constexpr float kMcTile = 146.0f, kMcGap = 24.0f;
+constexpr float kMcW = 740.0f, kMcH = 650.0f, kMcY = 136.0f;
+constexpr float kMcX[2] = {190.0f, 990.0f};
+
+inline const Color kWhite = rgba(0xF4F7FF);
+inline const Color kLavender = rgba(0xA9A6FF);
+inline const Color kSoft = rgba(0xC9D3FF);
+inline const Color kCyan = rgba(0x5CD3FF);
+inline const Color kIcy = rgba(0x9DEBFF);
+inline const Color kTileFill = rgba(0x1E46C8, 0.55f);
+inline const Color kEdge = rgba(0x4C8DFF, 0.95f);
+inline const Color kClear = rgba(0x000000, 0.0f);
+inline const Color kGlassBody = rgba(0x1C48D8, 0.50f);
+inline const Color kDanger = rgba(0xFF7A9A);
+
+inline Color with_alpha(Color c, float a)
+{
+    c.a *= a;
+    return c;
+}
+
+inline float smooth(float current, float target, double dt, float rate)
+{
+    const float k = 1.0f - std::exp(-float(dt) * rate);
+    return current + (target - current) * k;
+}
+
+inline float ease_out(float t)
+{
+    t = std::clamp(t, 0.0f, 1.0f);
+    return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+}
+
+/* A point of a block in the room: (lx, ly) on its face from its centre,
+ * lz into its thickness, the block turned by yaw about its vertical axis and
+ * brought z0 toward the viewer about its own centre (negative z0: closer).
+ * Perspective converges on the room's vanishing point on the horizon, so a
+ * block's thickness shows on the side that faces the middle of the room -
+ * like real boxes on a shelf. */
+constexpr float kVpX = 960.0f, kVpY = 560.0f;
+inline Corner project(float cx, float cy, float lx, float ly, float yaw, float lz = 0.0f, float z0 = 0.0f)
+{
+    const float k0 = kFocal / (kFocal + z0);
+    const float c = std::cos(yaw), s = std::sin(yaw);
+    const float x = (lx * c - lz * s) * k0;
+    const float z = (lx * s + lz * c) * k0;
+    const float k = kFocal / (kFocal + z);
+    return Corner{kVpX + (cx + x - kVpX) * k, kVpY + (cy + ly * k0 - kVpY) * k, 1.0f / (k * k0)};
+}
+
+inline void rect_at(float cx, float cy, float hw, float hh, float yaw, float lz, float z0, Corner out[4])
+{
+    out[0] = project(cx, cy, -hw, -hh, yaw, lz, z0);
+    out[1] = project(cx, cy, hw, -hh, yaw, lz, z0);
+    out[2] = project(cx, cy, hw, hh, yaw, lz, z0);
+    out[3] = project(cx, cy, -hw, hh, yaw, lz, z0);
+}
+
+/* A glass block: its thickness as stacked slices, far side first, then the
+ * face toward the viewer. from_behind: the block has turned past 90 degrees,
+ * so its back (at lz = depth) is the face that shows. margin is room around
+ * the face for its glow. */
+inline void glass_block(Gfx &g, float cx, float cy, float w, float h, float depth, float yaw, float z0, float margin,
+                        Glass face, bool from_behind = false)
+{
+    constexpr int kSlices = 8;
+    Glass side = face;
+    side.face = 1;
+    side.glow = 0;
+    side.rim_w = 0;
+    side.tint = Color{face.tint.r * 0.55f, face.tint.g * 0.60f, face.tint.b * 0.80f,
+                      std::min(1.0f, face.tint.a * 1.6f)};
+    Corner c[4];
+    for (int k = 0; k < kSlices; ++k)
+    {
+        const int i = from_behind ? k : kSlices - k; /* far to near */
+        const float f = float(i) / kSlices;
+        side.light = 0.55f + 0.55f * (from_behind ? f : 1.0f - f);
+        side.phase = face.phase + f * 0.08f;
+        rect_at(cx, cy, w * 0.5f, h * 0.5f, yaw, depth * f, z0, c);
+        g.glass(c, w, h, 0, side);
+    }
+    rect_at(cx, cy, w * 0.5f + margin, h * 0.5f + margin, yaw, from_behind ? depth : 0.0f, z0, c);
+    g.glass(c, w, h, margin, face);
+}
+
+/* Gloss and the room's reflection over a picture set in glass. */
+inline void gloss_over(Gfx &g, const Corner c[4], float w, float h, float radius, float phase, float fade = 1)
+{
+    Glass gloss;
+    gloss.face = 2;
+    gloss.radius = radius;
+    gloss.rim_w = 0;
+    gloss.tint = kWhite;
+    gloss.rim = kClear;
+    gloss.phase = phase;
+    gloss.fade = fade;
+    g.glass(c, w, h, 0, gloss);
+}
+
+/* uv rectangle that fills a w x h shape with a texture, cropping the excess. */
+inline void cover_uv(const Texture *t, float w, float h, float uv[4])
+{
+    uv[0] = 0;
+    uv[1] = 0;
+    uv[2] = 1;
+    uv[3] = 1;
+    if (!t || t->height <= 0 || h <= 0)
+        return;
+    const float ta = float(t->width) / float(t->height), aa = w / h;
+    if (ta > aa)
+    {
+        const float k = aa / ta;
+        uv[0] = 0.5f - k * 0.5f;
+        uv[2] = 0.5f + k * 0.5f;
+    }
+    else
+    {
+        const float k = ta / aa;
+        uv[1] = 0.5f - k * 0.5f;
+        uv[3] = 0.5f + k * 0.5f;
+    }
+}
+
+inline std::string human_size(std::uint64_t bytes)
+{
+    char buf[32];
+    if (bytes >= (1ull << 30))
+        std::snprintf(buf, sizeof buf, "%.1f GB", double(bytes) / double(1ull << 30));
+    else
+        std::snprintf(buf, sizeof buf, "%.0f MB", double(bytes) / double(1ull << 20));
+    return buf;
+}
+
+/* Pixel art stays crisp: enlarge by whole pixels before the GPU smooths it. */
+inline std::vector<std::uint8_t> enlarge(const std::vector<std::uint8_t> &src, int w, int h, int k)
+{
+    std::vector<std::uint8_t> out(std::size_t(w * k) * std::size_t(h * k) * 4);
+    for (int y = 0; y < h * k; ++y)
+        for (int x = 0; x < w * k; ++x)
+        {
+            const std::uint8_t *p = &src[(std::size_t(y / k) * std::size_t(w) + std::size_t(x / k)) * 4];
+            std::uint8_t *q = &out[(std::size_t(y) * std::size_t(w * k) + std::size_t(x)) * 4];
+            q[0] = p[0];
+            q[1] = p[1];
+            q[2] = p[2];
+            q[3] = p[3];
+        }
+    return out;
+}
+
+/* Shortens s with an ellipsis until it fits max_w. */
+inline std::string fit(Gfx &g, Font f, float size, std::string s, float max_w)
+{
+    if (g.measure(f, size, s) <= max_w)
+        return s;
+    while (!s.empty() && g.measure(f, size, s + "\xE2\x80\xA6") > max_w)
+    {
+        s.pop_back();
+        while (!s.empty() && (static_cast<unsigned char>(s.back()) & 0xC0) == 0x80)
+            s.pop_back(); /* whole UTF-8 sequences */
+    }
+    return s + "\xE2\x80\xA6";
+}
+
+/* Breaks text into lines no wider than max_w; the last kept line ends in an
+ * ellipsis when there was more. */
+inline std::vector<std::string> wrap(Gfx &g, Font f, float size, const std::string &text, float max_w,
+                                     std::size_t max_lines = 99)
+{
+    std::vector<std::string> lines;
+    std::string line, word;
+    bool more = false;
+    auto flush_word = [&] {
+        if (word.empty())
+            return;
+        const std::string trial = line.empty() ? word : line + " " + word;
+        if (!line.empty() && g.measure(f, size, trial) > max_w)
+        {
+            lines.push_back(line);
+            line = word;
+        }
+        else
+            line = trial;
+        word.clear();
+    };
+    for (std::size_t i = 0; i <= text.size(); ++i)
+    {
+        const char c = i < text.size() ? text[i] : ' ';
+        if (c == ' ' || c == '\n')
+        {
+            flush_word();
+            if (c == '\n' && !line.empty())
+            {
+                lines.push_back(line);
+                line.clear();
+            }
+        }
+        else
+            word += c;
+        if (lines.size() > max_lines)
+        {
+            more = true;
+            break;
+        }
+    }
+    if (!line.empty() && lines.size() <= max_lines)
+        lines.push_back(line);
+    if (lines.size() > max_lines)
+    {
+        lines.resize(max_lines);
+        more = true;
+    }
+    if (more && !lines.empty())
+        lines.back() = fit(g, f, size, lines.back() + " \xE2\x80\xA6", max_w);
+    return lines;
+}
+} // namespace porpoise::ui::look
