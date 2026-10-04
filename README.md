@@ -168,12 +168,18 @@ that closed the menu never reaches the game.
 
 1. Download **`Porpoise-1.0.zip`** from the
    [latest release](https://github.com/elripalda/Porpoise/releases/latest) and
-   unzip it. You get a folder named **`PPSA99764`**.
-2. Copy that folder to **`/data/homebrew/PPSA99764/`** on the console.
-3. Register it the way you register your other homebrew (for example with
+   unzip it on your computer. You get a folder named **`PPSA99764`**.
+2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
+   like FileZilla) or with PS5 Upload.
+3. Copy the whole **`PPSA99764`** folder into **`/data/homebrew/`**, so you end
+   up with `/data/homebrew/PPSA99764/`.
+4. Register it the same way as your other homebrew (for example with
    ShadowMountPlus). The Porpoise tile appears on the home screen.
-4. Put your game files in **`/data/porpoise/games/`**, or in any of the folders
-   listed under [Adding games](#adding-games), and open Porpoise.
+5. Copy your game backups into **`/data/porpoise/games/`** (Porpoise creates it
+   on first launch), into any folder listed under [Adding games](#adding-games),
+   or onto a USB drive, then open Porpoise.
+
+Box art and game details download automatically while the console is online.
 
 ### Updating
 ShadowMountPlus keeps serving the old copy until it is removed. **Delete
