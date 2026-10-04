@@ -21,7 +21,7 @@
 namespace porpoise::ui::look
 {
 constexpr const char *kVersion = "1.1 (build 13)";
-constexpr int kVersionMajor = 1, kVersionMinor = 1;
+constexpr int kVersionMajor = 1, kVersionMinor = 1, kVersionPatch = 0;
 
 /* What a settings row does when pressed, besides changing a value. */
 enum RowAction

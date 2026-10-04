@@ -155,6 +155,7 @@ private:
         int *int_value = nullptr;
         bool *bool_value = nullptr;
         std::string *text_value = nullptr; /* a text setting chosen from a list (the border) */
+        std::vector<int> order;            /* when set: values[i] is the setting's order[i] */
         int toggle = -1;                   /* a switch: 1 on, 0 off; -1 not a switch */
         int rec = -1;                      /* its recommendation (rec_rows_) */
         std::string tag;                   /* a small label beside the switch: where it comes from */
@@ -382,6 +383,7 @@ private:
     std::string update_error_;
     std::string update_note_; /* after a check: up to date, or what went wrong */
     bool update_failed_ = false; /* an install failed: say so once */
+    double update_done_time_ = 0; /* when the install finished */
     double update_note_time_ = -100;
     std::string update_row_value() const;
     void draw_update_overlay(double time);

@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string_view>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
@@ -207,6 +208,16 @@ std::string genres(const std::string &g)
 }
 } // namespace
 
+/* xml.find(needle, from), but only before `end`: a game's own entry, not the
+ * rest of the database after it. */
+static std::size_t find_in(const std::string &xml, const std::string &needle, std::size_t from, std::size_t end)
+{
+    if (from >= end || end > xml.size())
+        return std::string::npos;
+    const std::size_t at = std::string_view(xml).substr(from, end - from).find(needle);
+    return at == std::string_view::npos ? std::string::npos : from + at;
+}
+
 int xml_to_table(const std::string &xml, const std::string &tsv_path, std::string &error, const std::string &lang)
 {
     const std::string tmp = tsv_path + ".part";
@@ -232,9 +243,9 @@ int xml_to_table(const std::string &xml, const std::string &tsv_path, std::strin
         if (id.size() != 6 || !(type.empty() || type == "GameCube" || type == "Wii"))
             continue;
         /* The English locale, else the first one. */
-        std::size_t loc = xml.find("<locale lang=\"EN\"", start);
-        if (loc == std::string::npos || loc > end)
-            loc = xml.find("<locale", start);
+        std::size_t loc = find_in(xml, "<locale lang=\"EN\"", start, end);
+        if (loc == std::string::npos)
+            loc = find_in(xml, "<locale", start, end);
         std::size_t loc_end = loc == std::string::npos ? std::string::npos : xml.find("</locale>", loc);
         std::string title, synopsis;
         if (loc != std::string::npos && loc < end && loc_end != std::string::npos && loc_end < end)
@@ -245,7 +256,7 @@ int xml_to_table(const std::string &xml, const std::string &tsv_path, std::strin
         if (lang != "EN")
         {
             /* The description in the player's language, when there is one. */
-            const std::size_t own = xml.find("<locale lang=\"" + lang + "\"", start);
+            const std::size_t own = find_in(xml, "<locale lang=\"" + lang + "\"", start, end);
             const std::size_t own_end = own == std::string::npos ? own : xml.find("</locale>", own);
             if (own != std::string::npos && own < end && own_end != std::string::npos && own_end < end)
             {

@@ -2,12 +2,32 @@
 
 ## 1.1 — the quality-of-life update
 
+### Recommended settings
+- Every game's settings open with **Recommended**: Dolphin's own fixes for the
+  game and Porpoise's tested picks, each with an **on/off switch** — green is
+  on — and a tag saying where it comes from. Picks are updated daily.
+- Picks can change Dolphin's own per-game settings too. The first one is for
+  **WWE Day of Reckoning 2**: EFB copies stay on the GPU and textures decode
+  there, which should lift it well above the ~6 fps it ran at (still being
+  tested).
+- A game's Dolphin settings now **stay put when you change graphics in the
+  in-game menu** (the Dolphin core used to drop them until the next launch).
+- If you keep your own Dolphin settings file for a game, Recommended says so
+  and leaves it alone.
+
 ### In-game menu
 - Four tabs, switched with L1 / R1: **Game**, **Video**, **Graphics** and
   **Controls**, with nearly every setting there, applied at once and saved for
   that game.
-- **Save states:** three slots per game, each with a picture. Save and load
-  from the menu, or start a game from a slot in its Details page.
+- **Save states:** three slots per game, each with a picture. *Save state…* and
+  *Load state…* open a slot picker: saving over a used slot needs a second
+  press, loading shows empty slots dimmed. A spinner shows while a state is
+  written, and *Fast save states* (on by default) leaves Dolphin's texture
+  cache out of them, so saving takes a moment instead of many seconds.
+  Pictures fit the game's real shape — 4:3 or 16:9 — without the black bars.
+  Start a game from a slot in its Details page.
+- **Setups:** save a game's Video and Graphics settings as one of four setups
+  and use it on any other game, from the menu or from Settings.
 - **Fast forward:** 2x or 4x, shown in a corner while it's on.
 - The Controls tab draws the DualSense with a line out to every button and the
   GameCube button it plays, and opens Customize buttons over the paused game.
@@ -21,29 +41,51 @@
 - The DualSense **light bar** shows each player's colour.
 
 ### Picture
-- **Screen filters:** Smooth, Sharp, Sharpen, CRT, Arcade CRT and VHS, with a
-  strength setting.
-- **Borders** for 4:3 games: Porpoise glass, Midnight and Arcade cabinet, plus
-  your own PNGs in `/data/porpoise/borders/`.
+- **Nine screen filters:** Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS,
+  **Soft VHS** (soft, faded colour and glow, no glitches), **8-bit** and
+  **Pocket** (a green handheld screen), with a strength setting.
+- **Eight borders** for 4:3 games: **Porpoise** (the logo and name), Porpoise
+  glass, Midnight, **Frost**, **Carbon**, and three cabinets — Arcade, **Retro**
+  and **Synthwave** — plus your own PNGs in `/data/porpoise/borders/`. Borders
+  now draw at full resolution.
 
 ### Library
 - **Favourites** (Options): a gold star on the box, and a *Favourites first*
   sort.
 - **Play time** for every game, and a *Most played* sort.
-- **Recommended settings** in each game's settings: Dolphin's own fixes for the
-  game, and Porpoise's tested picks, applied with one press and updated daily.
 
 ### Languages
-- **Italiano** and **日本語** join English, Español, Français and Português,
-  with a flag beside each language.
-- Game descriptions in Spanish, French, Portuguese and Italian where GameTDB
-  has them.
+- **Twelve languages**, each with its flag: English, Español (España),
+  **Español (Latinoamérica)**, Français, **Deutsch**, **Italiano**,
+  **Nederlands**, **Polski**, Português (Portugal), **Português (Brasil)**,
+  **Русский** and **日本語**. *System* follows the PS5's language.
+- Game descriptions in Spanish, French, Portuguese, Italian, German and Dutch
+  where GameTDB has them.
+- Translations are first drafts: corrections go in
+  `/data/porpoise/lang/<code>.txt` (see README) and need no new build.
+
+### Updates
+- **Settings > About > Updates:** *Check now* looks on GitHub, and when a newer
+  Porpoise is out the same row **installs it**: the download is checked against
+  GitHub's SHA-256 and every file against the release's manifest before
+  anything is replaced, then Porpoise closes so the new one opens next time.
+  Games, saves and settings are never touched.
+- An update notice in the library when a new Porpoise is out.
+
+### Fixes and speed
+- **Can't see /data, empty folder browser, games in /data/games not found:**
+  when the console starts Porpoise inside the app sandbox, Porpoise now asks the
+  HEN (etaHEN / OnionHEN) to free it, as PS5SX2 does, and says so if it can't.
+  Settings, memory cards and states a sandboxed 1.0 kept in the app's own
+  folder come along to `/data/porpoise` the first time.
+- Shaders compile on four background threads instead of one: less stutter the
+  first time a game shows something new.
+- "Last played 1 weeks ago" is gone.
 
 ### Also
-- An **update notice** when a new Porpoise is out (library and About).
 - A **QR code** in About that opens the bug tracker on your phone.
-- Faster save-state pictures; second discs of two-disc games keep their own
-  history and states.
+- About credits **Mihawk (mihawk-99)**, who brought the Dolphin core to the PS5.
+- Second discs of two-disc games keep their own history and states.
 
 ## 1.0 — 2026-10-03
 

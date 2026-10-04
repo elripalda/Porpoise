@@ -8,6 +8,15 @@ Porpoise would not exist without the people and projects below. Thank you.
 design direction, the logo and artwork, the menu music and every sound effect,
 and all of the testing on real hardware.
 
+## Dolphin on PS5
+
+**[Mihawk (mihawk-99)](https://github.com/mihawk-99)** brought the Dolphin core
+to the PS5. His PS5 RetroArch port — the Dolphin PS5 patch, the in-process core
+loader, threads, memory and crash reports — and his PS5_Vulkan and PS5_Mesa
+work, which put Vulkan on the PS5 through Mesa's RADV, are what Porpoise is
+built on. Porpoise began as a fork of his PS5 RetroArch, and it would not exist
+without him. Details and licences are under [PS5 platform](#ps5-platform).
+
 ## Emulation
 
 | Project | Role in Porpoise | Licence |
@@ -25,9 +34,9 @@ Porpoise builds Dolphin from libretro/dolphin revision
 
 | Project | Role in Porpoise | Licence |
 |---|---|---|
-| [PS5 RetroArch](https://github.com/mihawk-99/PS5_RetroArch) by **Mihawk** | Porpoise began as a fork of it. The Dolphin PS5 port patch, the in-process core loader, threads, memory, crash reports and the build scripts all come from there. | GPL-3.0-or-later |
-| [PS5_Vulkan](https://github.com/mihawk-99/PS5_Vulkan) by **Mihawk** | Vulkan on PS5: the RADV link recipe and linker script | GPL-3.0-or-later |
-| [PS5_Mesa](https://github.com/mihawk-99/PS5_Mesa) by **Mihawk**, on [Mesa](https://mesa3d.org) | Mesa's **RADV** Vulkan driver with a PS5 winsys: everything Porpoise and Dolphin draw goes through it | MIT and per-file licences |
+| [PS5 RetroArch](https://github.com/mihawk-99/PS5_RetroArch) by **Mihawk (mihawk-99)** | Porpoise began as a fork of it. The Dolphin PS5 port patch, the in-process core loader, threads, memory, crash reports and the build scripts all come from there. | GPL-3.0-or-later |
+| [PS5_Vulkan](https://github.com/mihawk-99/PS5_Vulkan) by **Mihawk (mihawk-99)** | Vulkan on PS5: the RADV link recipe and linker script | GPL-3.0-or-later |
+| [PS5_Mesa](https://github.com/mihawk-99/PS5_Mesa) by **Mihawk (mihawk-99)**, on [Mesa](https://mesa3d.org) | Mesa's **RADV** Vulkan driver with a PS5 winsys: everything Porpoise and Dolphin draw goes through it | MIT and per-file licences |
 | [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) by **John Törnblom** and contributors, with [Mihawk's fork](https://github.com/mihawk-99/PS5_PayloadSDK) | The toolchain, headers and platform layer | GPL-3.0-or-later |
 | **BlackBearReloaded**: ps5-native-app-boilerplate and ProsperoLight | The native title pipeline: ELF to signed `eboot.bin`, the generated `libc.prx` loader companion | GPL-3.0-or-later |
 | [LLVM](https://llvm.org) libc++, libc++abi, libunwind, compiler-rt | The C++ runtime, linked from the SDK release | Apache-2.0 WITH LLVM-exception |

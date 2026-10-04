@@ -640,10 +640,14 @@ int main(int argc, char **argv)
             ui.draw_game_menu(12.0);
         });
     }
-    /* Japanese and Italian. */
-    for (int lang : {6, 5})
+    /* The other languages: Japanese, Italian, German, Russian, Polish, Latin
+     * American Spanish, Brazilian Portuguese, Dutch. */
+    for (int lang : {6, 5, 9, 12, 11, 7, 8, 10})
     {
-        const std::string tag = lang == 6 ? "ja-" : "it-";
+        static const char *const tags[] = {"", "en-", "es-", "fr-", "pt-", "it-", "ja-",
+                                           "es419-", "ptbr-", "de-", "nl-", "pl-", "ru-"};
+        const std::string tag = tags[lang];
+        settings.ui_language = lang;
         porpoise::ui::apply_language(lang);
         ui.language_changed();
         press(kCircle, 3);
@@ -671,6 +675,7 @@ int main(int argc, char **argv)
             ui.draw_game_menu(12.0);
         });
     }
+    settings.ui_language = 0;
     porpoise::ui::apply_language(1);
     ui.language_changed();
 

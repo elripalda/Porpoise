@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <pthread.h>
@@ -134,7 +135,7 @@ pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 Progress g_progress;
 std::atomic<bool> g_busy{false};
 Release g_release;
-std::string g_work, g_app, g_cache;
+std::string g_app, g_cache;
 
 void set(Phase phase, std::size_t done = 0, std::size_t total = 0, const std::string &error = "")
 {
@@ -302,9 +303,11 @@ void *check_worker(void *)
     const std::string tmp = g_cache + ".part";
     if (std::FILE *f = std::fopen(tmp.c_str(), "wb"))
     {
-        std::fwrite(data.data(), 1, data.size(), f);
-        std::fclose(f);
-        std::rename(tmp.c_str(), g_cache.c_str());
+        const bool ok = std::fwrite(data.data(), 1, data.size(), f) == data.size();
+        if (std::fclose(f) == 0 && ok)
+            std::rename(tmp.c_str(), g_cache.c_str());
+        else
+            std::remove(tmp.c_str());
     }
     set(Phase::Checked);
     g_busy = false;
@@ -378,54 +381,86 @@ void *install_worker(void *)
     }
     const std::map<std::string, std::string> old_manifest = parse_manifest(read_file(g_app + "/manifest.sha256"));
 
-    /* 3. Every file beside the old one, checked, then in its place; eboot.bin
-     * and the manifest last. */
+    /* 3. Every file written beside the old one as <name>.new and checked;
+     * nothing is replaced until all of them are there. */
     std::vector<const Entry *> files;
     for (const Entry &e : entries)
-        if (e.name.compare(0, prefix.size(), prefix) == 0 && e.name.back() != '/')
+        if (e.name.compare(0, prefix.size(), prefix) == 0 && e.name.back() != '/' &&
+            e.name.find("..", prefix.size()) == std::string::npos)
             files.push_back(&e);
-    std::stable_sort(files.begin(), files.end(), [&](const Entry *a, const Entry *b) {
-        auto rank = [&](const Entry *e) {
-            const std::string rel = e->name.substr(prefix.size());
-            return rel == "eboot.bin" ? 2 : rel == "manifest.sha256" ? 1 : 0;
-        };
-        return rank(a) < rank(b);
-    });
-    std::size_t done = 0;
+    for (const auto &kv : manifest)
+    {
+        bool present = kv.first == "manifest.sha256";
+        for (const Entry *e : files)
+            present = present || e->name.compare(prefix.size(), std::string::npos, kv.first) == 0;
+        if (!present)
+        {
+            set(Phase::Failed, 0, 0, "The download is missing a file. Nothing was changed.");
+            g_busy = false;
+            return nullptr;
+        }
+    }
+    std::vector<std::string> written;
+    auto undo = [&](const std::string &error) {
+        for (const std::string &rel : written)
+            std::remove((g_app + "/" + rel + ".new").c_str());
+        set(Phase::Failed, 0, 0, error);
+        g_busy = false;
+    };
     set(Phase::Installing, 0, files.size());
     for (const Entry *e : files)
     {
         const std::string rel = e->name.substr(prefix.size());
-        if (rel.find("..") != std::string::npos)
-            continue;
         std::vector<std::uint8_t> body;
         const auto want = manifest.find(rel);
         if (!extract(zip, *e, body) ||
             (want != manifest.end() && sha256(body.data(), body.size()) != want->second))
         {
-            set(Phase::Failed, done, files.size(),
-                "A file in the download was damaged (" + rel + "). Porpoise may be partly updated: download the "
-                "release by hand.");
-            g_busy = false;
+            undo("A file in the download is damaged. Nothing was changed.");
             return nullptr;
         }
         const std::string target = g_app + "/" + rel, part = target + ".new";
         make_dirs(target);
         std::FILE *f = std::fopen(part.c_str(), "wb");
-        const bool written = f && std::fwrite(body.data(), 1, body.size(), f) == body.size();
+        bool ok = f && std::fwrite(body.data(), 1, body.size(), f) == body.size() && std::fflush(f) == 0 &&
+                  fsync(fileno(f)) == 0;
         if (f)
-            std::fclose(f);
-        if (!written || std::rename(part.c_str(), target.c_str()) != 0)
+            ok = std::fclose(f) == 0 && ok;
+        if (ok)
         {
-            std::remove(part.c_str());
-            set(Phase::Failed, done, files.size(),
-                "Porpoise couldn't write its own folder (" + rel + "). Update it by hand from GitHub.");
+            /* The old file's permissions, for programs and libraries. */
+            struct stat st;
+            if (stat(target.c_str(), &st) == 0)
+                chmod(part.c_str(), st.st_mode & 07777);
+        }
+        written.push_back(rel);
+        if (!ok)
+        {
+            undo("Porpoise couldn't write its own folder (the console may be full). Nothing was changed.");
+            return nullptr;
+        }
+        set(Phase::Installing, written.size(), files.size());
+    }
+    /* 4. All of them in place: eboot.bin, then the manifest, last. */
+    std::stable_sort(written.begin(), written.end(), [](const std::string &a, const std::string &b) {
+        auto rank = [](const std::string &rel) { return rel == "manifest.sha256" ? 2 : rel == "eboot.bin" ? 1 : 0; };
+        return rank(a) < rank(b);
+    });
+    for (std::size_t i = 0; i < written.size(); ++i)
+    {
+        const std::string target = g_app + "/" + written[i];
+        if (std::rename((target + ".new").c_str(), target.c_str()) != 0)
+        {
+            for (std::size_t j = i; j < written.size(); ++j)
+                std::remove((g_app + "/" + written[j] + ".new").c_str());
+            set(Phase::Failed, 0, 0,
+                i == 0 ? "Porpoise couldn't write its own folder. Nothing was changed."
+                       : "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.");
             g_busy = false;
             return nullptr;
         }
-        set(Phase::Installing, ++done, files.size());
     }
-    /* 4. What the old build had and the new one doesn't. */
+    /* 5. What the old build had and the new one doesn't. */
     for (const auto &kv : old_manifest)
         if (manifest.find(kv.first) == manifest.end() && kv.first.find("..") == std::string::npos)
             std::remove((g_app + "/" + kv.first).c_str());
@@ -436,30 +471,62 @@ void *install_worker(void *)
 }
 } // namespace
 
+/* The end of the JSON value (object or array) that opens at `open`, minding
+ * strings; npos when it doesn't close. */
+std::size_t matching(const std::string &json, std::size_t open)
+{
+    int depth = 0;
+    bool in_string = false;
+    for (std::size_t i = open; i < json.size(); ++i)
+    {
+        const char c = json[i];
+        if (in_string)
+        {
+            if (c == '\\')
+                ++i;
+            else if (c == '"')
+                in_string = false;
+            continue;
+        }
+        if (c == '"')
+            in_string = true;
+        else if (c == '{' || c == '[')
+            ++depth;
+        else if ((c == '}' || c == ']') && --depth == 0)
+            return i;
+    }
+    return std::string::npos;
+}
+
 bool parse(const std::string &json, Release &out)
 {
     out = Release{};
     out.tag = field(json, 0, json.size(), "tag_name");
     out.page = field(json, 0, json.size(), "html_url");
-    /* The release's Porpoise-*.zip among its assets. */
-    std::size_t at = 0;
-    while ((at = json.find("\"name\"", at)) != std::string::npos)
-    {
-        const std::string name = field(json, at, json.size(), "name");
-        const std::size_t url_at = json.find("\"browser_download_url\"", at);
-        if (url_at == std::string::npos)
-            break;
-        if (name.rfind("Porpoise", 0) == 0 && name.size() > 4 && name.compare(name.size() - 4, 4, ".zip") == 0)
+    /* The release's Porpoise-*.zip: each asset is looked at on its own, its
+     * name taken from the end of its download link. */
+    const std::size_t key = json.find("\"assets\"");
+    const std::size_t open = key == std::string::npos ? key : json.find('[', key);
+    const std::size_t close = open == std::string::npos ? open : matching(json, open);
+    if (close != std::string::npos)
+        for (std::size_t at = json.find('{', open); at != std::string::npos && at < close;)
         {
-            out.zip_url = field(json, url_at, json.size(), "browser_download_url");
-            out.size = std::size_t(std::strtoull(field(json, at, url_at, "size").c_str(), nullptr, 10));
-            std::string digest = field(json, at, url_at, "digest");
-            if (digest.rfind("sha256:", 0) == 0)
-                out.sha256 = digest.substr(7);
-            break;
+            const std::size_t end = matching(json, at);
+            if (end == std::string::npos || end > close)
+                break;
+            const std::string url = field(json, at, end, "browser_download_url");
+            const std::string name = url.substr(url.rfind('/') == std::string::npos ? 0 : url.rfind('/') + 1);
+            if (name.rfind("Porpoise", 0) == 0 && name.size() > 4 && name.compare(name.size() - 4, 4, ".zip") == 0)
+            {
+                out.zip_url = url;
+                out.size = std::size_t(std::strtoull(field(json, at, end, "size").c_str(), nullptr, 10));
+                const std::string digest = field(json, at, end, "digest");
+                if (digest.rfind("sha256:", 0) == 0)
+                    out.sha256 = digest.substr(7);
+                break;
+            }
+            at = json.find('{', end);
         }
-        at = url_at;
-    }
     return !out.tag.empty();
 }
 
@@ -489,13 +556,19 @@ void start_check(const std::string &cache_path)
         check_worker(nullptr);
 }
 
-void start_install(const Release &release, const std::string &work_dir, const std::string &app_dir)
+void start_install(const Release &release, const std::string &app_dir)
 {
-    if (release.zip_url.empty() || g_busy.exchange(true))
+    if (g_busy.exchange(true))
         return;
+    if (release.zip_url.empty())
+    {
+        set(Phase::Failed, 0, 0, "This release has no Porpoise zip. Download it from GitHub by hand.");
+        g_busy = false;
+        return;
+    }
     g_release = release;
-    g_work = work_dir;
     g_app = app_dir;
+    set(Phase::Downloading, 0, release.size);
     pthread_t t;
     if (create_title_thread(&t, install_worker, nullptr) == 0)
         pthread_detach(t);

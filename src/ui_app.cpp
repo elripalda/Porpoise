@@ -283,15 +283,16 @@ App::Action App::update(const Input &in, double dt)
 
     if (updating())
     {
-        /* The update holds the screen; when it's in, Cross closes Porpoise. */
-        if (update_phase_ == 4 && pressed(BtnCross))
+        /* The update holds the screen; when it's in, Cross closes Porpoise,
+         * as it does by itself a few seconds later. */
+        if (update_phase_ == 4 && (pressed(BtnCross) || time_ - update_done_time_ > 8.0))
             return Action::Quit;
         return Action::None;
     }
     if (update_failed_)
     {
         update_failed_ = false;
-        open_dialog(DialogKind::Info, tr("The update didn't finish"), update_error_, "");
+        open_dialog(DialogKind::Info, tr("The update didn't finish"), tr(update_error_), "");
     }
     if (dialog_.open)
         return update_dialog(left, right);
@@ -584,6 +585,9 @@ App::Action App::confirm_dialog(DialogKind kind)
         }
         return Action::None;
     case DialogKind::InstallUpdate:
+        update_phase_ = 2;
+        update_done_ = 0;
+        update_total_ = latest_size_;
         return Action::InstallUpdate;
     case DialogKind::DeleteState:
         if (states_game_)

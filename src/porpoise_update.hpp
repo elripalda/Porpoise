@@ -4,10 +4,12 @@
  *
  * GitHub's answer for the newest release names its zip, the zip's size and
  * its SHA-256. The update downloads the zip, checks its size and SHA-256, and
- * installs it into the running app's own folder (/app0): every file is
- * written beside the old one as <name>.new, checked against the SHA-256 the
- * zip's manifest.sha256 gives it, and renamed over the old one, eboot.bin
- * last. Files the old manifest had and the new one doesn't are removed.
+ * installs it into the running app's own folder (/app0) in two steps: every
+ * file is first written beside the old one as <name>.new and checked against
+ * the SHA-256 the zip's manifest.sha256 gives it; only when all of them are
+ * there are they renamed over the old ones, eboot.bin and the manifest last.
+ * If anything fails before that, the .new files are removed and nothing has
+ * changed. Files the old manifest had and the new one doesn't are removed.
  * Games, saves and settings live in /data/porpoise and aren't touched. Then
  * Porpoise has to be opened again: the running one is the old build.
  *
@@ -51,7 +53,8 @@ struct Progress
 Progress progress();
 /* Looks for a newer release now; the answer is written to cache_path. */
 void start_check(const std::string &cache_path);
-void start_install(const Release &release, const std::string &work_dir, const std::string &app_dir = "/app0");
+/* Downloads the release and puts it in app_dir; the zip is held in memory. */
+void start_install(const Release &release, const std::string &app_dir = "/app0");
 /* Back to Idle once the UI has shown the result. */
 void acknowledge();
 } // namespace porpoise::update

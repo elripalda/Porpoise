@@ -22,6 +22,7 @@
 #include <ctime>
 #include <string>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 #include "libretro.h"
@@ -638,6 +639,9 @@ bool serialize(std::vector<unsigned char> &data)
 {
     if (!h.running || !h.api.serialize_size || !h.api.serialize)
         return false;
+    /* The player saved by hand before a slot chosen in Details had loaded:
+     * that slot no longer loads over what they're doing. */
+    h.pending_state.clear();
     timespec t0{}, t1{}, t2{};
     clock_gettime(CLOCK_MONOTONIC, &t0);
     const std::size_t size = h.api.serialize_size();
@@ -669,8 +673,10 @@ bool save_state(const char *path)
     std::FILE *f = std::fopen(tmp.c_str(), "wb");
     if (!f)
         return false;
-    const bool written = std::fwrite(data.data(), 1, size, f) == size;
-    std::fclose(f);
+    /* All of it on disk before it takes the old one's place: a full disk
+     * leaves the old state as it was. */
+    bool written = std::fwrite(data.data(), 1, size, f) == size && std::fflush(f) == 0 && fsync(fileno(f)) == 0;
+    written = std::fclose(f) == 0 && written;
     if (!written || std::rename(tmp.c_str(), path) != 0)
     {
         std::remove(tmp.c_str());
@@ -686,6 +692,7 @@ bool load_state(const char *path)
 {
     if (!h.running || !h.api.unserialize)
         return false;
+    h.pending_state.clear(); /* an explicit load wins over the one from Details */
     std::vector<unsigned char> data;
     if (!read_whole_file(path, data) || data.empty())
         return false;
@@ -949,9 +956,10 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         /* A save state chosen in Details loads once the game is up. */
         if (!h.pending_state.empty() && h.have_frame && ++h.frames_with_picture > 30)
         {
-            if (!load_state(h.pending_state.c_str()) && h.log)
-                std::fprintf(h.log, "[porpoise] could not load %s\n", h.pending_state.c_str());
+            const std::string path = h.pending_state;
             h.pending_state.clear();
+            if (!load_state(path.c_str()) && h.log)
+                std::fprintf(h.log, "[porpoise] could not load %s\n", path.c_str());
         }
 
         if (!rate_checked && h.samples_in > 4096)

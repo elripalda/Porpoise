@@ -134,7 +134,8 @@ public:
 
     /* Textures. RGBA8, straight alpha. */
     Texture *texture_rgba(const std::uint8_t *pixels, int width, int height);
-    Texture *texture_file(const std::string &path); /* PNG / JPG */
+    /* PNG / JPG, halved until its longer side fits max_side. */
+    Texture *texture_file(const std::string &path, int max_side = 1024);
     void free_texture(Texture *texture);
     Texture *brand_mask() const { return brand_mask_; }
     const std::string &asset_dir() const { return init_.asset_dir; }

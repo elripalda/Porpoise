@@ -8,6 +8,7 @@
  * screen with the global values underneath and its changes on top. */
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -40,7 +41,7 @@ void App::set_latest_release(const std::string &tag, const std::string &url, std
     if (std::sscanf(t, "%d.%d.%d", &major, &minor, &patch) < 2)
         return;
     const bool newer = major > kVersionMajor || (major == kVersionMajor && minor > kVersionMinor) ||
-                       (major == kVersionMajor && minor == kVersionMinor && patch > 0);
+                       (major == kVersionMajor && minor == kVersionMinor && patch > kVersionPatch);
     latest_version_ = newer ? std::string(t) : "";
     latest_url_ = newer ? url : "";
     /* Only while the global settings are what rows_ holds: a game's settings
@@ -75,9 +76,11 @@ void App::set_update_progress(int phase, std::size_t done, std::size_t total, co
     update_error_ = error;
     if ((was == 2 || was == 3) && phase == 5)
         update_failed_ = true;
+    if (phase == 4 && was != 4)
+        update_done_time_ = time_;
     if (was == 1 && phase == 5)
     {
-        update_note_ = error;
+        update_note_ = tr(error);
         update_note_time_ = time_;
     }
     if (was == 1 && phase == 6)
@@ -363,7 +366,8 @@ void App::build_settings()
         r.label = tr("Language");
         r.help = tr("The language of Porpoise's menus. System follows your PS5.");
         r.int_value = &settings_->ui_language;
-        for (int i = 0; i < 7; ++i)
+        r.order = language_order();
+        for (int i : r.order)
             r.values.push_back(language_choice(i));
         rows_.push_back(r);
     }
@@ -390,6 +394,9 @@ void App::build_settings()
         rows_.push_back(r);
     }
     info("Created by", "@elripalda", "Ruben - www.elripalda.com");
+    info("Dolphin on PS5", "Mihawk (mihawk-99)",
+         "Mihawk (mihawk-99) brought the Dolphin core to the PS5. Porpoise is built on his port of Dolphin and "
+         "RetroArch.");
     info("Website", "www.elripalda.com", "Updates, news and more from the creator of Porpoise.");
     info("Report a bug", "github.com/elripalda/Porpoise",
          "Found a problem? Scan the code with your phone and open an issue with the game, what happened and "
@@ -403,10 +410,10 @@ void App::build_settings()
     info("Core API", "libretro / RetroArch", "Porpoise hosts the core through the libretro API that RetroArch made.");
     info("PS5 graphics", "Mesa RADV", "Vulkan on PS5 through Mesa's RADV driver (MIT), PS5_Mesa and PS5_Vulkan ports.");
     info("PS5 toolchain", "ps5-payload-sdk", "John T\xC3\xB6rnblom's ps5-payload-sdk (GPL v3) and its PS5 ports.");
-    info("PS5 port", "Mihawk", "The PS5 Dolphin and RetroArch port work Porpoise is built on.");
     info("Inspired by", "PS5SX2, ProsperoEden", "PS5 homebrew front ends that showed the way.");
     info("Box art and info", "GameTDB.com", "Covers, disc art and game details from GameTDB.com and its contributors.");
     info("Font", "Nunito", "Nunito by Vernon Adams and contributors, SIL Open Font License.");
+    info("Japanese font", "Noto Sans JP", "Noto Sans JP by Google, SIL Open Font License.");
     info("Images and audio", "stb", "stb_image, stb_truetype and stb_vorbis by Sean Barrett (public domain / MIT).");
     info("Thanks", "PS5 scene", "etaHEN, kstuff and ShadowMountPlus make homebrew like this possible.");
     info("Trademarks", "Nintendo", "GameCube and Wii are trademarks of Nintendo. Porpoise is not affiliated with Nintendo.");
@@ -484,6 +491,29 @@ void App::add_recommended_rows()
     h.section = "Recommended";
     h.header = true;
     out.push_back(h);
+    /* A Dolphin settings file of the player's own for this game: Porpoise
+     * leaves it as it is, so its switches would change nothing. */
+    if (game_for_->id.size() == 6)
+    {
+        const std::string own = "User/GameSettings/" + game_for_->id + ".ini";
+        if (std::FILE *f = std::fopen((saves_dir_ + "/" + own).c_str(), "r"))
+        {
+            char first[64] = {0};
+            const bool ours = std::fgets(first, sizeof first, f) && std::strncmp(first, "# Written by Porpoise", 21) == 0;
+            std::fclose(f);
+            if (!ours)
+            {
+                SettingRow r;
+                r.section = "Recommended";
+                r.label = tr("Your own Dolphin file");
+                r.help = trf("saves/{file} is yours, so Porpoise leaves it as it is and the switches below change "
+                             "nothing. Remove it to use them.",
+                             {{"file", own}});
+                r.values = {""};
+                out.push_back(r);
+            }
+        }
+    }
     auto add = [&](const std::string &label, const std::string &help, RecRow rec) {
         SettingRow r;
         r.section = "Recommended";
@@ -561,6 +591,9 @@ void App::add_recommended_rows()
         rec.key = fix.override_key;
         rec.value = fix.raw;
         rec.off_value = fix.off_value;
+        /* Dual core turned back off by the player's own choice, not forced on. */
+        if (fix.key == "CPUThread")
+            rec.off_value = game_.dual_core ? "True" : "False";
         add(label, why + tr("Dolphin's own fix for this game, on by itself. Turning it off may help speed but can bring "
                             "back the problem it fixes."),
             rec);
@@ -726,7 +759,14 @@ void App::change_setting(int dir)
     else
     {
         const int n = int(r.values.size());
-        *r.int_value = std::clamp(*r.int_value + dir, r.min, r.min + n - 1);
+        if (!r.order.empty())
+        {
+            const auto at = std::find(r.order.begin(), r.order.end(), *r.int_value);
+            const int i = at == r.order.end() ? 0 : int(at - r.order.begin());
+            *r.int_value = r.order[std::size_t(std::clamp(i + dir, 0, n - 1))];
+        }
+        else
+            *r.int_value = std::clamp(*r.int_value + dir, r.min, r.min + n - 1);
         if (r.text_value && r.int_value == &border_choice_)
             *r.text_value = border_names_[std::size_t(std::clamp(border_choice_, 0, int(border_names_.size()) - 1))];
     }
@@ -772,6 +812,7 @@ App::Action App::activate_row(const SettingRow &row)
             return Action::None;
         }
         sfx(Sound::MenuScroll);
+        update_phase_ = 1; /* until the updater says otherwise: a quick failure still shows */
         return Action::CheckUpdate;
     case kRowUseSetup:
         if (screen_ == Screen::GameSettings && game_for_)
@@ -997,6 +1038,8 @@ void App::draw_settings()
         const int count = int(r.values.size());
         if (r.bool_value)
             vi = *r.bool_value ? 1 : 0;
+        else if (r.int_value && !r.order.empty())
+            vi = int(std::find(r.order.begin(), r.order.end(), *r.int_value) - r.order.begin());
         else if (r.int_value)
             vi = *r.int_value - r.min;
         if (vi >= 0 && vi < count)
@@ -1058,7 +1101,9 @@ void App::draw_settings()
         else
         {
             const float vw = g.measure(Font::Bold, ts(28), value);
-            const float cw = std::max(270.0f, vw + 110), ch = 50, cx = right - cw;
+            /* Room for the arrows, and for the flag beside a language's name. */
+            const float flag_w = r.key == "ui_language" ? 54.0f : 0.0f;
+            const float cw = std::max(270.0f, vw + 110 + flag_w), ch = 50, cx = right - cw;
             g.panel(cx, cy - ch * 0.5f, cw, ch, rgba(0x07102E, on ? 0.55f : 0.40f), 1, kR,
                     own ? with_alpha(kCyan, 0.9f) : (on ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.75f)), on ? 1.8f : 1.4f);
             if (r.key == "ui_language" && r.int_value)
@@ -1067,14 +1112,14 @@ void App::draw_settings()
                 if (!flags_tried_)
                 {
                     flags_tried_ = true;
-                    flags_ = g.texture_file(g.asset_dir() + "/ui/flags.png");
+                    flags_ = g.texture_file(g.asset_dir() + "/ui/flags.png", 2048);
                 }
                 const int lang = *r.int_value > 0 ? *r.int_value : int(language()) + 1;
                 const float vw = g.measure(Font::Bold, ts(28), value), fw = 42, fh = 28, gap = 12;
                 const float x0 = cx + (cw - (fw + gap + vw)) * 0.5f;
-                if (flags_ && lang >= 1 && lang <= 6)
+                if (flags_ && lang >= 1 && lang <= kLanguages)
                 {
-                    const float uv[4] = {float(lang - 1) / 6.0f, 0, float(lang) / 6.0f, 1};
+                    const float uv[4] = {float(lang - 1) / float(kLanguages), 0, float(lang) / float(kLanguages), 1};
                     g.image_part(flags_, x0, cy - fh * 0.5f, fw, fh, uv);
                 }
                 g.text_mid(Font::Bold, ts(28), x0 + fw + gap, cy, value_c, Align::Left, value);

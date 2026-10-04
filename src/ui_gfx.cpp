@@ -397,7 +397,7 @@ Texture *Gfx::texture_rgba(const std::uint8_t *pixels, int width, int height)
     return upload(pixels, width, height);
 }
 
-Texture *Gfx::texture_file(const std::string &path)
+Texture *Gfx::texture_file(const std::string &path, int max_side)
 {
     std::vector<unsigned char> bytes;
     if (!read_file(path, bytes))
@@ -407,10 +407,10 @@ Texture *Gfx::texture_file(const std::string &path)
     if (!pixels)
         return nullptr;
     /* Big pictures (a player's own 4K cover) are halved until they fit
-     * 1024: nothing on screen is drawn larger, and memory stays small. */
+     * max_side (1024 unless the picture fills the screen): memory stays small. */
     std::vector<unsigned char> small;
     const unsigned char *src = pixels;
-    while (std::max(w, h) > 1024 && w >= 2 && h >= 2)
+    while (std::max(w, h) > max_side && w >= 2 && h >= 2)
     {
         const int nw = w / 2, nh = h / 2;
         std::vector<unsigned char> half(std::size_t(nw) * std::size_t(nh) * 4);
@@ -539,14 +539,20 @@ bool Gfx::build_fonts()
             fd.cap = fd.ascent * 0.7f;
         for (std::uint32_t cp = 32; cp < 127; ++cp)
             bake(fd, cp, fd.glyphs[cp]);
-        /* Latin-1 letters and marks, plus the typographic ones Porpoise uses. */
+        /* Latin-1 letters and marks, Polish and Dutch letters, Russian's
+         * Cyrillic, plus the typographic ones Porpoise uses. */
         fd.extra.clear();
         std::vector<std::uint32_t> cps;
         for (std::uint32_t cp = 0xA1; cp <= 0xFF; ++cp)
             cps.push_back(cp);
-        for (std::uint32_t cp : {0x152u, 0x153u, 0x2013u, 0x2014u, 0x2018u, 0x2019u, 0x201Cu, 0x201Du, 0x2022u,
-                                 0x2026u, 0x20ACu})
+        for (std::uint32_t cp = 0x410; cp <= 0x44F; ++cp)
             cps.push_back(cp);
+        for (std::uint32_t cp : {0x104u, 0x105u, 0x106u, 0x107u, 0x118u, 0x119u, 0x132u, 0x133u, 0x141u, 0x142u,
+                                 0x143u, 0x144u, 0x152u, 0x153u, 0x15Au, 0x15Bu, 0x179u, 0x17Au, 0x17Bu, 0x17Cu,
+                                 0x401u, 0x451u, 0x2013u, 0x2014u, 0x2018u, 0x2019u, 0x201Au, 0x201Cu, 0x201Du,
+                                 0x201Eu, 0x2022u, 0x2026u, 0x20ACu, 0x2116u})
+            cps.push_back(cp);
+        std::sort(cps.begin(), cps.end()); /* the lookup is a binary search */
         auto *finfo = static_cast<stbtt_fontinfo *>(fd.info);
         for (std::uint32_t cp : cps)
         {

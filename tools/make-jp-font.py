@@ -2,9 +2,10 @@
 # Porpoise - cuts assets/fonts/NotoSansJP-Porpoise.ttf: Noto Sans JP (SIL Open
 # Font License, https://github.com/google/fonts/tree/main/ofl/notosansjp) at
 # weight 600, subset to kana, CJK punctuation and every character the Japanese
-# menus use (src/ui_i18n.cpp). Run it again after changing the Japanese text.
+# menus use (i18n/ja.json). Run it again after changing the Japanese text.
 #   python3 tools/make-jp-font.py path/to/NotoSansJP[wght].ttf
 # Needs fontTools.  SPDX-License-Identifier: GPL-3.0-or-later
+import json
 import os
 import re
 import sys
@@ -15,9 +16,9 @@ from fontTools.varLib import instancer
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 source = sys.argv[1]
-table = open(os.path.join(ROOT, "src", "ui_i18n.cpp"), encoding="utf-8").read()
+table = "".join(json.load(open(os.path.join(ROOT, "i18n", "ja.json"), encoding="utf-8")).values())
 nunito = TTFont(os.path.join(ROOT, "assets", "fonts", "Nunito-Regular.ttf")).getBestCmap()
-chars = set(re.sub(r'\\x[0-9A-Fa-f]{2}', "", table))
+chars = set(table)
 chars.update("日本語本体の設定")
 for a, b in ((0x3041, 0x3097), (0x30A0, 0x3100), (0x3000, 0x3020)):
     chars.update(chr(c) for c in range(a, b))

@@ -1,0 +1,2214 @@
+[
+ {
+  "en": "Library",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Memory Cards",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Settings",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Your games",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "1 game",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "{n} games",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "No games yet",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Add games",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Copy .iso, .rvz or .ciso files with PS5 Upload into",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "or add your own folder in Settings, under Games.",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Play",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Browse",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Details",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Sort",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Sort games",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Title A-Z",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Recently played",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Current",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Back",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Choose",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Confirm",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Cancel",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "OK",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Select",
+  "section": "Top bar, tabs, library"
+ },
+ {
+  "en": "Not played yet",
+  "section": "Play history"
+ },
+ {
+  "en": "Played just now",
+  "section": "Play history"
+ },
+ {
+  "en": "Played today",
+  "section": "Play history"
+ },
+ {
+  "en": "Last played yesterday",
+  "section": "Play history"
+ },
+ {
+  "en": "Last played {n} days ago",
+  "section": "Play history"
+ },
+ {
+  "en": "Last played {n} weeks ago",
+  "section": "Play history"
+ },
+ {
+  "en": "Last played a while ago",
+  "section": "Play history"
+ },
+ {
+  "en": "USA",
+  "section": "Regions"
+ },
+ {
+  "en": "Japan",
+  "section": "Regions"
+ },
+ {
+  "en": "Korea",
+  "section": "Regions"
+ },
+ {
+  "en": "Europe",
+  "section": "Regions"
+ },
+ {
+  "en": "Germany",
+  "section": "Regions"
+ },
+ {
+  "en": "France",
+  "section": "Regions"
+ },
+ {
+  "en": "Spain",
+  "section": "Regions"
+ },
+ {
+  "en": "Italy",
+  "section": "Regions"
+ },
+ {
+  "en": "Australia",
+  "section": "Regions"
+ },
+ {
+  "en": "Developer",
+  "section": "Details"
+ },
+ {
+  "en": "Publisher",
+  "section": "Details"
+ },
+ {
+  "en": "Released",
+  "section": "Details"
+ },
+ {
+  "en": "Genre",
+  "section": "Details"
+ },
+ {
+  "en": "Players",
+  "section": "Details"
+ },
+ {
+  "en": "Rating",
+  "section": "Details"
+ },
+ {
+  "en": "Last played",
+  "section": "Details"
+ },
+ {
+  "en": "File",
+  "section": "Details"
+ },
+ {
+  "en": "No description yet. It arrives with the game info from GameTDB.com.",
+  "section": "Details"
+ },
+ {
+  "en": "Turn on Settings > Games > Download game info for a description.",
+  "section": "Details"
+ },
+ {
+  "en": "Game settings",
+  "section": "Details"
+ },
+ {
+  "en": "Back of box",
+  "section": "Details"
+ },
+ {
+  "en": "Front of box",
+  "section": "Details"
+ },
+ {
+  "en": "Right stick: turn the box",
+  "section": "Details"
+ },
+ {
+  "en": "Save data",
+  "section": "Details"
+ },
+ {
+  "en": "Custom",
+  "section": "Details"
+ },
+ {
+  "en": "Slot {slot}",
+  "section": "Memory cards"
+ },
+ {
+  "en": "SLOT {slot}",
+  "section": "Memory cards"
+ },
+ {
+  "en": "memcard|Open",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Open",
+  "section": "Memory cards"
+ },
+ {
+  "en": "No saves yet",
+  "section": "Memory cards"
+ },
+ {
+  "en": "1 save",
+  "section": "Memory cards"
+ },
+ {
+  "en": "{n} saves",
+  "section": "Memory cards"
+ },
+ {
+  "en": "1 block",
+  "section": "Memory cards"
+ },
+ {
+  "en": "{n} blocks",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Nothing saved in Slot {slot} yet",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Your saves appear here after you save in a game.",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Copy to {slot}",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Copy",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Delete",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Replace",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Delete this save?",
+  "section": "Memory cards"
+ },
+ {
+  "en": "{save}. It is removed from Slot {slot} for good.",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Copy to Slot {slot}?",
+  "section": "Memory cards"
+ },
+ {
+  "en": "{save} ({blocks}) is copied to Slot {slot}.",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Replace the save on Slot {slot}?",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Slot {slot} already has {save}. Copying replaces it with this one.",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Not enough room",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Slot {slot} has {free} blocks open; this save needs {need}.",
+  "section": "Memory cards"
+ },
+ {
+  "en": "This save is inside a card file",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Porpoise can delete saves that Dolphin keeps as files (its GCI folders), not ones inside a .raw memory card image.",
+  "section": "Memory cards"
+ },
+ {
+  "en": "This save can't be copied",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Porpoise copies saves that Dolphin keeps as files (its GCI folders).",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Could not delete the save",
+  "section": "Memory cards"
+ },
+ {
+  "en": "The file could not be removed: {path}",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Could not copy the save",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Writing {path} failed.",
+  "section": "Memory cards"
+ },
+ {
+  "en": "Launching",
+  "section": "Launch"
+ },
+ {
+  "en": "Starting {game}…",
+  "section": "Launch"
+ },
+ {
+  "en": "Starting game…",
+  "section": "Launch"
+ },
+ {
+  "en": "Loading Dolphin",
+  "section": "Launch"
+ },
+ {
+  "en": "Reading the disc",
+  "section": "Launch"
+ },
+ {
+  "en": "Preparing graphics",
+  "section": "Launch"
+ },
+ {
+  "en": "This game didn't start",
+  "section": "Launch"
+ },
+ {
+  "en": "Dolphin could not start it. The file may be damaged or in a format Porpoise can't read yet. Details are in porpoise/core.log.",
+  "section": "Launch"
+ },
+ {
+  "en": "PAUSED",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Resume",
+  "section": "In-game menu"
+ },
+ {
+  "en": "FPS counter",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Upscaling",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Volume",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Quit to library",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Close Porpoise",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Experimental: may slow some games down.",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Changes here are saved for this game.",
+  "section": "In-game menu"
+ },
+ {
+  "en": "4x (1440p) • exp.",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Games",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Video",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Graphics",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Audio",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Controls",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "System",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Interface",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "About",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "This game",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "GAME SETTINGS",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Sections",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Change",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Search",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Choose a folder",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Remove",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Reset",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Reset…",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Choose…",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "On",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Off",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Changes apply the next time a game starts",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Where Porpoise looks for games, and what it downloads for them",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "How Porpoise looks and reads",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Values in blue are this game's own",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "For this game only • values in blue are its own",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Choose a section with up and down, then press Right or Cross to go into it.",
+  "section": "Settings: sections"
+ },
+ {
+  "en": "Find games automatically",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Looks in /data/porpoise/games, /data/games, /data/roms, /data/iso and on USB drives.",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Download covers",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Box art from GameTDB.com, saved in /data/porpoise/covers. Needs the console online.",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Download game info",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Descriptions, developers, release dates and disc art from GameTDB.com, for Details.",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Porpoise looks in this folder and four levels below it. Cross stops looking here; files stay.",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Add a game folder",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Pick any folder on the console or a USB drive to search for games.",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Search for games now",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Looks through every folder again, for games you have just copied over.",
+  "section": "Settings: Games"
+ },
+ {
+  "en": "Internal resolution",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "How sharp games render. 1080p is the tested default; above it is experimental and can slow games.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "4x (1440p) • experimental",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "5x (1800p) • experimental",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "6x (4K) • experimental",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Widescreen hack",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Draws games in 16:9. Some games show glitches at the screen edges.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Aspect ratio",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "The picture's shape. Auto follows the game; Stretch fills the screen.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Auto",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Force 16:9",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Force 4:3",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Stretch to fill",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Anti-aliasing",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Smooths jagged edges. SSAA is the sharpest and the heaviest.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Anisotropic filtering",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Sharper textures on floors and walls seen at an angle.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Texture filtering",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Force sharp or smooth textures, or leave it to the game.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Game's own",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Nearest (sharp)",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Linear (smooth)",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Output resampling",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "How Dolphin scales its picture. Sharp bilinear keeps pixels crisp.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Default",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Sharp bilinear",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Area sampling",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Upscaling to the TV",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "How Porpoise fits the picture to your TV.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Smooth",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Sharp",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "FPS overlay",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Shows the frame rate in the corner while you play.",
+  "section": "Settings: Video"
+ },
+ {
+  "en": "Shader compilation",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Ubershaders hide the stutter when a game draws something new, at a GPU cost.",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Synchronous",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Ubershaders",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Async ubershaders",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Async, skip drawing",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Texture cache accuracy",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Safe fixes some games' text and effects; Fast is quickest.",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Fast",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Middle",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Safe",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Per-pixel lighting",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Smoother lighting on surfaces. A little heavier.",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Disable fog",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Removes distance fog. Some games use fog for their look.",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Crop overscan",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Hides the black borders some games draw at the edges.",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Custom textures",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Loads texture packs from /data/porpoise/saves/User/Load/Textures/<game ID>.",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Skip duplicate frames",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Saves work when a game shows the same frame twice.",
+  "section": "Settings: Graphics"
+ },
+ {
+  "en": "Menu music",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "The music that plays in Porpoise's menus.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Music volume",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "How loud the menu music plays.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Menu sounds",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "The sounds of moving through the menus.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Sounds volume",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "How loud the menu sounds play.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Game volume",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Volume of the game's sound.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Mute game",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Silences the game.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Button layout",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "GameCube: Cross is A, like confirming on PlayStation. PlayStation: by position.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "PlayStation",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "GameCube",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Vibration",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Controller rumble.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. Custom: your own buttons.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Customize buttons",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Give every GameCube button the DualSense button you like, on a picture of the controller.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Edit…",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Customize",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Controllers",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Up to four players. To join, turn on another controller and choose a user for it.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "1 player",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "{n} players",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Buttons",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "For {game} only",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Layout: {layout}",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Left stick: control stick   •   Right stick: C-stick",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "A button",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "B button",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "X button",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Y button",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Z button",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "L trigger",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "R trigger",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Start",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "D-pad up",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "D-pad down",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "D-pad left",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "D-pad right",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "OPTIONS",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "TOUCH PAD",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Cross",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Circle",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Square",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Triangle",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Press a button…",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Use the GameCube layout",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Use the PlayStation layout",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "In use",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Cross A • Square B",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Cross A • Circle B",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "The {layout} layout is on.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "{button} is now on {control}.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Nothing pressed; the button is unchanged.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Press the DualSense button for {button} ({n})",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Use",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Other games",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "A GameCube and Wii emulator for PS5, powered by Dolphin.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Report a bug",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "Found a problem? Open an issue there with the game, what happened and porpoise/core.log.",
+  "section": "Settings: Audio, Controls"
+ },
+ {
+  "en": "CPU clock",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Overclocking can smooth a game that slows down. 100% is the real console.",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Dual core",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Faster. Turn it off for a game that freezes or glitches.",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Fast disc loading",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Shorter loading screens. A few games need real disc speed.",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Cheats",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Dolphin's cheat codes for games that have them.",
+  "section": "Settings: System"
+ },
+ {
+  "en": "System language",
+  "section": "Settings: System"
+ },
+ {
+  "en": "The console's language. European games show their text in it.",
+  "section": "Settings: System"
+ },
+ {
+  "en": "English",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Japanese",
+  "section": "Settings: System"
+ },
+ {
+  "en": "German",
+  "section": "Settings: System"
+ },
+ {
+  "en": "French",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Spanish",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Italian",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Dutch",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Chinese (simplified)",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Chinese (traditional)",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Korean",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Progressive scan",
+  "section": "Settings: System"
+ },
+ {
+  "en": "480p output, as on a component cable.",
+  "section": "Settings: System"
+ },
+ {
+  "en": "Language",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "The language of Porpoise's menus. System follows your PS5.",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Reduced motion",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Stops the moving lights and shortens animations.",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Larger text",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Bigger labels across Porpoise.",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Reset all settings",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Every setting back to how Porpoise ships. Games, folders and saves stay.",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Reset all settings?",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Every setting goes back to how Porpoise ships. Your games, folders, covers and saves stay.",
+  "section": "Settings: Interface"
+ },
+ {
+  "en": "Own settings",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "Changes here apply to this game only. Everything else follows your settings.",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "None yet",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "1 change",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "{n} changes",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "Reset to default",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "Forgets this game's own settings; it follows your settings again.",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "Reset this game's settings?",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "It forgets its own settings and follows your settings again.",
+  "section": "Settings: a game's own"
+ },
+ {
+  "en": "Choose a game folder",
+  "section": "Folder browser"
+ },
+ {
+  "en": "Pick a drive",
+  "section": "Folder browser"
+ },
+ {
+  "en": "Console storage",
+  "section": "Folder browser"
+ },
+ {
+  "en": "USB drive {n}",
+  "section": "Folder browser"
+ },
+ {
+  "en": "Extended storage",
+  "section": "Folder browser"
+ },
+ {
+  "en": "Whole system",
+  "section": "Folder browser"
+ },
+ {
+  "en": "No games right here",
+  "section": "Folder browser"
+ },
+ {
+  "en": "1 game right here",
+  "section": "Folder browser"
+ },
+ {
+  "en": "{n} games right here",
+  "section": "Folder browser"
+ },
+ {
+  "en": "No folders inside this one",
+  "section": "Folder browser"
+ },
+ {
+  "en": "Use this folder",
+  "section": "Folder browser"
+ },
+ {
+  "en": "Up",
+  "section": "Folder browser"
+ },
+ {
+  "en": "Porpoise for PS5",
+  "section": "About"
+ },
+ {
+  "en": "created by @elripalda",
+  "section": "About"
+ },
+ {
+  "en": "Created by",
+  "section": "About"
+ },
+ {
+  "en": "Website",
+  "section": "About"
+ },
+ {
+  "en": "Emulation",
+  "section": "About"
+ },
+ {
+  "en": "Dolphin core",
+  "section": "About"
+ },
+ {
+  "en": "Core API",
+  "section": "About"
+ },
+ {
+  "en": "PS5 graphics",
+  "section": "About"
+ },
+ {
+  "en": "PS5 toolchain",
+  "section": "About"
+ },
+ {
+  "en": "PS5 port",
+  "section": "About"
+ },
+ {
+  "en": "Inspired by",
+  "section": "About"
+ },
+ {
+  "en": "Box art and info",
+  "section": "About"
+ },
+ {
+  "en": "Font",
+  "section": "About"
+ },
+ {
+  "en": "Images and audio",
+  "section": "About"
+ },
+ {
+  "en": "Music and sounds",
+  "section": "About"
+ },
+ {
+  "en": "The menu music and sound effects, made for Porpoise by Ruben.",
+  "section": "About"
+ },
+ {
+  "en": "Thanks",
+  "section": "About"
+ },
+ {
+  "en": "Trademarks",
+  "section": "About"
+ },
+ {
+  "en": "A GameCube and Wii player for PS5, in the spirit of the GameCube's own menus.",
+  "section": "About"
+ },
+ {
+  "en": "Updates, news and more from the creator of Porpoise.",
+  "section": "About"
+ },
+ {
+  "en": "PS5 homebrew front ends that showed the way.",
+  "section": "About"
+ },
+ {
+  "en": "etaHEN, kstuff and ShadowMountPlus make homebrew like this possible.",
+  "section": "About"
+ },
+ {
+  "en": "GameCube and Wii are trademarks of Nintendo. Porpoise is not affiliated with Nintendo.",
+  "section": "About"
+ },
+ {
+  "en": "Covers, disc art and game details from GameTDB.com and its contributors.",
+  "section": "About"
+ },
+ {
+  "en": "Porpoise hosts the core through the libretro API that RetroArch made.",
+  "section": "About"
+ },
+ {
+  "en": "The PS5 Dolphin and RetroArch port work Porpoise is built on.",
+  "section": "About"
+ },
+ {
+  "en": "Getting game info",
+  "section": "Covers status (main)"
+ },
+ {
+  "en": "Getting covers {done} of {total}",
+  "section": "Covers status (main)"
+ },
+ {
+  "en": "Getting disc art {done} of {total}",
+  "section": "Covers status (main)"
+ },
+ {
+  "en": "1 saved",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "5x (1800p) • exp.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "6x (4K) • exp.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Accurate (LLE)",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Accurate NaNs",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Arbitrary mipmap detection",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Arcade CRT",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Arcade cabinet",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Async ubershaders hide the stutter when a game draws something new. Takes effect after a restart of the game.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Audio emulation",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Border",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Bounding box",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "C-stick",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "CPU access to the EFB",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "CPU overclock",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "CPU recompiler",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Control stick",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Controller art",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Cull vertices on the CPU",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Defer EFB copies",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Delete this save state?",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Dolphin has no fixes listed for this game, and Porpoise has no picks for it yet. The list grows as games are tested.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Dolphin's fix: {why}",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Dolphin's libretro core, maintained by the libretro team (GPL v2 or later).",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Dolphin, by the Dolphin Team - dolphin-emu.org. Free software, GPL v2 or later.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Download it from github.com/elripalda/Porpoise/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "EFB copies",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Early XFB output",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Empty",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Emulate EFB format changes",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Every game: {layout}",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Fast (HLE)",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Fast depth calculation",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Fast forward",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Fast texture sampling",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Favourite",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Favourites first",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Fills the bars beside a 4:3 picture (widescreen off). Add your own 1920x1080 PNGs to /data/porpoise/borders.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Fills the bars beside a 4:3 picture (widescreen off). Add your own PNGs to /data/porpoise/borders.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Filter strength",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Floating-point result flags",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Found a problem? Scan the code with your phone and open an issue with the game, what happened and porpoise/core.log.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Full memory management (MMU)",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Game",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. My layouts: your own, made in Customize buttons.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "How strong the screen filter is.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Instruction cache",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "John Törnblom's ps5-payload-sdk (GPL v3) and its PS5 ports.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Layout",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Less than a minute",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Load",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Load state",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Low DCBZ hack",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Make up to four layouts of your own, on a picture of the controller. Any game can use any of them.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Memory card size",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Midnight",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Most played",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "My layout {n}",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "None",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Nothing needed",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Nunito by Vernon Adams and contributors, SIL Open Font License.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "One of Dolphin's own fixes for this game. Dolphin applies it by itself.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "PS5 Button Icons and Controls by Zacksly - zacksly.itch.io, @_Zacksly on Twitter. CC BY 3.0, adapted for Porpoise.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Performance queries",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Play from here",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Play time",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "PlayStation, PS5 and DualSense are trademarks of Sony Interactive Entertainment. Porpoise is not affiliated with Sony.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Porpoise glass",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Porpoise {version} is out",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Porpoise's own filter on the way to the TV. CRT and Arcade CRT look best at 1080p or above.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor or a worn VHS tape.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Dolphin's own fixes for this game, and Porpoise's picks",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Porpoise's picks",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Recommended",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Recommended settings",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Runs the game 2x or 4x faster until you turn it off. The game's sound pauses meanwhile.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Save",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Save a state from the in-game menu (OPTIONS + touch pad) while you play.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Save state",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Save states",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Saved",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Saved to slot {n}.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Screen filter",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Settings > About",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Settings that run this game best on PS5, as tested.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Sharpen",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Show frames immediately (XFB)",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Skip VI interrupts",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Slot {n}",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Slot {n} loaded.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Slot {n} of {game} will be deleted. Your memory card saves are not touched.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Start over",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Start over from the GameCube layout",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Start over from the PlayStation layout",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Sync on idle skipping",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Tabs",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "That slot couldn't be loaded.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "That slot is empty.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "The game's state couldn't be saved.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Three slots for this game. Left and right choose the slot.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "To RAM too (accurate)",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "To texture only",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Unfavourite",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Update available",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Use this layout",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Vertex rounding",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Vulkan on PS5 through Mesa's RADV driver (MIT), PS5_Mesa and PS5_Vulkan ports.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "XFB copies",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Your own layouts: change any button on a picture of the DualSense.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "stb_image, stb_truetype and stb_vorbis by Sean Barrett (public domain / MIT).",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "{h} h {m} min",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "{layout} is on for this game.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "{layout} is on.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "{layout} now starts from the {base} layout.",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "{m} min",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "{n} saved",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Use…",
+  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
+ },
+ {
+  "en": "Porpoise is updated",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Updating to Porpoise {version}",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Press Cross to close Porpoise, then open it again from the home screen.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Putting the new files in place: {done} of {total}",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Downloading: {done} of {total} MB",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Keep Porpoise open until it's done.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Save state…",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Load state…",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Soft VHS",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Pocket",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Save as a setup",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Use a setup",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "My layout 1",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "My layout 2",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "My layout 3",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "My layout 4",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Choose one of three slots to save this moment in.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Choose a saved moment to go back to.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Keeps this game's Video and Graphics settings as a setup, to use on other games.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Puts a setup's Video and Graphics settings on this game.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "No save states for this game yet.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Press Cross again to replace setup {n}.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Saved as setup {n}.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "The setup couldn't be saved.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "That setup is empty.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Setup {n} is on for this game.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Setup {n}",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Save to which slot?",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Load which slot?",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Cross loads slot {n}. The game goes back to that moment.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Cross saves this moment in slot {n}.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Slot {n} has a save state. Cross, then Cross again, replaces it.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Press Cross again to replace slot {n}.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Slot",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Saving to slot {n}…",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Loading slot {n}…",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "This can take a few seconds.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Checking…",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Updating…",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Install {version}",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Check now",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Porpoise {version} is out.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "This is the newest Porpoise.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor, a worn or a soft VHS tape, 8-bit pixels, or a green handheld screen.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Fast save states",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Leaves the GPU's texture cache out of save states: much quicker to save, and smaller. Turn it off if a game looks wrong for a moment after loading a state.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Updates",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Downloads Porpoise {version} from GitHub, checks it, and puts it in place of this one. Your games, saves and settings stay. Porpoise closes when it's done.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Looks on GitHub for a newer Porpoise. Porpoise also looks once a day by itself.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Use setup {n}",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Puts setup {n}'s Video and Graphics settings on this game. It was saved from {game}.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Puts setup {n}'s Video and Graphics settings on every game. It was saved from {game}.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Dolphin's fix",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Porpoise's pick",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Cross turns them all on or off.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "One of Porpoise's picks for this game: {setting}.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Dolphin's note: {why}",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Applied",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Dolphin's own fix for this game, on by itself. Turning it off may help speed but can bring back the problem it fixes.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "{mb} MB from GitHub. Porpoise checks the download, puts the new files in place, and then closes so you can open the new one. Your games, saves and settings stay.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Porpoise checks the download, puts the new files in place, and then closes so you can open the new one. Your games, saves and settings stay.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Install",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Green is on for this game • changes apply the next time it starts",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Turn off",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Turn on",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "GPU texture decoding",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Porpoise can't reach /data",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "The console started Porpoise inside the app sandbox, so it can't see /data or USB drives, and asking the HEN didn't free it. Add PPSA99764 to your HEN's list of apps to jailbreak (etaHEN or OnionHEN), then open Porpoise again. Until then, games go in /app0/porpoise/games.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Frost",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Carbon",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Retro cabinet",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Synthwave cabinet",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "The update didn't finish",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "8-bit",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Install Porpoise {version}?",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Dolphin on PS5",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Mihawk (mihawk-99) brought the Dolphin core to the PS5. Porpoise is built on his port of Dolphin and RetroArch.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Japanese font",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Noto Sans JP by Google, SIL Open Font License.",
+  "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
+ },
+ {
+  "en": "Porpoise couldn't reach GitHub.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "GitHub didn't answer.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "The download didn't finish. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "The download is the wrong size. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "The download doesn't match its SHA-256. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "The download isn't a zip Porpoise can read. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "The download isn't a Porpoise release. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "The download is missing a file. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "This release has no Porpoise zip. Download it from GitHub by hand.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "A file in the download is damaged. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "Porpoise couldn't write its own folder (the console may be full). Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "Porpoise couldn't write its own folder. Nothing was changed.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "Your own Dolphin file",
+  "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.",
+  "section": "1.1: updater messages, recommended settings notes"
+ }
+]

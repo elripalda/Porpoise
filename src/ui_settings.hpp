@@ -77,7 +77,7 @@ struct Settings
      * in a game's settings file only, and written for Dolphin before the game
      * starts (write_dolphin_game_ini). */
     std::vector<std::pair<std::string, std::string>> dolphin;
-    int ui_language = 0; /* 0 follows the PS5, 1 English, 2 Spanish, 3 French, 4 Portuguese, 5 Italian, 6 Japanese */
+    int ui_language = 0; /* 0 follows the PS5, else porpoise::ui::Language + 1 (see ui_i18n.hpp) */
 
     /* Reads key = value lines. overlay: only the keys present change (a
      * game's own settings on top of the global ones). */

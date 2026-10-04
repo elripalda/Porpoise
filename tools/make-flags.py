@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # Porpoise - draws assets/ui/flags.png, the flags beside the languages in
-# Settings > Interface > Language: six 96x64 cells in a row, in the setting's
-# order after System: English (US), Spanish (Spain), French, Portuguese
-# (Portugal), Italian, Japanese. Simplified for a 40-pixel flag on a TV.
+# Settings > Interface > Language: twelve 96x64 cells in a row, in the
+# setting's numbering after System (porpoise::ui::Language): English (US),
+# Spanish (Spain), French, Portuguese (Portugal), Italian, Japanese, Spanish
+# (Latin America: Mexico's flag), Portuguese (Brazil), German, Dutch, Polish,
+# Russian. Simplified for a 40-pixel flag on a TV.
 # Needs Pillow.  SPDX-License-Identifier: GPL-3.0-or-later
 import math
 import os
@@ -68,8 +70,56 @@ def ja(d, w, h):
     d.ellipse([w / 2 - r, h / 2 - r, w / 2 + r, h / 2 + r], fill=(188, 0, 45))
 
 
-sheet = Image.new("RGBA", (W * 6, H), (0, 0, 0, 0))
-for i, fn in enumerate([us, es, fr, pt, it, ja]):
+def mx(d, w, h):
+    for i, c in enumerate([(0, 104, 71), (255, 255, 255), (206, 17, 38)]):
+        d.rectangle([i * w / 3, 0, (i + 1) * w / 3, h], fill=c)
+    # A plain emblem: the eagle on its cactus, as a brown and green mark.
+    cx, cy = w / 2, h / 2
+    d.ellipse([cx - w * 0.075, cy - h * 0.2, cx + w * 0.075, cy + h * 0.06], fill=(140, 90, 40))
+    d.rounded_rectangle([cx - w * 0.1, cy + h * 0.08, cx + w * 0.1, cy + h * 0.17], radius=w * 0.02,
+                        fill=(0, 104, 71))
+
+
+def br(d, w, h):
+    d.rectangle([0, 0, w, h], fill=(0, 151, 57))
+    m = w * 0.085
+    d.polygon([(m, h / 2), (w / 2, h * 0.11), (w - m, h / 2), (w / 2, h * 0.89)], fill=(254, 221, 0))
+    r = h * 0.25
+    d.ellipse([w / 2 - r, h / 2 - r, w / 2 + r, h / 2 + r], fill=(1, 33, 105))
+    # The white band across the globe.
+    band = Image.new("L", (int(w), int(h)), 0)
+    bd = ImageDraw.Draw(band)
+    bd.arc([w / 2 - r * 2.2, h / 2 - r * 0.55, w / 2 + r * 2.6, h / 2 + r * 3.6], 200, 290, fill=255,
+           width=int(r * 0.2))
+    globe = Image.new("L", (int(w), int(h)), 0)
+    ImageDraw.Draw(globe).ellipse([w / 2 - r, h / 2 - r, w / 2 + r, h / 2 + r], fill=255)
+    from PIL import ImageChops
+    d._image.paste((255, 255, 255, 255), (0, 0), ImageChops.multiply(band, globe))
+
+
+def de(d, w, h):
+    for i, c in enumerate([(0, 0, 0), (221, 0, 0), (255, 206, 0)]):
+        d.rectangle([0, i * h / 3, w, (i + 1) * h / 3], fill=c)
+
+
+def nl(d, w, h):
+    for i, c in enumerate([(174, 28, 40), (255, 255, 255), (33, 70, 139)]):
+        d.rectangle([0, i * h / 3, w, (i + 1) * h / 3], fill=c)
+
+
+def pl(d, w, h):
+    d.rectangle([0, 0, w, h / 2], fill=(255, 255, 255))
+    d.rectangle([0, h / 2, w, h], fill=(220, 20, 60))
+
+
+def ru(d, w, h):
+    for i, c in enumerate([(255, 255, 255), (0, 57, 166), (213, 43, 30)]):
+        d.rectangle([0, i * h / 3, w, (i + 1) * h / 3], fill=c)
+
+
+FLAGS = [us, es, fr, pt, it, ja, mx, br, de, nl, pl, ru]
+sheet = Image.new("RGBA", (W * len(FLAGS), H), (0, 0, 0, 0))
+for i, fn in enumerate(FLAGS):
     big = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
     flag = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 255))
     fn(ImageDraw.Draw(flag), W * S, H * S)

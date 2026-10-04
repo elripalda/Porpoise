@@ -73,10 +73,74 @@ std::string g_settings_path, g_options_path, g_saves_path, g_options_reference, 
 
 bool g_sandboxed = false; /* /data out of reach even after asking the HEN */
 
+/* Copies a file or a whole folder; what's already at `to` is left alone. */
+void copy_tree(const std::string &from, const std::string &to, int depth = 0)
+{
+    struct stat st;
+    if (depth > 8 || stat(from.c_str(), &st) != 0)
+        return;
+    if (S_ISDIR(st.st_mode))
+    {
+        mkdir(to.c_str(), 0777);
+        if (DIR *d = opendir(from.c_str()))
+        {
+            while (dirent *e = readdir(d))
+                if (std::strcmp(e->d_name, ".") != 0 && std::strcmp(e->d_name, "..") != 0)
+                    copy_tree(from + "/" + e->d_name, to + "/" + e->d_name, depth + 1);
+            closedir(d);
+        }
+        return;
+    }
+    if (stat(to.c_str(), &st) == 0)
+        return;
+    std::FILE *in = std::fopen(from.c_str(), "rb");
+    if (!in)
+        return;
+    const std::string part = to + ".part";
+    std::FILE *out = std::fopen(part.c_str(), "wb");
+    bool ok = out != nullptr;
+    char buf[65536];
+    std::size_t n;
+    while (ok && (n = std::fread(buf, 1, sizeof buf, in)) > 0)
+        ok = std::fwrite(buf, 1, n, out) == n;
+    std::fclose(in);
+    if (out)
+        ok = std::fclose(out) == 0 && ok;
+    if (!ok || std::rename(part.c_str(), to.c_str()) != 0)
+        std::remove(part.c_str());
+}
+
+/* A player whose Porpoise 1.0 couldn't reach /data kept everything in the
+ * app's own folder. Now that /data is open, their settings, memory cards,
+ * save states and the rest come along once (games stay where they are and are
+ * still found there; covers download again). */
+void bring_over_app_folder_data()
+{
+    const std::string old_dir = "/app0/porpoise";
+    struct stat st;
+    if (stat((old_dir + "/settings.ini").c_str(), &st) != 0 || stat((g_data + "/settings.ini").c_str(), &st) == 0)
+        return;
+    ps5::debug::mark("main: bringing the player's things over from the app folder");
+    for (const char *item : {"settings.ini", "library.txt", "game-settings", "states", "setups", "lang", "saves/User/GC",
+                             "saves/User/Wii", "saves/User/Config", "saves/User/GameSettings"})
+    {
+        const std::string rel = item;
+        if (rel.rfind("saves/User/", 0) == 0)
+        {
+            mkdir((g_data + "/saves").c_str(), 0777);
+            mkdir((g_data + "/saves/User").c_str(), 0777);
+        }
+        copy_tree(old_dir + "/" + rel, g_data + "/" + rel);
+    }
+}
+
 void choose_data_dir()
 {
     if (porpoise::jailbreak::ensure())
+    {
         g_data = "/data/porpoise";
+        bring_over_app_folder_data();
+    }
     else
         g_sandboxed = true;
     mkdir(g_data.c_str(), 0777);
@@ -89,6 +153,13 @@ void choose_data_dir()
     g_options_reference = g_data + "/options-reference.txt";
     g_core_log = "/app0/porpoise/core.log";
     ps5::debug::mark(("main: player data in " + g_data).c_str());
+    /* Test files the Dolphin core still reads: worth knowing about when a
+     * setting doesn't seem to take. */
+    struct stat st;
+    if (stat("/app0/dolphin-options.txt", &st) == 0)
+        ps5::debug::mark("main: /app0/dolphin-options.txt is there: its options win over Porpoise's");
+    if (stat("/app0/dolphin-debug.txt", &st) == 0)
+        ps5::debug::mark("main: /app0/dolphin-debug.txt is there: the shader cache is off while it is");
 }
 
 porpoise::ui::Gfx g_gfx;
@@ -203,10 +274,14 @@ const char *info_lang()
 {
     switch (porpoise::ui::language())
     {
-    case porpoise::ui::Language::Spanish: return "ES";
+    case porpoise::ui::Language::Spanish:
+    case porpoise::ui::Language::SpanishLatinAmerica: return "ES";
     case porpoise::ui::Language::French: return "FR";
-    case porpoise::ui::Language::Portuguese: return "PT";
+    case porpoise::ui::Language::Portuguese:
+    case porpoise::ui::Language::PortugueseBrazil: return "PT";
     case porpoise::ui::Language::Italian: return "IT";
+    case porpoise::ui::Language::German: return "DE";
+    case porpoise::ui::Language::Dutch: return "NL";
     default: return "EN";
     }
 }
@@ -238,6 +313,8 @@ porpoise::ui::LibraryPaths library_paths()
 {
     porpoise::ui::LibraryPaths paths;
     paths.roots = {"/app0/content", g_data + "/games"};
+    if (g_data != "/app0/porpoise")
+        paths.roots.push_back("/app0/porpoise/games"); /* where a sandboxed 1.0 kept them */
     if (g_settings.auto_search)
     {
         for (const char *dir : {"/data/games", "/data/GameCube", "/data/gamecube", "/data/Wii", "/data/wii",
@@ -256,6 +333,96 @@ porpoise::ui::LibraryPaths library_paths()
 }
 
 /* One key = value in an INI file's [section], kept with everything else in it. */
+/* The Dolphin graphics settings a game's own files change, and the core
+ * options that carry the same thing. The core copies every one of its options
+ * straight into the running video config whenever any option changes (as the
+ * in-game menu does), which would undo the game's own values for the rest of
+ * the session; so for each game these options are given the game's values. */
+struct GameOption
+{
+    const char *section, *key, *option;
+};
+constexpr GameOption kGameOptions[] = {
+    {"Video_Hacks", "EFBToTextureEnable", "dolphin_efb_to_texture"},
+    {"Video_Hacks", "XFBToTextureEnable", "dolphin_xfb_to_texture_enable"},
+    {"Video_Hacks", "EFBAccessEnable", "dolphin_efb_access_enable"},
+    {"Video_Hacks", "EFBAccessDeferInvalidation", "dolphin_efb_access_defer_invalidation"},
+    {"Video_Hacks", "BBoxEnable", "dolphin_bbox_enabled"},
+    {"Video_Hacks", "DisableCopyToVRAM", "dolphin_efb_to_vram"},
+    {"Video_Hacks", "DeferEFBCopies", "dolphin_defer_efb_copies"},
+    {"Video_Hacks", "ImmediateXFBEnable", "dolphin_immediate_xfb"},
+    {"Video_Hacks", "EFBScaledCopy", "dolphin_efb_scaled_copy"},
+    {"Video_Hacks", "EFBEmulateFormatChanges", "dolphin_efb_emulate_format_changes"},
+    {"Video_Hacks", "VertexRounding", "dolphin_vertex_rounding"},
+    {"Video_Hacks", "VISkip", "dolphin_vi_skip"},
+    {"Video_Hacks", "FastTextureSampling", "dolphin_fast_texture_sampling"},
+    {"Video_Settings", "SafeTextureCacheColorSamples", "dolphin_texture_cache_accuracy"},
+};
+
+/* The game's values for kGameOptions, as Dolphin layers its files: Sys then
+ * User, each <first letter>, <first three>, <ID>. */
+std::vector<std::pair<std::string, std::string>> game_dolphin_options(const std::string &id)
+{
+    std::vector<std::pair<std::string, std::string>> out;
+    if (id.size() != 6)
+        return out;
+    std::vector<std::string> files;
+    for (const std::string &dir : {std::string("/app0/system/dolphin-emu/Sys/GameSettings"),
+                                   g_saves_path + "/User/GameSettings"})
+        for (const std::string &name : {id.substr(0, 1), id.substr(0, 3), id})
+            files.push_back(dir + "/" + name + ".ini");
+    for (const std::string &path : files)
+    {
+        std::FILE *f = std::fopen(path.c_str(), "r");
+        if (!f)
+            continue;
+        char raw[512];
+        std::string section;
+        while (std::fgets(raw, sizeof raw, f))
+        {
+            std::string line = raw;
+            while (!line.empty() && (line.back() == '\n' || line.back() == '\r' || line.back() == ' '))
+                line.pop_back();
+            if (!line.empty() && line[0] == '[')
+            {
+                section = line.substr(1, line.find(']') == std::string::npos ? std::string::npos : line.find(']') - 1);
+                continue;
+            }
+            const std::size_t eq = line.find('=');
+            if (eq == std::string::npos || line[0] == '#' || line[0] == ';')
+                continue;
+            std::string key = line.substr(0, eq), value = line.substr(eq + 1);
+            while (!key.empty() && key.back() == ' ')
+                key.pop_back();
+            while (!value.empty() && value.front() == ' ')
+                value.erase(0, 1);
+            for (const GameOption &g : kGameOptions)
+                if (section == g.section && key == g.key)
+                {
+                    std::string v;
+                    if (key == "SafeTextureCacheColorSamples")
+                    {
+                        const long n = std::strtol(value.c_str(), nullptr, 10);
+                        v = n <= 0 ? "0" : n > 128 ? "512" : "128";
+                    }
+                    else
+                        v = (value == "True" || value == "true" || value == "1") ? "enabled" : "disabled";
+                    bool replaced = false;
+                    for (auto &kv : out)
+                        if (kv.first == g.option)
+                        {
+                            kv.second = v;
+                            replaced = true;
+                        }
+                    if (!replaced)
+                        out.emplace_back(g.option, v);
+                }
+        }
+        std::fclose(f);
+    }
+    return out;
+}
+
 void set_ini_value(const std::string &path, const std::string &section, const std::string &key,
                    const std::string &value)
 {
@@ -336,8 +503,37 @@ void read_latest_release()
     }
 }
 
+/* Where an update goes: the folder Porpoise was installed to, when it's the
+ * usual one and holds this same build (the app folder may be served from a
+ * copy of it), else the app folder itself. */
+std::string install_dir()
+{
+    auto read_all = [](const std::string &path) {
+        std::string text;
+        if (std::FILE *f = std::fopen(path.c_str(), "rb"))
+        {
+            char buf[16384];
+            std::size_t n;
+            while ((n = std::fread(buf, 1, sizeof buf, f)) > 0)
+                text.append(buf, n);
+            std::fclose(f);
+        }
+        return text;
+    };
+    const std::string home = "/data/homebrew/PPSA99764";
+    const std::string mine = read_all("/app0/manifest.sha256");
+    const bool same = !mine.empty() && mine == read_all(home + "/manifest.sha256");
+    ps5::debug::mark(("main: the update goes to " + (same ? home : std::string("/app0"))).c_str());
+    return same ? home : "/app0";
+}
+
 void fetch_covers()
 {
+    /* Not while the updater is online: one download at a time, and it goes first. */
+    const porpoise::update::Phase updating = porpoise::update::progress().phase;
+    if (updating == porpoise::update::Phase::Checking || updating == porpoise::update::Phase::Downloading ||
+        updating == porpoise::update::Phase::Installing)
+        return;
     porpoise::covers::Request request;
     request.dir = g_data + "/covers";
     request.covers = g_settings.download_covers;
@@ -414,7 +610,7 @@ void draw_border()
         g_border_loaded = g_play.border;
         const std::string path = porpoise::borders::path_of(g_play.border);
         if (!path.empty())
-            g_border = g_gfx.texture_file(path);
+            g_border = g_gfx.texture_file(path, 2048); /* full screen: full size */
         if (!g_border)
             ps5::debug::mark(("main: border not found: " + g_play.border).c_str());
     }
@@ -731,7 +927,7 @@ int main()
             {
                 porpoise::covers::stop();
                 ps5::debug::mark(("main: updating to " + g_release.tag).c_str());
-                porpoise::update::start_install(g_release, g_data + "/update", "/app0");
+                porpoise::update::start_install(g_release, install_dir());
             }
             if (action == porpoise::ui::App::Action::Quit)
             {
@@ -763,6 +959,10 @@ int main()
          * (Dolphin.ini's base layer, read when the core starts). */
         set_ini_value(g_saves_path + "/User/Config/GFX.ini", "Settings", "SaveTextureCacheToState",
                       g_play.fast_states ? "False" : "True");
+        /* Shaders compile on four background threads, not Dolphin's one: the
+         * game spends less time on the slow ubershaders and stutters less the
+         * first time it shows something. */
+        set_ini_value(g_saves_path + "/User/Config/GFX.ini", "Settings", "ShaderCompilerThreads", "4");
         if (launch->id.size() == 6)
         {
             /* The game's Dolphin settings (recommended ones turned on or off),
@@ -774,6 +974,20 @@ int main()
                 ps5::debug::mark("main: the game's Dolphin settings file is the player's own; left as it is");
             for (const auto &[k, v] : g_play.dolphin)
                 ps5::debug::mark(("main: Dolphin setting for this game: " + k + " = " + v).c_str());
+            /* The same values as core options, so a change in the in-game menu
+             * keeps them (see kGameOptions). */
+            const auto pinned = game_dolphin_options(launch->id);
+            if (!pinned.empty())
+                if (std::FILE *f = std::fopen(g_options_path.c_str(), "a"))
+                {
+                    std::fprintf(f, "# Set by Porpoise for this game only (its Dolphin settings):\n");
+                    for (const auto &[k, v] : pinned)
+                    {
+                        std::fprintf(f, "%s = %s\n", k.c_str(), v.c_str());
+                        ps5::debug::mark(("main: core option for this game: " + k + " = " + v).c_str());
+                    }
+                    std::fclose(f);
+                }
         }
         porpoise::pad::set_mapping(g_play.mapping());
         porpoise::pad::set_rumble_enabled(g_play.rumble);

@@ -264,8 +264,11 @@ void App::menu_state_done(MenuRequest::Kind kind, int slot, bool ok)
 App::MenuRequest App::take_menu_request()
 {
     /* Handed over once the "Saving..." it shows has been drawn, so the
-     * player sees it while the game's state is taken. */
-    if (menu_busy_.kind == MenuRequest::None || menu_busy_handed_ || menu_busy_frames_ < 1)
+     * player sees it while the game's state is taken; or after a moment
+     * anyway, when the menu isn't being drawn (before the game's first
+     * picture). */
+    if (menu_busy_.kind == MenuRequest::None || menu_busy_handed_ ||
+        (menu_busy_frames_ < 1 && time_ - menu_busy_start_ < 0.25))
         return {};
     menu_busy_handed_ = true;
     return menu_busy_;
@@ -381,9 +384,12 @@ int App::update_game_menu(const Input &in, double dt)
     {
         menu_tab_ = (menu_tab_ + (pressed(BtnL1) ? kTabCount - 1 : 1)) % kTabCount;
         menu_row_ = 0;
+        menu_confirm_ = false;
         sfx(Sound::MovingTab);
         return 0;
     }
+    if (up || down)
+        menu_confirm_ = false; /* "press again to replace" is for the row it was said on */
     if (up)
     {
         menu_row_ = (menu_row_ + count - 1) % count;
@@ -580,7 +586,7 @@ void App::draw_controller_lines(float x, float y, float w, const Mapping &m)
     if (!lines_art_tried_)
     {
         lines_art_tried_ = true;
-        lines_art_ = g.texture_file(g.asset_dir() + "/ui/controller-lines.png");
+        lines_art_ = g.texture_file(g.asset_dir() + "/ui/controller-lines.png", 2048);
     }
     if (!lines_art_)
         return;

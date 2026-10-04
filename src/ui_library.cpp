@@ -216,7 +216,7 @@ std::string relative_time(long long then, long long now)
         return tr("Played today");
     if (d < 2 * 24 * 60 * 60)
         return tr("Last played yesterday");
-    if (d < 7 * 24 * 60 * 60)
+    if (d < 14 * 24 * 60 * 60) /* "2 weeks" from 14 days: never "1 weeks" */
         return trf("Last played {n} days ago", {{"n", std::to_string(d / (24 * 60 * 60))}});
     if (d < 30LL * 24 * 60 * 60)
         return trf("Last played {n} weeks ago", {{"n", std::to_string(d / (7 * 24 * 60 * 60))}});

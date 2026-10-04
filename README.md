@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 1.0</b></a> ·
+  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 1.1</b></a> ·
   <a href="#install">Install</a> ·
   <a href="#controls">Controls</a> ·
   <a href="BUILDING.md">Build from source</a> ·
@@ -117,23 +117,37 @@ as chips.
 | **System** | Emulated CPU clock (50–300%), dual core, fast disc loading, cheats, console language, progressive scan |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info |
 | **Interface** | Menu language, reduced motion, larger text, **reset all settings** |
-| **About** | Version, an update notice when a new Porpoise is out, a QR code for reporting a bug, and credits |
+| **About** | Version, **Updates** (check GitHub and install a new Porpoise), a QR code for reporting a bug, and credits |
 
 - **Per-game settings.** Any game can override the Video, Graphics, Audio, Controls
   and System settings. Changed values show in blue, and *This game → Reset to
   default* clears them.
-- **Recommended settings.** A game's settings list **Dolphin's own fixes** for
-  it, from Dolphin's per-game database (applied automatically), and
-  **Porpoise's picks**, tested settings you can apply with one press. The picks
-  come from [`data/recommended.ini`](data/recommended.ini) in this repository
-  and update by themselves once a day.
+- **Recommended settings.** Supported games come with recommended settings you
+  can switch on. A game's settings open with **Recommended**: **Dolphin's own
+  fixes** for it, from Dolphin's per-game database (on by themselves), and
+  **Porpoise's picks**, settings tested on PS5. Each has an on/off switch —
+  green is on — and a tag saying where it comes from; changes apply the next
+  time the game starts. Picks can set Porpoise's own options and Dolphin's
+  per-game settings alike (the first, for *WWE Day of Reckoning 2*, keeps EFB
+  copies and texture decoding on the GPU). They come from
+  [`data/recommended.ini`](data/recommended.ini) in this repository and update
+  by themselves once a day; suggestions for more games are welcome.
+- **Setups.** Save a game's Video and Graphics settings as one of four setups
+  (in-game menu → Graphics → *Save as a setup*) and use it on any other game,
+  from the in-game menu or the game's settings.
 
 ### Screen filters and borders
 - **Screen filters:** *Smooth*, *Sharp*, *Sharpen*, *CRT* (scanlines and an
-  aperture grille), *Arcade CRT* (a curved tube with rounded corners) and *VHS*
-  (tracking wobble, colour bleed and tape noise), each with a strength.
+  aperture grille), *Arcade CRT* (a curved tube with rounded corners), *VHS*
+  (tracking wobble, colour bleed and tape noise), *Soft VHS* (soft, faded
+  colour and a gentle glow, no glitches), *8-bit* (a small palette, big pixels
+  and dithering) and *Pocket* (a four-green handheld screen), each with a
+  strength.
 - **Borders** fill the bars beside a 4:3 picture when widescreen is off:
-  *Porpoise glass*, *Midnight* and an *Arcade cabinet* with a curved opening.
+  *Porpoise* (the logo and name), *Porpoise glass*, *Midnight*, *Frost*,
+  *Carbon*, and three cabinets with a curved opening — *Arcade cabinet*,
+  *Retro cabinet* (wood and 70s stripes) and *Synthwave cabinet* (a striped
+  sun and a neon grid).
   **Make your own:** a 1920×1080 PNG, transparent where the picture shows (the
   4:3 picture fills x 240–1680), in `/data/porpoise/borders/`. It appears in
   the list by its file name.
@@ -144,13 +158,15 @@ as chips.
 Press **Options + touch pad** together while playing. The game pauses and a
 glass menu slides in from the left, with four tabs (**L1 / R1**):
 
-- **Game:** Resume, **Save state** and **Load state** (three slots, with
-  pictures), **Fast forward** (2x or 4x), Volume, Quit to library and Close
-  Porpoise.
+- **Game:** Resume, **Save state…** and **Load state…** (three slots, with
+  pictures: pick a slot with left and right; saving over a used slot asks for a
+  second press, and a spinner shows while the state is written), **Fast
+  forward** (2x or 4x), Volume, Quit to library and Close Porpoise.
 - **Video:** resolution, widescreen, aspect ratio, anti-aliasing, anisotropic
   filtering, screen filter and strength, border, FPS counter.
 - **Graphics:** shader compilation, texture cache, texture filtering, output
-  resampling, per-pixel lighting, fog, overscan and duplicate frames.
+  resampling, per-pixel lighting, fog, overscan, duplicate frames, and **Save
+  as a setup / Use a setup**.
 - **Controls:** button layout, **Customize buttons** over the paused game,
   vibration, and the DualSense drawn with a line to every button saying which
   GameCube button it is.
@@ -169,23 +185,27 @@ that closed the menu never reaches the game.
   quiet bed at 40%.
 
 ### Languages
-- English, **Español**, **Français**, **Português**, **Italiano** and
-  **日本語**, each with its flag in the language list. Porpoise follows your
-  PS5's system language, and **Settings → Interface → Language** overrides it.
-- Game descriptions from GameTDB come in Spanish, French, Portuguese and
-  Italian too, where GameTDB has them (English otherwise).
-- Want to fix a line without waiting for an update? Create
-  `/data/porpoise/lang/es.txt` (or `fr.txt`, `pt.txt`, `it.txt`, `ja.txt`) with
-  lines such as `Quit to library = Volver a la biblioteca`.
+- **Twelve languages**, each with its flag in the language list: English,
+  Español (España), **Español (Latinoamérica)**, Français, **Deutsch**,
+  Italiano, **Nederlands**, **Polski**, Português (Portugal), **Português
+  (Brasil)**, **Русский** and **日本語**. Porpoise follows your PS5's system
+  language, and **Settings → Interface → Language** overrides it.
+- Game descriptions from GameTDB come in Spanish, French, Portuguese, Italian,
+  German and Dutch too, where GameTDB has them (English otherwise).
+- The translations are first drafts, and fixes are welcome. To fix a line
+  without waiting for an update, create `/data/porpoise/lang/<code>.txt` —
+  `es`, `es-419`, `fr`, `pt`, `pt-BR`, `it`, `de`, `nl`, `pl`, `ru` or `ja` —
+  with lines such as `Quit to library = Volver a la biblioteca`. In the source,
+  translations live in [`i18n/`](i18n).
 
 ### Performance
 - **Locked to your TV's refresh.** When the display allows it, every frame is
   shown on its own vblank for smooth, even motion. Otherwise Porpoise keeps its
   own clock. Either way games run at their real speed, never above 60 fps, with
   clean 48 kHz sound.
-- **Stutter-free shaders.** Dolphin compiles shaders in the background with
-  asynchronous ubershaders, so a game doesn't stall the first time it draws
-  something new.
+- **Stutter-free shaders.** Dolphin compiles shaders on four background
+  threads with asynchronous ubershaders, so a game doesn't stall the first time
+  it draws something new, and the shader cache is kept between runs.
 - Dolphin's x86-64 JIT with fastmem, and Vulkan through RADV.
 
 ## Requirements
@@ -199,7 +219,7 @@ that closed the menu never reaches the game.
 
 ## Install
 
-1. Download **`Porpoise-1.0.zip`** from the
+1. Download **`Porpoise-1.1.zip`** from the
    [latest release](https://github.com/elripalda/Porpoise/releases/latest) and
    unzip it on your computer. You get a folder named **`PPSA99764`**.
 2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
@@ -215,9 +235,21 @@ that closed the menu never reaches the game.
 Box art and game details download automatically while the console is online.
 
 ### Updating
-ShadowMountPlus keeps serving the old copy until it is removed. **Delete
-`/data/homebrew/PPSA99764/`, then upload the new folder.** Your games, saves,
-covers and settings live in `/data/porpoise/` and are not touched. Check
+**From 1.1 on, Porpoise updates itself:** **Settings → About → Updates**.
+*Check now* looks on GitHub (Porpoise also looks once a day while it's online
+for covers), and when a newer Porpoise is out the same row installs it. The
+download is checked against GitHub's SHA-256 and every file against the
+release's manifest before anything is replaced; if anything goes wrong,
+nothing is changed. Porpoise then closes; open it again from the home screen.
+Your games, saves, covers and settings live in `/data/porpoise/` and are never
+touched.
+
+**By hand** (and from 1.0, which can't update itself): delete
+`/data/homebrew/PPSA99764/`, then upload the new folder — ShadowMountPlus keeps
+serving the old copy until it is removed. If your 1.0 couldn't reach `/data`
+(your games were in the app's own `porpoise/games` folder), copy the new files
+over the old folder instead of deleting it: 1.1 moves your settings, memory
+cards and states to `/data/porpoise` itself and still finds games there. Check
 **Settings → About** to confirm the version.
 
 ## Adding games
@@ -288,12 +320,24 @@ becomes the next player, up to four, and can join in the middle of a game.
 | `/data/porpoise/borders/` | Your own borders (1920×1080 PNGs) |
 | `/data/porpoise/info.tsv` | Downloaded game details (`info-es.tsv` and so on for other languages) |
 | `/data/porpoise/recommended.ini` | Porpoise's recommended settings, as last downloaded |
+| `/data/porpoise/setups/` | Your four setups (Video and Graphics settings to use on any game) |
+| `/data/porpoise/latest-release.json` | What GitHub last said about the newest release |
 | `/data/porpoise/lang/` | Your own translation fixes (optional) |
 
 ## Troubleshooting
 
-- **Still seeing the old version after updating?** Delete
+- **Still seeing the old version after updating by hand?** Delete
   `/data/homebrew/PPSA99764/` completely before uploading the new folder.
+- **"Porpoise can't reach /data", only a few folders in the folder browser, or
+  games in `/data/games` not showing?** The console started Porpoise inside the
+  app sandbox. Porpoise asks the HEN to free it, but the HEN only does that for
+  apps on its list: add **PPSA99764** to your HEN's list of apps to jailbreak
+  (etaHEN or OnionHEN settings), then open Porpoise again. Until then it keeps
+  its things in the app's own folder (`/data/homebrew/PPSA99764/porpoise/`).
+- **A game runs slowly?** Open its settings and look at **Recommended**: some
+  of Dolphin's own fixes for a game cost speed on PS5, and Porpoise's picks
+  turn them off where that's been tested. The speed line in `core.log` (below)
+  shows how fast the game really runs.
 - **No covers?** The console needs to be online when Porpoise opens, and
   **Settings → Games → Download covers** must be on. A few discs have no art on
   GameTDB. You can add your own.
@@ -332,10 +376,12 @@ It stands on the work of many people. The full list, with licences, is in
 - **[Dolphin](https://dolphin-emu.org)** by the Dolphin Emulator Project, the
   emulator itself, and the **[libretro Dolphin core](https://github.com/libretro/dolphin)**.
 - **[libretro / RetroArch](https://www.libretro.com)**, whose API Porpoise uses to host Dolphin.
-- **Mihawk's [PS5 RetroArch](https://github.com/mihawk-99/PS5_RetroArch)**,
+- **[Mihawk (mihawk-99)](https://github.com/mihawk-99)**, who brought the
+  Dolphin core to the PS5. His **[PS5 RetroArch](https://github.com/mihawk-99/PS5_RetroArch)**,
   **[PS5_Vulkan](https://github.com/mihawk-99/PS5_Vulkan)** and
-  **[PS5_Mesa](https://github.com/mihawk-99/PS5_Mesa)**: the PS5 Dolphin port,
-  the platform layer and Vulkan on PS5 through **[Mesa](https://mesa3d.org)'s RADV**.
+  **[PS5_Mesa](https://github.com/mihawk-99/PS5_Mesa)** are the PS5 Dolphin port,
+  the platform layer and Vulkan on PS5 through **[Mesa](https://mesa3d.org)'s
+  RADV** that Porpoise is built on. Porpoise wouldn't exist without them.
 - **[ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk)** by John Törnblom
   and contributors, and **BlackBearReloaded**'s native title pipeline.
 - **[GameTDB](https://www.gametdb.com)** and its contributors, for the box art
@@ -343,10 +389,12 @@ It stands on the work of many people. The full list, with licences, is in
 - **[Zacksly](https://zacksly.itch.io)** ([@_Zacksly](https://twitter.com/_Zacksly)),
   for *PS5 Button Icons and Controls* (CC BY 3.0): the DualSense drawings and the
   button icons, adapted for Porpoise.
-- **[Nunito](https://github.com/googlefonts/nunito)** (SIL OFL) and
-  **[stb](https://github.com/nothings/stb)** by Sean Barrett.
+- **[Nunito](https://github.com/googlefonts/nunito)** and
+  **[Noto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp)**
+  (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
 - The PS5 scene: **etaHEN**, **kstuff** and **ShadowMountPlus**, and the front
-  ends **PS5SX2** and **ProsperoEden** for the inspiration.
+  ends **PS5SX2** and **ProsperoEden** for the inspiration. Porpoise asks the
+  HEN to leave the app sandbox the way PS5SX2 does.
 
 ## Legal
 

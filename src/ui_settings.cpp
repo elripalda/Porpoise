@@ -77,7 +77,7 @@ const Field kFields[] = {
     {"progressive", nullptr, &Settings::progressive, 0, 1},
     {"reduced_motion", nullptr, &Settings::reduced_motion, 0, 1},
     {"large_text", nullptr, &Settings::large_text, 0, 1},
-    {"ui_language", &Settings::ui_language, nullptr, 0, 6},
+    {"ui_language", &Settings::ui_language, nullptr, 0, 12},
 };
 
 /* Settings kept as text rather than numbers. */
@@ -127,6 +127,11 @@ const char *const kManaged[] = {
     "dolphin_cache_custom_textures", "dolphin_skip_dupe_frames", "dolphin_enable_rumble", "dolphin_cpu_clock_rate",
     "dolphin_main_cpu_thread", "dolphin_fast_disc_speed", "dolphin_cheats_enabled", "dolphin_language",
     "dolphin_progressive_scan",
+    /* Set per game from its Dolphin settings (porpoise_main.cpp, kGameOptions). */
+    "dolphin_efb_to_texture", "dolphin_xfb_to_texture_enable", "dolphin_efb_access_enable",
+    "dolphin_efb_access_defer_invalidation", "dolphin_bbox_enabled", "dolphin_efb_to_vram", "dolphin_defer_efb_copies",
+    "dolphin_immediate_xfb", "dolphin_efb_scaled_copy", "dolphin_efb_emulate_format_changes",
+    "dolphin_vertex_rounding", "dolphin_vi_skip", "dolphin_fast_texture_sampling",
 };
 } // namespace
 

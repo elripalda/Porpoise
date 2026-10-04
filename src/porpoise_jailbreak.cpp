@@ -30,6 +30,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "trace.hpp"
@@ -38,6 +39,8 @@ extern "C" int sceKernelUsleep(unsigned microseconds);
 
 namespace porpoise::jailbreak
 {
+bool data_reachable();
+
 namespace
 {
 constexpr char kRequest[] = "/download0/etahen_jailbreak";
@@ -86,8 +89,9 @@ bool request_file()
         note("jailbreak: the HEN didn't take the request (is PPSA99764 on its app jailbreak list?)");
         return false;
     }
+    /* Up to 2 s for /data to open up (not every HEN makes the app root). */
     int grace = 0;
-    while (geteuid() != 0 && grace < 120)
+    while (!data_reachable() && grace < 120)
     {
         sceKernelUsleep(16667);
         ++grace;
@@ -118,6 +122,12 @@ bool request_port()
         const int fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0)
             return false;
+        /* A server that takes the connection but never answers mustn't hold
+         * Porpoise's start: 2 s each way. */
+        timeval limit{};
+        limit.tv_sec = 2;
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &limit, sizeof limit);
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &limit, sizeof limit);
         sockaddr_in sa{};
         sa.sin_family = AF_INET;
         sa.sin_port = htons(std::uint16_t(port));
@@ -139,7 +149,7 @@ bool request_port()
         }
         close(fd);
         note("jailbreak: port %d answered %d (%d bytes)", port, cmd.ret, got);
-        if (sent && (cmd.ret == 0 || cmd.ret == -1337))
+        if (sent && got == int(sizeof cmd) && cmd.ret == 0)
             return true;
     }
     return false;
