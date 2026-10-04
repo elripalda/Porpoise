@@ -1,6 +1,6 @@
 <p align="center"><img src="https://github.com/elripalda/Porpoise/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
-**The first release of Porpoise:** a native GameCube and Wii disc player for jailbroken PS5 consoles, running Dolphin behind a launcher made for the TV and the DualSense.
+**The first release of Porpoise:** a native GameCube and Wii emulator for jailbroken PS5, powered by Dolphin, with a launcher made for the TV and the DualSense.
 
 ## Highlights
 
@@ -19,7 +19,7 @@
 1. Download **`Porpoise-1.0.zip`** below and unzip it. You get a folder named `PPSA99764`.
 2. Copy that folder to `/data/homebrew/PPSA99764/` on the console.
 3. Register it as you do your other homebrew (for example with ShadowMountPlus).
-4. Put your own disc images in `/data/porpoise/games/` and open Porpoise.
+4. Put your own game files in `/data/porpoise/games/` and open Porpoise.
 
 **Updating later:** delete `/data/homebrew/PPSA99764/` first, then upload the new folder. Your games, saves, covers and settings in `/data/porpoise/` stay.
 

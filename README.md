@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <b>Porpoise</b> is a native GameCube and Wii disc player for jailbroken PS5 consoles.<br>
-  It runs the <a href="https://dolphin-emu.org">Dolphin</a> emulator behind a launcher built from scratch
-  for the TV and the DualSense:<br>sky-blue glass, a cover-flow shelf of real box art, memory cards you can
+  <b>Porpoise</b> is a native GameCube and Wii emulator for jailbroken PS5, powered by
+  <a href="https://dolphin-emu.org">Dolphin</a>.<br>
+  Its launcher was built from scratch for the TV and the DualSense:<br>sky-blue glass, a cover-flow shelf of real box art, memory cards you can
   hold, and original menu music.
 </p>
 
@@ -51,7 +51,7 @@ controller and enjoyed from the couch.
 - **Finds your games on its own.** Porpoise searches the usual folders and every
   USB or extended drive. You can also add folders with the built-in folder
   browser, and it searches four levels deep.
-- **Disc formats:** `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`.
+- **Game formats:** `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`.
 - **Sort** by title (A–Z) or by recently played. Each game shows when you last
   played it.
 
@@ -143,7 +143,7 @@ that closed the menu never reaches the game.
 - A PS5 able to run homebrew, with **etaHEN** and **kstuff** loaded and
   **ShadowMountPlus** (or your usual method) to register homebrew titles.
 - A way to copy files to the console: FTP, or a tool such as PS5 Upload.
-- **Your own games**, as disc images you made from discs you own. Porpoise
+- **Your own games**, as backups you made from discs you own. Porpoise
   includes no games and no system files of any kind.
 - Optional: an internet connection on the console, for box art and game info.
 
@@ -155,7 +155,7 @@ that closed the menu never reaches the game.
 2. Copy that folder to **`/data/homebrew/PPSA99764/`** on the console.
 3. Register it the way you register your other homebrew (for example with
    ShadowMountPlus). The Porpoise tile appears on the home screen.
-4. Put your disc images in **`/data/porpoise/games/`**, or in any of the folders
+4. Put your game files in **`/data/porpoise/games/`**, or in any of the folders
    listed under [Adding games](#adding-games), and open Porpoise.
 
 ### Updating
@@ -207,7 +207,7 @@ PlayStation. L2 and R2 are analog triggers. Choose **PlayStation** under
 | Path | What |
 |---|---|
 | `/data/homebrew/PPSA99764/` | The app. Replace it to update. |
-| `/data/porpoise/games/` | A good place for your disc images |
+| `/data/porpoise/games/` | A good place for your game files |
 | `/data/porpoise/covers/` | Box art, back covers and disc art (`<disc ID>.png`); replace any with your own |
 | `/data/porpoise/saves/` | Dolphin's data, including the memory cards (`User/GC/<region>/Card A`, `Card B`) |
 | `/data/porpoise/game-settings/` | Each game's own settings |
