@@ -72,9 +72,16 @@ float half_screen(int speed);
  * takes less turning than left-right, as a 16:9 screen does. */
 void pointer(const Angles &now, const Angles &centre, int speed, float &x, float &y);
 
-/* When the pointer is past limit (in screen halves) the centre moves with it,
- * so pushing on past an edge brings a drifted pointer back in line. */
-void follow_edge(const Angles &now, Angles &centre, int speed, float limit);
+/* A pointer held calmly just past an edge (not swung far off the screen) pulls
+ * the centre after it, slowly, so a pointer that has drifted comes back in
+ * line when it is pushed against the edge. dt: seconds since the last call. */
+void ease_edge(const Angles &now, Angles &centre, int speed, float dt);
+
+/* The grip made level for how it is held right now: its up becomes gravity's
+ * up and its forward the grip's forward made horizontal, so this hold reads
+ * as the Remote level and pointing straight ahead. up: the accelerometer
+ * (any length). False (and out = grip) if the grip's forward is too steep. */
+bool level_grip(const Basis &grip, const float up[3], Basis &out);
 
 /* What the Remote's camera sees of the sensor bar when the pointer is at
  * (x, y) and the Remote rolled by roll radians: each light's x and y over 0..1

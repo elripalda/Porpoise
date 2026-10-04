@@ -161,10 +161,19 @@ struct Slot
     int pose = -1;
     int pose_seen = -1;
     float pose_wait = 0;
+    /* The grip as set at the last centring, made level for that hold. */
+    aim::Basis basis = aim::kGripNormal;
+    /* The accelerometer smoothed (about a sixth of a second): gravity's up. */
+    float up[3] = {0, 0, 0};
+    unsigned centre_seq = 0; /* the Remote's centrings seen (two-controller play's Nunchuk) */
+    float centre_hold = 0;   /* how long R1 (L1) has been held, calmly */
+    unsigned centrings = 0;  /* for the "centred" note on screen */
 };
 
 /* ---- the Wii Remote ---- */
 WiiConfig g_wii;
+bool g_nunchuk_motion = false; /* the core has the Nunchuk device's motion (set_nunchuk_motion) */
+unsigned g_centre_seq = 0;     /* bumped when player 1 centres: two-controller play's Nunchuk follows */
 
 /* Each Wii controller's layout: DualSense control -> Wii input. The same
  * tables drive the game and the Controls tab's drawing. */
@@ -444,6 +453,10 @@ Motion read_motion(Slot &slot, std::int32_t count)
         aim::fuse(slot.fusion, p.angular_velocity, p.acceleration, dt);
         slot.last_motion_us = p.timestamp_us;
         elapsed += std::min(dt, 0.05f);
+        const bool first = slot.up[0] == 0 && slot.up[1] == 0 && slot.up[2] == 0;
+        const float k = first ? 1.0f : std::min(1.0f, std::min(dt, 0.05f) / 0.16f);
+        for (int a = 0; a < 3; ++a)
+            slot.up[a] += (p.acceleration[a] - slot.up[a]) * k;
     }
     const PadSample &last = *order[n - 1];
     m.valid = true;
@@ -468,17 +481,11 @@ Motion read_motion(Slot &slot, std::int32_t count)
     for (int i = 0; i < 3; ++i)
         g[i] = m.raw_gyro[i] - slot.fusion.bias[i];
     const float turning = std::sqrt(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
-    const int seen = classify_pose(m.raw_accel, g_wii, second);
-    const bool centre_due = !slot.centred && slot.fusion.started && slot.fusion.age > 0.5f;
+    const int seen = classify_pose(slot.up, g_wii, second);
     bool reposed = false;
-    if (slot.pose < 0 || centre_due)
-    {
-        const int was = slot.pose;
-        slot.pose = seen >= 0 ? seen : (slot.pose >= 0 ? slot.pose : expected_pose(g_wii, second));
-        reposed = slot.pose != was;
-        slot.pose_wait = 0;
-    }
-    else if (seen >= 0 && seen != slot.pose && turning < 1.0f)
+    if (slot.pose < 0)
+        slot.pose = seen >= 0 ? seen : expected_pose(g_wii, second);
+    else if (slot.centred && seen >= 0 && seen != slot.pose && turning < 1.0f)
     {
         if (seen != slot.pose_seen)
             slot.pose_wait = 0;
@@ -493,38 +500,66 @@ Motion read_motion(Slot &slot, std::int32_t count)
     }
     else
         slot.pose_wait = 0;
+
+    /* Centring: half a second in (once gravity has settled, and the
+     * controller is fairly still - or after three seconds regardless), when
+     * the hold changes, and on R1 (L1 in the left hand). It makes the hold of
+     * that moment the Remote held level and pointing at the middle of the
+     * screen, so a natural grip reads as one. In two-controller play the
+     * Remote's R1 centres the Nunchuk too. */
+    /* R1 has to be held a moment with the controller fairly still: a squeeze
+     * of the grip mid-swing (R1 sits just above R2) never centres. */
+    const bool centre_held = (last.buttons & (pose_left_hand(slot.pose) ? pad_l1 : pad_r1)) != 0;
+    const bool centre_button = g_wii.controller != WiiSideways && g_wii.controller != WiiClassic && !second;
+    bool pressed_centre = false;
+    if (!centre_held || !centre_button)
+    {
+        slot.centre_hold = 0;
+        slot.centre_was = false; /* here: centred during this hold already */
+    }
+    else if (!slot.centre_was)
+    {
+        slot.centre_hold = turning < 1.2f ? slot.centre_hold + elapsed : 0.0f;
+        if (slot.centre_hold >= 0.3f)
+            pressed_centre = slot.centre_was = true;
+    }
+    const bool settled = slot.fusion.started && slot.fusion.age > 0.5f && (turning < 0.8f || slot.fusion.age > 3.0f);
+    const bool follow = second && slot.centre_seq != g_centre_seq;
+    if ((!slot.centred && settled) || reposed || pressed_centre || follow)
+    {
+        if ((pressed_centre || follow) && seen >= 0)
+            slot.pose = seen; /* centring also reads the hold again */
+        aim::level_grip(pose_basis(slot.pose), slot.up, slot.basis);
+        slot.centre = aim::remote_angles(slot.fusion, slot.basis);
+        slot.centred = true;
+        slot.pose_wait = 0;
+        slot.centre_seq = g_centre_seq;
+        if (pressed_centre && g_wii.controller == WiiTwoControllers && index == 0)
+            ++g_centre_seq;
+        if (pressed_centre)
+            ++slot.centrings;
+    }
+    m.centrings = slot.centrings;
+    if (!slot.centred)
+        slot.basis = pose_basis(slot.pose);
     m.pose = slot.pose;
 
     /* For the core: the Remote's (or the Nunchuk's) own axes, the gyroscope
      * without its drift. */
-    const aim::Basis &basis = pose_basis(slot.pose);
-    aim::to_remote(basis, m.raw_accel, m.accel);
-    aim::to_remote(basis, g, m.gyro);
+    aim::to_remote(slot.basis, m.raw_accel, m.accel);
+    aim::to_remote(slot.basis, g, m.gyro);
 
-    /* Where it points. The middle of the screen is wherever it pointed half a
-     * second in (once gravity has settled), again whenever centred, and again
-     * when the hold changes. */
-    const aim::Angles now = aim::remote_angles(slot.fusion, basis);
-    const bool centre_held = (last.buttons & (pose_left_hand(slot.pose) ? pad_l1 : pad_r1)) != 0;
-    const bool centre_button = g_wii.controller != WiiSideways && g_wii.controller != WiiClassic && !second;
-    if (centre_due || reposed || (centre_button && centre_held && !slot.centre_was))
-    {
-        if (centre_held && !slot.centre_was && seen >= 0)
-            slot.pose = seen; /* centring also re-reads the hold */
-        slot.centre = aim::remote_angles(slot.fusion, pose_basis(slot.pose));
-        slot.centred = true;
-    }
-    slot.centre_was = centre_held;
+    /* Where it points, against the centre. */
+    const aim::Angles now = aim::remote_angles(slot.fusion, slot.basis);
     m.roll = now.roll;
     if (g_wii.pointer == PointerGyro)
     {
         float x = 0, y = 0;
         if (slot.centred)
         {
-            /* Pushed well past an edge (calmly, not mid-swing), the middle
-             * follows: the slow drift of a gyroscope fixes itself. */
-            if (turning < 1.5f)
-                aim::follow_edge(now, slot.centre, g_wii.speed, 1.3f);
+            /* Held calmly against an edge, a drifted pointer eases back. */
+            if (turning < 0.5f)
+                aim::ease_edge(now, slot.centre, g_wii.speed, elapsed);
             aim::pointer(now, slot.centre, g_wii.speed, x, y);
         }
         m.aim_x = g_wii.invert_x ? -x : x;
@@ -640,7 +675,11 @@ State read_slot(Slot &slot)
         };
         const int *retro = retro_table(g_wii.controller);
         next.joypad = bits(wii_layout(g_wii, false, slot.pose), retro);
-        if (motion.shaking && g_wii.controller != WiiClassic)
+        /* A flick is sent as a shake only where the game doesn't feel the
+         * motion itself. */
+        const bool with_nunchuk = g_wii.controller == WiiRemoteNunchuk || g_wii.controller == WiiTwoControllers;
+        const bool remote_feels = g_wii.motion && (!with_nunchuk || g_nunchuk_motion);
+        if (motion.shaking && g_wii.controller != WiiClassic && !remote_feels)
             next.joypad |= static_cast<std::uint16_t>(1u << RETRO_DEVICE_ID_JOYPAD_R2);
         if (g_wii.controller == WiiClassic)
         {
@@ -651,7 +690,7 @@ State read_slot(Slot &slot)
         {
             /* The same controller as the second one: its Nunchuk buttons. */
             next.nunchuk = bits(wii_layout(g_wii, true, slot.pose), kRetroNunchuk);
-            if (motion.shaking)
+            if (motion.shaking && !(g_wii.motion && g_nunchuk_motion))
                 next.nunchuk |= static_cast<std::uint16_t>(1u << RETRO_DEVICE_ID_JOYPAD_L2);
         }
     }
@@ -791,6 +830,7 @@ void set_wii(const WiiConfig &config)
             slot.centred = false;
             slot.pose = -1;
             slot.fusion.age = 0.0f;
+            slot.centre_seq = g_centre_seq;
         }
 }
 
@@ -862,6 +902,12 @@ WiiLayout wii_layout(const WiiConfig &config, bool second, int pose)
         break;
     }
     return lay;
+}
+
+void set_nunchuk_motion(bool on)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    g_nunchuk_motion = on;
 }
 
 WiiConfig wii()

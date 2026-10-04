@@ -611,28 +611,53 @@ void log_motion()
         h.motion_log_bytes += n;
 }
 
-/* ---- the Nunchuk's motion, for two-controller play ----------------------------------
+/* ---- motion for the Nunchuk devices ---------------------------------------------------
  *
- * Dolphin's libretro core never connects the Nunchuk's accelerometer to
- * anything (only a "shake"), so the game can't tell where the second
- * controller points: no blocking in Boxing, no Nunchuk tilts. Dolphin itself
- * can; it is only unbound. The core writes its controller set-up to
+ * Dolphin's libretro core binds the DualSense's motion to the Remote only when
+ * the Remote is alone or sideways: with the Nunchuk plugged in (Remote +
+ * Nunchuk, two-controller play) the Remote gets no accelerometer or gyroscope
+ * at all, and the Nunchuk never gets its accelerometer. Dolphin itself can do
+ * both; they are only unbound. The core writes its controller set-up to
  * User/Config/WiimoteNew.ini each time a Remote is plugged in, and with
  * dolphin_save_load_settings on it reads that file back instead. So, once the
- * game runs: take the core's own file, add the Nunchuk's accelerometer bound
- * to port 1's motion sensor (the second DualSense, in the Nunchuk's axes),
- * turn the option on and plug the Remote in again. Leaving two-controller
- * play turns it off before plugging in again. */
+ * game runs: add the bindings to each Nunchuk Remote's section of the core's
+ * own file - the Remote's motion from its port's sensor, and in two-controller
+ * play the Nunchuk's from port 1's (the second DualSense, in the Nunchuk's
+ * axes) - turn the option on and plug the Remotes in again. Any change of
+ * controller turns it off and plugs them in again first, then starts over. */
 std::string wiimote_ini_path()
 {
     return std::string(h.paths.saves) + "/User/Config/WiimoteNew.ini";
 }
 
-bool add_nunchuk_motion()
+bool nunchuk_device(int controller)
+{
+    return controller == porpoise::pad::WiiRemoteNunchuk || controller == porpoise::pad::WiiTwoControllers;
+}
+
+/* The lines binding a motion group to a port's sensor, as the core writes the
+ * Remote's own (Input.cpp: Up AccelZ+, Left AccelX+, Forward AccelY-;
+ * Pitch Up GyroX-, Roll Left GyroY+, Yaw Left GyroZ+). */
+void motion_lines(std::vector<std::string> &out, const std::string &prefix, int port, bool gyro)
+{
+    const std::string dev = "`Libretro/" + std::to_string(port) + "/Sensor:";
+    static const char *const kAccel[6][2] = {{"Up", "AccelZ+"},   {"Down", "AccelZ-"},    {"Left", "AccelX+"},
+                                             {"Right", "AccelX-"}, {"Forward", "AccelY-"}, {"Backward", "AccelY+"}};
+    static const char *const kGyro[6][2] = {{"Pitch Up", "GyroX-"},  {"Pitch Down", "GyroX+"}, {"Roll Left", "GyroY+"},
+                                            {"Roll Right", "GyroY-"}, {"Yaw Left", "GyroZ+"},   {"Yaw Right", "GyroZ-"}};
+    for (const auto &a : kAccel)
+        out.push_back(prefix + "IMUAccelerometer/" + a[0] + " = " + dev + a[1] + "`");
+    if (gyro)
+        for (const auto &g : kGyro)
+            out.push_back(prefix + "IMUGyroscope/" + g[0] + " = " + dev + g[1] + "`");
+}
+
+/* Returns how many Remotes' sections were given motion (0: not ready yet). */
+int add_nunchuk_motion(bool two)
 {
     std::ifstream in(wiimote_ini_path());
     if (!in)
-        return false;
+        return 0;
     std::vector<std::string> lines;
     for (std::string line; std::getline(in, line);)
     {
@@ -641,63 +666,60 @@ bool add_nunchuk_motion()
         lines.push_back(line);
     }
     in.close();
-    std::size_t begin = lines.size(), end = lines.size();
-    for (std::size_t i = 0; i < lines.size(); ++i)
+    auto starts = [](const std::string &l, const char *p) { return l.compare(0, std::strlen(p), p) == 0; };
+    std::vector<std::string> out;
+    int patched = 0;
+    std::size_t i = 0;
+    while (i < lines.size())
     {
-        if (lines[i] == "[Wiimote1]")
-            begin = i + 1;
-        else if (begin != lines.size() && i >= begin && !lines[i].empty() && lines[i][0] == '[')
+        /* Copy anything outside a [WiimoteN] section as it is. */
+        int port = -1;
+        if (lines[i].size() == 10 && starts(lines[i], "[Wiimote") && lines[i][8] >= '1' && lines[i][8] <= '4' &&
+            lines[i][9] == ']')
+            port = lines[i][8] - '1';
+        out.push_back(lines[i++]);
+        if (port < 0)
+            continue;
+        std::vector<std::string> raw;
+        bool nunchuk = false;
+        while (i < lines.size() && !(starts(lines[i], "[")))
         {
-            end = i;
-            break;
+            raw.push_back(lines[i++]);
+            if (starts(raw.back(), "Extension = ") && raw.back().find("Nunchuk") != std::string::npos)
+                nunchuk = true;
         }
-    }
-    if (begin == lines.size())
-        return false;
-    /* The Remote's own accelerometer lines show the exact form: the same,
-     * from port 1's sensor, for the Nunchuk. */
-    const std::string remote = "IMUAccelerometer/", nunchuk = "Extension/Nunchuk/IMUAccelerometer/";
-    const std::string from = "Libretro/0/Sensor", to = "Libretro/1/Sensor";
-    std::vector<std::string> section, added;
-    bool has_nunchuk = false;
-    for (std::size_t i = begin; i < end; ++i)
-    {
-        const std::string &l = lines[i];
-        if (l.compare(0, nunchuk.size(), nunchuk) == 0)
-            continue; /* ours from before: written again below */
-        if (l.compare(0, std::min(l.size(), std::size_t(12)), "Extension = ") == 0 && l.find("Nunchuk") != std::string::npos)
-            has_nunchuk = true;
-        section.push_back(l);
-        if (l.compare(0, remote.size(), remote) == 0)
+        std::vector<std::string> section;
+        for (const std::string &l : raw)
+            /* A Remote with the Nunchuk: its motion lines (ours from before)
+             * are written again below. Other Remotes keep the core's. */
+            if (!nunchuk || !(starts(l, "IMUAccelerometer/") || starts(l, "IMUGyroscope/") ||
+                              starts(l, "Extension/Nunchuk/IMUAccelerometer/")))
+                section.push_back(l);
+        while (!section.empty() && section.back().empty())
+            section.pop_back();
+        if (nunchuk)
         {
-            std::string n = "Extension/Nunchuk/" + l;
-            const auto at = n.find(from);
-            if (at == std::string::npos)
-                return false;
-            n.replace(at, from.size(), to);
-            added.push_back(n);
+            motion_lines(section, "", port, true);
+            if (two && port == 0)
+                motion_lines(section, "Extension/Nunchuk/", 1, false);
+            ++patched;
         }
+        out.insert(out.end(), section.begin(), section.end());
+        out.push_back("");
     }
-    if (added.size() != 6 || !has_nunchuk)
-        return false; /* not set up yet (no sensors, or not the Nunchuk) */
-    while (!section.empty() && section.back().empty())
-        section.pop_back();
-    section.insert(section.end(), added.begin(), added.end());
-    section.push_back("");
-    std::vector<std::string> out(lines.begin(), lines.begin() + long(begin));
-    out.insert(out.end(), section.begin(), section.end());
-    out.insert(out.end(), lines.begin() + long(end), lines.end());
+    if (patched == 0)
+        return 0;
     const std::string tmp = wiimote_ini_path() + ".porpoise";
     {
         std::ofstream o(tmp, std::ios::trunc);
         if (!o)
-            return false;
+            return 0;
         for (const std::string &l : out)
             o << l << "\n";
         if (!o.good())
-            return false;
+            return 0;
     }
-    return std::rename(tmp.c_str(), wiimote_ini_path().c_str()) == 0;
+    return std::rename(tmp.c_str(), wiimote_ini_path().c_str()) == 0 ? patched : 0;
 }
 
 void set_core_option(const char *key, const char *value)
@@ -709,48 +731,62 @@ void set_core_option(const char *key, const char *value)
     }
 }
 
-/* Called once a frame. */
-void nunchuk_motion_step()
+/* Called once a frame; leave = a change of controller: start over. */
+void nunchuk_motion_step(bool leave = false)
 {
-    const bool want = h.wii.active && h.wii.motion && h.wii.controller == porpoise::pad::WiiTwoControllers;
+    const bool want = h.wii.active && h.wii.motion && nunchuk_device(h.wii.controller);
+    if (leave && (h.nunchuk_stage == 1 || h.nunchuk_stage == 2))
+    {
+        set_core_option("dolphin_save_load_settings", "disabled");
+        h.nunchuk_stage = 3;
+        h.nunchuk_frame = h.frame_number + 2;
+        porpoise::pad::set_nunchuk_motion(false);
+        return;
+    }
     switch (h.nunchuk_stage)
     {
-    case 0: /* the core's own set-up is in the file: add the Nunchuk's motion */
+    case 0: /* the core's own set-up is in the file: add the motion */
         if (want && h.frame_number >= h.nunchuk_frame)
         {
-            if (add_nunchuk_motion())
+            const bool two = h.wii.controller == porpoise::pad::WiiTwoControllers;
+            if (const int n = add_nunchuk_motion(two))
             {
                 set_core_option("dolphin_save_load_settings", "enabled");
                 h.nunchuk_stage = 1;
                 h.nunchuk_frame = h.frame_number + 2; /* the core reads options as a frame starts */
+                if (h.log)
+                    std::fprintf(h.log, "[porpoise] motion for %d Remote%s with the Nunchuk%s\n", n, n == 1 ? "" : "s",
+                                 two ? ", and the Nunchuk's from the second controller" : "");
             }
             else if (++h.nunchuk_tries > 20)
             {
                 h.nunchuk_stage = 4;
                 if (h.log)
-                    std::fprintf(h.log, "[porpoise] Nunchuk motion: the core's controller file wasn't ready; left off\n");
+                {
+                    struct stat st{};
+                    const bool there = stat(wiimote_ini_path().c_str(), &st) == 0;
+                    std::fprintf(h.log, "[porpoise] Nunchuk motion left off: %s %s\n", wiimote_ini_path().c_str(),
+                                 there ? "has no Remote with the Nunchuk" : "isn't there");
+                }
             }
             else
                 h.nunchuk_frame = h.frame_number + 30;
         }
         break;
-    case 1: /* plug the Remote in again: the core reads the file */
+    case 1: /* plug the Remotes in again: the core reads the file */
         if (h.frame_number >= h.nunchuk_frame)
         {
-            h.api.set_controller_port_device(0, port_device(0));
+            for (int port = 0; port < porpoise::pad::kMaxPlayers; ++port)
+                if (h.plugged[port])
+                    h.api.set_controller_port_device(unsigned(port), port_device(port));
             h.nunchuk_stage = 2;
-            ps5::debug::mark("core: Nunchuk motion on (the second controller)");
-            if (h.log)
-                std::fprintf(h.log, "[porpoise] Nunchuk motion on: the second controller's accelerometer\n");
+            porpoise::pad::set_nunchuk_motion(true);
+            ps5::debug::mark("core: motion on for the Remote with the Nunchuk");
         }
         break;
-    case 2: /* in use; leaving two-controller play */
+    case 2: /* in use */
         if (!want)
-        {
-            set_core_option("dolphin_save_load_settings", "disabled");
-            h.nunchuk_stage = 3;
-            h.nunchuk_frame = h.frame_number + 2;
-        }
+            nunchuk_motion_step(true);
         break;
     case 3: /* the option is off again: every port gets the core's own set-up */
         if (h.frame_number >= h.nunchuk_frame)
@@ -763,7 +799,7 @@ void nunchuk_motion_step()
             h.nunchuk_frame = h.frame_number + 10;
         }
         break;
-    default: /* gave up until two-controller play is chosen again */
+    default: /* gave up until the controller changes */
         if (!want)
         {
             h.nunchuk_stage = 0;
@@ -1076,8 +1112,9 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         }
     } wii_off;
     h.nunchuk_stage = 0;
-    h.nunchuk_frame = 0;
+    h.nunchuk_frame = 10;
     h.nunchuk_tries = 0;
+    porpoise::pad::set_nunchuk_motion(false);
     if (playback.debug_dir && h.wii.active)
     {
         mkdir(playback.debug_dir, 0777);
@@ -1301,12 +1338,17 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                     h.plugged[port] = false;
                 }
             if (h.nunchuk_stage == 1 || h.nunchuk_stage == 2)
-                nunchuk_motion_step(); /* leaving: the option goes off first, then every port */
+                nunchuk_motion_step(true); /* the option goes off first, then every port, then again */
             else
                 for (int port = 0; port < porpoise::pad::kMaxPlayers; ++port)
                     if (h.plugged[port])
                         h.api.set_controller_port_device(unsigned(port), port_device(port));
-            h.nunchuk_frame = h.frame_number + 10;
+            if (h.nunchuk_stage == 4)
+            {
+                h.nunchuk_stage = 0;
+                h.nunchuk_tries = 0;
+            }
+            h.nunchuk_frame = std::max(h.nunchuk_frame, h.frame_number + 10);
         }
         nunchuk_motion_step();
         /* A controller that joins mid-game is plugged into its GameCube port. */

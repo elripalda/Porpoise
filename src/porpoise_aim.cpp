@@ -172,15 +172,47 @@ void pointer(const Angles &now, const Angles &centre, int speed, float &x, float
     y = -(now.pitch - centre.pitch) / (h * kTall);
 }
 
-void follow_edge(const Angles &now, Angles &centre, int speed, float limit)
+void ease_edge(const Angles &now, Angles &centre, int speed, float dt)
 {
+    constexpr float kEdge = 1.02f, kFar = 1.6f, kRate = 0.4f; /* screen halves a second */
     float x, y;
     pointer(now, centre, speed, x, y);
-    const float h = half_screen(speed);
-    if (x > limit || x < -limit)
-        centre.yaw = wrap(centre.yaw + (x - std::copysign(limit, x)) * h);
-    if (y > limit || y < -limit)
-        centre.pitch = now.pitch + std::copysign(limit, y) * h * kTall;
+    const float h = half_screen(speed), step = kRate * std::clamp(dt, 0.0f, 0.05f);
+    if (std::fabs(x) > kEdge && std::fabs(x) < kFar)
+    {
+        const float move = std::min(step, std::fabs(x) - kEdge);
+        centre.yaw = wrap(centre.yaw + std::copysign(move, x) * h);
+    }
+    if (std::fabs(y) > kEdge && std::fabs(y) < kFar)
+    {
+        const float move = std::min(step, std::fabs(y) - kEdge);
+        centre.pitch -= std::copysign(move, y) * h * kTall;
+    }
+}
+
+bool level_grip(const Basis &grip, const float up[3], Basis &out)
+{
+    out = grip;
+    V3 u{up[0], up[1], up[2]};
+    const float n = std::sqrt(dot(u, u));
+    if (n < 0.5f)
+        return false;
+    u = u * (1.0f / n);
+    const V3 fwd = row(grip, 1) * -1.0f;
+    const float along = dot(fwd, u);
+    if (std::fabs(along) > 0.82f) /* more than ~55 degrees up or down */
+        return false;
+    V3 f = fwd - u * along;
+    f = f * (1.0f / std::sqrt(dot(f, f)));
+    const V3 back = f * -1.0f, left = cross(back, u);
+    const V3 rows[3] = {left, back, u};
+    for (int r = 0; r < 3; ++r)
+    {
+        out.m[r][0] = rows[r].x;
+        out.m[r][1] = rows[r].y;
+        out.m[r][2] = rows[r].z;
+    }
+    return true;
 }
 
 namespace

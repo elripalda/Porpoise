@@ -647,7 +647,7 @@ constexpr WiiInfo kWiiInfo[WiInputCount] = {
     {"ZR", "ZR button", kWiiWhite},
     {"L", "L trigger", kWiiWhite},
     {"R", "R trigger", kWiiWhite},
-    {"CENTRE", "Centres the pointer", kWiiGreen},
+    {"CENTRE", "Hold: centre and level", kWiiGreen},
 };
 float wii_arrow(int input)
 {
@@ -990,8 +990,8 @@ void App::draw_wii_controls(float x, float y, float w, float h, const WiiConfig 
     std::string how;
     const bool held = wii.controller != WiiSideways && wii.controller != WiiClassic;
     if (wii.pointer == PointerGyro && held)
-        how = pose_left_hand(pose) ? tr("Point at the screen to aim; L1 centres the pointer. Flick to shake.")
-                                   : tr("Point at the screen to aim; R1 centres the pointer. Flick to shake.");
+        how = pose_left_hand(pose) ? tr("Point at the screen to aim. Hold L1 a moment to centre the pointer and level the hold.")
+                                   : tr("Point at the screen to aim. Hold R1 a moment to centre the pointer and level the hold.");
     else if (wii.pointer == PointerTouch && held)
         how = tr("Slide a finger on the touch pad to aim. Flick the controller to shake.");
     else
@@ -1016,8 +1016,9 @@ const char *wii_howto(int controller)
     case WiiRemote:
         return "Stand the DualSense on end in your right hand with the trigger edge toward the TV: R2 under your "
                "index finger is B, Cross under your thumb is A. Or hold it face up in both hands; with Grip on Auto, "
-               "Porpoise reads which. Point at the screen to aim. R1 puts the pointer in the middle; pushing past an "
-               "edge brings a drifted pointer back too.";
+               "Porpoise reads which. To start, hold it the way you'll play, point at the middle of the "
+               "screen and hold R1 for a moment: that hold becomes the Remote held level. Do it again whenever the "
+               "pointer wanders.";
     case WiiSideways:
         return "Hold the DualSense face up in both hands, like an NES pad. Tilt it left and right to steer. 1 and 2 "
                "are Square and Cross.";
@@ -1025,12 +1026,12 @@ const char *wii_howto(int controller)
         return "Hold it as a normal pad: the buttons are where a Classic Controller has them.";
     case WiiTwoControllers:
         return "One DualSense in each hand, both stood on end with their faces toward you. The right one is the "
-               "Remote (its grips pointing right): aim with its back, R1 centres. The left one is the Nunchuk (its "
+               "Remote (its grips pointing right): aim with its back. Holding R1 a moment centres the pointer and levels both controllers as you hold them. The left one is the Nunchuk (its "
                "grips pointing left): its stick, C and Z, and its motion. Both feel the game's rumble. The second "
                "controller needs a second signed-in user.";
     default:
         return "Hold the DualSense face up in both hands. The right half is the Remote, the left half the Nunchuk: "
-               "the left stick is its stick, L1 is C, L2 is Z. Point the controller at the screen to aim; R1 centres.";
+               "the left stick is its stick, L1 is C, L2 is Z. Point the controller at the screen to aim; hold R1 a moment to centre.";
     }
 }
 } // namespace
@@ -1077,6 +1078,14 @@ void App::draw_wii_guide(double)
     const float lx = 90, ly = 136, lw = 750, lh = 800;
     g.panel(lx, ly, lw, lh, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
     g.text_mid(Font::Bold, ts(46), lx + 44, ly + 64, kWhite, Align::Left, tr("How to hold it"));
+    {
+        /* Beta, plainly. */
+        const std::string beta = tr("Beta");
+        const float bw = g.measure(Font::Bold, ts(20), beta) + 28;
+        const float bx = lx + 44 + g.measure(Font::Bold, ts(46), tr("How to hold it")) + 20;
+        g.panel(bx, ly + 64 - 17, bw, 34, rgba(0xFFC85C, 0.9f), 0.8f, 17, rgba(0xFFE7B0), 1.4f);
+        g.text_mid(Font::Bold, ts(20), bx + bw * 0.5f, ly + 64, rgba(0x2A1A00), Align::Center, beta);
+    }
     /* The controller, chosen with left / right. */
     const std::string name = tr(wii_controller_name(guide_controller_));
     const float ny = ly + 140;
@@ -1094,6 +1103,18 @@ void App::draw_wii_guide(double)
     {
         g.text_mid(Font::Regular, ts(27), lx + 44, ty, kSoft, Align::Left, l);
         ty += 40;
+    }
+    {
+        const auto beta = wrap(g, Font::Regular, ts(23),
+                               tr("Wii motion controls are in beta: still being tuned. Your logs in the debug folder "
+                                  "help."),
+                               lw - 90, 3);
+        float by = ly + lh - 40 - 32 * float(beta.size() - 1);
+        for (const std::string &l : beta)
+        {
+            g.text_mid(Font::Regular, ts(23), lx + 44, by, kLavender, Align::Left, l);
+            by += 32;
+        }
     }
     draw_wii_controls(870, 120, 960, 850, wii, 1.0f);
     draw_prompts({{Glyph::DPad, "Other Wii controllers"}, {Glyph::Circle, "Back"}}, {}, "");

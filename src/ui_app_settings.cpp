@@ -287,7 +287,8 @@ void App::add_game_rows(Settings &t, bool per_game)
         SettingRow r;
         r.section = section;
         r.label = tr("How to hold it");
-        r.help = tr("A picture of the DualSense as each Wii controller: how to hold it and what every button does.");
+        r.help = tr("Beta: a picture of the DualSense as each Wii controller, how to hold it and what every button "
+                    "does. Wii motion controls are still being tuned.");
         r.values = {tr("Show\xE2\x80\xA6")};
         r.action = kRowWiiGuide;
         rows_.push_back(r);
@@ -298,7 +299,7 @@ void App::add_game_rows(Settings &t, bool per_game)
            "controllers (beta): the second DualSense is the Nunchuk.",
            &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
                                   "Two controllers (beta)"});
-    choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen (R1 centres it).",
+    choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to centre it.",
            &t.wii_pointer, 0, {"Gyro", "Touch pad", "Right stick"});
     choice("wii_speed", "Pointer speed", "How far you turn the controller to reach the screen's edge.", &t.wii_speed,
            1, {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"});

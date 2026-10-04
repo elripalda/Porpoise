@@ -737,6 +737,46 @@ int menu_paused(void *)
 
 /* Testing the Wii Remote: what player 1's controller feels, and where the
  * pointer is, over the game. */
+/* A Wii game with the gyro pointer: how to centre it, for the first seconds,
+ * and a short "centred" each time it is. */
+double g_wii_hint_from = -1;      /* g_time the game started, or -1 */
+unsigned g_wii_centrings = 0;
+double g_wii_centred_at = -100;
+
+void draw_wii_hint()
+{
+    using namespace porpoise::ui;
+    const porpoise::pad::WiiConfig wii = porpoise::pad::wii();
+    const bool held = wii.controller != porpoise::pad::WiiSideways && wii.controller != porpoise::pad::WiiClassic;
+    if (!wii.active || !held || wii.pointer != porpoise::pad::PointerGyro)
+        return;
+    const porpoise::pad::Motion m = porpoise::pad::snapshot(0).motion;
+    if (m.centrings != g_wii_centrings)
+    {
+        g_wii_centrings = m.centrings;
+        g_wii_centred_at = g_time;
+    }
+    const bool left = porpoise::pad::pose_left_hand(m.pose);
+    std::string text;
+    float a = 0;
+    if (g_time - g_wii_centred_at < 1.4)
+    {
+        text = tr("Centred");
+        a = float(std::min(1.0, (1.4 - (g_time - g_wii_centred_at)) * 3.0));
+    }
+    else if (g_wii_hint_from >= 0 && g_time >= g_wii_hint_from && g_time - g_wii_hint_from < 10.0 && m.centrings == 0)
+    {
+        text = tr(left ? "Hold the controller as you'll play, point at the middle of the screen, and hold L1"
+                       : "Hold the controller as you'll play, point at the middle of the screen, and hold R1");
+        a = float(std::min(1.0, (10.0 - (g_time - g_wii_hint_from)) * 2.0));
+    }
+    if (text.empty() || a <= 0)
+        return;
+    const float w = g_gfx.measure(Font::SemiBold, 26, text) + 70, h = 58, x = 960 - w * 0.5f, y = 1080 - 120;
+    g_gfx.panel(x, y, w, h, rgba(0x0A1236, 0.82f * a), 0.9f, h * 0.5f, rgba(0x6BE3A8, 0.9f * a), 1.8f);
+    g_gfx.text_mid(Font::SemiBold, 26, 960, y + h * 0.5f, rgba(0xF4F7FF, a), Align::Center, text);
+}
+
 void draw_motion_readout()
 {
     using namespace porpoise::ui;
@@ -823,6 +863,8 @@ void launch_frame(bool core_frame, double fps, void *)
     }
     if (g_play.motion_readout && !g_menu_open)
         draw_motion_readout();
+    if (!g_menu_open)
+        draw_wii_hint();
     if (g_menu_open)
         g_app.draw_game_menu(g_time);
 }
@@ -1086,6 +1128,8 @@ int main()
         playback.strength = g_play.filter_strength / 10.0f;
         /* A Wii game: the DualSense as a Wii Remote; a test build logs it. */
         playback.wii = g_play.wii_config(launch->platform == "Wii");
+        g_wii_hint_from = g_time + 2.0; /* once the game is up */
+        g_wii_centrings = 0;
         const std::string debug_dir = g_data + "/debug";
         if (g_settings.debug_logs)
         {

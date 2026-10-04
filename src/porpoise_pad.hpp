@@ -182,6 +182,9 @@ struct WiiConfig
     bool invert_x = false, invert_y = false;
 };
 void set_wii(const WiiConfig &config);
+/* The core now gets the real motion of a Remote with the Nunchuk (and, in
+ * two-controller play, of the Nunchuk): flicks needn't be sent as shakes. */
+void set_nunchuk_motion(bool on);
 WiiConfig wii();
 
 /* The buttons and sticks of a Wii controller, as played and as drawn. The
@@ -212,6 +215,7 @@ struct Motion
     float aim_x = 0, aim_y = 0, roll = 0;
     float gyro_bias[3] = {0, 0, 0}; /* the drift learnt so far, rad/s */
     int pose = PoseFlat;            /* how it is held, as read (WiiPose) */
+    unsigned centrings = 0;         /* times the player has centred it (R1 held) */
     bool touching = false;
     int touch_x = 0, touch_y = 0; /* the first finger, 0..1919 x 0..1079 */
     bool shaking = false;         /* a flick was felt in the last few frames */
