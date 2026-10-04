@@ -1,6 +1,6 @@
 <p align="center"><img src="https://github.com/elripalda/Porpoise/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
-**Porpoise 1.1 (build 14).** This update adds save states, an in-game menu, recommended settings per game (beta), more filters and borders, twelve languages, a reworked folder browser and updates from inside Porpoise.
+**Porpoise 1.1 (build 15).** This update adds save states, an in-game menu, recommended settings per game (beta), more filters and borders, twelve languages, a reworked folder browser and updates from inside Porpoise.
 
 ## Changes
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1 — 2026-10-04 (build 14)
+## 1.1 — 2026-10-04 (build 15)
 
 ### Recommended settings (beta)
 - Every game's settings open with **Recommended**: Dolphin's own fixes for the
