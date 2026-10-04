@@ -89,7 +89,7 @@ enum Layout : int
 {
     LayoutGameCube = 0,
     LayoutPlayStation = 1,
-    LayoutCustom = 2,
+    LayoutOwn = 2, /* 2..5: the player's own layouts 1..4 (Settings::presets) */
 };
 Mapping preset(int layout);
 

@@ -59,6 +59,9 @@ struct CoreApi
     bool (*load_game)(const retro_game_info *);
     void (*unload_game)();
     void (*run)();
+    std::size_t (*serialize_size)();
+    bool (*serialize)(void *, std::size_t);
+    bool (*unserialize)(const void *, std::size_t);
 };
 
 struct Option
@@ -86,7 +89,12 @@ struct Host
     std::atomic<unsigned long long> samples_in{0}; /* audio frames the core has pushed (any thread) */
     bool presented = false;
     unsigned last_width = 0, last_height = 0;
-    bool sharp = false;
+    int filter = 0;        /* the screen filter (porpoise_vk.hpp) */
+    int fast_forward = 1;  /* frames run per frame shown */
+    std::string pending_state; /* a save state to load once the game shows its first pictures */
+    unsigned frames_with_picture = 0;
+    bool running = false;  /* a game is loaded: save states are possible */
+    float strength = 0.6f; /* its strength, 0..1 */
     bool have_frame = false;
     bool hold_input = false; /* after the menu: the game sees no buttons until all are let go */
     bool plugged[porpoise::pad::kMaxPlayers] = {}; /* GameCube ports with a controller in */
@@ -568,6 +576,9 @@ bool load_core()
     ok &= symbol(h.api.load_game, "retro_load_game");
     ok &= symbol(h.api.unload_game, "retro_unload_game");
     ok &= symbol(h.api.run, "retro_run");
+    ok &= symbol(h.api.serialize_size, "retro_serialize_size");
+    ok &= symbol(h.api.serialize, "retro_serialize");
+    ok &= symbol(h.api.unserialize, "retro_unserialize");
     return ok;
 }
 
@@ -618,9 +629,72 @@ void set_option(const char *key, const char *value)
     }
 }
 
-void set_sharp(bool sharp)
+void set_fast_forward(int factor)
 {
-    h.sharp = sharp;
+    h.fast_forward = std::clamp(factor, 1, 8);
+}
+
+bool save_state(const char *path)
+{
+    if (!h.running || !h.api.serialize_size)
+        return false;
+    const std::size_t size = h.api.serialize_size();
+    if (size == 0)
+        return false;
+    std::vector<unsigned char> data(size);
+    if (!h.api.serialize(data.data(), size))
+    {
+        ps5::debug::mark("core: the game would not save its state");
+        return false;
+    }
+    const std::string tmp = std::string(path) + ".part";
+    std::FILE *f = std::fopen(tmp.c_str(), "wb");
+    if (!f)
+        return false;
+    const bool written = std::fwrite(data.data(), 1, size, f) == size;
+    std::fclose(f);
+    if (!written || std::rename(tmp.c_str(), path) != 0)
+    {
+        std::remove(tmp.c_str());
+        return false;
+    }
+    char line[160];
+    std::snprintf(line, sizeof line, "core: state saved (%zu MB)", size >> 20);
+    ps5::debug::mark(line);
+    return true;
+}
+
+bool load_state(const char *path)
+{
+    if (!h.running || !h.api.unserialize)
+        return false;
+    std::vector<unsigned char> data;
+    if (!read_whole_file(path, data) || data.empty())
+        return false;
+    const bool ok = h.api.unserialize(data.data(), data.size());
+    ps5::debug::mark(ok ? "core: state loaded" : "core: the game would not take the state");
+    porpoise::audio::flush();
+    return ok;
+}
+
+bool capture_picture(std::vector<unsigned char> &rgba, unsigned &width, unsigned &height)
+{
+    if (!h.running || !h.have_frame)
+        return false;
+    width = h.last_width;
+    height = h.last_height;
+    return porpoise::vk::capture_picture(width, height, rgba);
+}
+
+float picture_aspect()
+{
+    return h.aspect;
+}
+
+void set_picture(int filter, float strength)
+{
+    h.filter = filter;
+    h.strength = strength;
 }
 
 Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, const Playback &playback)
@@ -640,7 +714,12 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     h.presented = false;
     h.last_width = h.last_height = 0;
     h.hold_input = false;
-    h.sharp = playback.sharp;
+    h.fast_forward = 1;
+    h.pending_state = playback.load_state ? playback.load_state : "";
+    h.frames_with_picture = 0;
+    h.running = false;
+    h.filter = playback.filter;
+    h.strength = playback.strength;
     h.have_frame = false;
     h.samples_in = 0;
     porpoise::audio::set_volume(playback.volume);
@@ -835,13 +914,27 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             if (hooks.frame)
                 hooks.frame(h.have_frame, measured_fps, hooks.user);
             if (h.have_frame)
-                porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.sharp);
+                porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.filter, h.strength);
             else
                 porpoise::vk::present_clear(0, 0, 0);
             pacer.frame_done();
             continue;
         }
-        h.api.run();
+        h.running = true;
+        /* Fast forward: several emulated frames for each one shown, without
+         * their sound. */
+        const int runs = h.fast_forward;
+        for (int i = 0; i < runs; ++i)
+            h.api.run();
+        if (runs > 1)
+            porpoise::audio::flush();
+        /* A save state chosen in Details loads once the game is up. */
+        if (!h.pending_state.empty() && h.have_frame && ++h.frames_with_picture > 30)
+        {
+            if (!load_state(h.pending_state.c_str()) && h.log)
+                std::fprintf(h.log, "[porpoise] could not load %s\n", h.pending_state.c_str());
+            h.pending_state.clear();
+        }
 
         if (!rate_checked && h.samples_in > 4096)
         {
@@ -868,13 +961,13 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         if (hooks.frame)
             hooks.frame(h.have_frame, measured_fps, hooks.user);
         if (h.have_frame)
-            porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.sharp);
+            porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.filter, h.strength);
         else
             porpoise::vk::present_clear(0, 0, 0);
         window_present_wait_ms += porpoise::vk::last_present_wait_ms();
 
         /* The speakers: never run far ahead of what has been heard. */
-        if (rate_checked)
+        if (rate_checked && runs == 1)
             window_audio_wait_us +=
                 porpoise::audio::wait_below(pacer.display_locked() ? kAudioBackstop : kAudioHighWater, 40);
 
@@ -913,6 +1006,8 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         }
     }
 
+    h.running = false;
+    h.fast_forward = 1;
     porpoise::audio::flush();
     porpoise::vk::close();
     /* Everything Porpoise made on the core's device goes before the core

@@ -578,6 +578,7 @@ bool Gfx::init(const GfxInit &init)
         return false;
     }
     brand_mask_ = texture_file(init_.asset_dir + "/brand/dolphin-mask.png");
+    icons_ = texture_file(init_.asset_dir + "/ui/buttons.png");
     vertices_.reserve(vcapacity_);
     return true;
 }
@@ -594,7 +595,7 @@ void Gfx::shutdown()
     for (auto &dead : graveyard_)
         destroy_texture(dead.first);
     graveyard_.clear();
-    white_ = atlas_ = brand_mask_ = nullptr;
+    white_ = atlas_ = brand_mask_ = icons_ = nullptr;
     for (std::size_t i = 0; i < vbufs_.size(); ++i)
     {
         if (vmaps_[i])
@@ -790,8 +791,75 @@ void Gfx::blob(float cx, float cy, float w, float h, Color c)
     push(nullptr, v);
 }
 
+void Gfx::image_part(Texture *t, float x, float y, float w, float h, const float uv[4], Color tint)
+{
+    const float px = target_w_ / kDesignW;
+    Vertex v[4]{};
+    float pos[4][4];
+    corners_flat(x, y, w, h, pos);
+    const float local[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    for (int i = 0; i < 4; ++i)
+    {
+        std::memcpy(v[i].pos, pos[i], sizeof pos[i]);
+        fill(v[i].uv, {uv[0] + (uv[2] - uv[0]) * local[i][0], uv[1] + (uv[3] - uv[1]) * local[i][1]});
+        fill(v[i].local, {local[i][0], local[i][1]});
+        fill(v[i].color, {tint.r, tint.g, tint.b, tint.a});
+        fill(v[i].p0, {float(K_IMAGE), 0, 0, 0});
+        fill(v[i].p1, {w * px, h * px, w * px, h * px});
+    }
+    push(t, v);
+}
+
+void Gfx::icon(Icon i, float cx, float cy, float size, Color c)
+{
+    constexpr int kCols = 8, kRows = 4;
+    const int n = int(i);
+    if (!icons_ || n < 0 || n >= int(Icon::Count))
+        return;
+    /* Half a texel in from the cell's edge, so neighbours never bleed in. */
+    const float cu = 1.0f / kCols, cv = 1.0f / kRows;
+    const float hu = 0.5f / float(icons_->width), hv = 0.5f / float(icons_->height);
+    const float u0 = float(n % kCols) * cu, v0 = float(n / kCols) * cv;
+    const float uv[4] = {u0 + hu, v0 + hv, u0 + cu - hu, v0 + cv - hv};
+    image_part(icons_, cx - size * 0.5f, cy - size * 0.5f, size, size, uv, c);
+}
+
 void Gfx::glyph(Glyph g, float cx, float cy, float size, Color c, float rotation)
 {
+    /* The DualSense's buttons come from the icon atlas when it is there; a
+     * face button's ring is drawn the size the old glyph was. */
+    if (icons_)
+    {
+        Icon ic = Icon::Count;
+        float scale = 1.5f;
+        switch (g)
+        {
+        case Glyph::Cross: ic = Icon::Cross; break;
+        case Glyph::Circle: ic = Icon::Circle; break;
+        case Glyph::Square: ic = Icon::Square; break;
+        case Glyph::Triangle: ic = Icon::Triangle; break;
+        case Glyph::DPad: ic = Icon::DPad; scale = 1.3f; break;
+        case Glyph::L1: ic = Icon::L1; scale = 1.4f; break;
+        case Glyph::R1: ic = Icon::R1; scale = 1.4f; break;
+        case Glyph::L2: ic = Icon::L2; scale = 1.4f; break;
+        case Glyph::R2: ic = Icon::R2; scale = 1.4f; break;
+        case Glyph::Options: ic = Icon::Options; scale = 1.4f; break;
+        case Glyph::TouchPad: ic = Icon::TouchPad; scale = 1.4f; break;
+        case Glyph::Create: ic = Icon::Create; scale = 1.4f; break;
+        case Glyph::L3: ic = Icon::L3; scale = 1.4f; break;
+        case Glyph::R3: ic = Icon::R3; scale = 1.4f; break;
+        case Glyph::LStick: ic = Icon::LStick; break;
+        case Glyph::RStick: ic = Icon::RStick; break;
+        default: break;
+        }
+        if (ic != Icon::Count)
+        {
+            icon(ic, cx, cy, size * scale, c);
+            return;
+        }
+    }
+    if (int(g) >= int(Glyph::L1))
+        g = Glyph::Cross; /* no atlas: any button will do */
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     float pos[4][4];

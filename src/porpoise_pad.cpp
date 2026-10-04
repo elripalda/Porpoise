@@ -31,6 +31,10 @@ struct ScePadVibrationParam
     std::uint8_t largeMotor;
     std::uint8_t smallMotor;
 };
+struct ScePadLightBarParam
+{
+    std::uint8_t r, g, b;
+};
 } // namespace
 
 extern "C"
@@ -43,6 +47,8 @@ extern "C"
     std::int32_t scePadClose(std::int32_t handle);
     std::int32_t scePadSetVibration(std::int32_t handle, const ScePadVibrationParam *param);
     std::int32_t scePadSetVibrationMode(std::int32_t handle, std::int32_t mode);
+    std::int32_t scePadSetLightBar(std::int32_t handle, const ScePadLightBarParam *param);
+    std::int32_t scePadResetLightBar(std::int32_t handle);
     std::int32_t sceUserServiceInitialize(const void *params);
     std::int32_t sceUserServiceGetInitialUser(std::int32_t *user_id);
     /* The signed-in users: four ids, -1 for none (room to spare is kept). */
@@ -179,6 +185,10 @@ void open_slot(int player, std::int32_t user, int attempts)
     slot.user = user;
     slot.handle = handle;
     (void)scePadSetVibrationMode(handle, 2);
+    /* Each player's light bar has their colour, so everyone knows which
+     * controller is theirs: blue, red, green, pink. */
+    static const ScePadLightBarParam kColours[kMaxPlayers] = {{0, 96, 255}, {255, 36, 48}, {0, 210, 80}, {255, 60, 190}};
+    (void)scePadSetLightBar(handle, &kColours[player]);
     std::snprintf(line, sizeof line, "pad: player %d is user %d, handle %d", player + 1, int(user), int(handle));
     ps5::debug::mark(line);
 }
@@ -190,6 +200,7 @@ void close_slot(int player)
         return;
     slot.motor_large = slot.motor_small = 0;
     push_rumble(slot);
+    (void)scePadResetLightBar(slot.handle);
     (void)scePadClose(slot.handle);
     char line[64];
     std::snprintf(line, sizeof line, "pad: player %d left", player + 1);

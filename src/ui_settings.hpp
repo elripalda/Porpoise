@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "porpoise_pad.hpp"
@@ -26,7 +27,12 @@ struct Settings
     int texture_filter = 0;  /* dolphin_force_texture_filtering_mode 0..2 */
     int antialiasing = 0;    /* dolphin_anti_aliasing 0..6 */
     int resampling = 0;      /* dolphin_enhance_output_resampling 0..6 */
-    bool sharp = false;      /* Porpoise's own scaling to the TV: false = smooth */
+    /* Porpoise's own picture, drawn over the game's: how it is scaled and
+     * filtered on the way to the TV, and what fills the bars beside a 4:3
+     * picture. */
+    int screen_filter = 0;   /* porpoise::vk::Filter: Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS */
+    int filter_strength = 6; /* 1..10 */
+    std::string border;      /* "" none, or a border's name (built in, or a PNG in /data/porpoise/borders) */
     bool fps_overlay = false;
     /* Graphics (advanced) */
     int shader_mode = 2;          /* dolphin_shader_compilation_mode 0..3: async ubershaders */
@@ -45,11 +51,15 @@ struct Settings
     bool menu_sounds = true;
     int sounds_volume = 8;
     /* Controls */
-    int button_layout = 0; /* porpoise::pad::Layout: GameCube, PlayStation, Custom */
-    /* The custom layout: a porpoise::pad::Control for each GameCube input, in
-     * porpoise::pad::GcInput order. Starts as the GameCube layout. */
-    int map_a = 0, map_b = 2, map_x = 1, map_y = 3, map_z = 5, map_l = 6, map_r = 7, map_start = 10;
-    int map_up = 12, map_down = 13, map_left = 14, map_right = 15;
+    /* 0 GameCube, 1 PlayStation, 2..5 the player's own layouts 1..4. */
+    int button_layout = 0;
+    /* The player's own layouts, kept with the global settings (a game only
+     * picks one): a porpoise::pad::Control for each GameCube input, in
+     * porpoise::pad::GcInput order. Each starts as the GameCube layout. */
+    static constexpr int kPresets = 4;
+    int presets[kPresets][porpoise::pad::GcCount] = {
+        {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}, {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15},
+        {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}, {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}};
     bool rumble = true;
     /* System */
     int cpu_clock = 5;       /* index into the clock list (50% .. 300%): 100% */
@@ -75,12 +85,11 @@ struct Settings
     bool write_core_options(const std::string &options_ini) const;
     /* Back to how Porpoise ships, keeping the game folders. */
     void reset();
-    /* The custom layout's slot for a GameCube input (porpoise::pad::GcInput). */
-    int *map_slot(int gc_input);
-    int map_of(int gc_input) const;
-    /* The buttons in effect: the chosen layout, or the custom one. */
+    /* The buttons in effect: a ready-made layout, or one of the player's own. */
     porpoise::pad::Mapping mapping() const;
-    /* The keys a layout change writes, for a game's own settings. */
-    static std::vector<std::string> mapping_keys();
+    /* The player's own layout 0..3 being used, or -1 for a ready-made one. */
+    int preset_in_use() const { return button_layout >= 2 ? button_layout - 2 : -1; }
+    /* The Dolphin options these settings make, as key and value. */
+    std::vector<std::pair<std::string, std::string>> core_options() const;
 };
 } // namespace porpoise

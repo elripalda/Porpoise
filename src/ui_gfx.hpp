@@ -60,6 +60,32 @@ enum class Glyph
     Arrow = 4,   /* filled triangle, rotated */
     Pointer = 5, /* outlined triangle pointing up */
     DPad = 6,
+    /* The DualSense's other controls, drawn from the button icons. */
+    L1 = 10,
+    R1 = 11,
+    L2 = 12,
+    R2 = 13,
+    Options = 14,
+    TouchPad = 15,
+    Create = 16,
+    L3 = 17,
+    R3 = 18,
+    LStick = 19,
+    RStick = 20,
+};
+
+/* The button icons in assets/ui/buttons.png (Zacksly's "PS5 Button Icons and
+ * Controls", CC BY 3.0, drawn by tools/make-controller-art.py), in its order. */
+enum class Icon
+{
+    Cross, Circle, Square, Triangle,
+    CrossSolid, CircleSolid, SquareSolid, TriangleSolid,
+    L1, R1, L2, R2,
+    Options, Create, TouchPad, DPad,
+    DPadUp, DPadDown, DPadLeft, DPadRight,
+    LStick, RStick, L3, R3,
+    LStickAll, RStickAll,
+    Count
 };
 
 struct GfxInit
@@ -132,6 +158,12 @@ public:
     void image(Texture *t, float x, float y, float w, float h, Color tint = {}, float radius = 0);
     void blob(float cx, float cy, float w, float h, Color c);
     void glyph(Glyph g, float cx, float cy, float size, Color c, float rotation = 0);
+    /* A button icon in a size x size cell (the icons carry their own margin:
+     * a face button's ring is about two thirds of the cell). */
+    void icon(Icon i, float cx, float cy, float size, Color c);
+    bool has_icons() const { return icons_ != nullptr; }
+    /* Part of a texture: uv is u0 v0 u1 v1. */
+    void image_part(Texture *t, float x, float y, float w, float h, const float uv[4], Color tint = {});
     /* A textured quad from four projected corners (top-left, top-right,
      * bottom-right, bottom-left); shape_w/h is the quad's own size before
      * projection, for rounded corners. reflection fades it out downward. */
@@ -220,6 +252,7 @@ private:
 
     Texture *white_ = nullptr;
     Texture *atlas_ = nullptr;
+    Texture *icons_ = nullptr;
     Texture *brand_mask_ = nullptr;
     std::vector<Texture *> textures_;
     std::vector<std::pair<Texture *, std::uint64_t>> graveyard_; /* freed, waiting for the GPU */

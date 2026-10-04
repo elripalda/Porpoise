@@ -9,6 +9,10 @@
 #include <string>
 #include <vector>
 
+#include <sys/stat.h>
+
+#include "porpoise_borders.hpp"
+#include "porpoise_states.hpp"
 #include "ui_app.hpp"
 #include "ui_i18n.hpp"
 #include "ui_gfx.hpp"
@@ -238,6 +242,36 @@ int main(int argc, char **argv)
     porpoise::Settings settings;
     App ui;
     ui.init(&gfx, &lib, &settings, out + "/settings.ini", out + "/options.ini", saves);
+    /* Two save states for the 4th game, with a cover for their pictures. */
+    porpoise::states::set_data_dir(out);
+    porpoise::borders::set_dirs(assets, out);
+    if (lib.games().size() > 3)
+    {
+        const std::string dir = out + "/states/" + Library::key_of(lib.games()[3]);
+        mkdir((out + "/states").c_str(), 0777);
+        mkdir(dir.c_str(), 0777);
+        for (int slot : {1, 3})
+        {
+            if (std::FILE *f = std::fopen((dir + "/slot" + std::to_string(slot) + ".state").c_str(), "wb"))
+            {
+                std::fputs("preview", f);
+                std::fclose(f);
+            }
+            const std::string from = covers + (slot == 1 ? "/PRVW07.png" : "/PRVW03.png");
+            if (std::FILE *in = std::fopen(from.c_str(), "rb"))
+            {
+                if (std::FILE *o = std::fopen((dir + "/slot" + std::to_string(slot) + ".png").c_str(), "wb"))
+                {
+                    char buf[8192];
+                    std::size_t n;
+                    while ((n = std::fread(buf, 1, sizeof buf, in)) > 0)
+                        std::fwrite(buf, 1, n, o);
+                    std::fclose(o);
+                }
+                std::fclose(in);
+            }
+        }
+    }
 
     auto render = [&](const char *name, auto &&draw) {
         gfx.begin(0, float(W), float(H), 12.0f, 0.0f, false);
@@ -337,6 +371,12 @@ int main(int argc, char **argv)
         settle();
     }
     press(kDown);
+    press(kCross); /* Save states */
+    settle();
+    render("details-states", [&] { ui.draw(12.0); });
+    press(kCircle);
+    settle();
+    press(kDown);
     press(kCross); /* Game settings */
     press(kRight);
     settle();
@@ -429,7 +469,7 @@ int main(int argc, char **argv)
         press(kCross);
         settle();
         render("mapping", [&] { ui.draw(12.0); });
-        press(kDown);     /* B */
+        press(kDown, 2);  /* B */
         press(kCross);    /* waiting for a button */
         for (int i = 0; i < 20; ++i)
             ui.update(none, 0.016);
@@ -437,7 +477,7 @@ int main(int argc, char **argv)
         press(kCircle);   /* B on Circle */
         settle();
         render("mapping-custom", [&] { ui.draw(12.0); });
-        press(kDown, 12); /* Use the PlayStation layout */
+        press(kDown, 12); /* Start over from the PlayStation layout */
         press(kCross);
         settle();
         render("mapping-playstation", [&] { ui.draw(12.0); });
@@ -462,12 +502,40 @@ int main(int argc, char **argv)
         for (int i = 0; i < 20; ++i)
             ui.update_game_menu(none, 0.016);
         Texture *frame = gfx.texture_file(covers + "/PRVW07.png");
-        render("ingame-menu", [&] {
-            gfx.background();
-            if (frame)
-                gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
-            ui.draw_game_menu(12.0);
-        });
+        auto shot = [&](const char *name) {
+            for (int i = 0; i < 20; ++i)
+                ui.update_game_menu(none, 0.016);
+            render(name, [&] {
+                gfx.background();
+                if (frame)
+                    gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
+                ui.draw_game_menu(12.0);
+            });
+        };
+        auto menu_press = [&](std::uint32_t bit, int times = 1) {
+            for (int i = 0; i < times; ++i)
+            {
+                Input in;
+                in.held = bit;
+                ui.update_game_menu(in, 0.016);
+                ui.update_game_menu(none, 0.016);
+            }
+        };
+        shot("ingame-menu");
+        menu_press(1u << 1); /* Load state */
+        shot("ingame-menu-load");
+        menu_press(1u << 9); /* R1: Video */
+        menu_press(1u << 1, 5); /* Screen filter */
+        menu_press(1u << 3, 3); /* CRT */
+        shot("ingame-video");
+        menu_press(1u << 9); /* Graphics */
+        shot("ingame-graphics");
+        menu_press(1u << 9); /* Controls */
+        shot("ingame-controls");
+        menu_press(1u << 1);
+        menu_press(1u << 4); /* Customize buttons, over the game */
+        shot("ingame-mapping");
+        menu_press(1u << 5);
     }
 
     /* Spanish. */

@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #pragma once
 
+#include <vector>
+
 namespace porpoise::core
 {
 struct Paths
@@ -53,15 +55,25 @@ enum class Exit
 };
 
 /* While a game runs: a Dolphin option changed from the in-game menu (the core
- * picks it up on its next frame), and Porpoise's own picture scaling. */
+ * picks it up on its next frame), and Porpoise's own screen filter. */
 void set_option(const char *key, const char *value);
-void set_sharp(bool sharp);
+void set_picture(int filter, float strength);
+/* Fast forward: 1 is normal speed, 2 or 4 run that many frames for each shown. */
+void set_fast_forward(int factor);
+/* Save states, while a game is paused in the in-game menu. */
+bool save_state(const char *path);
+bool load_state(const char *path);
+/* The game's last picture (RGBA) and its shape, for a save state's thumbnail. */
+bool capture_picture(std::vector<unsigned char> &rgba, unsigned &width, unsigned &height);
+float picture_aspect();
 
 struct Playback
 {
     float volume = 1.0f;
     bool muted = false;
-    bool sharp = false;
+    int filter = 0;        /* porpoise::vk screen filter */
+    float strength = 0.6f; /* 0..1 */
+    const char *load_state = nullptr; /* a save state to load once the game is up */
 };
 
 /* Load the core, boot the game, run it until the player leaves it. The

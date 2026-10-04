@@ -5,6 +5,7 @@
  * The library, a game's details, memory cards, dialogs and the launch screen.
  * Settings and the folder browser are in ui_app_settings.cpp; the look they
  * share is in ui_app_common.hpp. */
+#include "porpoise_states.hpp"
 #include "ui_app.hpp"
 
 #include <algorithm>
@@ -65,6 +66,10 @@ void App::forget_textures()
     logo_tried_ = false;
     pad_art_ = nullptr;
     pad_art_tried_ = false;
+    lines_art_ = nullptr;
+    lines_art_tried_ = false;
+    for (Texture *&t : menu_slot_tex_)
+        t = nullptr;
 }
 
 void App::free_card_textures()
@@ -279,7 +284,9 @@ App::Action App::update(const Input &in, double dt)
     if (screen_ == Screen::GameSettings)
         return update_settings(up, down, left, right);
     if (screen_ == Screen::Mapping)
-        return update_mapping(up, down);
+        return update_mapping(up, down, left, right);
+    if (screen_ == Screen::States)
+        return update_states(left, right);
     if (screen_ == Screen::Sort)
     {
         if (up || down)
@@ -340,6 +347,7 @@ App::Action App::update(const Input &in, double dt)
                 box_back_ = false;
                 box_yaw_ = calm ? 0.0f : float(dir) * 1.25f; /* it swings in and settles */
                 details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
+                count_states(&games[std::size_t(selected_)]);
                 lib_->set_selected(Library::key_of(games[std::size_t(selected_)]));
                 sfx(Sound::GameRow);
             }
@@ -349,7 +357,7 @@ App::Action App::update(const Input &in, double dt)
             --details_row_;
             sfx(Sound::MenuScroll);
         }
-        if (down && details_row_ < 2)
+        if (down && details_row_ < 3)
         {
             ++details_row_;
             sfx(Sound::MenuScroll);
@@ -369,10 +377,13 @@ App::Action App::update(const Input &in, double dt)
             if (details_row_ == 0)
             {
                 launch_ = &games[selected_];
+                launch_state_.clear();
                 action = Action::Launch;
                 sfx(Sound::LaunchGame);
             }
             else if (details_row_ == 1)
+                open_states(&games[std::size_t(selected_)]);
+            else if (details_row_ == 2)
             {
                 open_game_settings(games[std::size_t(selected_)]);
                 sfx(Sound::MenuScroll);
@@ -410,6 +421,7 @@ App::Action App::update(const Input &in, double dt)
         if (pressed(BtnCross))
         {
             launch_ = &games[selected_];
+            launch_state_.clear();
             action = Action::Launch;
             sfx(Sound::LaunchGame);
         }
@@ -422,6 +434,7 @@ App::Action App::update(const Input &in, double dt)
             box_yaw_ = calm ? 0.0f : -2.0f * kPi; /* one full turn on the way in */
             details_row_ = 0;
             details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
+            count_states(&games[std::size_t(selected_)]);
         }
         if (pressed(BtnTriangle))
         {
@@ -542,6 +555,14 @@ App::Action App::confirm_dialog(DialogKind kind)
             std::remove(game_settings_path(*game_for_).c_str());
             game_ = *settings_;
             build_game_settings();
+        }
+        return Action::None;
+    case DialogKind::DeleteState:
+        if (states_game_)
+        {
+            porpoise::states::remove(Library::key_of(*states_game_), states_sel_);
+            load_slots(states_game_);
+            count_states(states_game_);
         }
         return Action::None;
     case DialogKind::DeleteSave:
@@ -832,12 +853,17 @@ void App::draw_top_bar()
                    Align::Center, names[i]);
     }
     /* L1 / R1 keycaps */
-    auto keycap = [&](float cx, const char *label) {
+    auto keycap = [&](float cx, Glyph glyph, const char *label) {
+        if (g.has_icons())
+        {
+            g.glyph(glyph, cx, kBarCy, 46, rgba(0xE8F0FF));
+            return;
+        }
         g.panel(cx - 30, kBarCy - 19, 60, 38, kClear, 1, kR, rgba(0xDDE6FF, 0.85f), 2.0f);
         g.text_mid(Font::Bold, 21, cx, kBarCy, kWhite, Align::Center, label);
     };
-    keycap(bar_x - 66, "L1");
-    keycap(bar_x + bar_w + 66, "R1");
+    keycap(bar_x - 66, Glyph::L1, "L1");
+    keycap(bar_x + bar_w + 66, Glyph::R1, "R1");
 
     g.text_mid(Font::SemiBold, ts(27), 1866, kBarCy, kWhite, Align::Right, clock_text());
 }
@@ -849,6 +875,19 @@ float App::draw_key_pair(float x, float cy, Glyph which, bool measure_only)
     Gfx &g = *g_;
     const char *a = which == kKeyL1R1 ? "L1" : "L2";
     const char *b = which == kKeyL1R1 ? "R1" : "R2";
+    if (g.has_icons())
+    {
+        /* The two buttons' own icons, side by side. */
+        const Glyph ga = which == kKeyL1R1 ? Glyph::L1 : Glyph::L2;
+        const Glyph gb = which == kKeyL1R1 ? Glyph::R1 : Glyph::R2;
+        const float cell = 44, gap = 4;
+        if (!measure_only)
+        {
+            g.glyph(ga, x + cell * 0.5f, cy, cell, kWhite);
+            g.glyph(gb, x + cell * 1.5f + gap, cy, cell, kWhite);
+        }
+        return cell * 2 + gap;
+    }
     const float kw = 50, kh = 34, gap = 6;
     if (!measure_only)
         for (int i = 0; i < 2; ++i)
@@ -1303,7 +1342,7 @@ void App::draw_details(double time)
     float dy = fy0 + float((facts.size() + 2) / 3) * 62 + 6;
 
     /* What the game is about. */
-    const float actions_y = py + ph - 3 * 66 - 24;
+    const float actions_y = py + ph - 4 * 66 - 24;
     const std::size_t room = std::size_t(std::max(0.0f, (actions_y - 16 - dy) / 34.0f));
     if (!game.synopsis.empty() && room > 0)
     {
@@ -1318,23 +1357,27 @@ void App::draw_details(double time)
                    settings_->download_info ? tr("No description yet. It arrives with the game info from GameTDB.com.")
                                             : tr("Turn on Settings > Games > Download game info for a description."));
 
-    const std::string actions[3] = {tr("Play"), tr("Game settings"), tr("Save data")};
-    for (int i = 0; i < 3; ++i)
+    const std::string actions[4] = {tr("Play"), tr("Save states"), tr("Game settings"), tr("Save data")};
+    for (int i = 0; i < 4; ++i)
     {
         const float ry = actions_y + i * 66, rx = px + 52 + 40, rw = pw - 104 - 40, rh = 58;
         const bool on = details_row_ == i;
         g.panel(rx, ry, rw, rh, on ? rgba(0x153A9E, 0.9f) : rgba(0x0E1C55, 0.55f), 0.8f, kR,
                 on ? kIcy : rgba(0x3D5AB0, 0.8f), on ? 2.6f : 1.4f, on ? 12 : 0, on ? 0.15f : 0.0f);
         g.text_mid(Font::SemiBold, ts(29), rx + 36, ry + rh * 0.5f, on ? kWhite : kSoft, Align::Left, actions[i]);
-        if (i == 1 && details_custom_)
+        if (i == 1 && details_states_ > 0)
+            g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right,
+                       plural(details_states_, "1 saved", "{n} saved"));
+        if (i == 2 && details_custom_)
             g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right, tr("Custom"));
         if (on)
             g.glyph(Glyph::Arrow, rx - 26, ry + rh * 0.5f, 32, kWhite, kPi * 0.5f);
     }
     g.set_layer(layer_dx_, layer_dy_, layer_fade_);
-    draw_prompts({{Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}},
-                 {{kKeyL2R2, "Other games"}, {Glyph::Triangle, box_back_ ? "Front of box" : "Back of box"}},
-                 games.size() > 1 ? "" : tr("Right stick: turn the box"));
+    if (screen_ != Screen::States) /* the save states bring their own */
+        draw_prompts({{Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}},
+                     {{kKeyL2R2, "Other games"}, {Glyph::Triangle, box_back_ ? "Front of box" : "Back of box"}},
+                     games.size() > 1 ? "" : tr("Right stick: turn the box"));
 }
 
 /* ---- memory cards ------------------------------------------------------------------------- */
@@ -1594,6 +1637,11 @@ void App::draw(double time)
     layer_fade_ = fade;
     if (screen_ == Screen::Details)
         draw_details(time);
+    else if (screen_ == Screen::States)
+    {
+        draw_details(time);
+        draw_states();
+    }
     else if (screen_ == Screen::Browse)
         draw_browser();
     else if (screen_ == Screen::GameSettings)

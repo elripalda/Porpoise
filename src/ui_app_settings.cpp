@@ -113,7 +113,32 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("resampling", "Output resampling", "How Dolphin scales its picture. Sharp bilinear keeps pixels crisp.",
            &t.resampling, 0,
            {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp bilinear", "Area sampling"});
-    toggle("sharp", "Upscaling to the TV", "How Porpoise fits the picture to your TV.", &t.sharp, "Smooth", "Sharp");
+    choice("screen_filter", "Screen filter",
+           "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor or a worn VHS tape.",
+           &t.screen_filter, 0, {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS"});
+    choice("filter_strength", "Filter strength", "How strong the screen filter is.", &t.filter_strength, 1,
+           {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
+    {
+        /* Borders: the built-in ones and the player's own PNGs. */
+        SettingRow r;
+        r.section = section;
+        r.key = "border";
+        r.label = tr("Border");
+        r.help = tr("Fills the bars beside a 4:3 picture (widescreen off). Add your own 1920x1080 PNGs to "
+                    "/data/porpoise/borders.");
+        border_names_.clear();
+        border_choice_ = 0;
+        for (const porpoise::borders::Border &b : porpoise::borders::list())
+        {
+            if (b.name == t.border)
+                border_choice_ = int(border_names_.size());
+            border_names_.push_back(b.name);
+            r.values.push_back(b.built_in ? tr(b.label) : b.label);
+        }
+        r.int_value = &border_choice_;
+        r.text_value = &t.border;
+        rows_.push_back(r);
+    }
     toggle("fps_overlay", "FPS overlay", "Shows the frame rate in the corner while you play.", &t.fps_overlay);
 
     header("Graphics");
@@ -148,14 +173,20 @@ void App::add_game_rows(Settings &t, bool per_game)
     }
 
     header("Controls");
-    choice("button_layout", "Button layout",
-           "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. Custom: your own buttons.",
-           &t.button_layout, 0, {"GameCube", "PlayStation", "Custom"});
+    {
+        std::vector<std::string> layouts = {"GameCube", "PlayStation"};
+        for (int i = 1; i <= Settings::kPresets; ++i)
+            layouts.push_back(trf("My layout {n}", {{"n", std::to_string(i)}}));
+        choice("button_layout", "Button layout",
+               "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. My layouts: your own, made "
+               "in Customize buttons.",
+               &t.button_layout, 0, layouts);
+    }
     {
         SettingRow r;
         r.section = section;
         r.label = tr("Customize buttons");
-        r.help = tr("Give every GameCube button the DualSense button you like, on a picture of the controller.");
+        r.help = tr("Make up to four layouts of your own, on a picture of the controller. Any game can use any of them.");
         r.values = {tr("Edit\xE2\x80\xA6")};
         r.action = kRowMapping;
         rows_.push_back(r);
@@ -280,6 +311,9 @@ void App::build_settings()
     info("Report a bug", "github.com/elripalda/Porpoise",
          "Found a problem? Open an issue there with the game, what happened and porpoise/core.log.");
     info("Music and sounds", "@elripalda", "The menu music and sound effects, made for Porpoise by Ruben.");
+    info("Controller art", "Zacksly",
+         "PS5 Button Icons and Controls by Zacksly - zacksly.itch.io, @_Zacksly on Twitter. CC BY 3.0, adapted for "
+         "Porpoise.");
     info("Emulation", "Dolphin", "Dolphin, by the Dolphin Team - dolphin-emu.org. Free software, GPL v2 or later.");
     info("Dolphin core", "libretro", "Dolphin's libretro core, maintained by the libretro team (GPL v2 or later).");
     info("Core API", "libretro / RetroArch", "Porpoise hosts the core through the libretro API that RetroArch made.");
@@ -292,6 +326,9 @@ void App::build_settings()
     info("Images and audio", "stb", "stb_image, stb_truetype and stb_vorbis by Sean Barrett (public domain / MIT).");
     info("Thanks", "PS5 scene", "etaHEN, kstuff and ShadowMountPlus make homebrew like this possible.");
     info("Trademarks", "Nintendo", "GameCube and Wii are trademarks of Nintendo. Porpoise is not affiliated with Nintendo.");
+    info("Trademarks", "Sony",
+         "PlayStation, PS5 and DualSense are trademarks of Sony Interactive Entertainment. Porpoise is not affiliated "
+         "with Sony.");
 
     if (settings_row_ < 0 || settings_row_ >= int(rows_.size()) || rows_[std::size_t(settings_row_)].header)
         settings_row_ = 1;
@@ -386,6 +423,8 @@ void App::change_setting(int dir)
     {
         const int n = int(r.values.size());
         *r.int_value = std::clamp(*r.int_value + dir, r.min, r.min + n - 1);
+        if (r.text_value && r.int_value == &border_choice_)
+            *r.text_value = border_names_[std::size_t(std::clamp(border_choice_, 0, int(border_names_.size()) - 1))];
     }
     if (screen_ == Screen::GameSettings && game_for_)
     {

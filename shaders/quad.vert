@@ -6,6 +6,8 @@ layout(push_constant) uniform Push {
     vec4 rect;
     vec4 uv;
     vec4 color;
+    vec4 params;
+    vec4 size;
 } p;
 layout(location = 0) out vec2 v_uv;
 void main()

@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cstring>
 #include <mutex>
+#include <vector>
 #include <time.h>
 
 #include "trace.hpp"
@@ -54,6 +55,7 @@ namespace
     X(vkCreateDevice)                                                                            \
     X(vkGetDeviceProcAddr)                                                                       \
     X(vkDestroySurfaceKHR)                                                                       \
+    X(vkGetPhysicalDeviceMemoryProperties)                                                       \
     X(vkDestroyInstance)
 
 #define PORPOISE_VK_DEVICE_FUNCS(X)                                                              \
@@ -104,7 +106,18 @@ namespace
     X(vkDestroySampler)                                                                          \
     X(vkDestroyCommandPool)                                                                      \
     X(vkDestroyFence)                                                                            \
-    X(vkDestroySemaphore)
+    X(vkDestroySemaphore)                                                                        \
+    X(vkCreateBuffer)                                                                            \
+    X(vkDestroyBuffer)                                                                           \
+    X(vkGetBufferMemoryRequirements)                                                             \
+    X(vkAllocateMemory)                                                                          \
+    X(vkFreeMemory)                                                                              \
+    X(vkBindBufferMemory)                                                                        \
+    X(vkMapMemory)                                                                               \
+    X(vkUnmapMemory)                                                                             \
+    X(vkCmdPipelineBarrier)                                                                      \
+    X(vkCmdCopyImageToBuffer)                                                                    \
+    X(vkFreeCommandBuffers)
 
 #define DECLARE(name) PFN_##name name = nullptr;
 PORPOISE_VK_INSTANCE_FUNCS(DECLARE)
@@ -118,6 +131,8 @@ struct Push
     float rect[4];
     float uv[4];
     float color[4];
+    float params[4]; /* filter, strength 0..1, time, - (shaders/quad.frag) */
+    float size[4];   /* picture texels w, h; on screen w, h */
 };
 
 struct State
@@ -128,6 +143,7 @@ struct State
     VkExtent2D extent{1920, 1080};
     double refresh_hz = 60.0;
     long long last_wait_ns = 0; /* the last present's wait for a free image */
+    float picture[4] = {0, 0, 1920, 1080}; /* the last game picture's place, design space */
 
     VkDevice device = VK_NULL_HANDLE;
     VkQueue queue = VK_NULL_HANDLE;
@@ -868,6 +884,134 @@ unsigned screen_height()
     return s.extent.height;
 }
 
+bool capture_picture(unsigned width, unsigned height, std::vector<std::uint8_t> &rgba)
+{
+    /* A copy of the game's last picture, for a save state's thumbnail. The
+     * game is paused when this runs, so its image holds still. */
+    if (!s.device || !s.have_core_image || width == 0 || height == 0)
+        return false;
+    const VkImageViewCreateInfo &info = s.core_image.create_info;
+    const VkFormat format = info.format;
+    const bool bgra = format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB;
+    const bool rgba8 = format == VK_FORMAT_R8G8B8A8_UNORM || format == VK_FORMAT_R8G8B8A8_SRGB;
+    if (!bgra && !rgba8)
+    {
+        ps5::debug::mark_value("vk: capture: picture format not 8-bit RGBA", int(format));
+        return false;
+    }
+    const VkDeviceSize bytes = VkDeviceSize(width) * height * 4;
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    VkCommandBuffer cmd = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+    bool ok = false;
+    std::lock_guard<std::mutex> lock(s.queue_mutex);
+    (void)vkDeviceWaitIdle(s.device);
+    do
+    {
+        VkBufferCreateInfo bi{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bi.size = bytes;
+        bi.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        bi.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (vkCreateBuffer(s.device, &bi, nullptr, &buffer) != VK_SUCCESS)
+            break;
+        VkMemoryRequirements req{};
+        vkGetBufferMemoryRequirements(s.device, buffer, &req);
+        VkPhysicalDeviceMemoryProperties props{};
+        vkGetPhysicalDeviceMemoryProperties(s.gpu, &props);
+        std::uint32_t type = UINT32_MAX;
+        const VkMemoryPropertyFlags want = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        for (std::uint32_t i = 0; i < props.memoryTypeCount; ++i)
+            if ((req.memoryTypeBits & (1u << i)) && (props.memoryTypes[i].propertyFlags & want) == want)
+            {
+                type = i;
+                break;
+            }
+        if (type == UINT32_MAX)
+            break;
+        VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+        ai.allocationSize = req.size;
+        ai.memoryTypeIndex = type;
+        if (vkAllocateMemory(s.device, &ai, nullptr, &memory) != VK_SUCCESS ||
+            vkBindBufferMemory(s.device, buffer, memory, 0) != VK_SUCCESS)
+            break;
+        VkCommandBufferAllocateInfo ca{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+        ca.commandPool = s.command_pool;
+        ca.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        ca.commandBufferCount = 1;
+        if (vkAllocateCommandBuffers(s.device, &ca, &cmd) != VK_SUCCESS)
+            break;
+        VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(cmd, &begin);
+        VkImageMemoryBarrier to{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        to.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        to.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        to.oldLayout = s.core_image.image_layout;
+        to.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        to.srcQueueFamilyIndex = to.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        to.image = info.image;
+        to.subresourceRange = info.subresourceRange;
+        to.subresourceRange.levelCount = 1;
+        to.subresourceRange.layerCount = 1;
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                             nullptr, 1, &to);
+        VkBufferImageCopy copy{};
+        copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copy.imageSubresource.mipLevel = info.subresourceRange.baseMipLevel;
+        copy.imageSubresource.baseArrayLayer = info.subresourceRange.baseArrayLayer;
+        copy.imageSubresource.layerCount = 1;
+        copy.imageExtent = {width, height, 1};
+        vkCmdCopyImageToBuffer(cmd, info.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &copy);
+        VkImageMemoryBarrier back = to;
+        back.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        back.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        back.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        back.newLayout = s.core_image.image_layout;
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0,
+                             nullptr, 1, &back);
+        vkEndCommandBuffer(cmd);
+        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        if (vkCreateFence(s.device, &fi, nullptr, &fence) != VK_SUCCESS)
+            break;
+        VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers = &cmd;
+        if (vkQueueSubmit(s.queue, 1, &submit, fence) != VK_SUCCESS)
+            break;
+        (void)vkWaitForFences(s.device, 1, &fence, VK_TRUE, UINT64_MAX);
+        void *mapped = nullptr;
+        if (vkMapMemory(s.device, memory, 0, bytes, 0, &mapped) != VK_SUCCESS)
+            break;
+        rgba.resize(std::size_t(bytes));
+        const std::uint8_t *src = static_cast<const std::uint8_t *>(mapped);
+        for (std::size_t i = 0; i < std::size_t(width) * height; ++i)
+        {
+            rgba[i * 4 + 0] = src[i * 4 + (bgra ? 2 : 0)];
+            rgba[i * 4 + 1] = src[i * 4 + 1];
+            rgba[i * 4 + 2] = src[i * 4 + (bgra ? 0 : 2)];
+            rgba[i * 4 + 3] = 255;
+        }
+        vkUnmapMemory(s.device, memory);
+        ok = true;
+    } while (false);
+    if (fence)
+        vkDestroyFence(s.device, fence, nullptr);
+    if (cmd)
+        vkFreeCommandBuffers(s.device, s.command_pool, 1, &cmd);
+    if (buffer)
+        vkDestroyBuffer(s.device, buffer, nullptr);
+    if (memory)
+        vkFreeMemory(s.device, memory, nullptr);
+    return ok;
+}
+
+void picture_rect(float out[4])
+{
+    for (int i = 0; i < 4; ++i)
+        out[i] = s.picture[i];
+}
+
 double display_hz()
 {
     return s.refresh_hz;
@@ -886,8 +1030,9 @@ double refresh_hz()
     return s.refresh_hz > 60.5 ? 60.0 : s.refresh_hz;
 }
 
-void present_core_frame(unsigned width, unsigned height, float aspect, bool sharp)
+void present_core_frame(unsigned width, unsigned height, float aspect, int filter, float strength)
 {
+    const bool sharp = filter == 1;
     static const float black[3] = {0, 0, 0};
     if (!s.device)
         return;
@@ -917,6 +1062,21 @@ void present_core_frame(unsigned width, unsigned height, float aspect, bool shar
     quad.uv[2] = 1.0f;
     quad.uv[3] = 1.0f;
     quad.color[0] = quad.color[1] = quad.color[2] = quad.color[3] = 1.0f;
+    timespec now{};
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    quad.params[0] = float(filter);
+    quad.params[1] = strength;
+    quad.params[2] = float(now.tv_sec % 3600) + float(now.tv_nsec) * 1e-9f;
+    quad.size[0] = float(width);
+    quad.size[1] = float(height);
+    quad.size[2] = w;
+    quad.size[3] = h;
+    /* Where the picture sits, in the launcher's 1920x1080 design space, for
+     * what is drawn around it (borders). */
+    s.picture[0] = x0 / sw * 1920.0f;
+    s.picture[1] = y0 / sh * 1080.0f;
+    s.picture[2] = w / sw * 1920.0f;
+    s.picture[3] = h / sh * 1080.0f;
     present(black, &quad, s.core_image.image_view, sharp);
 }
 

@@ -47,7 +47,8 @@
       "always": true,
       "artifacts": [
         "assets/sounds/*",
-        "assets/brand/*"
+        "assets/brand/*",
+        "assets/borders/*"
       ],
       "licence": "GPL-3.0-or-later",
       "copyright": [
@@ -405,6 +406,33 @@
         "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
       },
       "modifications": "Static Regular, SemiBold, Bold and ExtraBold instances cut from the variable font with fontTools; outlines unchanged. Upstream: https://github.com/googlefonts/nunito."
+    },
+    {
+      "id": "zacksly-ps5-icons",
+      "name": "PS5 Button Icons and Controls by Zacksly (controller art and button icons)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/ui/buttons.png",
+        "assets/ui/dualsense.png",
+        "assets/ui/controller-lines.png"
+      ],
+      "licence": "CC-BY-3.0",
+      "copyright": [
+        "PS5 Button Icons and Controls - Zacksly (https://zacksly.itch.io, https://twitter.com/_Zacksly)"
+      ],
+      "texts": [
+        {
+          "from": "third_party/zacksly-ps5-icons/LICENSE.txt",
+          "to": "CC-BY-3.0-Zacksly.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/third_party/zacksly-ps5-icons"
+      },
+      "modifications": "Modified: rendered to PNG by tools/make-controller-art.py; the PlayStation logo removed from the controller drawings, lines thickened, the schematic's own labels removed, and the button icons packed into one atlas. Originals: third_party/zacksly-ps5-icons and https://zacksly.itch.io."
     },
     {
       "id": "stb",

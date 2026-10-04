@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "porpoise_borders.hpp"
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
 #include "ui_memcard.hpp"
@@ -54,6 +55,13 @@ public:
     void draw(double time);
 
     Game *launch_game() { return launch_; }
+    /* The save state to start it from ("" for none); asking clears it. */
+    std::string take_launch_state()
+    {
+        std::string s;
+        s.swap(launch_state_);
+        return s;
+    }
     /* The launch screen, while the emulator starts. progress < 0 = unknown. */
     void begin_launch(Game *g);
     void set_launch_status(const std::string &status, float progress);
@@ -85,6 +93,27 @@ public:
         k.swap(menu_change_);
         return k;
     }
+    /* A save or load the menu asks of the host, which does it on the core's
+     * thread and answers with menu_state_done(). */
+    struct MenuRequest
+    {
+        enum Kind
+        {
+            None,
+            Save,
+            Load,
+        } kind = None;
+        int slot = 0;
+    };
+    MenuRequest take_menu_request()
+    {
+        MenuRequest r = menu_request_;
+        menu_request_ = {};
+        return r;
+    }
+    void menu_state_done(MenuRequest::Kind kind, int slot, bool ok);
+    /* Fast forward chosen in the menu: 1 (off), 2 or 4. Not saved. */
+    int menu_fast_forward() const { return menu_ff_ == 2 ? 4 : menu_ff_ == 1 ? 2 : 1; }
     /* Back from a game to the library. */
     void return_from_game();
     /* The menu language changed (rebuilds Settings' rows). */
@@ -110,6 +139,7 @@ private:
         Browse,       /* choosing a game folder */
         GameSettings, /* one game's own settings */
         Mapping,      /* the buttons: a GameCube input for each DualSense control */
+        States,       /* a game's save states, over its Details */
     };
     struct SettingRow
     {
@@ -117,6 +147,7 @@ private:
         std::vector<std::string> values;
         int *int_value = nullptr;
         bool *bool_value = nullptr;
+        std::string *text_value = nullptr; /* a text setting chosen from a list (the border) */
         int min = 0;
         bool header = false;
         int action = 0;      /* look::RowAction */
@@ -130,6 +161,7 @@ private:
         ResetGame,
         DeleteSave,
         CopySave,
+        DeleteState,
     };
     struct Dialog
     {
@@ -175,12 +207,18 @@ private:
 
     /* Button mapping (ui_app_controls.cpp) */
     void open_mapping();
+    void open_mapping_in_game();
+    void begin_mapping();
+    void use_preset(int preset);
+    void start_preset_from(int layout);
+    void draw_control(int control, float right, float cy, bool on, float size);
+    void draw_gc_chip(int gc, float cx, float cy, float h, bool on = false);
+    float gc_chip_width(int gc, float h);
     void close_mapping();
-    Action update_mapping(bool up, bool down);
+    Action update_mapping(bool up, bool down, bool left, bool right);
     void draw_mapping(double time);
     void assign_control(int gc_input, int control);
-    void use_layout(int layout);
-    void save_mapping(const std::vector<std::string> &keys = {});
+    void save_mapping(bool layout_changed);
     void draw_keycap(float right, float cy, const std::string &label, bool on, float height = 40);
 
     /* Dialogs */
@@ -267,6 +305,30 @@ private:
     bool menu_closing_ = false;
     int menu_answer_ = 0;
     std::string menu_change_;
+    int menu_tab_ = 0;   /* Game, Video, Graphics, Controls */
+    int menu_slot_ = 0;  /* the save-state slot under focus */
+    int menu_ff_ = 0;    /* fast forward: off, 2x, 4x */
+    MenuRequest menu_request_;
+    std::string menu_note_;
+    double menu_note_time_ = -10;
+    Texture *menu_slot_tex_[3] = {nullptr, nullptr, nullptr};
+    long long menu_slot_time_[3] = {0, 0, 0};
+    bool menu_slot_used_[3] = {false, false, false};
+    std::vector<porpoise::borders::Border> menu_borders_;
+    Texture *lines_art_ = nullptr; /* the controller with lines, for the Controls tab */
+    bool lines_art_tried_ = false;
+    void load_slots(const Game *game); /* menu_slot_* for this game's save states */
+    void menu_free_slots();
+    /* Details > Save states (ui_app_states.cpp) */
+    void open_states(Game *game);
+    Action update_states(bool left, bool right);
+    void draw_states();
+    void count_states(const Game *game);
+    Game *states_game_ = nullptr;
+    int states_sel_ = 0;
+    int details_states_ = 0; /* how many slots the game in Details has */
+    std::string launch_state_; /* the state to start the launched game from */
+    void draw_controller_lines(float x, float y, float w, const porpoise::pad::Mapping &m);
 
     Dialog dialog_;
     bool drawing_dialog_ = false;
@@ -278,6 +340,11 @@ private:
     /* Button mapping */
     Screen map_return_ = Screen::Main;
     Settings *map_target_ = nullptr; /* the global settings, or a game's */
+    std::vector<std::string> border_names_; /* the Border row's choices */
+    int border_choice_ = 0;
+    Game *map_game_ = nullptr;       /* the game whose settings those are, if any */
+    bool map_in_game_ = false;       /* opened from the in-game menu */
+    int map_preset_ = 0;             /* the player's layout being edited, 0..3 */
     int map_row_ = 0;
     bool map_capture_ = false; /* waiting for a button press */
     bool map_armed_ = false;   /* every button was let go since the capture began */

@@ -29,11 +29,13 @@
 #include "../build/title_build_identity.h"
 #include "memory_diagnostics.hpp"
 #include "porpoise_audio.hpp"
+#include "porpoise_borders.hpp"
 #include "porpoise_core.hpp"
 #include "porpoise_covers.hpp"
 #include "porpoise_pacer.hpp"
 #include "porpoise_pad.hpp"
 #include "porpoise_sound.hpp"
+#include "porpoise_states.hpp"
 #include "porpoise_vk.hpp"
 #include "title_threads.hpp"
 #include "trace.hpp"
@@ -261,8 +263,49 @@ void launch_status(const char *text, void *)
     porpoise::vk::present_clear(0, 0, 0);
 }
 
+/* The border beside a 4:3 picture, on whichever device is drawing. */
+porpoise::ui::Texture *g_border = nullptr;
+std::string g_border_loaded; /* its name; "" none */
+bool g_border_tried = false;
+
+void forget_border()
+{
+    g_border = nullptr; /* its device is going, and the texture with it */
+    g_border_tried = false;
+}
+
+void draw_border()
+{
+    if (g_play.border.empty() || !g_gfx.ready())
+        return;
+    if (!g_border_tried || g_border_loaded != g_play.border)
+    {
+        if (g_border && g_border_tried)
+            g_gfx.free_texture(g_border);
+        g_border = nullptr;
+        g_border_tried = true;
+        g_border_loaded = g_play.border;
+        const std::string path = porpoise::borders::path_of(g_play.border);
+        if (!path.empty())
+            g_border = g_gfx.texture_file(path);
+        if (!g_border)
+            ps5::debug::mark(("main: border not found: " + g_play.border).c_str());
+    }
+    if (!g_border)
+        return;
+    /* Only for a picture about 4:3 that leaves bars at the sides. */
+    float rect[4];
+    porpoise::vk::picture_rect(rect);
+    const float h = rect[3] > 1 ? rect[3] : 1;
+    const float aspect = rect[2] / h;
+    if (aspect < 1.15f || aspect > 1.55f || rect[3] < 1000.0f)
+        return;
+    g_gfx.image(g_border, 0, 0, 1920, 1080, porpoise::ui::rgba(0xFFFFFF));
+}
+
 void launch_device_closing(void *)
 {
+    forget_border();
     g_app.forget_textures();
     g_gfx.shutdown();
 }
@@ -294,16 +337,38 @@ int menu_paused(void *)
     in.stick_x = pad.left_x / 32768.0f;
     in.stick_y = pad.left_y / 32768.0f;
     const int answer = g_app.update_game_menu(in, 1.0 / 60.0);
-    /* Quick settings take effect right away. */
+    /* Settings take effect right away. */
     const std::string key = g_app.take_menu_change();
-    if (key == "resolution")
-        porpoise::core::set_option("dolphin_efb_scale", std::to_string(g_play.resolution).c_str());
-    else if (key == "widescreen")
-        porpoise::core::set_option("dolphin_widescreen_hack", g_play.widescreen ? "enabled" : "disabled");
-    else if (key == "sharp")
-        porpoise::core::set_sharp(g_play.sharp);
-    else if (key == "volume")
+    if (key == "volume")
         porpoise::audio::set_volume(g_play.volume / 10.0f);
+    else if (key == "screen_filter" || key == "filter_strength")
+        porpoise::core::set_picture(g_play.screen_filter, g_play.filter_strength / 10.0f);
+    else if (key == "button_layout")
+        porpoise::pad::set_mapping(g_play.mapping());
+    else if (key == "fast_forward")
+        porpoise::core::set_fast_forward(g_app.menu_fast_forward());
+    else if (key == "border" || key == "fps_overlay")
+        ; /* drawn by launch_frame */
+    else if (!key.empty())
+    {
+        /* A Dolphin option: hand the core every value (it applies what it can
+         * while running; the rest at the next start). */
+        for (const auto &[k, v] : g_play.core_options())
+            porpoise::core::set_option(k.c_str(), v.c_str());
+        if (key == "rumble")
+            porpoise::pad::set_rumble_enabled(g_play.rumble);
+    }
+    /* Save states, asked for in the menu, done here on the core's thread. */
+    const porpoise::ui::App::MenuRequest request = g_app.take_menu_request();
+    if (request.kind != porpoise::ui::App::MenuRequest::None && g_playing)
+    {
+        const std::string game = porpoise::ui::Library::key_of(*g_playing);
+        const bool save = request.kind == porpoise::ui::App::MenuRequest::Save;
+        const bool ok = save ? porpoise::states::save(game, request.slot) : porpoise::states::load(game, request.slot);
+        ps5::debug::mark_value(save ? "main: state saved to slot" : "main: state loaded from slot",
+                               ok ? request.slot + 1 : -(request.slot + 1));
+        g_app.menu_state_done(request.kind, request.slot, ok);
+    }
     porpoise::sound::pump(); /* the menu's own sounds, while the game is still */
     if (answer != porpoise::core::kMenuStay)
     {
@@ -324,6 +389,16 @@ void launch_frame(bool core_frame, double fps, void *)
     {
         g_app.draw_launch(g_time);
         return;
+    }
+    draw_border();
+    if (g_app.menu_fast_forward() > 1 && !g_menu_open)
+    {
+        /* Fast forward is on: say so, top right. */
+        const char *text = g_app.menu_fast_forward() >= 4 ? "\xE2\x96\xB6\xE2\x96\xB6 4x" : "\xE2\x96\xB6\xE2\x96\xB6 2x";
+        g_gfx.panel(1884 - 150, 30, 150, 50, porpoise::ui::rgba(0x0A1236, 0.72f), 0.9f, 14,
+                    porpoise::ui::rgba(0xFFC85C, 0.9f), 1.6f);
+        g_gfx.text_mid(porpoise::ui::Font::Bold, 28, 1884 - 75, 55, porpoise::ui::rgba(0xFFE7B0),
+                       porpoise::ui::Align::Center, text);
     }
     if (g_play.fps_overlay && !g_menu_open)
     {
@@ -398,6 +473,8 @@ int main()
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
     g_app.set_sound_hook(play_sound);
     porpoise::sound::load("/app0/assets");
+    porpoise::states::set_data_dir(g_data);
+    porpoise::borders::set_dirs("/app0/assets", g_data);
     apply_settings();
     porpoise::sound::fade_music(1.0f, 2.5f);
     fetch_covers();
@@ -490,7 +567,10 @@ int main()
         porpoise::core::Playback playback;
         playback.volume = g_play.volume / 10.0f;
         playback.muted = g_play.muted;
-        playback.sharp = g_play.sharp;
+        playback.filter = g_play.screen_filter;
+        playback.strength = g_play.filter_strength / 10.0f;
+        const std::string start_state = g_app.take_launch_state();
+        playback.load_state = start_state.empty() ? nullptr : start_state.c_str();
         porpoise::core::Paths core_paths;
         core_paths.saves = g_saves_path.c_str();
         core_paths.options = g_options_path.c_str();

@@ -39,6 +39,7 @@ Porpoise builds Dolphin from libretro/dolphin revision
 | Project | Role in Porpoise | Licence |
 |---|---|---|
 | [GameTDB](https://www.gametdb.com) and its contributors | Box art, back covers, disc art and game details, downloaded on the console. Nothing from GameTDB ships with Porpoise. | GameTDB terms |
+| [PS5 Button Icons and Controls](https://zacksly.itch.io) by **Zacksly** ([@_Zacksly](https://twitter.com/_Zacksly)) | The DualSense drawings on the button-mapping screen and the in-game Controls tab, and every button icon in the menus. Modified for Porpoise: rendered to PNG, the PlayStation logo and the pack's own labels removed, lines thickened (`tools/make-controller-art.py`; originals in `third_party/zacksly-ps5-icons`). | CC BY 3.0 |
 | [Nunito](https://github.com/googlefonts/nunito) by Vernon Adams, Jacques Le Bailly and contributors | Every word on screen | SIL Open Font License 1.1 |
 | [stb](https://github.com/nothings/stb) by Sean Barrett | `stb_truetype`, `stb_image` and `stb_vorbis`: text, images and the menu music | MIT or public domain |
 

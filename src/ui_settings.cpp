@@ -50,7 +50,8 @@ const Field kFields[] = {
     {"texture_filter", &Settings::texture_filter, nullptr, 0, 2},
     {"antialiasing", &Settings::antialiasing, nullptr, 0, 6},
     {"resampling", &Settings::resampling, nullptr, 0, 6},
-    {"sharp", nullptr, &Settings::sharp, 0, 1},
+    {"screen_filter", &Settings::screen_filter, nullptr, 0, 5},
+    {"filter_strength", &Settings::filter_strength, nullptr, 1, 10},
     {"fps_overlay", nullptr, &Settings::fps_overlay, 0, 1},
     {"shader_mode", &Settings::shader_mode, nullptr, 0, 3},
     {"texture_cache", &Settings::texture_cache, nullptr, 0, 2},
@@ -65,19 +66,7 @@ const Field kFields[] = {
     {"music_volume", &Settings::music_volume, nullptr, 0, 10},
     {"menu_sounds", nullptr, &Settings::menu_sounds, 0, 1},
     {"sounds_volume", &Settings::sounds_volume, nullptr, 0, 10},
-    {"button_layout", &Settings::button_layout, nullptr, 0, 2},
-    {"map_a", &Settings::map_a, nullptr, 0, 15},
-    {"map_b", &Settings::map_b, nullptr, 0, 15},
-    {"map_x", &Settings::map_x, nullptr, 0, 15},
-    {"map_y", &Settings::map_y, nullptr, 0, 15},
-    {"map_z", &Settings::map_z, nullptr, 0, 15},
-    {"map_l", &Settings::map_l, nullptr, 0, 15},
-    {"map_r", &Settings::map_r, nullptr, 0, 15},
-    {"map_start", &Settings::map_start, nullptr, 0, 15},
-    {"map_up", &Settings::map_up, nullptr, 0, 15},
-    {"map_down", &Settings::map_down, nullptr, 0, 15},
-    {"map_left", &Settings::map_left, nullptr, 0, 15},
-    {"map_right", &Settings::map_right, nullptr, 0, 15},
+    {"button_layout", &Settings::button_layout, nullptr, 0, 5},
     {"rumble", nullptr, &Settings::rumble, 0, 1},
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
     {"dual_core", nullptr, &Settings::dual_core, 0, 1},
@@ -89,6 +78,12 @@ const Field kFields[] = {
     {"large_text", nullptr, &Settings::large_text, 0, 1},
     {"ui_language", &Settings::ui_language, nullptr, 0, 4},
 };
+
+/* Settings kept as text rather than numbers. */
+bool is_text_key(const std::string &key)
+{
+    return key == "border";
+}
 
 const Field *field(const std::string &key)
 {
@@ -137,6 +132,8 @@ bool Settings::load(const std::string &path, bool overlay)
         folders.clear();
     bool versioned = false;
     int version = 0;
+    int legacy_sharp = -1;   /* 1.0's Smooth / Sharp switch */
+    bool saw_filter = false;
     char line[1024];
     while (std::fgets(line, sizeof line, f))
     {
@@ -159,6 +156,49 @@ bool Settings::load(const std::string &path, bool overlay)
                 folders.push_back(v);
             continue;
         }
+        if (k == "border")
+        {
+            border = v;
+            continue;
+        }
+        if (k.size() == 7 && k.rfind("layout", 0) == 0 && k[6] >= '1' && k[6] <= '4')
+        {
+            /* One of the player's own layouts: twelve controls. */
+            if (overlay)
+                continue;
+            int *row = presets[k[6] - '1'];
+            const char *c = v.c_str();
+            for (int i = 0; i < porpoise::pad::GcCount && *c; ++i)
+            {
+                char *end = nullptr;
+                const long n = std::strtol(c, &end, 10);
+                if (end == c)
+                    break;
+                row[i] = std::clamp(int(n), 0, porpoise::pad::CtlCount - 1);
+                c = end;
+            }
+            continue;
+        }
+        if (k.rfind("map_", 0) == 0)
+        {
+            /* 1.0 kept a single custom layout in map_* keys: it becomes the
+             * player's layout 1. */
+            static const char *const kNames[porpoise::pad::GcCount] = {
+                "map_a", "map_b", "map_x", "map_y", "map_z", "map_l", "map_r", "map_start", "map_up",
+                "map_down", "map_left", "map_right"};
+            if (!overlay)
+                for (int i = 0; i < porpoise::pad::GcCount; ++i)
+                    if (k == kNames[i])
+                        presets[0][i] = std::clamp(std::atoi(v.c_str()), 0, porpoise::pad::CtlCount - 1);
+            continue;
+        }
+        if (k == "sharp")
+        {
+            legacy_sharp = as_bool(v) ? 1 : 0;
+            continue;
+        }
+        if (k == "screen_filter")
+            saw_filter = true;
         if (const Field *fd = field(k))
         {
             if (fd->i)
@@ -178,6 +218,9 @@ bool Settings::load(const std::string &path, bool overlay)
      * on the GameCube layout, PlayStation and Custom are a choice away. */
     if (!overlay && version < 11 && shader_mode == 0)
         shader_mode = 2;
+    /* 1.1: Smooth / Sharp became the first two screen filters. */
+    if (legacy_sharp >= 0 && !saw_filter)
+        screen_filter = legacy_sharp;
     return true;
 }
 
@@ -187,9 +230,17 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = std::fopen(tmp.c_str(), "w");
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 11\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 12\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
+    std::fprintf(f, "border = %s\n", border.c_str());
+    for (int p = 0; p < kPresets; ++p)
+    {
+        std::fprintf(f, "layout%d =", p + 1);
+        for (int i = 0; i < porpoise::pad::GcCount; ++i)
+            std::fprintf(f, " %d", presets[p][i]);
+        std::fprintf(f, "\n");
+    }
     for (const std::string &folder : folders)
         std::fprintf(f, "folder = %s\n", folder.c_str());
     std::fclose(f);
@@ -208,8 +259,12 @@ bool Settings::save_keys(const std::string &path, const std::vector<std::string>
         return false;
     std::fprintf(f, "# This game's own settings (Porpoise > Details > Game settings)\n");
     for (const std::string &k : keys)
+    {
         if (const Field *fd = field(k))
             write_field(f, *this, *fd);
+        else if (k == "border")
+            std::fprintf(f, "border = %s\n", border.c_str());
+    }
     std::fclose(f);
     return true;
 }
@@ -228,46 +283,61 @@ std::vector<std::string> Settings::keys_in(const std::string &path)
         if (s.empty() || s[0] == '#' || eq == std::string::npos)
             continue;
         const std::string k = trim(s.substr(0, eq));
-        if (field(k) && std::find(keys.begin(), keys.end(), k) == keys.end())
+        if ((field(k) || is_text_key(k)) && std::find(keys.begin(), keys.end(), k) == keys.end())
             keys.push_back(k);
     }
     std::fclose(f);
     return keys;
 }
 
-int *Settings::map_slot(int gc)
-{
-    int *const slots[porpoise::pad::GcCount] = {&map_a,     &map_b,  &map_x,    &map_y,    &map_z,    &map_l,
-                                                &map_r,     &map_start, &map_up, &map_down, &map_left, &map_right};
-    return gc >= 0 && gc < porpoise::pad::GcCount ? slots[gc] : nullptr;
-}
-
-int Settings::map_of(int gc) const
-{
-    return const_cast<Settings *>(this)->map_slot(gc) ? *const_cast<Settings *>(this)->map_slot(gc) : -1;
-}
-
 porpoise::pad::Mapping Settings::mapping() const
 {
-    if (button_layout != porpoise::pad::LayoutCustom)
+    const int own = preset_in_use();
+    if (own < 0)
         return porpoise::pad::preset(button_layout);
     porpoise::pad::Mapping m{};
     for (int gc = 0; gc < porpoise::pad::GcCount; ++gc)
-        m.control[gc] = static_cast<std::int8_t>(std::clamp(map_of(gc), 0, porpoise::pad::CtlCount - 1));
+        m.control[gc] = static_cast<std::int8_t>(std::clamp(presets[own][gc], 0, porpoise::pad::CtlCount - 1));
     return m;
-}
-
-std::vector<std::string> Settings::mapping_keys()
-{
-    return {"button_layout", "map_a",     "map_b",  "map_x",    "map_y",    "map_z",    "map_l",
-            "map_r",         "map_start", "map_up", "map_down", "map_left", "map_right"};
 }
 
 void Settings::reset()
 {
+    /* The game folders and the player's own button layouts stay. */
     const std::vector<std::string> keep = folders;
+    int own[kPresets][porpoise::pad::GcCount];
+    std::memcpy(own, presets, sizeof own);
     *this = Settings{};
     folders = keep;
+    std::memcpy(presets, own, sizeof own);
+}
+
+std::vector<std::pair<std::string, std::string>> Settings::core_options() const
+{
+    return {
+        {"dolphin_efb_scale", std::to_string(resolution)},
+        {"dolphin_widescreen_hack", on_off(widescreen)},
+        {"dolphin_aspect_ratio", std::to_string(aspect)},
+        {"dolphin_max_anisotropy", std::to_string(anisotropy)},
+        {"dolphin_force_texture_filtering_mode", std::to_string(texture_filter)},
+        {"dolphin_anti_aliasing", std::to_string(antialiasing)},
+        {"dolphin_enhance_output_resampling", std::to_string(resampling)},
+        {"dolphin_shader_compilation_mode", std::to_string(shader_mode)},
+        {"dolphin_texture_cache_accuracy", kTextureCache[std::clamp(texture_cache, 0, 2)]},
+        {"dolphin_pixel_lighting", on_off(pixel_lighting)},
+        {"dolphin_disable_fog", on_off(disable_fog)},
+        {"dolphin_crop_overscan", on_off(crop_overscan)},
+        {"dolphin_load_custom_textures", on_off(custom_textures)},
+        {"dolphin_cache_custom_textures", on_off(custom_textures)},
+        {"dolphin_skip_dupe_frames", on_off(skip_dupes)},
+        {"dolphin_enable_rumble", on_off(rumble)},
+        {"dolphin_cpu_clock_rate", kCpuClocks[std::clamp(cpu_clock, 0, 9)]},
+        {"dolphin_main_cpu_thread", on_off(dual_core)},
+        {"dolphin_fast_disc_speed", on_off(fast_disc)},
+        {"dolphin_cheats_enabled", on_off(cheats)},
+        {"dolphin_language", std::to_string(kLanguages[std::clamp(language, 0, 9)])},
+        {"dolphin_progressive_scan", on_off(progressive)},
+    };
 }
 
 bool Settings::write_core_options(const std::string &options_ini) const
@@ -294,28 +364,8 @@ bool Settings::write_core_options(const std::string &options_ini) const
     for (const std::string &s : keep)
         std::fputs(s.c_str(), f);
     std::fprintf(f, "# Set by Porpoise's Settings screen:\n");
-    std::fprintf(f, "dolphin_efb_scale = %d\n", resolution);
-    std::fprintf(f, "dolphin_widescreen_hack = %s\n", on_off(widescreen));
-    std::fprintf(f, "dolphin_aspect_ratio = %d\n", aspect);
-    std::fprintf(f, "dolphin_max_anisotropy = %d\n", anisotropy);
-    std::fprintf(f, "dolphin_force_texture_filtering_mode = %d\n", texture_filter);
-    std::fprintf(f, "dolphin_anti_aliasing = %d\n", antialiasing);
-    std::fprintf(f, "dolphin_enhance_output_resampling = %d\n", resampling);
-    std::fprintf(f, "dolphin_shader_compilation_mode = %d\n", shader_mode);
-    std::fprintf(f, "dolphin_texture_cache_accuracy = %s\n", kTextureCache[std::clamp(texture_cache, 0, 2)]);
-    std::fprintf(f, "dolphin_pixel_lighting = %s\n", on_off(pixel_lighting));
-    std::fprintf(f, "dolphin_disable_fog = %s\n", on_off(disable_fog));
-    std::fprintf(f, "dolphin_crop_overscan = %s\n", on_off(crop_overscan));
-    std::fprintf(f, "dolphin_load_custom_textures = %s\n", on_off(custom_textures));
-    std::fprintf(f, "dolphin_cache_custom_textures = %s\n", on_off(custom_textures));
-    std::fprintf(f, "dolphin_skip_dupe_frames = %s\n", on_off(skip_dupes));
-    std::fprintf(f, "dolphin_enable_rumble = %s\n", on_off(rumble));
-    std::fprintf(f, "dolphin_cpu_clock_rate = %s\n", kCpuClocks[std::clamp(cpu_clock, 0, 9)]);
-    std::fprintf(f, "dolphin_main_cpu_thread = %s\n", on_off(dual_core));
-    std::fprintf(f, "dolphin_fast_disc_speed = %s\n", on_off(fast_disc));
-    std::fprintf(f, "dolphin_cheats_enabled = %s\n", on_off(cheats));
-    std::fprintf(f, "dolphin_language = %d\n", kLanguages[std::clamp(language, 0, 9)]);
-    std::fprintf(f, "dolphin_progressive_scan = %s\n", on_off(progressive));
+    for (const auto &[key, value] : core_options())
+        std::fprintf(f, "%s = %s\n", key.c_str(), value.c_str());
     std::fclose(f);
     return true;
 }
