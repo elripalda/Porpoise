@@ -253,11 +253,11 @@
       ],
       "texts": [
         {
-          "from": "../PS5_Mesa/docs/license.rst",
+          "from": "${VULKAN}/../PS5_Mesa/docs/license.rst",
           "to": "Mesa-license.rst"
         },
         {
-          "from": "../PS5_Mesa/licenses",
+          "from": "${VULKAN}/../PS5_Mesa/licenses",
           "to": "licenses"
         }
       ],
