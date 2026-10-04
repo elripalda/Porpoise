@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/banner.png" alt="Porpoise" width="100%">
+  <img src="docs/images/banner.png" alt="Porpoise - Dolphin Emulator for PS5 " width="100%">
 </p>
 
 <p align="center">
