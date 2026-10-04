@@ -91,8 +91,8 @@ struct PadSample
     std::uint8_t right_trigger;
     std::uint8_t padding[2];
     float orientation[4];      /* a quaternion: x, y, z, w */
-    float angular_velocity[3]; /* rad/s: x right, y up out of the face, z toward the player */
-    float acceleration[3];     /* in g, the same axes */
+    float acceleration[3];     /* in g, gravity included: x right, y up out of the face, z toward the player */
+    float angular_velocity[3]; /* rad/s, the same axes (read on a PS5: 1.03 g up when flat, ~0 rad/s when still) */
     std::uint8_t touch_count;
     std::uint8_t touch_reserved[7];
     struct
@@ -112,7 +112,8 @@ static_assert(offsetof(PadSample, left_x) == 0x04, "the stick bytes follow the b
 static_assert(offsetof(PadSample, connected) == 0x4c, "connection state sits at 0x4c");
 static_assert(offsetof(PadSample, timestamp_us) == 0x50, "the timestamp sits at 0x50");
 static_assert(offsetof(PadSample, orientation) == 0x0c, "the motion data follows the triggers");
-static_assert(offsetof(PadSample, acceleration) == 0x28, "acceleration sits at 0x28");
+static_assert(offsetof(PadSample, acceleration) == 0x1c, "acceleration follows the orientation");
+static_assert(offsetof(PadSample, angular_velocity) == 0x28, "angular velocity sits at 0x28");
 static_assert(offsetof(PadSample, touch) == 0x3c, "the touches sit at 0x3c");
 
 constexpr int sample_capacity = 64;
@@ -420,6 +421,11 @@ Motion read_motion(Slot &slot, std::int32_t count)
             {
                 float g[3];
                 to_remote(grip, p.angular_velocity, g);
+                /* Below about 1 degree a second is the sensor's own noise:
+                 * ignored, so a still hand keeps a still pointer. */
+                for (float &v : g)
+                    if (std::fabs(v) < 0.015f)
+                        v = 0.0f;
                 /* Turning left (+z) moves it left; the nose down (+x) moves it down. */
                 slot.pointer_x -= sx * g[2] * k * dt;
                 slot.pointer_y += sy * g[0] * k * dt;
@@ -436,7 +442,7 @@ Motion read_motion(Slot &slot, std::int32_t count)
         if (g_wii.pointer == PointerTouch)
         {
             slot.pointer_x = float(m.touch_x) / 1919.0f * 2.0f - 1.0f;
-            slot.pointer_y = float(m.touch_y) / 1079.0f * 2.0f - 1.0f;
+            slot.pointer_y = float(m.touch_y) / 1030.0f * 2.0f - 1.0f; /* the pad reads 0..~1030 down */
         }
     }
     /* R1 puts the pointer back in the middle. */
