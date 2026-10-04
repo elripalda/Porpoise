@@ -58,6 +58,8 @@ The build runs in three steps:
 
 The notices in `licenses/` record the source revision of every part. Build from
 a clean, committed tree so they point at a revision people can find.
+For a release, set `PORPOISE_RELEASE_TAG` (for example `PORPOISE_RELEASE_TAG=v1.0 make`)
+so the tag is written into `licenses/README.txt` as well.
 
 ## Working on Porpoise
 

@@ -211,7 +211,7 @@
         "revision": "ps5-payload-dev SDK v0.42 release archives",
         "url": "https://github.com/ps5-payload-dev/sdk/releases/tag/v0.42"
       },
-      "modifications": "Unmodified release archives of the SDK. RPCS3's own LLVM is listed with that core."
+      "modifications": "Unmodified release archives of the SDK."
     },
     {
       "id": "zlib",

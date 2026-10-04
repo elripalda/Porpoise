@@ -8,6 +8,7 @@
 #
 #   PS5_VULKAN_DIR         Mihawk's PS5_Vulkan checkout with RADV built (release); ../PS5_Vulkan
 #   PS5_PAYLOAD_SDK_FORK   Mihawk's PS5_PayloadSDK checkout; ../PS5_PayloadSDK
+#   PORPOISE_RELEASE_TAG   the release's tag (e.g. v1.0), recorded in licenses/README.txt
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
@@ -91,7 +92,7 @@ cp -a -- "$root/build/cores/stage/system/dolphin-emu" "$dist/system/dolphin-emu"
 cp -a -- "$root/config/options.ini" "$dist/porpoise/options.ini"
 
 python3 "$root/tools/stage-notices.py" "$dist" --driver radv --vulkan-dir "$vulkan_dir" \
-    --sdk-fork "${PS5_PAYLOAD_SDK_FORK:-$root/../PS5_PayloadSDK}"
+    --sdk-fork "${PS5_PAYLOAD_SDK_FORK:-$root/../PS5_PayloadSDK}" ${PORPOISE_RELEASE_TAG:+--release-tag "$PORPOISE_RELEASE_TAG"}
 bash "$root/tools/check-manifest.sh" --record
 printf '==> [porpoise] built %s (%s files, eboot.bin %s bytes)\n' \
     "$dist" "$(find "$dist" -type f | wc -l)" "$(stat -c %s "$dist/eboot.bin")"
