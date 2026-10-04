@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "Porpoise n'a pas pu écrire dans son propre dossier. Rien n'a été modifié.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "Porpoise n'a été mis à jour qu'en partie. Télécharge la version sur GitHub et copie-la toi-même à sa place.",
  "Your own Dolphin file": "Ton propre fichier Dolphin",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} est à toi, donc Porpoise le laisse tel quel et les options ci-dessous ne changent rien. Retire-le pour les utiliser."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} est à toi, donc Porpoise le laisse tel quel et les options ci-dessous ne changent rien. Retire-le pour les utiliser.",
+ "Porpoise's games folder": "Dossier de jeux de Porpoise",
+ "Drives and shortcuts": "Lecteurs et raccourcis",
+ "Porpoise can't open this folder": "Porpoise ne peut pas ouvrir ce dossier",
+ "This folder is empty": "Ce dossier est vide",
+ "Copying to the console": "Copie vers la console",
+ "Stop": "Arrêter",
+ "Drives": "Lecteurs",
+ "Copy to console": "Copier vers la console",
+ "Copy this game to the console?": "Copier ce jeu vers la console ?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "{game} ({size}) sera copié dans le dossier de jeux de Porpoise sur la console, où Porpoise le trouve toujours. L'original reste où il est.",
+ "Copied to the console": "Copié sur la console",
+ "{game} is in Porpoise's games folder now, and in your library.": "{game} est maintenant dans le dossier de jeux de Porpoise et dans ta bibliothèque.",
+ "The copy didn't finish": "La copie n'a pas abouti",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "La copie n'a pas abouti (la console est peut-être pleine). Aucun fichier incomplet n'est resté."
 }

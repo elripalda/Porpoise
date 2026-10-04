@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "Porpoise non è riuscito a scrivere nella sua cartella. Nessuna modifica apportata.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "Porpoise è stato aggiornato solo in parte. Scarica la versione da GitHub e copiala manualmente al suo posto.",
  "Your own Dolphin file": "Il tuo file di Dolphin",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} è tuo, quindi Porpoise lo lascia com'è e le opzioni qui sotto non cambiano nulla. Rimuovilo per usarle."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} è tuo, quindi Porpoise lo lascia com'è e le opzioni qui sotto non cambiano nulla. Rimuovilo per usarle.",
+ "Porpoise's games folder": "Cartella giochi di Porpoise",
+ "Drives and shortcuts": "Unità e scorciatoie",
+ "Porpoise can't open this folder": "Porpoise non può aprire questa cartella",
+ "This folder is empty": "Questa cartella è vuota",
+ "Copying to the console": "Copia in corso sulla console",
+ "Stop": "Interrompi",
+ "Drives": "Unità",
+ "Copy to console": "Copia sulla console",
+ "Copy this game to the console?": "Copiare questo gioco sulla console?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "{game} ({size}) verrà copiato nella cartella giochi di Porpoise sulla console, dove Porpoise lo trova sempre. L'originale resta dov'è.",
+ "Copied to the console": "Copiato sulla console",
+ "{game} is in Porpoise's games folder now, and in your library.": "{game} ora è nella cartella giochi di Porpoise e nella tua libreria.",
+ "The copy didn't finish": "Copia non completata",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "La copia non è stata completata (la console potrebbe essere piena). Non è rimasto nessun file a metà."
 }

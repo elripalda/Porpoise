@@ -175,6 +175,7 @@ private:
         CopySave,
         DeleteState,
         InstallUpdate,
+        CopyGame,
     };
     struct Dialog
     {
@@ -229,7 +230,7 @@ private:
     int section_count() const;
     std::string section_name(int index) const;
     int first_row_of(const std::string &section) const;
-    void open_browser(const std::string &path);
+    void open_browser(std::string path); /* by value: callers pass entries it replaces */
     void draw_browser();
     Action update_browser(bool up, bool down);
     std::string build_label() const;
@@ -418,12 +419,30 @@ private:
     float tab_x_[3] = {0, 0, 0}, tab_w_[3] = {0, 0, 0}; /* laid out by draw_top_bar */
     float screen_anim_ = 0;
 
-    /* The folder browser: "" lists the drives. */
+    /* The folder browser: opens on "/", the whole console; "" is the drives
+     * and shortcuts list (Triangle). Folders first, then the games in this
+     * folder, so the player sees where their games are. */
+    struct BrowseEntry
+    {
+        enum Kind
+        {
+            Folder,
+            Game,
+            Place,
+        } kind = Folder;
+        std::string label, path;
+        long long size = 0; /* a game's, in bytes */
+        int games = -1;     /* games right inside a folder; -1 not counted */
+    };
     std::string browse_path_;
-    std::vector<std::pair<std::string, std::string>> browse_entries_; /* label, path */
+    std::vector<BrowseEntry> browse_entries_;
     int browse_row_ = 0;
     int browse_first_ = 0;
     int browse_games_ = 0;
+    bool browse_unreadable_ = false;
+    std::string browse_copy_name_; /* the game being copied to the console */
+    void start_game_copy(const std::string &from);
+    std::vector<BrowseEntry> browse_places() const;
 
     std::uint32_t held_ = 0, prev_ = 0;
     std::uint32_t raw_held_ = 0, raw_prev_ = 0; /* the buttons alone, without the stick as a D-pad */

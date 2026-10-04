@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "O Porpoise não conseguiu gravar na própria pasta. Nada foi alterado.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "O Porpoise foi atualizado só em parte. Baixe a versão no GitHub e copie-a manualmente no lugar dela.",
  "Your own Dolphin file": "Seu arquivo do Dolphin",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} é seu, então o Porpoise o deixa como está e as opções abaixo não mudam nada. Remova-o para usá-las."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} é seu, então o Porpoise o deixa como está e as opções abaixo não mudam nada. Remova-o para usá-las.",
+ "Porpoise's games folder": "Pasta de jogos do Porpoise",
+ "Drives and shortcuts": "Unidades e atalhos",
+ "Porpoise can't open this folder": "O Porpoise não consegue abrir esta pasta",
+ "This folder is empty": "Esta pasta está vazia",
+ "Copying to the console": "Copiando para o console",
+ "Stop": "Parar",
+ "Drives": "Unidades",
+ "Copy to console": "Copiar para o console",
+ "Copy this game to the console?": "Copiar este jogo para o console?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "{game} ({size}) será copiado para a pasta de jogos do Porpoise no console, onde o Porpoise sempre o encontra. O original fica onde está.",
+ "Copied to the console": "Copiado para o console",
+ "{game} is in Porpoise's games folder now, and in your library.": "{game} agora está na pasta de jogos do Porpoise e na sua biblioteca.",
+ "The copy didn't finish": "A cópia não terminou",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "A cópia não terminou (o console pode estar cheio). Nenhum arquivo incompleto ficou para trás."
 }

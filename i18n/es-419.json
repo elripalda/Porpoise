@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "Porpoise no pudo escribir en su propia carpeta. No se cambió nada.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "Porpoise solo se actualizó en parte. Descarga la versión de GitHub y cópiala manualmente en su lugar.",
  "Your own Dolphin file": "Tu archivo de Dolphin",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} es tuyo, así que Porpoise lo deja tal como está y las opciones de abajo no cambian nada. Quítalo para usarlas."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} es tuyo, así que Porpoise lo deja tal como está y las opciones de abajo no cambian nada. Quítalo para usarlas.",
+ "Porpoise's games folder": "Carpeta de juegos de Porpoise",
+ "Drives and shortcuts": "Unidades y accesos directos",
+ "Porpoise can't open this folder": "Porpoise no puede abrir esta carpeta",
+ "This folder is empty": "Esta carpeta está vacía",
+ "Copying to the console": "Copiando a la consola",
+ "Stop": "Detener",
+ "Drives": "Unidades",
+ "Copy to console": "Copiar a la consola",
+ "Copy this game to the console?": "¿Copiar este juego a la consola?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "{game} ({size}) se copiará a la carpeta de juegos de Porpoise en la consola, donde Porpoise siempre lo encuentra. El original se conserva donde está.",
+ "Copied to the console": "Copiado a la consola",
+ "{game} is in Porpoise's games folder now, and in your library.": "{game} ya está en la carpeta de juegos de Porpoise y en tu biblioteca.",
+ "The copy didn't finish": "La copia no se completó",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "La copia no se completó (puede que la consola esté llena). No quedó ningún archivo a medias."
 }

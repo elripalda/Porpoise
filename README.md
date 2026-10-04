@@ -326,6 +326,12 @@ becomes the next player, up to four, and can join in the middle of a game.
 
 ## Troubleshooting
 
+- **Adding a game folder:** *Settings → Games → Add a game folder* opens on
+  the whole console (`/`), on `data`. Each folder shows how many games are in
+  it, and the games themselves are listed under the folders, so you can see
+  where they are. **Square** uses the folder you're in (add as many as you
+  like), **Triangle** jumps to your drives and Porpoise's own games folder,
+  and **Cross on a game** on a USB drive copies it to the console.
 - **Still seeing the old version after updating by hand?** Delete
   `/data/homebrew/PPSA99764/` completely before uploading the new folder.
 - **"Porpoise can't reach /data", only a few folders in the folder browser, or

@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "Porpoise nie mógł zapisać danych we własnym folderze. Niczego nie zmieniono.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "Porpoise został zaktualizowany tylko częściowo. Pobierz wersję z serwisu GitHub i skopiuj ją ręcznie na miejsce.",
  "Your own Dolphin file": "Twój własny plik Dolphin",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} to twój plik, więc Porpoise zostawia go bez zmian, a przełączniki poniżej nic nie zmieniają. Usuń go, aby z nich korzystać."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} to twój plik, więc Porpoise zostawia go bez zmian, a przełączniki poniżej nic nie zmieniają. Usuń go, aby z nich korzystać.",
+ "Porpoise's games folder": "Folder z grami Porpoise",
+ "Drives and shortcuts": "Dyski i skróty",
+ "Porpoise can't open this folder": "Porpoise nie może otworzyć tego folderu",
+ "This folder is empty": "Ten folder jest pusty",
+ "Copying to the console": "Kopiowanie na konsolę",
+ "Stop": "Zatrzymaj",
+ "Drives": "Dyski",
+ "Copy to console": "Kopiuj na konsolę",
+ "Copy this game to the console?": "Skopiować tę grę na konsolę?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "Plik {game} ({size}) zostanie skopiowany do folderu z grami Porpoise na konsoli, gdzie Porpoise zawsze go znajdzie. Oryginał zostanie na miejscu.",
+ "Copied to the console": "Skopiowano na konsolę",
+ "{game} is in Porpoise's games folder now, and in your library.": "Plik {game} jest teraz w folderze z grami Porpoise i w twojej bibliotece.",
+ "The copy didn't finish": "Nie ukończono kopiowania",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "Nie ukończono kopiowania (konsola może być pełna). Nie zostały żadne niepełne pliki."
 }

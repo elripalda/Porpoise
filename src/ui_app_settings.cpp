@@ -7,9 +7,11 @@
  * Cross go into it, Circle comes back out. A game's own settings use the same
  * screen with the global values underneath and its changes on top. */
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <dirent.h>
+#include <pthread.h>
 #include <sys/stat.h>
 
 #include "porpoise_pad.hpp"
@@ -18,6 +20,7 @@
 #include "ui_i18n.hpp"
 #include "ui_recommend.hpp"
 #include "ui_setups.hpp"
+#include "title_threads.hpp"
 
 #if defined(__has_include)
 #if __has_include("title_build_identity.h")
@@ -794,7 +797,11 @@ App::Action App::activate_row(const SettingRow &row)
     switch (row.action)
     {
     case kRowAddFolder:
-        open_browser("");
+        open_browser("/");
+        /* Start on /data, where most players keep their games. */
+        for (int i = 0; i < int(browse_entries_.size()); ++i)
+            if (browse_entries_[std::size_t(i)].path == "/data")
+                browse_row_ = i;
         return Action::None;
     case kRowUpdate:
         if (updating() || update_phase_ == 1)
@@ -1230,30 +1237,130 @@ std::string lower_copy(std::string s)
     return s;
 }
 
-/* The drives, as the browser's top level shows them. */
-std::vector<std::pair<std::string, std::string>> places()
+/* Whether a folder has anything in it (an empty USB port's mount point
+ * doesn't). */
+bool has_entries(const std::string &path)
 {
-    std::vector<std::pair<std::string, std::string>> out;
+    bool any = false;
+    if (DIR *d = opendir(path.c_str()))
+    {
+        while (dirent *e = readdir(d))
+            if (e->d_name[0] != '.')
+            {
+                any = true;
+                break;
+            }
+        closedir(d);
+    }
+    return any;
+}
+
+std::string size_text(long long bytes)
+{
+    char buf[32];
+    if (bytes >= (1LL << 30))
+        std::snprintf(buf, sizeof buf, "%.1f GB", double(bytes) / double(1LL << 30));
+    else
+        std::snprintf(buf, sizeof buf, "%lld MB", (bytes + (1LL << 20) - 1) >> 20);
+    return buf;
+}
+
+/* ---- copying a game to the console ---- */
+
+struct GameCopy
+{
+    std::string from, to;
+    std::atomic<long long> done{0}, total{0};
+    std::atomic<int> state{0}; /* 0 idle, 1 copying, 2 done, 3 failed, 4 stopped */
+    std::atomic<bool> stop{false};
+    std::string error;
+    pthread_t thread{};
+    bool joinable = false;
+};
+GameCopy g_copy;
+
+void *copy_worker(void *)
+{
+    const std::string part = g_copy.to + ".part";
+    std::FILE *in = std::fopen(g_copy.from.c_str(), "rb");
+    std::FILE *out = in ? std::fopen(part.c_str(), "wb") : nullptr;
+    bool ok = in && out;
+    std::vector<char> buf(std::size_t(4) << 20);
+    while (ok && !g_copy.stop.load())
+    {
+        const std::size_t n = std::fread(buf.data(), 1, buf.size(), in);
+        if (n == 0)
+            break;
+        ok = std::fwrite(buf.data(), 1, n, out) == n;
+        g_copy.done += (long long)n;
+    }
+    if (in)
+    {
+        ok = ok && !std::ferror(in);
+        std::fclose(in);
+    }
+    if (out)
+        ok = std::fclose(out) == 0 && ok;
+    if (g_copy.stop.load())
+    {
+        std::remove(part.c_str());
+        g_copy.state = 4;
+        return nullptr;
+    }
+    if (!ok || std::rename(part.c_str(), g_copy.to.c_str()) != 0)
+    {
+        std::remove(part.c_str());
+        g_copy.error = "The copy didn't finish (the console may be full). Nothing was left behind.";
+        g_copy.state = 3;
+        return nullptr;
+    }
+    g_copy.state = 2;
+    return nullptr;
+}
+
+void finish_copy_thread()
+{
+    if (g_copy.joinable)
+    {
+        pthread_join(g_copy.thread, nullptr);
+        g_copy.joinable = false;
+    }
+}
+} // namespace
+
+/* Where to start, and the shortcuts Triangle shows: the console's storage,
+ * Porpoise's own games folder, and the drives that have something on them. */
+std::vector<App::BrowseEntry> App::browse_places() const
+{
+    std::vector<BrowseEntry> out;
+    auto add = [&](const std::string &label, const std::string &path) {
+        BrowseEntry e;
+        e.kind = BrowseEntry::Place;
+        e.label = label;
+        e.path = path;
+        out.push_back(e);
+    };
+    if (is_dir(data_dir_ + "/games") && data_dir_ != "/app0/porpoise")
+        add(tr("Porpoise's games folder"), data_dir_ + "/games");
     if (is_dir("/data"))
-        out.push_back({tr("Console storage"), "/data"});
+        add(tr("Console storage"), "/data");
     for (int i = 0; i < 8; ++i)
     {
         const std::string p = "/mnt/usb" + std::to_string(i);
-        if (is_dir(p))
-            out.push_back({trf("USB drive {n}", {{"n", std::to_string(i + 1)}}), p});
+        if (is_dir(p) && has_entries(p))
+            add(trf("USB drive {n}", {{"n", std::to_string(i + 1)}}), p);
     }
     for (int i = 0; i < 2; ++i)
     {
         const std::string p = "/mnt/ext" + std::to_string(i);
-        if (is_dir(p))
-            out.push_back({tr("Extended storage") + std::string(i ? " 2" : ""), p});
+        if (is_dir(p) && has_entries(p))
+            add(tr("Extended storage") + std::string(i ? " 2" : ""), p);
     }
-    out.push_back({tr("Whole system"), "/"});
+    add(tr("Whole system"), "/");
     return out;
 }
-} // namespace
 
-void App::open_browser(const std::string &path)
+void App::open_browser(std::string path)
 {
     if (screen_ != Screen::Browse)
         open_screen(Screen::Browse);
@@ -1262,11 +1369,13 @@ void App::open_browser(const std::string &path)
     browse_row_ = 0;
     browse_first_ = 0;
     browse_games_ = 0;
+    browse_unreadable_ = false;
     if (path.empty())
     {
-        browse_entries_ = places();
+        browse_entries_ = browse_places();
         return;
     }
+    std::vector<BrowseEntry> folders, games;
     if (DIR *d = opendir(path.c_str()))
     {
         while (dirent *e = readdir(d))
@@ -1275,18 +1384,92 @@ void App::open_browser(const std::string &path)
             if (name.empty() || name[0] == '.')
                 continue;
             const std::string full = path == "/" ? "/" + name : path + "/" + name;
-            if (is_dir(full))
-                browse_entries_.push_back({name, full});
+            /* The entry's own type when the file system gives it; stat
+             * otherwise (links, and file systems that don't say). A folder
+             * stat can't look into still shows. */
+            struct stat st;
+            const bool stat_ok = stat(full.c_str(), &st) == 0;
+            const bool folder = e->d_type == DT_DIR || (stat_ok && S_ISDIR(st.st_mode));
+            BrowseEntry b;
+            b.label = name;
+            b.path = full;
+            if (folder)
+            {
+                b.kind = BrowseEntry::Folder;
+                folders.push_back(b);
+            }
+            else if (is_game_name(name))
+            {
+                b.kind = BrowseEntry::Game;
+                b.size = stat_ok ? (long long)st.st_size : 0;
+                games.push_back(b);
+            }
         }
         closedir(d);
     }
-    std::sort(browse_entries_.begin(), browse_entries_.end(),
-              [](const auto &a, const auto &b) { return lower_copy(a.first) < lower_copy(b.first); });
-    browse_games_ = path == "/" ? 0 : count_games(path, 0);
+    else
+        browse_unreadable_ = true;
+    auto by_name = [](const BrowseEntry &a, const BrowseEntry &b) { return lower_copy(a.label) < lower_copy(b.label); };
+    std::sort(folders.begin(), folders.end(), by_name);
+    std::sort(games.begin(), games.end(), by_name);
+    /* How many games each folder holds right inside it (not on "/", where
+     * the folders are the system's own). */
+    if (path != "/")
+        for (BrowseEntry &f : folders)
+            f.games = count_games(f.path, 0);
+    browse_games_ = int(games.size());
+    browse_entries_ = std::move(folders);
+    browse_entries_.insert(browse_entries_.end(), games.begin(), games.end());
+}
+
+void App::start_game_copy(const std::string &from)
+{
+    finish_copy_thread();
+    const std::string dir = data_dir_ + "/games";
+    mkdir(dir.c_str(), 0777);
+    g_copy.from = from;
+    g_copy.to = dir + from.substr(from.rfind('/'));
+    g_copy.done = 0;
+    struct stat st;
+    g_copy.total = stat(from.c_str(), &st) == 0 ? (long long)st.st_size : 0;
+    g_copy.stop = false;
+    g_copy.error.clear();
+    g_copy.state = 1;
+    browse_copy_name_ = from.substr(from.rfind('/') + 1);
+    if (create_title_thread(&g_copy.thread, copy_worker, nullptr) == 0)
+        g_copy.joinable = true;
+    else
+        copy_worker(nullptr);
 }
 
 App::Action App::update_browser(bool up, bool down)
 {
+    /* A game being copied holds the screen; Circle stops it. */
+    const int copy_state = g_copy.state.load();
+    if (copy_state == 1)
+    {
+        if (pressed(BtnCircle))
+            g_copy.stop = true;
+        return Action::None;
+    }
+    if (copy_state >= 2)
+    {
+        finish_copy_thread();
+        g_copy.state = 0;
+        if (copy_state == 2)
+        {
+            open_dialog(DialogKind::Info, tr("Copied to the console"),
+                        trf("{game} is in Porpoise's games folder now, and in your library.",
+                            {{"game", browse_copy_name_}}),
+                        "");
+            open_browser(browse_path_);
+            return Action::Rescan;
+        }
+        if (copy_state == 3)
+            open_dialog(DialogKind::Info, tr("The copy didn't finish"), tr(g_copy.error), "");
+        return Action::None;
+    }
+
     const int n = int(browse_entries_.size());
     if (up && browse_row_ > 0)
     {
@@ -1300,7 +1483,32 @@ App::Action App::update_browser(bool up, bool down)
     }
     if (pressed(BtnCross) && browse_row_ < n)
     {
-        open_browser(browse_entries_[std::size_t(browse_row_)].second);
+        const BrowseEntry &e = browse_entries_[std::size_t(browse_row_)];
+        if (e.kind != BrowseEntry::Game)
+        {
+            open_browser(e.path);
+            return Action::None;
+        }
+        /* A game: offer to copy it to the console's own storage, unless it's
+         * there already. */
+        const std::string home = data_dir_ + "/games";
+        if (data_dir_ == "/app0/porpoise" || browse_path_ == home)
+        {
+            sfx(Sound::MovingTab);
+            return Action::None;
+        }
+        browse_copy_name_ = e.path;
+        open_dialog(DialogKind::CopyGame, tr("Copy this game to the console?"),
+                    trf("{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always "
+                        "finds it. The original stays where it is.",
+                        {{"game", e.label}, {"size", size_text(e.size)}}),
+                    tr("Copy"));
+        return Action::None;
+    }
+    if (pressed(BtnTriangle))
+    {
+        sfx(Sound::MovingTab);
+        open_browser(browse_path_.empty() ? "/" : "");
         return Action::None;
     }
     if (pressed(BtnSquare) && !browse_path_.empty() && browse_path_ != "/")
@@ -1322,26 +1530,19 @@ App::Action App::update_browser(bool up, bool down)
     }
     if (pressed(BtnCircle))
     {
-        if (browse_path_.empty())
+        /* Up a level; from "/" or the shortcuts, out. */
+        if (browse_path_.empty() || browse_path_ == "/")
         {
             open_screen(Screen::Main);
             return Action::None;
         }
-        /* Up a level; from a drive's top, back to the drives. */
         const std::string from = browse_path_;
-        bool is_place = false;
-        for (const auto &p : places())
-            is_place |= p.second == from;
-        std::string parent;
-        if (!is_place)
-        {
-            parent = from.substr(0, from.rfind('/'));
-            if (parent.empty())
-                parent = "/";
-        }
+        std::string parent = from.substr(0, from.rfind('/'));
+        if (parent.empty())
+            parent = "/";
         open_browser(parent);
         for (int i = 0; i < int(browse_entries_.size()); ++i)
-            if (browse_entries_[std::size_t(i)].second == from)
+            if (browse_entries_[std::size_t(i)].path == from)
                 browse_row_ = i;
     }
     return Action::None;
@@ -1353,8 +1554,8 @@ void App::draw_browser()
     const float x = 190, y = 136, w = 1540, h = 800;
     g.panel(x, y, w, h, rgba(0x0F1F63, 0.66f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
     g.text_mid(Font::Bold, ts(44), x + 50, y + 62, kWhite, Align::Left, tr("Choose a game folder"));
-    const std::string where = browse_path_.empty() ? tr("Pick a drive") : browse_path_;
-    g.text_mid(Font::SemiBold, ts(26), x + 50, y + 110, kIcy, Align::Left, fit(g, Font::SemiBold, ts(26), where, w - 420));
+    const std::string where = browse_path_.empty() ? tr("Drives and shortcuts") : browse_path_;
+    g.text_mid(Font::SemiBold, ts(26), x + 50, y + 110, kIcy, Align::Left, fit(g, Font::SemiBold, ts(26), where, w - 520));
     if (!browse_path_.empty() && browse_path_ != "/")
     {
         const std::string count = browse_games_ == 0 ? tr("No games right here")
@@ -1373,21 +1574,43 @@ void App::draw_browser()
     float ry = y + 166;
     if (n == 0)
         g.text_mid(Font::SemiBold, ts(30), x + w * 0.5f, y + 380, kSoft, Align::Center,
-                   tr("No folders inside this one"));
+                   browse_unreadable_ ? tr("Porpoise can't open this folder") : tr("This folder is empty"));
     for (int i = browse_first_; i < n && i < browse_first_ + kVisible; ++i)
     {
+        const BrowseEntry &e = browse_entries_[std::size_t(i)];
         const bool on = i == browse_row_;
+        const bool game = e.kind == BrowseEntry::Game;
         const float cy = ry + row_h * 0.5f;
         if (on)
-            g.panel(rx, ry + 4, rw, row_h - 8, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
-        /* A little folder. */
-        const Color fc = on ? kIcy : with_alpha(kCyan, 0.75f);
-        g.panel(rx + 30, cy - 15, 18, 8, fc, 1, 3);
-        g.panel(rx + 30, cy - 10, 40, 26, fc, 0.8f, 4);
-        g.text_mid(Font::SemiBold, ts(30), rx + 92, cy, on ? kWhite : kSoft, Align::Left,
-                   fit(g, Font::SemiBold, ts(30), browse_entries_[std::size_t(i)].first, rw - 200));
-        if (on)
-            g.glyph(Glyph::Arrow, rx + rw - 36, cy, 22, kCyan, kPi * 0.5f);
+            g.panel(rx, ry + 4, rw, row_h - 8, rgba(game ? 0x0E5A8A : 0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
+        if (game)
+        {
+            /* A little disc. */
+            const Color dc = on ? kWhite : kCyan;
+            g.panel(rx + 34, cy - 16, 32, 32, with_alpha(dc, 0.9f), 1, 16);
+            g.panel(rx + 45, cy - 5, 10, 10, rgba(0x0F1F63), 1, 5);
+        }
+        else
+        {
+            /* A little folder (a drive is a folder too). */
+            const Color fc = on ? kIcy : with_alpha(kCyan, 0.75f);
+            g.panel(rx + 30, cy - 15, 18, 8, fc, 1, 3);
+            g.panel(rx + 30, cy - 10, 40, 26, fc, 0.8f, 4);
+        }
+        const float right_w = game ? 170.0f : (e.games > 0 ? 260.0f : 80.0f);
+        g.text_mid(Font::SemiBold, ts(30), rx + 92, cy, game ? (on ? kWhite : kCyan) : (on ? kWhite : kSoft),
+                   Align::Left, fit(g, Font::SemiBold, ts(30), e.label, rw - 120 - right_w));
+        if (game)
+            g.text_mid(Font::Regular, ts(24), rx + rw - 30, cy, on ? kWhite : kLavender, Align::Right,
+                       size_text(e.size));
+        else
+        {
+            if (e.games > 0)
+                g.text_mid(Font::SemiBold, ts(22), rx + rw - 70, cy, kCyan, Align::Right,
+                           plural(e.games, "1 game", "{n} games"));
+            if (on)
+                g.glyph(Glyph::Arrow, rx + rw - 36, cy, 22, kCyan, kPi * 0.5f);
+        }
         ry += row_h;
     }
     if (browse_first_ > 0)
@@ -1395,10 +1618,38 @@ void App::draw_browser()
     if (browse_first_ + kVisible < n)
         g.glyph(Glyph::Arrow, x + w - 30, y + h - 30, 18, rgba(0x58B8FF), kPi);
 
+    /* Copying a game: a box over the list. */
+    if (g_copy.state.load() == 1)
+    {
+        g.panel(x, y, w, h, rgba(0x02040C, 0.7f), 1, kR);
+        const float bw = 900, bh = 300, bx = 960 - bw * 0.5f, by = 400;
+        g.panel(bx, by, bw, bh, rgba(0x13308A, 0.95f), 1, kR, rgba(0x8BD9FF), 2.2f, 12);
+        g.text_mid(Font::Bold, ts(36), 960, by + 64, kWhite, Align::Center, tr("Copying to the console"));
+        g.text_mid(Font::Regular, ts(24), 960, by + 118, kSoft, Align::Center,
+                   fit(g, Font::Regular, ts(24), browse_copy_name_, bw - 100));
+        const long long done = g_copy.done.load(), total = std::max(1LL, g_copy.total.load());
+        const float frac = std::clamp(float(double(done) / double(total)), 0.0f, 1.0f);
+        g.panel(bx + 60, by + 160, bw - 120, 26, rgba(0x07102E, 0.7f), 1, 13, rgba(0x3D5AB0, 0.9f), 1.4f);
+        g.panel(bx + 63, by + 163, std::max(20.0f, (bw - 126) * frac), 20, rgba(0x5CD3FF), 0.8f, 10);
+        g.text_mid(Font::Regular, ts(22), 960, by + 230, kLavender, Align::Center,
+                   size_text(done) + " / " + size_text(total));
+        draw_prompts({{Glyph::Circle, "Stop"}}, {}, "");
+        return;
+    }
+
     std::vector<std::pair<Glyph, std::string>> right;
     if (!browse_path_.empty() && browse_path_ != "/")
         right.push_back({Glyph::Square, "Use this folder"});
-    draw_prompts({{Glyph::Cross, "Open"}, {Glyph::Circle, browse_path_.empty() ? "Cancel" : "Up"}}, right, "");
+    right.push_back({Glyph::Triangle, browse_path_.empty() ? "Whole system" : "Drives"});
+    const bool on_game = browse_row_ < n && browse_entries_[std::size_t(browse_row_)].kind == BrowseEntry::Game;
+    const bool can_copy = on_game && data_dir_ != "/app0/porpoise" && browse_path_ != data_dir_ + "/games";
+    std::vector<std::pair<Glyph, std::string>> left;
+    if (!on_game && n > 0)
+        left.push_back({Glyph::Cross, "Open"});
+    if (can_copy)
+        left.push_back({Glyph::Cross, "Copy to console"});
+    left.push_back({Glyph::Circle, browse_path_.empty() || browse_path_ == "/" ? "Cancel" : "Up"});
+    draw_prompts(left, right, "");
 }
 
 } // namespace porpoise::ui

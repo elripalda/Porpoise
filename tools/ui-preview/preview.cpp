@@ -464,12 +464,29 @@ int main(int argc, char **argv)
     press(kDown, 3); /* Add a game folder */
     settle();
     render("settings-games", [&] { ui.draw(12.0); });
-    press(kCross); /* the browser: drives */
-    press(kCross); /* the first one */
-    press(kDown, 3);
+    press(kCross); /* the browser: the whole console, on /data */
+    settle();
+    render("browser-root", [&] { ui.draw(12.0); });
+    press(kCross); /* /data */
     settle();
     render("browser", [&] { ui.draw(12.0); });
-    press(kCircle, 2);
+    press(kDown); /* games */
+    press(kCross);
+    settle();
+    render("browser-games", [&] { ui.draw(12.0); });
+    press(kCross); /* GameCube */
+    press(kDown);
+    settle();
+    render("browser-files", [&] { ui.draw(12.0); });
+    press(kCross); /* copy this one? */
+    settle();
+    render("browser-copy", [&] { ui.draw(12.0); });
+    press(kCircle);
+    press(kTriangle); /* drives and shortcuts */
+    settle();
+    render("browser-drives", [&] { ui.draw(12.0); });
+    press(kTriangle); /* back to the whole console */
+    press(kCircle);   /* out */
     settle();
     press(kCircle); /* to the rail */
     press(kDown);   /* Video */

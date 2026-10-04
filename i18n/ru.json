@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "Porpoise не смог записать файлы в свою папку. Ничего не изменено.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "Porpoise обновлён только частично. Скачайте версию с GitHub и скопируйте её на место вручную.",
  "Your own Dolphin file": "Свой файл Dolphin",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} — ваш собственный файл, поэтому Porpoise оставляет его как есть, а переключатели ниже ничего не меняют. Удалите его, чтобы ими пользоваться."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} — ваш собственный файл, поэтому Porpoise оставляет его как есть, а переключатели ниже ничего не меняют. Удалите его, чтобы ими пользоваться.",
+ "Porpoise's games folder": "Папка игр Porpoise",
+ "Drives and shortcuts": "Накопители и ярлыки",
+ "Porpoise can't open this folder": "Porpoise не может открыть эту папку",
+ "This folder is empty": "Эта папка пуста",
+ "Copying to the console": "Копирование на консоль",
+ "Stop": "Остановить",
+ "Drives": "Накопители",
+ "Copy to console": "Копировать на консоль",
+ "Copy this game to the console?": "Копировать эту игру на консоль?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "Файл {game} ({size}) будет скопирован в папку игр Porpoise на консоли, где Porpoise всегда его найдёт. Оригинал останется на месте.",
+ "Copied to the console": "Скопировано на консоль",
+ "{game} is in Porpoise's games folder now, and in your library.": "Файл {game} теперь в папке игр Porpoise и в вашей библиотеке.",
+ "The copy didn't finish": "Копирование не завершено",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "Копирование не завершено (возможно, на консоли закончилось место). Недокопированных файлов не осталось."
 }

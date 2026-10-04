@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "Porpoiseのフォルダーに書き込めませんでした。何も変更されていません。",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "Porpoiseは一部しかアップデートされませんでした。GitHubからリリースをダウンロードし、手動でコピーして置き換えてください。",
  "Your own Dolphin file": "自分のDolphinファイル",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file}は自分で用意したファイルなので、Porpoiseはそのままにします。下のスイッチを切り替えても何も変わりません。スイッチを使うには、このファイルを削除してください。"
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file}は自分で用意したファイルなので、Porpoiseはそのままにします。下のスイッチを切り替えても何も変わりません。スイッチを使うには、このファイルを削除してください。",
+ "Porpoise's games folder": "Porpoiseのゲームフォルダー",
+ "Drives and shortcuts": "ドライブとショートカット",
+ "Porpoise can't open this folder": "Porpoiseはこのフォルダーを開けません",
+ "This folder is empty": "このフォルダーは空です",
+ "Copying to the console": "本体にコピー中",
+ "Stop": "中止",
+ "Drives": "ドライブ",
+ "Copy to console": "本体にコピー",
+ "Copy this game to the console?": "このゲームを本体にコピーしますか？",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "{game}（{size}）を本体のPorpoiseのゲームフォルダーにコピーします。ここならPorpoiseがいつでも見つけられます。元のファイルはそのまま残ります。",
+ "Copied to the console": "本体にコピーしました",
+ "{game} is in Porpoise's games folder now, and in your library.": "{game}がPorpoiseのゲームフォルダーとライブラリーに追加されました。",
+ "The copy didn't finish": "コピーが完了しませんでした",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "コピーが完了しませんでした（本体の空き容量が不足している可能性があります）。途中までのファイルは残っていません。"
 }

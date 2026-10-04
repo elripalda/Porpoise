@@ -39,6 +39,8 @@ struct Game
 
 /* Game files in dir and up to depth folders below it. */
 int count_games(const std::string &dir, int depth);
+/* Whether a file name is a disc image Porpoise plays (.iso, .rvz, ...). */
+bool is_game_name(const std::string &name);
 
 struct LibraryPaths
 {

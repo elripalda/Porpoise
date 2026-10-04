@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "O Porpoise não conseguiu escrever na sua própria pasta. Nada foi alterado.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "O Porpoise só foi atualizado em parte. Transfere a versão do GitHub e copia-a manualmente para o seu lugar.",
  "Your own Dolphin file": "O teu ficheiro do Dolphin",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} é teu, por isso o Porpoise deixa-o como está e as opções abaixo não mudam nada. Remove-o para as usares."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} é teu, por isso o Porpoise deixa-o como está e as opções abaixo não mudam nada. Remove-o para as usares.",
+ "Porpoise's games folder": "Pasta de jogos do Porpoise",
+ "Drives and shortcuts": "Unidades e atalhos",
+ "Porpoise can't open this folder": "O Porpoise não consegue abrir esta pasta",
+ "This folder is empty": "Esta pasta está vazia",
+ "Copying to the console": "A copiar para a consola",
+ "Stop": "Parar",
+ "Drives": "Unidades",
+ "Copy to console": "Copiar para a consola",
+ "Copy this game to the console?": "Copiar este jogo para a consola?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "{game} ({size}) é copiado para a pasta de jogos do Porpoise na consola, onde o Porpoise o encontra sempre. O original fica onde está.",
+ "Copied to the console": "Copiado para a consola",
+ "{game} is in Porpoise's games folder now, and in your library.": "{game} já está na pasta de jogos do Porpoise e na tua biblioteca.",
+ "The copy didn't finish": "A cópia não terminou",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "A cópia não terminou (a consola pode estar cheia). Não ficou nenhum ficheiro a meio."
 }

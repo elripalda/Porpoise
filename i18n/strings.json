@@ -2210,5 +2210,61 @@
  {
   "en": "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.",
   "section": "1.1: updater messages, recommended settings notes"
+ },
+ {
+  "en": "Porpoise's games folder",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Drives and shortcuts",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Porpoise can't open this folder",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "This folder is empty",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Copying to the console",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Stop",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Drives",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Copy to console",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Copy this game to the console?",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "Copied to the console",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "{game} is in Porpoise's games folder now, and in your library.",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "The copy didn't finish",
+  "section": "1.1: folder browser"
+ },
+ {
+  "en": "The copy didn't finish (the console may be full). Nothing was left behind.",
+  "section": "1.1: folder browser"
  }
 ]

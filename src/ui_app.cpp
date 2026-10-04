@@ -589,6 +589,9 @@ App::Action App::confirm_dialog(DialogKind kind)
         update_done_ = 0;
         update_total_ = latest_size_;
         return Action::InstallUpdate;
+    case DialogKind::CopyGame:
+        start_game_copy(browse_copy_name_);
+        return Action::None;
     case DialogKind::DeleteState:
         if (states_game_)
         {

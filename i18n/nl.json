@@ -551,5 +551,19 @@
  "Porpoise couldn't write its own folder. Nothing was changed.": "Porpoise kon niet naar zijn eigen map schrijven. Er is niets gewijzigd.",
  "Porpoise was only partly updated. Download the release from GitHub and copy it in by hand.": "Porpoise is maar deels bijgewerkt. Download de versie via GitHub en kopieer die handmatig op de juiste plek.",
  "Your own Dolphin file": "Je eigen Dolphin-bestand",
- "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} is van jou, dus Porpoise laat het zoals het is en de schakelaars hieronder doen niets. Verwijder het om ze te gebruiken."
+ "saves/{file} is yours, so Porpoise leaves it as it is and the switches below change nothing. Remove it to use them.": "saves/{file} is van jou, dus Porpoise laat het zoals het is en de schakelaars hieronder doen niets. Verwijder het om ze te gebruiken.",
+ "Porpoise's games folder": "Gamemap van Porpoise",
+ "Drives and shortcuts": "Schijven en snelkoppelingen",
+ "Porpoise can't open this folder": "Porpoise kan deze map niet openen",
+ "This folder is empty": "Deze map is leeg",
+ "Copying to the console": "Kopiëren naar de console",
+ "Stop": "Stoppen",
+ "Drives": "Schijven",
+ "Copy to console": "Naar console kopiëren",
+ "Copy this game to the console?": "Deze game naar de console kopiëren?",
+ "{game} ({size}) is copied to Porpoise's games folder on the console, where Porpoise always finds it. The original stays where it is.": "{game} ({size}) wordt naar de gamemap van Porpoise op de console gekopieerd, waar Porpoise hem altijd vindt. Het origineel blijft waar het is.",
+ "Copied to the console": "Naar de console gekopieerd",
+ "{game} is in Porpoise's games folder now, and in your library.": "{game} staat nu in de gamemap van Porpoise en in je bibliotheek.",
+ "The copy didn't finish": "Het kopiëren is niet voltooid",
+ "The copy didn't finish (the console may be full). Nothing was left behind.": "Het kopiëren is niet voltooid (misschien is de console vol). Er zijn geen halve bestanden achtergebleven."
 }

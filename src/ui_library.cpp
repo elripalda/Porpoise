@@ -126,6 +126,11 @@ void find_games(const std::string &dir, int depth, std::vector<std::string> &out
 }
 } // namespace
 
+bool is_game_name(const std::string &name)
+{
+    return is_game_file(name);
+}
+
 int count_games(const std::string &dir, int depth)
 {
     std::vector<std::string> files;

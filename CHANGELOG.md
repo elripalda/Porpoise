@@ -78,6 +78,11 @@
   HEN (etaHEN / OnionHEN) to free it, as PS5SX2 does, and says so if it can't.
   Settings, memory cards and states a sandboxed 1.0 kept in the app's own
   folder come along to `/data/porpoise` the first time.
+- **A clearer folder browser:** it opens on the whole console at `/data`,
+  lists the game files in each folder (and how many each folder holds), keeps
+  drives and shortcuts on Triangle (only drives with something on them), shows
+  folders the old one missed, and copies a game from a USB drive to the
+  console with one press.
 - Shaders compile on four background threads instead of one: less stutter the
   first time a game shows something new.
 - "Last played 1 weeks ago" is gone.
