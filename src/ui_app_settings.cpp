@@ -476,6 +476,20 @@ void App::build_settings()
         r.values = {tr("Porpoise"), tr("Revolution")};
         rows_.push_back(r);
     }
+    if (settings_->ui_theme == 1)
+    {
+        SettingRow r;
+        r.section = section;
+        r.key = "ui_layout";
+        r.label = tr("Home screen");
+        r.help = tr("Tiles: a grid you point at, twelve to a page. Cover flow: the boxes in a row, in white.");
+        r.int_value = &settings_->ui_layout;
+        r.values = {tr("Tiles"), tr("Cover flow")};
+        rows_.push_back(r);
+        toggle("ui_pointer", "Point with the controller",
+               "Move the controller to point at tiles and buttons. The touch pad turns it on and off too.",
+               &settings_->ui_pointer);
+    }
     toggle("reduced_motion", "Reduced motion", "Stops the moving lights and shortens animations.",
            &settings_->reduced_motion);
     toggle("large_text", "Larger text", "Bigger labels across Porpoise.", &settings_->large_text);
@@ -885,6 +899,10 @@ void App::change_setting(int dir)
         rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
         return;
     }
+    if (r.key == "ui_theme")
+        look_changed(1 - settings_->ui_theme);
+    if (r.key == "ui_theme" || r.key == "ui_layout")
+        build_settings(); /* the layout row comes and goes with the look */
     if (r.key == "wii_preset" && settings_->wii_preset > 0)
     {
         /* A preset brings its whole set-up. */

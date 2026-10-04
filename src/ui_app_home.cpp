@@ -25,26 +25,24 @@ using namespace porpoise::pad;
 namespace
 {
 constexpr int kCols = 4, kRows = 3, kPer = kCols * kRows;
-constexpr float kHTileW = 384, kHTileH = 216, kGapX = 32, kGapY = 30;
-constexpr float kGridX = (1920 - (kCols * kHTileW + (kCols - 1) * kGapX)) * 0.5f, kGridY = 118;
-/* Focus targets besides the tiles (0..11). */
+constexpr float kHTileW = 384, kHTileH = 202, kGapX = 32, kGapY = 24;
+constexpr float kGridX = (1920 - (kCols * kHTileW + (kCols - 1) * kGapX)) * 0.5f, kGridY = 126;
+/* Focus targets besides the tiles (0..11); the tabs are kRevTab0.. (ui_app.hpp). */
 constexpr int kHomeSettings = 12, kHomeCards = 13, kHomePrev = 14, kHomeNext = 15;
-constexpr float kBtnSize = 132, kBtnY = 1000, kBtnX[2] = {156, 1764};
+constexpr float kBtnSize = 140, kBtnY = 950, kBtnX[2] = {160, 1760};
 constexpr float kArrowSize = 84, kArrowY = kGridY + (kRows * kHTileH + (kRows - 1) * kGapY) * 0.5f;
 constexpr float kArrowX[2] = {62, 1858};
 
-/* The palette: white glass on a pale room. */
-const Color kRoom = rgba(0xF5F7FA);
-const Color kTile = rgba(0xFFFFFF);
-const Color kRim = rgba(0xC3CAD3);
-const Color kHover = rgba(0x35B2E8);
-const Color kInk = rgba(0x3B434D);
-const Color kInkSoft = rgba(0x7A838E);
-const Color kBar = rgba(0xE6EAEF);
-const Color kBarEdge = rgba(0xB9C1CB);
-const Color kAccent = rgba(0x2FA6DE);
-const Color kGameCube = rgba(0x6E63D9);
-const Color kWii = rgba(0x39A9DF);
+/* The palette (look::rev, ui_app_common.hpp). */
+const Color kTile = rev::kTile;
+const Color kRim = rev::kRim;
+const Color kHover = rev::kBlue;
+const Color kInk = rev::kInk;
+const Color kInkSoft = rev::kInkSoft;
+const Color kBar = rev::kBar;
+const Color kAccent = rev::kBlue;
+const Color kGameCube = rev::kGameCube;
+const Color kWii = rev::kWii;
 
 bool inside(float px, float py, float x, float y, float w, float h)
 {
@@ -79,7 +77,7 @@ std::vector<App::HomeItem> App::home_items() const
  * it shows (and lets go of it otherwise, unless the Wii Remote setup has it). */
 void App::home_pad_sync()
 {
-    const bool want = home_showing() && !dialog_.open && !updating();
+    const bool want = pointer_screen() && settings_->ui_pointer;
     const bool has = porpoise::pad::wii().menu;
     if (want && !has)
     {
@@ -130,7 +128,7 @@ int App::home_hit(float px, float py, int items, int pages) const
         return kHomePrev;
     if (home_page_ + 1 < pages && in_circle(px, py, kArrowX[1], kArrowY, kArrowSize * 0.5f + 10))
         return kHomeNext;
-    return -1;
+    return rev_tab_hit(px, py);
 }
 
 void App::update_home(bool left, bool right, bool up, bool down, bool &play, bool &details, bool &fav, double dt)
@@ -144,7 +142,7 @@ void App::update_home(bool left, bool right, bool up, bool down, bool &play, boo
         if (to < 0 || to >= pages || to == home_page_)
             return false;
         home_page_ = to;
-        sfx(Sound::HomePage);
+        sfx(Sound::MovingTab);
         return true;
     };
 
@@ -161,46 +159,18 @@ void App::update_home(bool left, bool right, bool up, bool down, bool &play, boo
             }
     }
 
-    /* The pointer, when the controller has a middle. */
-    const porpoise::pad::Motion m = porpoise::pad::snapshot(0).motion;
-    bool aimed = m.valid && m.centred;
-    float px = 960 + std::clamp(m.aim_x, -1.1f, 1.1f) * 960;
-    float py = 540 + std::clamp(m.aim_y, -1.1f, 1.1f) * 540;
-#ifdef PORPOISE_HOST_PREVIEW
-    if (preview_px_ >= 0)
-    {
-        aimed = true;
-        px = preview_px_;
-        py = preview_py_;
-    }
-#endif
-    if (aimed)
-    {
-        /* After the D-pad, the pointer leads again once it really moves. */
-        if (!home_pointing_ && std::hypot(px - home_hide_x_, py - home_hide_y_) > 70)
-            home_pointing_ = true;
-        home_px_ = px;
-        home_py_ = py;
-        home_roll_ = std::clamp(m.roll, -1.2f, 1.2f);
-    }
-    else
-        home_pointing_ = false;
+    rev_pointer_step();
 
     const int before = home_focus_, page_before = home_page_;
     if (left || right || up || down)
     {
-        if (home_pointing_)
-        {
-            home_pointing_ = false;
-            home_hide_x_ = px;
-            home_hide_y_ = py;
-        }
+        rev_pointer_rest();
         auto clamp_slot = [&](int slot) {
             const int k = on_page(home_page_);
             return k == 0 ? kHomeSettings : std::min(slot, k - 1);
         };
         int f = home_focus_;
-        if (f < 0 || f == kHomePrev || f == kHomeNext)
+        if (f < 0 || f == kHomePrev || f == kHomeNext || f >= kRevTab0)
             f = clamp_slot(0);
         else if (f < kPer)
         {
@@ -257,28 +227,23 @@ void App::update_home(bool left, bool right, bool up, bool down, bool &play, boo
     }
 
     if ((home_focus_ != before || home_page_ != page_before) && home_focus_ >= 0)
-    {
-        sfx(Sound::HomeHover);
-        if (settings_->rumble && home_pointing_)
-        {
-            /* A tiny tap in the hand as the pointer lands on something. */
-            porpoise::pad::set_rumble(0, false, 0x2600);
-            home_buzz_until_ = time_ + 0.035;
-        }
-    }
+        rev_landed();
 
     /* The focused tile is the library's selection, for Details and the rest. */
     const int item = home_focus_ >= 0 && home_focus_ < kPer ? home_page_ * kPer + home_focus_ : -1;
     if (item >= 0 && item < n)
     {
         selected_ = items[std::size_t(item)].game;
-        play = pressed(BtnCross) != 0;
-        details = pressed(BtnSquare) != 0;
+        /* Cross opens the tile (Start is there); Square plays straight away. */
+        details = pressed(BtnCross) != 0;
+        play = pressed(BtnSquare) != 0;
         fav = pressed(BtnOptions) != 0;
     }
     else if (pressed(BtnCross))
     {
-        if (home_focus_ == kHomeSettings)
+        if (home_focus_ >= kRevTab0 && home_focus_ < kRevTab0 + 3)
+            set_tab(home_focus_ - kRevTab0, +1);
+        else if (home_focus_ == kHomeSettings)
             set_tab(int(Tab::Settings), +1);
         else if (home_focus_ == kHomeCards)
             set_tab(int(Tab::MemoryCards), +1);
@@ -289,7 +254,7 @@ void App::update_home(bool left, bool right, bool up, bool down, bool &play, boo
     }
 
     const bool calm = settings_->reduced_motion;
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < kHomeGrow; ++i)
     {
         const float target = home_focus_ == i ? 1.0f : 0.0f;
         home_grow_[i] = calm ? target : smooth(home_grow_[i], target, dt, 14.0f);
@@ -302,16 +267,11 @@ void App::update_home(bool left, bool right, bool up, bool down, bool &play, boo
 void App::draw_home(double time)
 {
     Gfx &g = *g_;
-    (void)time;
     auto &games = lib_->games();
     const std::vector<HomeItem> items = home_items();
     const int n = int(items.size());
     const int pages = std::max(1, (n + kPer - 1) / kPer);
-
-    /* The room: pale, a touch darker toward the floor, with two soft lights. */
-    g.panel(0, 0, 1920, 1080, kRoom, 0.92f, 0);
-    g.blob(360, 140, 1100, 520, rgba(0xFFFFFF, 0.55f));
-    g.blob(1600, 760, 1200, 600, rgba(0xDCE9F5, 0.45f));
+    const bool calm = settings_->reduced_motion;
 
     /* Tiles: the page in view, and its neighbour while a page turns. */
     const int p0 = int(std::floor(home_scroll_)), p1 = int(std::ceil(home_scroll_));
@@ -338,66 +298,88 @@ void App::draw_home(double time)
                 continue;
             if (i >= n)
             {
-                /* An empty place: a faint outline of a tile. */
-                g.panel(x, y, w, h, rgba(0xFFFFFF, 0.38f), 1, 28, rgba(0xD3D9E0, 0.9f), 2);
+                /* An empty place: a pale tile with fine lines in it. */
+                g.panel(x, y, w, h, rgba(0xF7F8FA, 0.85f), 1, rev::kTileR, rgba(0xD3D9E0), 2.5f);
+                draw_lines_in(x, y, w, h, 12);
                 continue;
             }
             const float grow = here ? home_grow_[slot] : 0.0f;
             const HomeItem &it = items[std::size_t(i)];
             Game &game = games[std::size_t(it.game)];
             const bool wii = game.platform == "Wii";
-            /* A soft shadow, then the white glass. */
             g.blob(x + w * 0.5f, y + h + 4, w * 0.92f, 34 + grow * 14, rgba(0x2A3442, 0.10f + grow * 0.06f));
-            g.panel(x, y, w, h, kTile, 0.95f, 28, grow > 0.02f ? with_alpha(kHover, 0.4f + 0.6f * grow) : kRim,
-                    3.0f + grow * 2.5f, grow * 14.0f, 0.35f);
-            /* The cover, upright at the left. */
-            const float pad = 14 * (w / kHTileW);
-            const float ch = h - pad * 2;
-            float cw = ch * 5.0f / 7.0f;
-            Texture *cover = cover_of(game);
-            if (cover && cover->height > 0)
-                cw = std::min(ch * float(cover->width) / float(cover->height), w * 0.42f);
-            if (cover)
-                g.image(cover, x + pad, y + pad, cw, ch, {}, 14);
-            else
+            g.panel(x, y, w, h, kTile, 0.95f, rev::kTileR, grow > 0.02f ? with_alpha(kHover, 0.4f + 0.6f * grow) : kRim,
+                    3.0f + grow * 2.0f, grow * 14.0f, 0.35f);
+            const float pad = 12 * (w / kHTileW);
+            /* The disc's own tile, when Porpoise has read it: it fills the tile. */
+            if (draw_banner(game, x + pad * 0.5f, y + pad * 0.5f, w - pad, h - pad, time, 1.0f, false))
             {
-                g.panel(x + pad, y + pad, cw, ch, with_alpha(wii ? kWii : kGameCube, 0.18f), 1, 14,
-                        with_alpha(wii ? kWii : kGameCube, 0.5f), 2);
-                g.text_mid(Font::Bold, ts(20), x + pad + cw * 0.5f, y + pad + ch * 0.5f,
-                           wii ? kWii : kGameCube, Align::Center, wii ? "Wii" : "GC");
-            }
-            const float tx = x + pad * 2 + cw, tw = x + w - pad - tx;
-            float ty = y + pad + 6;
-            if (it.resume)
-            {
-                g.text(Font::Bold, ts(22), tx, ty, kAccent, Align::Left, tr("Continue"), 1.0f);
-                ty += 36;
-            }
-            for (const std::string &l : wrap(g, Font::Bold, ts(25), game.title, tw, it.resume ? 2 : 3))
-            {
-                g.text(Font::Bold, ts(25), tx, ty, kInk, Align::Left, l);
-                ty += 33;
-            }
-            /* Underneath: when it was played (the first tile), or which console. */
-            const float by = y + h - pad - 30;
-            if (it.resume)
-            {
-                g.text_mid(Font::Regular, ts(19), tx, by + 15, kInkSoft, Align::Left,
-                           fit(g, Font::Regular, ts(19), relative_time(game.last_played, (long long)std::time(nullptr)),
-                               tw - 48));
-                /* A round play mark. */
-                g.panel(x + w - pad - 40, by - 6, 40, 40, kAccent, 0.85f, 20);
-                g.glyph(Glyph::Arrow, x + w - pad - 18, by + 14, 20, kTile, kPi * 0.5f);
+                if (it.resume)
+                {
+                    const std::string label = tr("Continue");
+                    const float lw = g.measure(Font::Bold, ts(19), label) + 26;
+                    g.panel(x + 14, y + 12, lw, 32, kAccent, 0.9f, 16);
+                    g.text_mid(Font::Bold, ts(19), x + 14 + lw * 0.5f, y + 28, kTile, Align::Center, label);
+                }
             }
             else
             {
-                const std::string label = wii ? "Wii" : "GameCube";
-                const float lw = g.measure(Font::SemiBold, ts(17), label) + 26;
-                g.panel(tx, by, lw, 30, wii ? kWii : kGameCube, 0.9f, 15);
-                g.text_mid(Font::SemiBold, ts(17), tx + lw * 0.5f, by + 15, kTile, Align::Center, label);
+                /* Else the cover, upright at the left, and its name. */
+                const float ch = h - pad * 2;
+                float cw = ch * 5.0f / 7.0f;
+                Texture *cover = cover_of(game);
+                if (cover && cover->height > 0)
+                    cw = std::min(ch * float(cover->width) / float(cover->height), w * 0.42f);
+                if (cover)
+                    g.image(cover, x + pad, y + pad, cw, ch, {}, 14);
+                else
+                {
+                    g.panel(x + pad, y + pad, cw, ch, with_alpha(wii ? kWii : kGameCube, 0.16f), 1, 14,
+                            with_alpha(wii ? kWii : kGameCube, 0.5f), 2);
+                    g.text_mid(Font::Bold, ts(20), x + pad + cw * 0.5f, y + pad + ch * 0.5f, wii ? kWii : kGameCube,
+                               Align::Center, wii ? "Wii" : "GC");
+                }
+                const float tx = x + pad * 2 + cw, tw = x + w - pad - tx;
+                float ty = y + pad + 8;
+                if (it.resume)
+                {
+                    g.text(Font::Bold, ts(22), tx, ty, kAccent, Align::Left, tr("Continue"), 1.0f);
+                    ty += 36;
+                }
+                for (const std::string &l : wrap(g, Font::Bold, ts(25), game.title, tw, it.resume ? 2 : 3))
+                {
+                    g.text(Font::Bold, ts(25), tx, ty, kInk, Align::Left, l);
+                    ty += 33;
+                }
+                const float by = y + h - pad - 32;
+                if (it.resume)
+                {
+                    g.text_mid(Font::Regular, ts(19), tx, by + 16, kInkSoft, Align::Left,
+                               fit(g, Font::Regular, ts(19),
+                                   relative_time(game.last_played, (long long)std::time(nullptr)), tw - 48));
+                    g.panel(x + w - pad - 40, by - 4, 40, 40, kAccent, 0.85f, 20);
+                    g.glyph(Glyph::Arrow, x + w - pad - 18, by + 16, 20, kTile, kPi * 0.5f);
+                }
+                else
+                {
+                    const std::string label = wii ? "Wii" : "GameCube";
+                    const float lw = g.measure(Font::SemiBold, ts(17), label) + 26;
+                    g.panel(tx, by + 2, lw, 30, wii ? kWii : kGameCube, 0.9f, 15);
+                    g.text_mid(Font::SemiBold, ts(17), tx + lw * 0.5f, by + 17, kTile, Align::Center, label);
+                }
             }
             if (game.favourite)
-                g.glyph(Glyph::Star, x + w - pad - 12, y + pad + 12, 24, rgba(0xF5B82E));
+                g.glyph(Glyph::Star, x + w - pad - 14, y + pad + 14, 24, rgba(0xF5B82E));
+            /* A sheen that crosses the tile under the pointer now and then. */
+            if (grow > 0.5f && !calm)
+            {
+                const float t = std::fmod(float(time) * 0.55f, 2.4f);
+                if (t < 1.0f)
+                {
+                    const float bw = w * 0.16f, bx = x + 10 + (w - 20 - bw) * t;
+                    g.panel(bx, y + 8, bw, h - 16, rgba(0xFFFFFF, 0.22f * std::sin(t * kPi)), 1, bw * 0.5f);
+                }
+            }
         }
     }
 
@@ -416,7 +398,7 @@ void App::draw_home(double time)
     if (n == 0)
     {
         const bool none = games.empty();
-        g.panel(560, 380, 800, 190, rgba(0xFFFFFF, 0.92f), 0.96f, 28, kRim, 3);
+        g.panel(560, 380, 800, 190, rgba(0xFFFFFF, 0.95f), 0.96f, 28, kRim, 3);
         g.text_mid(Font::Bold, ts(34), 960, 440, kInk, Align::Center,
                    none ? tr("No games yet")
                         : lib_->show() == Library::Show::Wii ? tr("No Wii games here") : tr("No GameCube games here"));
@@ -426,7 +408,7 @@ void App::draw_home(double time)
                        : tr("Sort & filter (Triangle) can show all of your games."),
                   720, 2))
         {
-            g.text_mid(Font::Regular, ts(23), 960, 500 + 0.0f, kInkSoft, Align::Center, l);
+            g.text_mid(Font::Regular, ts(23), 960, 500, kInkSoft, Align::Center, l);
             break;
         }
     }
@@ -440,13 +422,13 @@ void App::draw_home(double time)
         const float grow = home_grow_[side == 0 ? kHomePrev : kHomeNext];
         const float s = kArrowSize * (1.0f + 0.12f * grow);
         g.panel(kArrowX[side] - s * 0.5f, kArrowY - s * 0.5f, s, s, kTile, 0.94f, s * 0.5f,
-                grow > 0.02f ? kHover : kRim, 3.0f, grow * 10.0f, 0.3f);
-        g.glyph(Glyph::Arrow, kArrowX[side] + (side == 0 ? -3.0f : 3.0f), kArrowY, 30, grow > 0.5f ? kHover : kInkSoft,
+                grow > 0.02f ? kHover : rev::kBlueSoft, 3.0f, grow * 10.0f, 0.3f);
+        g.glyph(Glyph::Arrow, kArrowX[side] + (side == 0 ? -3.0f : 3.0f), kArrowY, 30, kHover,
                 side == 0 ? -kPi * 0.5f : kPi * 0.5f);
     }
     if (pages > 1)
     {
-        const float dy = 862, gap = 26, x0 = 960 - (pages - 1) * gap * 0.5f;
+        const float dy = 796, gap = 26, x0 = 960 - (pages - 1) * gap * 0.5f;
         for (int p = 0; p < pages; ++p)
         {
             const bool on = p == home_page_;
@@ -455,117 +437,103 @@ void App::draw_home(double time)
         }
     }
 
-    /* The bar: flat along the floor, rising into a gentle dome for the clock.
-     * Edge colour first, a little larger, then the fill over it. */
-    constexpr float kDomeR = 1821, kDomeTop = 884, kBarTop = 952;
-    g.panel(960 - kDomeR - 3, kDomeTop - 3, (kDomeR + 3) * 2, (kDomeR + 3) * 2, kBarEdge, 1, kDomeR + 3);
-    g.panel(0, kBarTop - 3, 1920, 1080 - kBarTop + 3, kBarEdge, 1, 0);
-    g.panel(960 - kDomeR, kDomeTop, kDomeR * 2, kDomeR * 2, kBar, 1, kDomeR);
-    g.panel(0, kBarTop, 1920, 1080 - kBarTop, kBar, 1, 0);
-    g.blob(960, kDomeTop + 24, 900, 70, rgba(0xFFFFFF, 0.55f)); /* a sheen along the dome */
-
-    /* The time and the date, in the dome. */
+    /* The floor: flat along the bottom, dipping into a wide bowl for the
+     * clock, edged in blue. The edge colour goes first, a little larger,
+     * then the fill over it. */
+    constexpr float kShoulder = 812, kFloor = 904;
     {
-        const std::time_t now = std::time(nullptr);
-        std::tm tm{};
-        localtime_r(&now, &tm);
-        char hm[16];
-        const int h12 = tm.tm_hour % 12 == 0 ? 12 : tm.tm_hour % 12;
-        std::snprintf(hm, sizeof hm, "%d:%02d", h12, tm.tm_min);
-        const char *ampm = tm.tm_hour < 12 ? "AM" : "PM";
-        static const char *const kDays[7] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-                                             "Saturday"};
-        static const char *const kMonths[12] = {"January", "February", "March",     "April",   "May",      "June",
-                                                "July",    "August",   "September", "October", "November", "December"};
-        const float tw = g.measure(Font::Bold, ts(60), hm), aw = g.measure(Font::SemiBold, ts(26), ampm);
-        const float x0 = 960 - (tw + 10 + aw) * 0.5f;
-        g.text_mid(Font::Bold, ts(60), x0, 948, rgba(0x5E6772), Align::Left, hm);
-        g.text_mid(Font::SemiBold, ts(26), x0 + tw + 10, 960, kInkSoft, Align::Left, ampm);
-        const std::string date = tr(kDays[std::clamp(tm.tm_wday, 0, 6)]) + "  " +
-                                 tr(kMonths[std::clamp(tm.tm_mon, 0, 11)]) + " " + std::to_string(tm.tm_mday);
-        g.text_mid(Font::SemiBold, ts(26), 960, 1018, kInkSoft, Align::Center, date);
+        /* The floor's top edge: high at the sides, easing down into a dip
+         * for the clock and back up. Drawn as thin slanted strips, filled,
+         * with the blue edge along the top. */
+        auto edge_y = [&](float x) {
+            auto ease = [](float t) {
+                t = std::clamp(t, 0.0f, 1.0f);
+                return t * t * (3.0f - 2.0f * t);
+            };
+            if (x < 960)
+                return kShoulder + (kFloor - kShoulder) * ease((x - 470.0f) / 200.0f);
+            return kShoulder + (kFloor - kShoulder) * ease((1450.0f - x) / 200.0f);
+        };
+        auto quad = [&](float x0, float y0, float x1, float y1, float b0, float b1, Color c) {
+            const Corner q[4] = {{x0, y0, 1}, {x1, y1, 1}, {x1, b1, 1}, {x0, b0, 1}};
+            g.quad3d(nullptr, q, x1 - x0, std::max(b0 - y0, b1 - y1), c, 0, false, false);
+        };
+        const float e = 4;
+        float x = 0;
+        while (x < 1920)
+        {
+            const bool sloped = (x >= 460 && x < 680) || (x >= 1240 && x < 1460);
+            const float step = sloped ? 5.0f : (x < 460 ? 460.0f - x : x < 1240 ? (x < 680 ? 680.0f - x : 1240.0f - x)
+                                                                                 : 1920.0f - x);
+            const float x1 = std::min(1920.0f, x + std::max(step, 1.0f));
+            const float y0 = edge_y(x), y1 = edge_y(x1);
+            quad(x, y0, x1, y1, 1080, 1080, kBar);
+            quad(x, y0 - e, x1, y1 - e, y0, y1, rev::kBlue);
+            x = x1;
+        }
+        g.blob(960, kFloor + 46, 1000, 70, rgba(0xFFFFFF, 0.45f));
     }
 
-    /* Round buttons: Settings (sliders) and the memory cards (a card). */
+    /* The time in segments, in the dip; the date under the line. */
+    draw_seg_clock(960, 852, 60);
+    g.text_mid(Font::Bold, ts(42), 960, 972, rev::kDigits, Align::Center, short_date());
+
+    /* Round buttons: Porpoise (Settings) and the memory cards. */
     for (int b = 0; b < 2; ++b)
     {
         const float grow = home_grow_[b == 0 ? kHomeSettings : kHomeCards];
-        const float s = kBtnSize * (1.0f + 0.10f * grow), cx = kBtnX[b];
-        g.blob(cx, kBtnY + s * 0.42f, s * 0.9f, 26, rgba(0x2A3442, 0.12f));
-        g.panel(cx - s * 0.5f, kBtnY - s * 0.5f, s, s, kTile, 0.93f, s * 0.5f, grow > 0.02f ? kHover : kRim, 3.0f,
-                grow * 12.0f, 0.4f);
-        const Color ink = grow > 0.5f ? kHover : rgba(0x6B7480);
+        const float s = kBtnSize * (1.0f + 0.08f * grow), cx = kBtnX[b];
+        g.panel(cx - s * 0.5f - 10, kBtnY - s * 0.5f - 10, s + 20, s + 20, rgba(0xDDE2E8), 1, s * 0.5f + 10);
+        g.panel(cx - s * 0.5f, kBtnY - s * 0.5f, s, s, rgba(0xF7F8FA), 0.92f, s * 0.5f, kHover, 4.0f + grow * 1.5f,
+                grow * 14.0f, 0.5f);
         const float k = s / kBtnSize;
         if (b == 0)
         {
-            /* Three sliders. */
-            for (int i = 0; i < 3; ++i)
-            {
-                const float ly = kBtnY - 20 * k + i * 20 * k, kx = cx + (i == 1 ? 10.0f : i == 0 ? -12.0f : 4.0f) * k;
-                g.panel(cx - 26 * k, ly - 2.5f * k, 52 * k, 5 * k, ink, 1, 2.5f * k);
-                g.panel(kx - 7 * k, ly - 7 * k, 14 * k, 14 * k, kTile, 1, 7 * k, ink, 3.0f * k);
-            }
+            if (!draw_mark(cx, kBtnY, 92 * k, rgba(0xFFFFFF)))
+                g.text_mid(Font::Bold, ts(26), cx, kBtnY, kInkSoft, Align::Center, "P");
         }
         else
         {
-            /* A memory card: a rounded card with a label and contacts. */
-            g.panel(cx - 22 * k, kBtnY - 28 * k, 44 * k, 56 * k, kTile, 1, 7 * k, ink, 3.5f * k);
-            g.panel(cx - 13 * k, kBtnY - 18 * k, 26 * k, 18 * k, with_alpha(ink, 0.25f), 1, 3 * k);
+            const Color ink = grow > 0.5f ? kHover : rgba(0x8A939D);
+            g.panel(cx - 24 * k, kBtnY - 30 * k, 48 * k, 60 * k, kTile, 1, 8 * k, ink, 3.5f * k);
+            g.panel(cx - 14 * k, kBtnY - 19 * k, 28 * k, 19 * k, with_alpha(ink, 0.25f), 1, 3 * k);
             for (int i = 0; i < 4; ++i)
-                g.panel(cx - 14 * k + i * 8 * k, kBtnY + 12 * k, 4 * k, 9 * k, ink, 1, 1.5f * k);
+                g.panel(cx - 15 * k + i * 8.6f * k, kBtnY + 13 * k, 4.4f * k, 10 * k, ink, 1, 1.5f * k);
         }
         if (grow > 0.3f && home_pointing_)
         {
-            /* What it is, in a bubble above. */
             const std::string label = b == 0 ? tr("Settings") : tr("Memory Cards");
             const float lw = g.measure(Font::SemiBold, ts(24), label) + 40;
             const float bx = std::clamp(cx - lw * 0.5f, 16.0f, 1904.0f - lw);
-            g.panel(bx, kBtnY - s * 0.5f - 66, lw, 48, rgba(0xFFFFFF, grow), 0.95f, 24, with_alpha(kHover, grow), 2.5f);
-            g.text_mid(Font::SemiBold, ts(24), bx + lw * 0.5f, kBtnY - s * 0.5f - 42, with_alpha(kInk, grow),
+            g.panel(bx, kBtnY - s * 0.5f - 70, lw, 48, rgba(0xFFFFFF, grow), 0.95f, 24, with_alpha(kHover, grow), 2.5f);
+            g.text_mid(Font::SemiBold, ts(24), bx + lw * 0.5f, kBtnY - s * 0.5f - 46, with_alpha(kInk, grow),
                        Align::Center, label);
         }
     }
 
-    /* What the buttons do, small, along the bar. */
+    /* What the buttons do, small, along the floor. */
     auto hint = [&](Glyph gl, const std::string &label, float x, bool right_aligned) {
         const float w = 30 + 8 + g.measure(Font::SemiBold, ts(20), label);
         const float x0 = right_aligned ? x - w : x;
-        g.glyph(gl, x0 + 15, 1046, 30, rgba(0x7A838E));
-        g.text_mid(Font::SemiBold, ts(20), x0 + 38, 1046, kInkSoft, Align::Left, label);
+        g.glyph(gl, x0 + 15, 1052, 28, rgba(0x8A939D));
+        g.text_mid(Font::SemiBold, ts(20), x0 + 38, 1052, kInkSoft, Align::Left, label);
         return w;
     };
     if (screen_ == Screen::Main)
     {
         float hx = 262;
-        hx += hint(Glyph::Cross, tr("Play"), hx, false) + 26;
-        hint(Glyph::Square, tr("Details"), hx, false);
+        hx += hint(Glyph::Cross, tr("Open"), hx, false) + 24;
+        hint(Glyph::Square, tr("Play now"), hx, false);
         float rx = 1658;
-        rx -= hint(Glyph::R3, tr("Centre"), rx, true) + 26;
+        rx -= hint(Glyph::TouchPad, settings_->ui_pointer ? tr("Pointer off") : tr("Pointer on"), rx, true) + 24;
         hint(Glyph::Triangle, tr("Sort & filter"), rx, true);
         const std::string note = library_note();
         if (!note.empty())
         {
             const float nw = g.measure(Font::SemiBold, ts(22), note) + 44;
-            g.panel(960 - nw * 0.5f, 34, nw, 46, rgba(0xFFFFFF, 0.92f), 0.96f, 23, kRim, 2);
-            g.text_mid(Font::SemiBold, ts(22), 960, 57, kInk, Align::Center, note);
+            g.panel(960 - nw * 0.5f, 1004, nw, 46, rgba(0xFFFFFF, 0.95f), 0.96f, 23, kRim, 2);
+            g.text_mid(Font::SemiBold, ts(22), 960, 1027, kInk, Align::Center, note);
         }
     }
-}
-
-/* An original pointer: a white disc with a dark rim and a blue centre (the
- * spot it points at), and a notch on its rim that turns with the
- * controller's roll. */
-void App::draw_home_pointer()
-{
-    if (!home_pointing_ || screen_ != Screen::Main || dialog_.open)
-        return;
-    Gfx &g = *g_;
-    const float x = home_px_, y = home_py_, r = 23;
-    g.blob(x + 6, y + 10, 84, 84, rgba(0x1A2230, 0.22f));
-    g.panel(x - r - 3, y - r - 3, (r + 3) * 2, (r + 3) * 2, rgba(0x26303D, 0.92f), 1, r + 3);
-    g.panel(x - r, y - r, r * 2, r * 2, rgba(0xFFFFFF), 0.9f, r, {}, 0, 0, 0.5f);
-    g.panel(x - 7, y - 7, 14, 14, kAccent, 1, 7);
-    const float a = home_roll_, nx = x + std::sin(a) * (r - 6), ny = y - std::cos(a) * (r - 6);
-    g.panel(nx - 4, ny - 4, 8, 8, rgba(0x26303D), 1, 4);
 }
 } // namespace porpoise::ui

@@ -154,6 +154,15 @@ public:
         layer_fade_ = fade;
     }
 
+    /* The light look (Revolution): colours given to the drawing calls below
+     * are turned light for dark and dark for light, keeping their hue, so
+     * the screens drawn for the dark look read on white. Pictures are left
+     * alone. begin() turns it off; screens drawn for the light look keep it
+     * off. */
+    void set_tone(bool light) { tone_ = light; }
+    bool toned() const { return tone_; }
+    Color tone(Color c) const;
+
     /* Drawing, in design-space pixels (1920x1080). */
     void background();
     void panel(float x, float y, float w, float h, Color fill, float bottom_mul, float radius,
@@ -254,6 +263,7 @@ private:
     std::vector<void *> vmaps_;
     std::size_t vcapacity_ = 0; /* vertices per slot */
 
+    bool tone_ = false;
     Texture *white_ = nullptr;
     Texture *atlas_ = nullptr;
     Texture *icons_ = nullptr;

@@ -99,6 +99,10 @@ const Field kFields[] = {
     {"reduced_motion", nullptr, &Settings::reduced_motion, 0, 1},
     {"large_text", nullptr, &Settings::large_text, 0, 1},
     {"ui_theme", &Settings::ui_theme, nullptr, 0, 1},
+    {"ui_layout", &Settings::ui_layout, nullptr, 0, 1},
+    {"ui_pointer", nullptr, &Settings::ui_pointer, 0, 1},
+    {"show_porpoise", &Settings::show_porpoise, nullptr, -1, 2},
+    {"show_revolution", &Settings::show_revolution, nullptr, -1, 2},
     {"ui_language", &Settings::ui_language, nullptr, 0, 12},
 };
 

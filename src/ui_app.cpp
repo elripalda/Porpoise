@@ -62,6 +62,11 @@ void App::forget_textures()
             s.icon_tex = nullptr;
             s.banner_tex = nullptr;
         }
+    for (WiiSave &s : wii_saves_)
+        s.icon_tex = s.banner_tex = nullptr;
+    hand_ = nullptr;
+    hand_tried_ = false;
+    forget_banners();
     logo_ = nullptr;
     logo_tried_ = false;
     pad_art_ = nullptr;
@@ -352,6 +357,8 @@ App::Action App::update(const Input &in, double dt)
             screen_ = Screen::Main;
         return action;
     }
+    if (screen_ == Screen::Details && revolution())
+        return update_rev_details(left, right, up, down, dt);
     if (screen_ == Screen::Details)
     {
         /* L2 / R2: the previous / next game, without leaving Details. Held,
@@ -510,7 +517,17 @@ App::Action App::update(const Input &in, double dt)
         action = update_settings(up, down, left, right);
     else if (tab_ == Tab::MemoryCards)
     {
-        if (cards_scanned_)
+        /* L2 / R2: the GameCube memory cards or the Wii saves. */
+        if (pressed(BtnL2 | BtnR2))
+        {
+            mc_wii_ = !mc_wii_;
+            sfx(Sound::MovingTab);
+            tab_anim_ = 0.6f;
+            tab_dir_ = pressed(BtnR2) ? +1 : -1;
+        }
+        if (mc_wii_)
+            update_wii_saves(left, right, up, down);
+        else if (cards_scanned_)
         {
             if (left)
                 move_memcard(-1, 0);
@@ -540,7 +557,7 @@ void App::set_tab(int tab, int dir)
     tab_dir_ = dir;
     tab_anim_ = 1.0f;
     if (tab_ == Tab::MemoryCards)
-        cards_scanned_ = false; /* fresh from disk each visit */
+        cards_scanned_ = wii_scanned_ = false; /* fresh from disk each visit */
     if (tab_ == Tab::Settings)
     {
         on_rail_ = true;
@@ -633,6 +650,17 @@ App::Action App::confirm_dialog(DialogKind kind)
             porpoise::states::remove(Library::key_of(*states_game_), states_sel_);
             load_slots(states_game_);
             count_states(states_game_);
+        }
+        return Action::None;
+    case DialogKind::DeleteWiiSave:
+        if (wii_sel_ >= 0 && wii_sel_ < int(wii_saves_.size()))
+        {
+            if (!delete_wii_save(wii_saves_[std::size_t(wii_sel_)]))
+                open_dialog(DialogKind::Info, tr("Could not delete the save"),
+                            trf("Its folder could not be removed: {path}",
+                                {{"path", wii_saves_[std::size_t(wii_sel_)].data_dir}}),
+                            "");
+            wii_scanned_ = false;
         }
         return Action::None;
     case DialogKind::DeleteSave:
@@ -1674,6 +1702,12 @@ void App::draw_card(Card &card, int which, float x, float y, double time)
 void App::draw_memory_cards(double time)
 {
     Gfx &g = *g_;
+    draw_mc_switch();
+    if (mc_wii_)
+    {
+        draw_wii_saves(time);
+        return;
+    }
     if (!cards_scanned_)
         scan_memory_cards();
     draw_card(card_a_, 0, kMcX[0], kMcY, time);
@@ -1728,11 +1762,11 @@ void App::draw_memory_cards(double time)
     else
         std::snprintf(pos, sizeof pos, "%s", trf("SLOT {slot}", {{"slot", card.slot}}).c_str());
     if (sel < n)
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Circle, "Back"}},
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}},
                      {{Glyph::Square, trf("Copy to {slot}", {{"slot", mc_card_ == 0 ? "B" : "A"}})}, {Glyph::Triangle, "Delete"}},
                      pos);
     else
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Circle, "Back"}}, {}, pos);
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}}, {}, pos);
 }
 
 void App::release_covers()
@@ -1748,6 +1782,29 @@ void App::release_covers()
         game.cover = game.disc = game.back = nullptr;
         game.cover_tried = game.disc_tried = game.back_tried = false;
     }
+}
+
+/* The look changed (from the look `was`): each look keeps its own Show in
+ * Sort & filter; Revolution starts on the Wii games when there are some. */
+void App::look_changed(int was)
+{
+    const int now = int(lib_->show());
+    (was == 1 ? settings_->show_revolution : settings_->show_porpoise) = now;
+    int want = settings_->ui_theme == 1 ? settings_->show_revolution : settings_->show_porpoise;
+    if (want < 0)
+    {
+        want = 0;
+        if (settings_->ui_theme == 1)
+            for (const Game &g : lib_->games())
+                if (g.platform == "Wii")
+                    want = int(Library::Show::Wii);
+    }
+    const std::string key = lib_->shown() > 0 ? Library::key_of(lib_->games()[std::size_t(selected_)]) : "";
+    lib_->set_show(Library::Show(std::clamp(want, 0, 2)));
+    keep_selection(key);
+    lib_->save();
+    settings_->save(settings_path_);
+    home_pointing_ = false;
 }
 
 void App::keep_selection(const std::string &key)
@@ -1798,16 +1855,9 @@ void App::cover_arrived(const std::string &id)
 void App::draw(double time)
 {
     Gfx &g = *g_;
-    if (home_showing())
+    if (revolution())
     {
-        /* The Revolution look: its own home screen, without the tabs. */
-        g.set_layer();
-        draw_home(time);
-        if (screen_ == Screen::Sort)
-            draw_sort();
-        draw_home_pointer();
-        draw_dialog();
-        draw_update_overlay(time);
+        draw_revolution(time);
         return;
     }
     g.background();
@@ -1867,6 +1917,75 @@ void App::draw(double time)
     g.set_layer();
     draw_dialog();
     draw_update_overlay(time);
+}
+
+/* The Revolution look: its own home and opened tile, and the other screens
+ * drawn light over its room. */
+void App::draw_revolution(double time)
+{
+    Gfx &g = *g_;
+    g.set_layer();
+    g.set_tone(false);
+    draw_room();
+    const bool home = home_showing();
+    const bool opened = tab_ == Tab::Library && (screen_ == Screen::Details || screen_ == Screen::States);
+    if (home)
+        draw_home(time);
+    else if (opened)
+        draw_rev_details(time);
+    draw_rev_top_bar(!home);
+
+    float dx = 0, dy = 0, fade = 1;
+    if (tab_anim_ > 0)
+    {
+        const float p = ease_out(1.0f - tab_anim_);
+        dx = float(tab_dir_) * 150.0f * (1.0f - p);
+        fade = 0.2f + 0.8f * p;
+    }
+    if (screen_anim_ > 0 && !opened)
+    {
+        const float p = ease_out(1.0f - screen_anim_);
+        dy = 22.0f * (1.0f - p);
+        fade *= 0.25f + 0.75f * p;
+    }
+    g.set_tone(true);
+    g.set_layer(dx, dy, fade);
+    layer_dx_ = dx;
+    layer_dy_ = dy;
+    layer_fade_ = fade;
+    if (screen_ == Screen::States)
+        draw_states();
+    else if (screen_ == Screen::Browse)
+        draw_browser();
+    else if (screen_ == Screen::GameSettings)
+        draw_settings();
+    else if (screen_ == Screen::Mapping)
+        draw_mapping(time);
+    else if (screen_ == Screen::WiiGuide)
+        draw_wii_guide(time);
+    else if (screen_ == Screen::WiiSetup)
+        draw_wii_setup(time);
+    else if (!opened)
+        switch (tab_)
+        {
+        case Tab::Library:
+            if (!home)
+                draw_library(time); /* the cover flow, in white */
+            if (screen_ == Screen::Sort)
+                draw_sort();
+            break;
+        case Tab::MemoryCards:
+            draw_memory_cards(time);
+            break;
+        case Tab::Settings:
+            draw_settings();
+            break;
+        }
+    g.set_layer();
+    draw_dialog();
+    draw_update_overlay(time);
+    g.set_tone(false);
+    draw_rev_pointer();
 }
 
 /* Downloading, installing, then done: a box over everything. */
@@ -1951,7 +2070,14 @@ void App::set_launch_status(const std::string &status, float progress)
 void App::draw_launch(double time)
 {
     Gfx &g = *g_;
-    g.background();
+    if (revolution())
+    {
+        g.set_tone(false);
+        draw_room();
+        g.set_tone(true); /* the rest drawn light */
+    }
+    else
+        g.background();
     draw_brand(kBarCy);
     g.text_mid(Font::SemiBold, ts(27), 1866, kBarCy, rgba(0x9FD8FF), Align::Right, tr("Launching"));
 

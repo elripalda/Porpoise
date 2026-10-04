@@ -74,6 +74,25 @@ inline const Color kClear = rgba(0x000000, 0.0f);
 inline const Color kGlassBody = rgba(0x1C48D8, 0.50f);
 inline const Color kDanger = rgba(0xFF7A9A);
 
+/* The Revolution look's own palette: white glass on a pale, lined room, gray
+ * rims, blue for what is chosen. */
+namespace rev
+{
+inline const Color kRoom = rgba(0xF2F4F7);
+inline const Color kLine = rgba(0xDCE1E7);
+inline const Color kTile = rgba(0xFFFFFF);
+inline const Color kRim = rgba(0xC6CCD4);
+inline const Color kBlue = rgba(0x3DB8EC);
+inline const Color kBlueSoft = rgba(0xA9DFF6);
+inline const Color kInk = rgba(0x3B434D);
+inline const Color kInkSoft = rgba(0x7A838E);
+inline const Color kDigits = rgba(0x98A1AB);
+inline const Color kBar = rgba(0xE7EAEE);
+inline const Color kGameCube = rgba(0x6E63D9);
+inline const Color kWii = rgba(0x39A9DF);
+constexpr float kTileR = 26;
+} // namespace rev
+
 inline Color with_alpha(Color c, float a)
 {
     c.a *= a;

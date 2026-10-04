@@ -680,6 +680,7 @@ void Gfx::shutdown()
 
 void Gfx::begin(unsigned slot, float target_w, float target_h, float time, float dim, bool reduced_motion)
 {
+    tone_ = false;
     slot_ = slot % std::max<unsigned>(init_.slots, 1);
     target_w_ = target_w;
     target_h_ = target_h;
@@ -760,6 +761,53 @@ void fill(float *dst, std::initializer_list<float> values)
 }
 } // namespace
 
+Color Gfx::tone(Color c) const
+{
+    if (!tone_)
+        return c;
+    /* RGB -> HSL, lightness turned over (dark navy glass -> near white, white
+     * text -> slate ink, cyan -> a deeper blue), saturation eased as it gets
+     * light so panels stay pale. */
+    const float mx = std::max(c.r, std::max(c.g, c.b)), mn = std::min(c.r, std::min(c.g, c.b));
+    float h = 0, sat = 0;
+    const float l = (mx + mn) * 0.5f, d = mx - mn;
+    if (d > 1e-5f)
+    {
+        sat = l > 0.5f ? d / (2.0f - mx - mn) : d / (mx + mn);
+        if (mx == c.r)
+            h = (c.g - c.b) / d + (c.g < c.b ? 6.0f : 0.0f);
+        else if (mx == c.g)
+            h = (c.b - c.r) / d + 2.0f;
+        else
+            h = (c.r - c.g) / d + 4.0f;
+        h /= 6.0f;
+    }
+    const float l2 = 0.22f + 0.76f * std::pow(std::max(0.0f, 1.0f - l), l < 0.5f ? 0.45f : 0.7f);
+    /* Light labels become slate ink, dark glass near-white, and the colours
+     * in between (the accents) keep most of their colour. */
+    const float s2 = l > 0.82f ? sat * 0.35f : l < 0.30f ? sat * 0.22f : l < 0.42f ? sat * 0.6f : sat * 0.9f;
+    auto hue = [](float p, float q, float t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1.0f / 6) return p + (q - p) * 6 * t;
+        if (t < 0.5f) return q;
+        if (t < 2.0f / 3) return p + (q - p) * (2.0f / 3 - t) * 6;
+        return p;
+    };
+    Color o;
+    o.a = c.a;
+    if (s2 <= 1e-5f)
+        o.r = o.g = o.b = l2;
+    else
+    {
+        const float q = l2 < 0.5f ? l2 * (1 + s2) : l2 + s2 - l2 * s2, p = 2 * l2 - q;
+        o.r = hue(p, q, h + 1.0f / 3);
+        o.g = hue(p, q, h);
+        o.b = hue(p, q, h - 1.0f / 3);
+    }
+    return o;
+}
+
 void Gfx::background()
 {
     Vertex v[4]{};
@@ -780,6 +828,10 @@ void Gfx::background()
 void Gfx::panel(float x, float y, float w, float h, Color fill_c, float bottom_mul, float radius, Color border,
                 float border_w, float glow, float sheen)
 {
+    if (tone_)
+        bottom_mul = 1.0f - (1.0f - bottom_mul) * 0.25f; /* no dark floor under light glass */
+    fill_c = tone(fill_c);
+    border = tone(border);
     const float px = target_w_ / kDesignW; /* design px -> screen px */
     const float margin = glow > 0 ? glow * 3.0f : 1.0f;
     Vertex v[4]{};
@@ -820,6 +872,7 @@ void Gfx::image(Texture *t, float x, float y, float w, float h, Color tint, floa
 
 void Gfx::blob(float cx, float cy, float w, float h, Color c)
 {
+    c = tone(c);
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     float pos[4][4];
@@ -857,6 +910,7 @@ void Gfx::image_part(Texture *t, float x, float y, float w, float h, const float
 
 void Gfx::icon(Icon i, float cx, float cy, float size, Color c)
 {
+    c = tone(c);
     constexpr int kCols = 8, kRows = 4;
     const int n = int(i);
     if (!icons_ || n < 0 || n >= int(Icon::Count))
@@ -905,6 +959,7 @@ void Gfx::glyph(Glyph g, float cx, float cy, float size, Color c, float rotation
     }
     if (int(g) >= int(Glyph::L1))
         g = Glyph::Cross; /* no atlas: any button will do */
+    c = tone(c);
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     float pos[4][4];
@@ -925,6 +980,8 @@ void Gfx::glyph(Glyph g, float cx, float cy, float size, Color c, float rotation
 void Gfx::quad3d(Texture *t, const Corner c[4], float shape_w, float shape_h, Color tint, float radius,
                  bool reflection, bool flip_v, const float *uv_rect)
 {
+    if (!t)
+        tint = tone(tint); /* a plain shape, not a picture */
     const float u0 = uv_rect ? uv_rect[0] : 0.0f, v0 = uv_rect ? uv_rect[1] : 0.0f;
     const float u1 = uv_rect ? uv_rect[2] : 1.0f, v1 = uv_rect ? uv_rect[3] : 1.0f;
     const float px = target_w_ / kDesignW;
@@ -946,6 +1003,8 @@ void Gfx::quad3d(Texture *t, const Corner c[4], float shape_w, float shape_h, Co
 void Gfx::panel3d(const Corner c[4], float shape_w, float shape_h, float margin, Color fill_c, float bottom_mul,
                   float radius, Color border, float border_w, float glow, float sheen)
 {
+    fill_c = tone(fill_c);
+    border = tone(border);
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     const float local[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
@@ -962,8 +1021,24 @@ void Gfx::panel3d(const Corner c[4], float shape_w, float shape_h, float margin,
     push(nullptr, v);
 }
 
-void Gfx::glass(const Corner c[4], float shape_w, float shape_h, float margin, const Glass &g)
+void Gfx::glass(const Corner c[4], float shape_w, float shape_h, float margin, const Glass &g0)
 {
+    if (tone_)
+    {
+        /* The light look: glass is white and flat, rimmed; its thickness and
+         * reflections are left out. */
+        if (g0.face != 0)
+            return;
+        Color fill = rgba(0xFBFCFD, std::min(1.0f, std::max(g0.tint.a, 0.85f)) * g0.fade);
+        Color rim = tone(g0.rim);
+        rim.a *= g0.fade;
+        const bool was = tone_;
+        tone_ = false;
+        panel3d(c, shape_w, shape_h, margin, fill, 0.97f, g0.radius, rim, std::max(2.0f, g0.rim_w), g0.glow * 0.6f, 0.35f);
+        tone_ = was;
+        return;
+    }
+    Glass g = g0;
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     const float local[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
@@ -1041,6 +1116,7 @@ float Gfx::line_height(Font font, float size) const
 float Gfx::text(Font font, float size, float x, float y, Color c, Align a, const std::string &s, float spacing,
                 float weight)
 {
+    c = tone(c);
     const FontData &f = fonts_[int(font)];
     const float k = size / kBase;
     const float width = measure(font, size, s, spacing);

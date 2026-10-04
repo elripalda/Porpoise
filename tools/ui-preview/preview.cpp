@@ -482,13 +482,83 @@ int main(int argc, char **argv)
         press(1u << 2, 3);
         press(kRight, 2); /* a Wii game */
         settle();
-        press(kCross); /* its setup, first */
+        press(kCross); /* its tile opens */
+        for (int i = 0; i < 40; ++i)
+            ui.update(none, 0.016);
+        render("rev-details-wii", [&] { ui.draw(12.0); });
+        press(kRight); /* Wii controls */
+        settle();
+        render("rev-details-controls", [&] { ui.draw(12.0); });
+        press(kCross); /* the setup for this game */
         settle();
         render("wii-setup-game", [&] { ui.draw(12.0); });
         press(kDown, 2); /* Before this game */
         settle();
         render("wii-setup-game-ask", [&] { ui.draw(12.0); });
         press(kCircle);
+        settle();
+        press(kDown); /* the chips */
+        settle();
+        render("rev-details-chips", [&] { ui.draw(12.0); });
+        ui.preview_pointer(1858, 466);
+        settle();
+        render("rev-details-pointer", [&] { ui.draw(12.0); });
+        ui.preview_pointer(-1, -1);
+        press(kCircle);
+        settle();
+        press(1u << 0, 3);
+        press(1u << 2, 3); /* the Continue tile */
+        press(kCross);
+        settle();
+        render("rev-details-gc", [&] { ui.draw(12.0); });
+        press(kCircle);
+        settle();
+        press(kR1); /* Memory Cards, in white */
+        settle();
+        render("rev-memory-cards", [&] { ui.draw(12.0); });
+        press(1u << 10); /* L2: the Wii saves */
+        settle();
+        press(kRight);
+        settle();
+        render("rev-wii-saves", [&] { ui.draw(12.0); });
+        settings.ui_theme = 0;
+        settle();
+        render("wii-saves", [&] { ui.draw(12.0); });
+        settings.ui_theme = 1;
+        press(1u << 10);
+        settle();
+        press(kR1); /* Settings */
+        settle();
+        press(kDown, 3);
+        press(kRight);
+        settle();
+        render("rev-settings", [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(kR1); /* back to the tiles */
+        settle();
+        {
+            porpoise::Settings play = settings;
+            play.ui_theme = 1;
+            ui.open_game_menu(&lib.games()[3], &play);
+            for (int i = 0; i < 40; ++i)
+                ui.update_game_menu(none, 0.016);
+            Texture *frame = gfx.texture_file(covers + "/PRVW07.png");
+            render("rev-ingame-menu", [&] {
+                gfx.background();
+                if (frame)
+                    gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
+                ui.draw_game_menu(12.0);
+            });
+            Input c;
+            c.held = kCircle;
+            ui.update_game_menu(c, 0.016);
+            for (int i = 0; i < 40; ++i)
+                ui.update_game_menu(none, 0.016);
+        }
+        settings.ui_layout = 1;
+        settle();
+        render("rev-coverflow", [&] { ui.draw(12.0); });
+        settings.ui_layout = 0;
         settle();
         ui.preview_pointer(1100, 470);
         settle();

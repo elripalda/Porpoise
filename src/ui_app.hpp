@@ -7,6 +7,7 @@
  * browser. ui_app_common.hpp has what they share. */
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -36,8 +37,6 @@ enum class Sound
     MovingTab,
     DetailsFlip,
     LaunchGame,
-    HomeHover, /* the Revolution look (porpoise::sound::Effect's order) */
-    HomePage,
 };
 
 class App
@@ -197,6 +196,7 @@ private:
         DeleteState,
         InstallUpdate,
         CopyGame,
+        DeleteWiiSave,
     };
     struct Dialog
     {
@@ -310,10 +310,14 @@ private:
     /* The Revolution look's home screen (ui_app_home.cpp): a grid of tiles,
      * twelve to a page, pointed at with the controller's motion. */
     bool revolution() const { return settings_ && settings_->ui_theme == 1; }
-    bool home_showing() const
+    bool home_showing() const /* the grid of tiles (the Revolution look's home, laid out as a grid) */
     {
-        return revolution() && tab_ == Tab::Library && (screen_ == Screen::Main || screen_ == Screen::Sort);
+        return revolution() && settings_->ui_layout == 0 && tab_ == Tab::Library &&
+               (screen_ == Screen::Main || screen_ == Screen::Sort);
     }
+    static constexpr int kRevTab0 = 16;  /* focus targets: the top bar's tabs */
+    static constexpr int kHomeGrow = 19; /* tiles, buttons, arrows, tabs */
+    static constexpr int kRdGrow = 22;   /* the opened tile's targets */
     struct HomeItem
     {
         int game = -1;       /* index into the library */
@@ -325,7 +329,28 @@ private:
     void home_tile_rect(int slot, float scroll_dx, float &x, float &y, float &w, float &h) const;
     void update_home(bool left, bool right, bool up, bool down, bool &play, bool &details, bool &fav, double dt);
     void draw_home(double time);
-    void draw_home_pointer();
+    /* The Revolution look's shared pieces (ui_app_revolution.cpp). */
+    void draw_room();
+    void draw_lines_in(float x, float y, float w, float h, float inset);
+    void draw_rev_top_bar(bool clock);
+    void draw_seg_clock(float cx, float cy, float h);
+    std::string short_date() const;
+    void draw_hand(float x, float y, float roll, int player);
+    bool pointer_screen() const;
+    void rev_pointer_step();
+    void rev_pointer_rest();
+    void rev_landed();
+    int rev_tab_hit(float px, float py) const;
+    void draw_rev_pointer();
+    std::vector<std::pair<int, std::string>> rev_chips(const Game &game) const;
+    void rev_details_rects(const Game &game, std::vector<std::pair<int, std::array<float, 4>>> &out);
+    Action update_rev_details(bool left, bool right, bool up, bool down, double dt);
+    void draw_rev_picture(Game &game, float x, float y, float w, float h, float fade);
+    void draw_rev_details(double time);
+    /* A Wii disc's own tile (small) or banner (big), read from the disc
+     * (ui_app_banner.cpp); false when there is none (yet). */
+    bool has_banner(const Game &game) const;
+    bool draw_banner(Game &game, float x, float y, float w, float h, double time, float fade, bool big);
     std::string clock_text() const;
     float ts(float size) const { return settings_ && settings_->large_text ? size * 1.15f : size; }
 
@@ -352,6 +377,8 @@ private:
     bool details_custom_ = false; /* the game has its own settings */
     int sort_row_ = 0;         /* Sort & filter: 0 sort, 1 show, 2 covers and info */
     void keep_selection(const std::string &key); /* after the order changed */
+    void look_changed(int was);                 /* Settings > Interface > Look */
+    void draw_revolution(double time);
     std::string library_count() const;          /* "12 games", "5 Wii games" */
     std::string library_note() const;           /* covers being fetched, or a flash */
 
@@ -366,6 +393,19 @@ private:
     Game *game_for_ = nullptr;
 
     Card card_a_, card_b_;
+    /* The Wii saves (ui_app_wiisaves.cpp). */
+    std::vector<WiiSave> wii_saves_;
+    bool wii_scanned_ = false;
+    int wii_sel_ = 0;
+    float wii_scroll_ = 0;
+    void scan_wii_saves();
+    void free_wii_textures();
+    Texture *wii_save_banner(WiiSave &s);
+    Texture *wii_save_icon(WiiSave &s);
+    void update_wii_saves(bool left, bool right, bool up, bool down);
+    void draw_wii_saves(double time);
+    void draw_mc_switch();
+    void forget_banners();
     bool cards_scanned_ = false;
     int mc_card_ = 0;             /* 0 = A, 1 = B */
     int mc_sel_[2] = {0, 0};      /* save under focus on each card */
@@ -516,7 +556,15 @@ private:
     float home_scroll_ = 0;
     int home_focus_ = 0;
     bool home_synced_ = false; /* the focus has been put on the selected game */
-    float home_grow_[16] = {};
+    float home_grow_[kHomeGrow] = {};
+    float rev_tab_x_[3] = {}, rev_tab_w_[3] = {};
+    Texture *hand_ = nullptr;
+    bool hand_tried_ = false;
+    int rd_focus_ = 0;           /* the opened tile: Start, the controls, the chips, the arrows */
+    float rd_grow_[kRdGrow] = {};
+    bool rd_info_ = false;       /* Triangle: the facts over the banner */
+    bool mc_wii_ = false;        /* Memory Cards shows the Wii saves */
+    std::string wii_focus_code_; /* focus this game's Wii save on the next scan */
     bool home_pointing_ = false; /* the pointer leads (else the D-pad) */
     float home_px_ = 960, home_py_ = 540, home_roll_ = 0;
     float home_hide_x_ = 0, home_hide_y_ = 0;

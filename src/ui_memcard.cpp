@@ -17,6 +17,7 @@
 #include <ctime>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace porpoise::ui
 {
@@ -308,6 +309,213 @@ std::string format_date(long long unix_time)
         std::snprintf(buf, sizeof buf, "%d/%d/%04d  %02d:%02d", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900,
                       tm.tm_hour, tm.tm_min);
     return buf;
+}
+
+namespace
+{
+/* UTF-16 big-endian, up to n characters, to UTF-8. */
+std::string utf16be(const std::uint8_t *p, std::size_t n)
+{
+    std::string out;
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        std::uint32_t c = std::uint32_t(p[i * 2]) << 8 | p[i * 2 + 1];
+        if (c == 0)
+            break;
+        if (c >= 0xD800 && c < 0xDC00 && i + 1 < n)
+        {
+            const std::uint32_t lo = std::uint32_t(p[i * 2 + 2]) << 8 | p[i * 2 + 3];
+            c = 0x10000 + ((c - 0xD800) << 10) + (lo - 0xDC00);
+            ++i;
+        }
+        if (c < 0x80)
+            out += char(c);
+        else if (c < 0x800)
+        {
+            out += char(0xC0 | (c >> 6));
+            out += char(0x80 | (c & 0x3F));
+        }
+        else if (c < 0x10000)
+        {
+            out += char(0xE0 | (c >> 12));
+            out += char(0x80 | ((c >> 6) & 0x3F));
+            out += char(0x80 | (c & 0x3F));
+        }
+        else
+        {
+            out += char(0xF0 | (c >> 18));
+            out += char(0x80 | ((c >> 12) & 0x3F));
+            out += char(0x80 | ((c >> 6) & 0x3F));
+            out += char(0x80 | (c & 0x3F));
+        }
+    }
+    while (!out.empty() && (out.back() == ' ' || out.back() == '\n'))
+        out.pop_back();
+    return out;
+}
+
+/* Every file under dir: how many, how big, the newest time. */
+void tally(const std::string &dir, int &files, long long &bytes, long long &newest, int depth = 0)
+{
+    DIR *d = opendir(dir.c_str());
+    if (!d)
+        return;
+    while (dirent *e = readdir(d))
+    {
+        const std::string name = e->d_name;
+        if (name == "." || name == "..")
+            continue;
+        const std::string p = dir + "/" + name;
+        struct stat st;
+        if (stat(p.c_str(), &st) != 0)
+            continue;
+        if (S_ISDIR(st.st_mode))
+        {
+            if (depth < 6)
+                tally(p, files, bytes, newest, depth + 1);
+            continue;
+        }
+        ++files;
+        bytes += st.st_size;
+        newest = std::max(newest, (long long)st.st_mtime);
+    }
+    closedir(d);
+}
+
+bool copy_tree_to(const std::string &from, const std::string &to, int depth = 0)
+{
+    mkdir(to.c_str(), 0777);
+    DIR *d = opendir(from.c_str());
+    if (!d)
+        return false;
+    bool ok = true;
+    while (dirent *e = readdir(d))
+    {
+        const std::string name = e->d_name;
+        if (name == "." || name == "..")
+            continue;
+        const std::string a = from + "/" + name, b = to + "/" + name;
+        struct stat st;
+        if (stat(a.c_str(), &st) != 0)
+            continue;
+        if (S_ISDIR(st.st_mode))
+        {
+            ok = depth < 6 && copy_tree_to(a, b, depth + 1) && ok;
+            continue;
+        }
+        std::vector<std::uint8_t> bytes;
+        if (!read_file(a, bytes) && st.st_size > 0)
+        {
+            ok = false;
+            continue;
+        }
+        std::FILE *f = std::fopen(b.c_str(), "wb");
+        if (!f)
+        {
+            ok = false;
+            continue;
+        }
+        ok = (bytes.empty() || std::fwrite(bytes.data(), 1, bytes.size(), f) == bytes.size()) && ok;
+        std::fclose(f);
+    }
+    closedir(d);
+    return ok;
+}
+
+bool remove_tree(const std::string &dir, int depth = 0)
+{
+    DIR *d = opendir(dir.c_str());
+    if (!d)
+        return false;
+    bool ok = true;
+    while (dirent *e = readdir(d))
+    {
+        const std::string name = e->d_name;
+        if (name == "." || name == "..")
+            continue;
+        const std::string p = dir + "/" + name;
+        struct stat st;
+        if (stat(p.c_str(), &st) != 0)
+            continue;
+        if (S_ISDIR(st.st_mode))
+            ok = depth < 6 && remove_tree(p, depth + 1) && ok;
+        else
+            ok = std::remove(p.c_str()) == 0 && ok;
+    }
+    closedir(d);
+    return rmdir(dir.c_str()) == 0 && ok;
+}
+} // namespace
+
+bool parse_wii_banner(const std::string &path, WiiSave &out)
+{
+    std::vector<std::uint8_t> b;
+    constexpr std::size_t kHeader = 0xA0, kBanner = 192 * 64 * 2, kIcon = 48 * 48 * 2;
+    if (!read_file(path, b) || b.size() < kHeader || std::memcmp(b.data(), "WIBN", 4) != 0)
+        return false;
+    out.title = utf16be(b.data() + 0x20, 32);
+    out.detail = utf16be(b.data() + 0x60, 32);
+    if (b.size() >= kHeader + kBanner)
+        decode_rgb5a3(b.data() + kHeader, b.size() - kHeader, 192, 64, out.banner);
+    if (b.size() >= kHeader + kBanner + kIcon)
+        decode_rgb5a3(b.data() + kHeader + kBanner, b.size() - kHeader - kBanner, 48, 48, out.icon);
+    return true;
+}
+
+void load_wii_saves(const std::string &saves_dir, std::vector<WiiSave> &out)
+{
+    out.clear();
+    /* Disc games (00010000) and their channels' kin (00010004: some discs). */
+    for (const char *kind : {"00010000", "00010004"})
+    {
+        const std::string root = saves_dir + "/User/Wii/title/" + kind;
+        DIR *d = opendir(root.c_str());
+        if (!d)
+            continue;
+        while (dirent *e = readdir(d))
+        {
+            const std::string id = e->d_name;
+            if (id.size() != 8)
+                continue;
+            WiiSave s;
+            s.data_dir = root + "/" + id + "/data";
+            s.title_id = id;
+            for (int i = 0; i < 4; ++i)
+            {
+                const int v = std::stoi(id.substr(std::size_t(i) * 2, 2), nullptr, 16);
+                s.game_code += v >= 0x20 && v < 0x7F ? char(v) : '?';
+            }
+            struct stat st;
+            if (stat(s.data_dir.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
+                continue;
+            tally(s.data_dir, s.files, s.bytes, s.modified);
+            if (s.files == 0)
+                continue;
+            if (!parse_wii_banner(s.data_dir + "/banner.bin", s))
+                s.title = s.game_code;
+            out.push_back(std::move(s));
+        }
+        closedir(d);
+    }
+    std::sort(out.begin(), out.end(), [](const WiiSave &x, const WiiSave &y) { return x.title < y.title; });
+}
+
+bool backup_wii_save(const std::string &saves_dir, const WiiSave &save, std::string &where)
+{
+    const std::string root = saves_dir + "/User/Wii/backups";
+    mkdir(root.c_str(), 0777);
+    char stamp[32] = "copy";
+    const std::time_t now = std::time(nullptr);
+    std::tm tm{};
+    if (localtime_r(&now, &tm))
+        std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", &tm);
+    where = root + "/" + save.game_code + "-" + stamp;
+    return copy_tree_to(save.data_dir, where);
+}
+
+bool delete_wii_save(const WiiSave &save)
+{
+    return remove_tree(save.data_dir);
 }
 
 void load_cards(const std::string &saves_dir, Card &a, Card &b)

@@ -37,6 +37,33 @@ struct Card
     std::vector<Save> saves;
 };
 
+/* A Wii game's save: Dolphin keeps it in its virtual Wii storage, one folder
+ * per game (<saves>/User/Wii/title/00010000/<title id>/data), with a
+ * banner.bin that carries its name, a 192x64 banner and a 48x48 icon. */
+struct WiiSave
+{
+    std::string data_dir;  /* the folder with the save's files */
+    std::string title_id;  /* eight hex digits, e.g. 524d4345 */
+    std::string game_code; /* the same as letters: RMCE */
+    std::string title;     /* the save's own name */
+    std::string detail;    /* its second line */
+    int files = 0;
+    long long bytes = 0;
+    long long modified = 0; /* newest file, unix time */
+    std::vector<std::uint8_t> icon;   /* 48x48 RGBA, first frame */
+    std::vector<std::uint8_t> banner; /* 192x64 RGBA */
+    Texture *icon_tex = nullptr;
+    Texture *banner_tex = nullptr;
+};
+/* Every Wii save under <saves>/User/Wii, by name. */
+void load_wii_saves(const std::string &saves_dir, std::vector<WiiSave> &out);
+bool parse_wii_banner(const std::string &path, WiiSave &out);
+/* Copies a save's folder to <saves>/User/Wii/backups/<code>-<date>; false if
+ * it could not. where: the copy's folder. */
+bool backup_wii_save(const std::string &saves_dir, const WiiSave &save, std::string &where);
+/* Removes the save's files (the game starts fresh). */
+bool delete_wii_save(const WiiSave &save);
+
 /* Finds cards A and B under Dolphin's user folder (<saves>/User/GC). */
 void load_cards(const std::string &saves_dir, Card &a, Card &b);
 

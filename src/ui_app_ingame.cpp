@@ -716,6 +716,13 @@ void App::draw_game_menu(double time)
     if (!menu_play_)
         return;
     Gfx &g = *g_;
+    /* The Revolution look: the menu in white over the game. */
+    struct Tone
+    {
+        Gfx &g;
+        ~Tone() { g.set_tone(false); }
+    } tone{g};
+    g.set_tone(revolution());
     if (ws_in_game_)
     {
         g.set_layer();
