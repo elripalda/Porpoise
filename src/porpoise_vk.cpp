@@ -299,19 +299,31 @@ bool pick_display()
     if (mode_count == 0)
         return false;
 
-    /* 1920x1080 at the refresh closest to 60 Hz: the emulator is paced by the
-     * display, one frame per vblank, so a 120 Hz mode would run games at
-     * double speed. Otherwise the largest mode, again closest to 60 Hz. */
+    /* The size Settings > Video > Output resolution asks for (1080p unless
+     * the player chose more: /app0/porpoise/output.txt, written when it
+     * changes, read here before the settings themselves can be) at the
+     * refresh closest to 60 Hz: the emulator is paced by the display, one
+     * frame per vblank, so a 120 Hz mode would run games at double speed.
+     * Otherwise the largest mode, again closest to 60 Hz. (PS5 Mesa before
+     * dc82d01 offered only 3840x2160.) */
+    unsigned wanted = 1080;
+    if (std::FILE *f = std::fopen("/app0/porpoise/output.txt", "r"))
+    {
+        unsigned h = 0;
+        if (std::fscanf(f, "%u", &h) == 1 && (h == 1080 || h == 1440 || h == 2160))
+            wanted = h;
+        std::fclose(f);
+    }
     int best = -1;
     auto better = [&](const VkDisplayModePropertiesKHR &m, const VkDisplayModePropertiesKHR &b) {
         const auto &a = m.parameters, &c = b.parameters;
-        const bool m1080 = a.visibleRegion.width == 1920 && a.visibleRegion.height == 1080;
-        const bool b1080 = c.visibleRegion.width == 1920 && c.visibleRegion.height == 1080;
-        if (m1080 != b1080)
-            return m1080;
+        const bool m_want = a.visibleRegion.height == wanted;
+        const bool b_want = c.visibleRegion.height == wanted;
+        if (m_want != b_want)
+            return m_want;
         const std::uint64_t area_m = std::uint64_t(a.visibleRegion.width) * a.visibleRegion.height;
         const std::uint64_t area_b = std::uint64_t(c.visibleRegion.width) * c.visibleRegion.height;
-        if (!m1080 && area_m != area_b)
+        if (!m_want && area_m != area_b)
             return area_m > area_b;
         return std::abs(int(a.refreshRate) - 60000) < std::abs(int(c.refreshRate) - 60000);
     };

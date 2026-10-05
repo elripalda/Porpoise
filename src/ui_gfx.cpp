@@ -916,6 +916,8 @@ bool Gfx::build_fonts()
                     if (g.present)
                         cjk_.extra.push_back({cp, g});
                 }
+            std::fprintf(stderr, "[gfx] Japanese atlas: %zu glyphs, filled to row %d of %d\n", cjk_.extra.size(),
+                         pen_y + row_h, kAtlas);
             cjk_atlas_ = upload(cjk.data(), kAtlas, kAtlas);
             cjk_pixels_ = std::move(cjk);
         }

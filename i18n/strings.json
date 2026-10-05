@@ -2278,5 +2278,1217 @@
  {
   "en": "Circle A • Cross B",
   "section": "1.1 build 14: layouts, beta"
+ },
+ {
+  "en": "Its folder could not be removed: {path}",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Card A",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Card B",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "No USB drive",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Plug in a USB drive (exFAT) to copy saves to it.",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Can't copy from this card",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "This card is one memory card file, not Dolphin's folder of saves, so its saves can't be copied one by one.",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Copied to the USB drive: {path}",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Copying it to the USB drive failed. Is the drive full or read-only?",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "No Wii games here",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "No GameCube games here",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Sort & filter (Triangle) can show all of your games.",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Sort & filter",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "1 Wii game",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "{n} Wii games",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "1 GameCube game",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "{n} GameCube games",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "All games",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Sort by",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Show",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Get covers and info now",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Downloads what's missing from GameTDB, and looks again for art it lacked.",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Left and right change it; Circle is done.",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Changes show at once.",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Get",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Next",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Done",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Texture pack",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "On ({id})",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Found ({id}), turned off",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Wii saves",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "To USB",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Finishing up…",
+  "section": "Library, sort and filter, memory cards"
+ },
+ {
+  "en": "Pointer centred: it points where the controller points now.",
+  "section": "Home screen (Revolution)"
+ },
+ {
+  "en": "Put them in /data/porpoise/games, or add a folder in Settings, under Games.",
+  "section": "Home screen (Revolution)"
+ },
+ {
+  "en": "Pointer off",
+  "section": "Home screen (Revolution)"
+ },
+ {
+  "en": "Pointer on",
+  "section": "Home screen (Revolution)"
+ },
+ {
+  "en": "Sun",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Mon",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Tue",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Wed",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Thu",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Fri",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Sat",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Pointer on: point at the screen.",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Pointer off: the touch pad turns it back on.",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Save states ({n})",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Add to favourites",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "No description yet: Sort & filter (Triangle, on the home screen) can get the game info.",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "The game's banner",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "About this game",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Wii controls",
+  "section": "Revolution theme"
+ },
+ {
+  "en": "Delete this Wii save?",
+  "section": "Wii saves"
+ },
+ {
+  "en": "{save}. Its files are removed for good; Square backs it up first if you want to keep a copy.",
+  "section": "Wii saves"
+ },
+ {
+  "en": "Backed up to {path}",
+  "section": "Wii saves"
+ },
+ {
+  "en": "Could not back up the save",
+  "section": "Wii saves"
+ },
+ {
+  "en": "Copying it to {path} failed.",
+  "section": "Wii saves"
+ },
+ {
+  "en": "No Wii saves yet",
+  "section": "Wii saves"
+ },
+ {
+  "en": "They appear here after you save in a Wii game.",
+  "section": "Wii saves"
+ },
+ {
+  "en": "1 file",
+  "section": "Wii saves"
+ },
+ {
+  "en": "{n} files",
+  "section": "Wii saves"
+ },
+ {
+  "en": "Dolphin keeps Wii saves in /data/porpoise/saves/User/Wii.",
+  "section": "Wii saves"
+ },
+ {
+  "en": "GameCube cards",
+  "section": "Wii saves"
+ },
+ {
+  "en": "Back up",
+  "section": "Wii saves"
+ },
+ {
+  "en": "B, the trigger",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "1 button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "2 button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "HOME button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Shakes the Remote",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Shakes the Nunchuk",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "a button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "b button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "x button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "y button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold: centre and level",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "D-pad",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Nunchuk stick",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Left stick",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Right stick",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Aims the pointer",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Tilts the Remote",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Remote",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Remote sideways",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Classic Controller",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Two controllers (alpha)",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Remote + Nunchuk",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Upright in your right hand, the trigger edge toward the TV",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Upright in your left hand, the trigger edge toward the TV",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Upright in your right hand, its face toward you",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Upright in your left hand, its face toward you",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Face up, in both hands",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "one in each hand, both stood on end",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Left hand: the Nunchuk",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Right hand: the Remote",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Point at the screen to aim. Hold L1 a moment to centre the pointer and level the hold.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Point at the screen to aim. Hold R1 a moment to centre the pointer and level the hold.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Slide a finger on the touch pad to aim. Flick the controller to shake.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Tilt and flick the controller: the game feels it.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Stand the DualSense on end in your right hand with the trigger edge toward the TV: R2 under your index finger is B, Cross under your thumb is A. Or hold it face up in both hands; with Grip on Auto, Porpoise reads which. To start, hold it the way you'll play, point at the middle of the screen and hold R1 for a moment: that hold becomes the Remote held level. Do it again whenever the pointer wanders.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold the DualSense face up in both hands, like an NES pad. Tilt it left and right to steer. 1 and 2 are Square and Cross.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold it as a normal pad: the buttons are where a Classic Controller has them.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "One DualSense in each hand, both stood on end with their faces toward you. The right one is the Remote (its grips pointing right): aim with its back. Holding R1 a moment centres the pointer and levels both controllers as you hold them. The left one is the Nunchuk (its grips pointing left): its stick, C and Z, and its motion. Both feel the game's rumble. The second controller needs a second signed-in user.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold the DualSense face up in both hands. The right half is the Remote, the left half the Nunchuk: the left stick is its stick, L1 is C, L2 is Z. Point the controller at the screen to aim; hold R1 a moment to centre.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "How to hold it",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "The Wii controller you have chosen",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Another Wii controller, to look at",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Wii motion controls are in beta: still being tuned. Your logs in the debug folder help.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Other Wii controllers",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Wii Sports: the Remote. For Boxing, two controllers.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Wii Sports Resort: the Remote (some events want the Nunchuk).",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Mario Kart Wii: the Remote held sideways; tilt to steer.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "New Super Mario Bros. Wii: the Remote held sideways.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Kirby's Return to Dream Land: the Remote held sideways.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Super Paper Mario: the Remote held sideways.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Super Mario Galaxy: the Remote with the Nunchuk.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Super Mario Galaxy 2: the Remote with the Nunchuk.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Twilight Princess: the Remote with the Nunchuk.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Skyward Sword: the Remote with the Nunchuk.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Super Smash Bros. Brawl: the Classic Controller.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Xenoblade Chronicles: the Classic Controller.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold it still a moment, then press Cross.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "That didn't look like a screen. Let's try again: centre first.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Saved.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Recalibrate the pointer",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Wii Remote setup",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Alpha",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Advanced",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Simple",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Which Wii controller?",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Wii controller",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Setup",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Before this game",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Show this setup",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Don't show",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Recommended. ",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Recommended: ",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Alpha: still rough. Two DualSenses, one for each hand.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Advanced adds your screen's size and distance, smoothing, reach and presets.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Simple: centre, two corners, and play.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "This page comes up each time this game starts.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "This game starts straight away. Its settings (Square on it, then Settings) can bring this page back.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Play now",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Pick it up like this",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Porpoise sees: ",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Second controller: on.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Second controller: not found. Sign in a second user and turn their controller on.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Porpoise reads how you hold it, so tilts, swings and the pointer come out the right way.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Then press Cross.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Your screen",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "The pointer is sized to your screen and how far you sit. Pointing at two corners measures both at once; or give the size and the distance.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Size the pointer by",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Size and distance",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Pointing at corners",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Screen size",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Distance to it",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Next: centre",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Next: centre, then the corners",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold it the way you'll play and point at the dot.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Then hold Cross, keeping still.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold the second controller as you'll play, too.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Hold to centre",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Close",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Now point at the dot in the top-left corner",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "And the dot in the bottom-right corner",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "and press Cross.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "This measures your screen from where you sit, so the pointer is where you point.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "This is the corner",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Try it: the pointer should be right where you point.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Your screen: {x}° to the sides, {y}° up and down.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "If it wanders while you play, hold R1 a moment to centre it.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "All set.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Back to the game",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Measure again",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Fine-tune",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Changes show on the pointer at once. Keep the whole set-up as a preset to switch to it later (Settings > Wii Remote, or the pause menu).",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Light",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Medium",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Strong",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Both hands",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Upright, trigger to the TV",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Upright, facing you",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Smoothing",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Reach",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Grip",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Preset",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Name",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Save as this preset",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Move the controller: the pointer shows your changes.",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Auto: ",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Minus",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Plus",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "ZL button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "ZR button",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Nunchuk C",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Nunchuk Z",
+  "section": "Wii controllers and the Wii Remote setup"
+ },
+ {
+  "en": "Wii preset",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Pointer",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Gyro",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Touch pad",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Pointer speed",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Motion",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Flick to shake",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Motion readout",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Point at the middle and two corners again: after moving, or if the pointer feels off.",
+  "section": "In-game menu"
+ },
+ {
+  "en": "The whole setup: the Wii controller, how to hold it, your screen, and (advanced) fine-tuning.",
+  "section": "In-game menu"
+ },
+ {
+  "en": "A Wii Remote set-up kept under a name (made in the setup's Fine-tune page, Advanced).",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Press Cross again to start the game over. Unsaved progress is lost.",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Porpoise is inside the app sandbox: it can't see /data or USB drives. Turn on Legacy Command Server in etaHEN, add PPSA99764 to OnionHEN's exact_title_ids, or run a Lapy daemon, then open Porpoise again.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Porpoise can see /data and USB drives.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "extended storage",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "No USB drive found (games on one: format it exFAT).",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Drives: {list}.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "1 game found.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "{n} games found.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "No games yet. Put them in /data/porpoise/games or on a USB drive, or add a folder in Settings > Games.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Covers download while the console is online.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Cover downloads are off (Settings > Games).",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Welcome to Porpoise",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Your setup",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "V-Sync",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Shows every frame on the TV's own refresh, for the smoothest motion. Off times frames with Porpoise's own clock instead.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Output resolution",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "The picture Porpoise sends to the TV, menus and games alike. 1080p is the quickest; 1440p and 4K are sharper on a 4K TV with a high internal resolution, and a little slower. Takes effect the next time Porpoise starts.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Threaded GPU recording (beta)",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "The graphics driver records Dolphin's drawing on a thread of its own, so Dolphin's video thread spends less time in the driver. Can speed up demanding games. Turn it off if a game crashes or looks wrong. Applies the next time a game starts.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in /data/porpoise/saves/User/Load/Textures. A game's Details say when its pack is found.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Quick resume (beta)",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next time you start it. Start over (in the in-game menu) boots it fresh.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Wii Remote",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Beta. Pick the Wii controller, then point at the middle and two corners of your screen: the pointer then matches your screen and how far you sit from it.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Measured",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Start…",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "A whole Wii Remote set-up kept under a name: made in the setup's Fine-tune page (Advanced).",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Setup before this game",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Shows the Wii Remote setup when this game starts; Triangle there plays straight away.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Setup before each Wii game",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Shows the Wii Remote setup when a Wii game starts; Triangle there plays straight away. A game can have its own choice in its settings.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Beta: a picture of the DualSense as each Wii controller, how to hold it and what every button does. Wii motion controls are still being tuned.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Show…",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "How a Wii game sees your DualSense. Remote + Nunchuk: the Nunchuk on the left stick and L1 / L2. Remote: held pointing at the TV, with its motion. Sideways: held like an NES pad, tilt to steer. Two controllers (beta): the second DualSense is the Nunchuk. Otherwise every other controller is another player's own Wii Remote, with its own pointer and motion.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to centre it.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "How far you turn the controller to reach the screen's edge. Your screen: as measured by the Wii Remote setup, so the pointer is where you point.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "How you hold the DualSense. Auto reads it: flat in both hands, or stood on end in either hand.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "The DualSense's motion is the Remote's: tilt, swing and point.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "A quick flick of the controller shakes the Remote.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Debug logs",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "For testing: Porpoise keeps notes on what it did in /data/porpoise/debug, for bug reports.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "The controller's motion and the pointer, over the game.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Invert pointer left / right",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "If the gyro pointer moves the wrong way.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Invert pointer up / down",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Motion logs",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Each Wii game writes the controller's motion to /data/porpoise/debug/motion-<date>.csv.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Turn off developer options",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Hides this section again. Its settings go back to off.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Check my setup",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "What Porpoise can see on this console - /data, USB drives, games - and what to do about anything missing.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Check…",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Saves from a USB drive (beta)",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Copies saves from the USB drive's Porpoise Saves folder in: GameCube saves onto Slot A, Wii saves to their games. A save that's already here is left as it is. Options in Memory Cards copies a save out.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Copy in…",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Theme",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Porpoise: the cover flow. Revolution: a bright grid of game tiles you point at by moving the controller, with the date and time below.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Home screen",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Tiles: a grid you point at, twelve to a page. Cover flow: the boxes in a row, in white.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Tiles",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Cover flow",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Point with the controller",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Move the controller to point at tiles and buttons. The touch pad turns it on and off too.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Beta updates",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Offer test versions (pre-releases) too when they come out: newer, but less tested. A beta of Porpoise always offers the next beta.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Choose a version",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Any Porpoise release, newer or older, betas included: left and right to pick, Cross to install. Going back keeps your games, saves and settings; save states made by a newer Porpoise may not load in an older one.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Cross gathers Porpoise's logs into /data/porpoise/reports (and onto a USB drive, when one is in). Scan the code with your phone to open an issue on GitHub, and attach them with the game and what happened.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Save a report…",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Performance report",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "For a game that runs slowly: from the next time Porpoise starts, it records where the emulator spends its time, for a bug report. Slows games a little; turn it off again afterwards.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Wii banners",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "How a Wii disc's own tile and banner play: after the Wii Banner Player Project (zlib licence), rewritten for Porpoise. RVZ discs are read with Zstandard's decoder (BSD).",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "PS5 scene",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Cheats and patches (beta)",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Plug in the USB drive with a Porpoise Saves folder (made by Options in Memory Cards).",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "GameCube saves copied onto Slot A: {gc}. Wii saves copied: {wii}.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "1 was already here and was left as it is.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "{n} were already here and were left as they are.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Slot A is one memory card file, so GameCube saves can't be added to it one by one.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Saves from the USB drive",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "No report saved",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Porpoise couldn't write the report folder. Copy trace.txt and porpoise/core.log from Porpoise's app folder by FTP instead.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Report saved",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "It's in {path}. Scan the code beside Report a bug to open an issue on GitHub and attach its files.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "It's in {path}, and on your USB drive as {usb}. Scan the code beside Report a bug to open an issue on GitHub and attach its files.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "{mb} MB from GitHub. This goes back to an older Porpoise: your games, saves and settings stay, but save states made by this version may not load in it. Porpoise closes when it's done.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "{mb} MB from GitHub. This is the version you have: it is put in place again, which repairs a damaged install. Porpoise closes when it's done.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Developer options are already on.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Developer options are on: Settings now has a Developer section.",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "For tuning the Wii Remote; nothing here is needed to play",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "A patch from Dolphin: the game drawn in 16:9. Use it with Aspect ratio on Force 16:9.",
+  "section": "Cheats and patches"
+ },
+ {
+  "en": "A patch from Dolphin: the game runs at 60 frames a second. Needs a game that holds full speed.",
+  "section": "Cheats and patches"
+ },
+ {
+  "en": "A patch Dolphin turns on for this game by itself.",
+  "section": "Cheats and patches"
+ },
+ {
+  "en": "A patch from Dolphin's list for this game.",
+  "section": "Cheats and patches"
+ },
+ {
+  "en": "A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.",
+  "section": "Cheats and patches"
+ },
+ {
+  "en": "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.",
+  "section": "Cheats and patches"
  }
 ]

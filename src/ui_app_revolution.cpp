@@ -165,8 +165,18 @@ std::string App::short_date() const
     std::tm tm{};
     localtime_r(&now, &tm);
     static const char *const kDays[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    return tr(kDays[std::clamp(tm.tm_wday, 0, 6)]) + " " + std::to_string(tm.tm_mon + 1) + "/" +
-           std::to_string(tm.tm_mday);
+    const std::string day = tr(kDays[std::clamp(tm.tm_wday, 0, 6)]);
+    const std::string m = std::to_string(tm.tm_mon + 1), d = std::to_string(tm.tm_mday);
+    /* Month first in English and Japanese, the day first elsewhere. */
+    switch (language())
+    {
+    case Language::English: return day + " " + m + "/" + d;
+    case Language::Japanese: return m + "/" + d + " (" + day + ")";
+    case Language::German:
+    case Language::Polish:
+    case Language::Russian: return day + " " + d + "." + m + ".";
+    default: return day + " " + d + "/" + m;
+    }
 }
 
 /* The pointer: Ruben's hands (tools/pointer-art), an open hand over nothing

@@ -391,6 +391,12 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.vsync);
 
     if (!per_game)
+        choice("output_res", "Output resolution",
+               "The picture Porpoise sends to the TV, menus and games alike. 1080p is the quickest; 1440p and 4K are "
+               "sharper on a 4K TV with a high internal resolution, and a little slower. Takes effect the next time "
+               "Porpoise starts.",
+               &t.output_res, 0, {"1080p", "1440p", "4K"});
+    if (!per_game)
         add_setup_rows(false);
 
     header("Graphics");

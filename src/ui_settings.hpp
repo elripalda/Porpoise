@@ -34,6 +34,7 @@ struct Settings
     int filter_strength = 6; /* 1..10 */
     std::string border;      /* "" none, or a border's name (built in, or a PNG in /data/porpoise/borders) */
     bool fps_overlay = false;
+    int output_res = 0;           /* the picture sent to the TV: 0 1080p, 1 1440p, 2 4K (from the next start) */
     bool vsync = true;            /* frames on the TV's own vblank (porpoise_pacer); off: Porpoise's timer */
     /* Graphics (advanced) */
     int shader_mode = 2;          /* dolphin_shader_compilation_mode 0..3: async ubershaders */

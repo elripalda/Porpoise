@@ -62,6 +62,7 @@ const Field kFields[] = {
     {"custom_textures", nullptr, &Settings::custom_textures, 0, 1},
     {"skip_dupes", nullptr, &Settings::skip_dupes, 0, 1},
     {"vsync", nullptr, &Settings::vsync, 0, 1},
+    {"output_res", &Settings::output_res, nullptr, 0, 2},
     {"fast_states", nullptr, &Settings::fast_states, 0, 1},
     {"quick_resume", nullptr, &Settings::quick_resume, 0, 1},
     {"volume", &Settings::volume, nullptr, 0, 10},

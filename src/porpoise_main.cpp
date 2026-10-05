@@ -615,6 +615,25 @@ void apply_settings()
     porpoise::pad::set_mapping(g_settings.mapping());
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
     porpoise::pacer::set_vsync(g_settings.vsync);
+    {
+        /* Settings > Video > Output resolution: porpoise_vk reads it when the
+         * display opens, before the settings are loaded. */
+        static const char *const kHeights[] = {"1080", "1440", "2160"};
+        const char *want = kHeights[std::clamp(g_settings.output_res, 0, 2)];
+        char have[8] = {0};
+        if (std::FILE *f = std::fopen("/app0/porpoise/output.txt", "r"))
+        {
+            if (!std::fgets(have, sizeof have, f))
+                have[0] = 0;
+            std::fclose(f);
+        }
+        if (std::strncmp(have, want, 4) != 0)
+            if (std::FILE *f = std::fopen("/app0/porpoise/output.txt", "w"))
+            {
+                std::fputs(want, f);
+                std::fclose(f);
+            }
+    }
     /* Settings > About > Performance report: the sampling profiler
      * (sampler_ps5.cpp) reads this file when Porpoise starts. */
     const char *const profile = "/app0/ps5-sampler.txt";
