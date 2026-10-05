@@ -895,6 +895,9 @@ void launch_frame(bool core_frame, double fps, void *)
 int main()
 {
     ps5::debug::mark("Porpoise: main() entered");
+    /* Before any thread is started: clone this process's credential, so a Lapy
+     * owned-root daemon will free it later (choose_data_dir -> jailbreak). */
+    porpoise::jailbreak::prepare();
     ps5_open_permissions();
     if (std::freopen("/app0/trace.txt", "a", stderr))
     {
@@ -982,11 +985,15 @@ int main()
     if (g_sandboxed)
         g_app.show_message(porpoise::ui::tr("Porpoise can't reach /data"),
                            porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
-                                            "/data or USB drives, and no jailbreak daemon freed it. Make sure one is "
-                                            "running before you open Porpoise: etaHEN or OnionHEN with PPSA99764 on "
-                                            "its app jailbreak list, or a standalone daemon such as Lapy. Then open "
-                                            "Porpoise again (if it still fails the first time, try once more). Until "
-                                            "then, games go in /app0/porpoise/games."));
+                                            "/data or USB drives, and no jailbreak daemon freed it. A daemon that "
+                                            "frees Porpoise must be running before you open it:\n"
+                                            "\xE2\x80\xA2 etaHEN: turn on Legacy Command Server in etaHEN's Toolbox "
+                                            "settings (etaHEN's built-in app list can't be edited to add Porpoise).\n"
+                                            "\xE2\x80\xA2 OnionHEN: add PPSA99764 to exact_title_ids in "
+                                            "/data/OnionHEN/config.ini.\n"
+                                            "\xE2\x80\xA2 Or run a standalone daemon such as Lapy.\n"
+                                            "Then open Porpoise again; if a launch still lands here, try once more. "
+                                            "Until then, games go in /app0/porpoise/games."));
     porpoise::sound::fade_music(1.0f, 2.5f);
     fetch_covers();
 

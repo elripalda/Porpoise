@@ -732,7 +732,9 @@ void App::draw_dialog()
     g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.62f * t), 1, 0);
     g.set_layer(0, 24.0f * (1.0f - t), t);
     const float w = 820;
-    const auto lines = wrap(g, Font::Regular, ts(28), dialog_.message, w - 112, 4);
+    /* Most dialogs are a line or two; a few (the sandbox help) run longer. The
+     * box grows with the text, so allow enough lines for those and still fit. */
+    const auto lines = wrap(g, Font::Regular, ts(28), dialog_.message, w - 112, 12);
     const float h = 248 + float(lines.size()) * 38;
     const float x = 960 - w * 0.5f, y = 540 - h * 0.5f - 20;
     Glass face;

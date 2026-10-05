@@ -361,6 +361,27 @@ int main(int argc, char **argv)
     for (int i = 0; i < 200; ++i)
         ui.update(none, 0.016);
     render("library", [&] { ui.draw(12.0); });
+    /* The sandbox help, as porpoise_main shows it: it must fit its dialog. */
+    ui.show_message(porpoise::ui::tr("Porpoise can't reach /data"),
+                    porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
+                                     "/data or USB drives, and no jailbreak daemon freed it. A daemon that "
+                                     "frees Porpoise must be running before you open it:\n"
+                                     "\xE2\x80\xA2 etaHEN: turn on Legacy Command Server in etaHEN's Toolbox "
+                                     "settings (etaHEN's built-in app list can't be edited to add Porpoise).\n"
+                                     "\xE2\x80\xA2 OnionHEN: add PPSA99764 to exact_title_ids in "
+                                     "/data/OnionHEN/config.ini.\n"
+                                     "\xE2\x80\xA2 Or run a standalone daemon such as Lapy.\n"
+                                     "Then open Porpoise again; if a launch still lands here, try once more. "
+                                     "Until then, games go in /app0/porpoise/games."));
+    for (int i = 0; i < 30; ++i)
+        ui.update(none, 0.016);
+    render("sandbox-help", [&] { ui.draw(12.0); });
+    {
+        Input in;
+        in.held = 1u << 4; /* Cross closes it */
+        ui.update(in, 0.016);
+        ui.update(none, 0.016);
+    }
 
     /* A button press: down for a frame, then up; then let animations settle. */
     auto press = [&](std::uint32_t bit, int times = 1) {

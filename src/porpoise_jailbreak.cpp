@@ -21,6 +21,12 @@
  *   2. Failing that, the legacy command servers on 127.0.0.1 (etaHEN 9028,
  *      the SharpProspero unjail daemon 9069): command 5, jailbreak this PID.
  *
+ * Different daemons watch for different file names in /download0: etaHEN and
+ * old Lapy want "etahen_jailbreak", OnionHEN also takes "onionhen_jailbreak",
+ * and the Lapy owned-root daemon wants "elevate_proc" from a process that has
+ * cloned its own credential first (prepare(), called before any thread). So
+ * each round publishes all three names; whichever daemon is up takes its own.
+ *
  * Every step goes to trace.txt. Nothing here runs when /data is reachable. */
 #include "porpoise_jailbreak.hpp"
 
@@ -47,8 +53,13 @@ bool data_reachable();
 
 namespace
 {
-constexpr char kRequest[] = "/download0/etahen_jailbreak";
-constexpr char kStaged[] = "/download0/etahen_jailbreak.tmp";
+/* The request-file names daemons watch for, in /download0. */
+const char *const kRequests[] = {
+    "/download0/etahen_jailbreak",  /* etaHEN, OnionHEN, old Lapy */
+    "/download0/onionhen_jailbreak", /* OnionHEN also takes this name */
+    "/download0/elevate_proc",       /* Lapy owned-root daemon */
+};
+constexpr int kRequestCount = int(sizeof kRequests / sizeof kRequests[0]);
 
 void note(const char *fmt, int a = 0, int b = 0, int c = 0)
 {
@@ -63,42 +74,59 @@ void note(const char *fmt, int a = 0, int b = 0, int c = 0)
  * gone), so the caller can then wait for /data. One round: ensure() publishes
  * again and again, because the daemon may start a moment after Porpoise and
  * because the first bump can lose a timing race. */
-bool request_file()
+/* Writes {"PID":n} to one request path atomically (through a .tmp). */
+bool publish_one(const char *path, int pid)
 {
-    const int pid = int(getpid());
-    unlink(kStaged);
-    unlink(kRequest);
-    const int fd = open(kStaged, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0666);
+    char staged[64];
+    std::snprintf(staged, sizeof staged, "%s.tmp", path);
+    unlink(staged);
+    unlink(path);
+    const int fd = open(staged, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0666);
     if (fd < 0)
-    {
-        note("jailbreak: request file can't be made (errno %d)", errno);
         return false;
-    }
     fchmod(fd, 0666);
     char body[32];
     const int n = std::snprintf(body, sizeof body, "{\"PID\":%d}\n", pid);
     const bool written = write(fd, body, std::size_t(n)) == n && fsync(fd) == 0;
     close(fd);
-    if (!written || rename(kStaged, kRequest) != 0)
+    if (!written || rename(staged, path) != 0)
     {
-        unlink(kStaged);
-        note("jailbreak: request file not published (errno %d)", errno);
+        unlink(staged);
         return false;
     }
-    /* Up to ~1.5 s for a daemon to take the file this round. */
-    int polls = 0;
-    while (access(kRequest, F_OK) == 0 && polls < 90)
+    return true;
+}
+
+bool request_file()
+{
+    const int pid = int(getpid());
+    int published = 0;
+    for (int i = 0; i < kRequestCount; ++i)
+        if (publish_one(kRequests[i], pid))
+            ++published;
+    if (published == 0)
+    {
+        note("jailbreak: no request file could be made (errno %d)", errno);
+        return false;
+    }
+    /* Up to ~1.5 s for a daemon to take one of the files this round; a daemon
+     * consumes (deletes) the name it watches. */
+    bool taken = false;
+    for (int polls = 0; polls < 90 && !taken; ++polls)
     {
         sceKernelUsleep(16667);
-        ++polls;
+        for (int i = 0; i < kRequestCount; ++i)
+            if (access(kRequests[i], F_OK) != 0)
+            {
+                taken = true;
+                note("jailbreak: request taken after %d polls; uid now %d", polls, int(geteuid()));
+                break;
+            }
     }
-    if (access(kRequest, F_OK) == 0)
-    {
-        unlink(kRequest); /* leave nothing behind for the next round */
-        return false;
-    }
-    note("jailbreak: request taken after %d polls; uid now %d", polls, int(geteuid()));
-    return true;
+    /* Leave nothing behind for the next round, whoever took what. */
+    for (int i = 0; i < kRequestCount; ++i)
+        unlink(kRequests[i]);
+    return taken;
 }
 
 /* The legacy command servers: magic, command 5 (jailbreak), the PID. */
@@ -156,6 +184,16 @@ bool request_port()
     return false;
 }
 } // namespace
+
+void prepare()
+{
+    /* Give this process its own credential before any thread exists. The Lapy
+     * owned-root daemon only frees a process that did this (and is still
+     * single-threaded) first; for etaHEN and OnionHEN it does no harm. A
+     * no-op when euid already equals the real uid. */
+    if (seteuid(geteuid()) != 0)
+        note("jailbreak: seteuid(self) failed (errno %d)", errno);
+}
 
 bool data_reachable()
 {

@@ -356,10 +356,15 @@ becomes the next player, up to four, and can join in the middle of a game.
   games in `/data/games` not showing?** The console started Porpoise inside the
   app sandbox, and a jailbreak daemon has to free it. Make sure one is running
   **before** you open Porpoise:
-  - **etaHEN** or **OnionHEN** with **PPSA99764** on its app-jailbreak list
-    (etaHEN or OnionHEN settings), or
-  - a standalone jailbreak daemon such as a **Lapy**-style daemon (loaded from
-    your Homebrew Launcher or `autoload.txt`).
+  - **etaHEN:** turn on **Legacy Command Server** in etaHEN's Toolbox
+    settings. etaHEN's own app-jailbreak list is built in and can't be edited
+    to add Porpoise, so this is the setting that lets etaHEN free it.
+  - **OnionHEN:** add `PPSA99764` to `exact_title_ids` under `[app_jailbreak]`
+    in `/data/OnionHEN/config.ini` (comma-separated), then restart the console
+    or reload OnionHEN.
+  - **A standalone daemon** such as **Lapy** (loaded from your Homebrew
+    Launcher or `autoload.txt`). Porpoise speaks both the classic Lapy request
+    and the newer owned-root one.
 
   Then open Porpoise. It now keeps asking the daemon for a few seconds as it
   starts, so a daemon that loads a moment late or needs a second try is handled

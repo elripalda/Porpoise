@@ -5,15 +5,18 @@
 ### Getting out of the sandbox
 - **More reliable sandbox escape.** When Porpoise starts inside the app
   sandbox and can't see `/data` or USB drives, it now keeps asking a jailbreak
-  daemon to free it for a short while, instead of giving up after one try. This
-  fixes the common "worked the first time, then couldn't read /data on later
-  launches" problem, where the daemon starts a moment after Porpoise or the
+  daemon to free it for a few seconds, instead of giving up after one try. This
+  targets the "worked the first time, then couldn't read /data on later
+  launches" reports, where the daemon starts a moment after Porpoise or the
   first attempt loses a timing race.
-- Works with the etaHEN jailbreak-on-demand API that OnionHEN and standalone
-  daemons (a **Lapy**-style daemon) share, so no single HEN is required.
-- The "can't reach /data" message now explains what to do: make sure a
-  jailbreak daemon is running first, and try opening Porpoise once more if the
-  first launch still fails.
+- **Works with more daemons.** Porpoise now sends every request name the
+  daemons in use watch for: etaHEN's and OnionHEN's, and both the classic and
+  the newer owned-root **Lapy** daemon (it prepares itself the way the newer
+  Lapy daemon requires, before starting any threads).
+- **Clearer help.** The "can't reach /data" message now says exactly what to
+  change: in etaHEN, turn on *Legacy Command Server* (etaHEN's built-in app list
+  can't take Porpoise); in OnionHEN, add `PPSA99764` to `exact_title_ids` in its
+  `config.ini`; or run a Lapy daemon.
 
 ## 1.5 — 2026-10-04
 
