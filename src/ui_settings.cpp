@@ -111,6 +111,7 @@ const Field kFields[] = {
     {"ui_palette", &Settings::ui_palette, nullptr, 0, 14},
     {"lib_view", &Settings::lib_view, nullptr, 0, 7},
     {"mc_view", &Settings::mc_view, nullptr, 0, 3},
+    {"sc_games", &Settings::sc_games, nullptr, 0, 1},
     {"text_size", &Settings::text_size, nullptr, 0, 2},
     {"colour_filter", &Settings::colour_filter, nullptr, 0, 4},
     {"colour_filter_games", nullptr, &Settings::colour_filter_games, 0, 1},

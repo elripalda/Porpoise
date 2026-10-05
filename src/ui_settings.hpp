@@ -119,7 +119,8 @@ struct Settings
     int ui_theme = 0;  /* the theme: porpoise::ui::ThemeId (0 Porpoise, 1 Revolution, ...) */
     int ui_palette = 0; /* the theme's colours, for themes that offer them (ui_theme.hpp) */
     int lib_view = 0;   /* the library: 0 cover flow, 1 wheel, 2 disc flow, 3 shelf, 4 box */
-    int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game */
+    int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes */
+    int sc_games = 0;   /* Star Cube's Games page: 0 spinning discs, 1 covers */
     /* Accessibility */
     int text_size = 0;          /* 0 normal, 1 large, 2 larger */
     int colour_filter = 0;      /* 0 off, 1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale */

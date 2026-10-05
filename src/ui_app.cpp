@@ -360,6 +360,7 @@ App::Action App::update(const Input &in, double dt)
     home_pad_sync(); /* the Revolution look's pointer */
     pump_banners();  /* Wii discs' tiles and banners, as they come */
     g_->set_theme_fonts(th().fonts); /* a theme's own letters, once they're made */
+    sc_tick(dt);
 
     const bool calm = settings_->reduced_motion;
     const float rate = calm ? 40.0f : 14.0f;
@@ -453,6 +454,13 @@ App::Action App::update(const Input &in, double dt)
         if (pressed(BtnCircle | BtnTriangle))
             screen_ = Screen::Main;
         return action;
+    }
+    if (starcube())
+    {
+        bool handled = false;
+        const Action a = update_starcube(left, right, up, down, handled);
+        if (handled)
+            return a;
     }
     if (screen_ == Screen::Details && revolution())
         return update_rev_details(left, right, up, down, dt);
@@ -612,7 +620,7 @@ App::Action App::update(const Input &in, double dt)
     }
     else if (tab_ == Tab::Settings)
         action = update_settings(up, down, left, right);
-    else if (tab_ == Tab::MemoryCards && settings_->mc_view == 2)
+    else if (tab_ == Tab::MemoryCards && mc_view() == 2)
     {
         /* By game: every save in one list. */
         if (cards_scanned_ || wii_scanned_)
@@ -632,7 +640,7 @@ App::Action App::update(const Input &in, double dt)
         }
         if (mc_wii_)
             update_wii_saves(left, right, up, down);
-        else if (cards_scanned_ && settings_->mc_view == 1)
+        else if (cards_scanned_ && mc_view() == 1)
         {
             /* Blocks: up and down the card's saves, left and right the other card. */
             const int n = int((mc_card_ == 0 ? card_a_ : card_b_).saves.size());
@@ -1293,12 +1301,17 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
     /* The theme sets their size (smaller than 2.0's); Accessibility can make them larger. */
     const float sc = th().prompts * (settings_ && settings_->big_prompts ? 1.3f : 1.0f);
     const float y = kPromptY + (1.0f - sc) * 12.0f, size = ts(28) * sc, gs = 44 * sc;
+    /* Star Cube: "X ··· Confirm", no rules between. */
+    const bool dotted = starcube();
+    const std::string leader = "\xC2\xB7\xC2\xB7\xC2\xB7";
+    const float leader_w = dotted ? g.measure(Font::Bold, size, leader) + 14 * sc : 0.0f;
     float x = 58;
     for (std::size_t i = 0; i < left.size(); ++i)
     {
         if (i > 0)
         {
-            g.panel(x - 2, y - 22 * sc, 1.6f, 44 * sc, rgba(0x5A68A8, 0.8f), 1, 0);
+            if (!dotted)
+                g.panel(x - 2, y - 22 * sc, 1.6f, 44 * sc, rgba(0x5A68A8, 0.8f), 1, 0);
             x += 38 * sc;
         }
         if (int(left[i].first) >= int(kKeyL2R2))
@@ -1306,13 +1319,20 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
         else
             g.glyph(left[i].first, x + gs * 0.45f, y, gs, kWhite);
         x += gs + 10 * sc;
+        if (dotted)
+        {
+            g.text_mid(Font::Bold, size, x, y, kLavender, Align::Left, leader);
+            x += leader_w;
+        }
         x += g.text_mid(Font::SemiBold, size, x, y, kWhite, Align::Left, left[i].second) + 40 * sc;
     }
     float rx = 1862;
     for (std::size_t i = right.size(); i-- > 0;)
     {
-        const float w = g.measure(Font::SemiBold, size, right[i].second);
+        const float w = g.measure(Font::SemiBold, size, right[i].second) + leader_w;
         g.text_mid(Font::SemiBold, size, rx, y, kWhite, Align::Right, right[i].second);
+        if (dotted)
+            g.text_mid(Font::Bold, size, rx - w + leader_w - 14 * sc, y, kLavender, Align::Right, leader);
         float glyph_x = rx - w - gs * 0.8f;
         if (int(right[i].first) >= int(kKeyL2R2))
         {
@@ -1326,7 +1346,8 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
         rx = glyph_x - gs * 0.5f - 38 * sc;
         if (i > 0)
         {
-            g.panel(rx, y - 22 * sc, 1.6f, 44 * sc, rgba(0x5A68A8, 0.8f), 1, 0);
+            if (!dotted)
+                g.panel(rx, y - 22 * sc, 1.6f, 44 * sc, rgba(0x5A68A8, 0.8f), 1, 0);
             rx -= 38 * sc;
         }
     }
@@ -1948,7 +1969,7 @@ void App::draw_card(Card &card, int which, float x, float y, double time)
 void App::draw_memory_cards(double time)
 {
     Gfx &g = *g_;
-    if (settings_->mc_view == 2)
+    if (mc_view() == 2)
     {
         draw_saves_by_game(time);
         return;
@@ -1958,13 +1979,13 @@ void App::draw_memory_cards(double time)
         draw_wii_saves(time);
         return;
     }
-    if (settings_->mc_view == 1)
+    if (mc_view() == 1)
     {
         draw_card_blocks(time);
         return;
     }
     ensure_saves(false);
-    if (settings_->mc_view == 3)
+    if (mc_view() == 3)
     {
         draw_card_cubes(card_a_, 0, kMcX[0], kMcY, time);
         draw_card_cubes(card_b_, 1, kMcX[1], kMcY, time);
@@ -2090,6 +2111,14 @@ void App::draw_theme_overlay()
 
 void App::look_changed(int was)
 {
+    if (starcube())
+    {
+        /* Into Star Cube from Settings: stay on its Settings page. */
+        sc_home_ = false;
+        sc_calendar_ = false;
+        sc_face_ = sc_face_of_tab();
+        sc_zoom_ = 1;
+    }
     if ((was == 1) == (settings_->ui_theme == 1) && was >= 0)
         return; /* only Revolution brings its own library filter and saves view */
     int want = int(Library::Show::All);
@@ -2162,6 +2191,11 @@ void App::draw(double time)
     if (revolution())
     {
         draw_revolution(time);
+        return;
+    }
+    if (starcube())
+    {
+        draw_starcube(time);
         return;
     }
     g.background();

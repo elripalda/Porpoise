@@ -80,6 +80,7 @@ public:
         preview_py_ = y;
     }
     void preview_home_page(int page) { home_page_ = page, home_scroll_ = float(page), home_synced_ = true; }
+    void preview_starcube(int face, bool page);
 #endif
     /* The save state to start it from ("" for none); asking clears it. */
     std::string take_launch_state()
@@ -421,6 +422,8 @@ private:
     /* The Revolution look's home screen (ui_app_home.cpp): a grid of tiles,
      * twelve to a page, pointed at with the controller's motion. */
     bool revolution() const { return settings_ && settings_->ui_theme == 1; }
+    bool starcube() const { return settings_ && settings_->ui_theme == int(ThemeId::StarCube); }
+    int mc_view() const { return starcube() ? 3 : settings_->mc_view; } /* Star Cube's saves are cubes */
     bool home_showing() const /* the grid of tiles (the Revolution look's home, laid out as a grid) */
     {
         return revolution() && settings_->ui_layout == 0 && tab_ == Tab::Library &&
@@ -522,6 +525,32 @@ private:
     void keep_selection(const std::string &key); /* after the order changed */
     void look_changed(int was);                 /* Settings > Interface > Look */
     void draw_revolution(double time);
+    /* Star Cube (ui_app_starcube.cpp): its home cube and its pages. */
+    void sc_tick(double dt);
+    void sc_open(int face, bool zoom);
+    void sc_go_home();
+    void sc_open_details();
+    int sc_face_of_tab() const;
+    std::vector<int> sc_recent_games() const;
+    Action update_starcube(bool left, bool right, bool up, bool down, bool &handled);
+    void draw_starcube(double time);
+    void draw_sc_home(double time, float zoom);
+    void draw_sc_drift(double time, float alpha);
+    void draw_sc_header(const std::string &title, double time);
+    void draw_sc_page(float x, float y, float w, float h);
+    void draw_sc_games(double time);
+    void draw_sc_details(double time);
+    void draw_sc_calendar(double time);
+    bool sc_home_ = true;      /* the cube shows (else one of its pages) */
+    int sc_face_ = 0;          /* the edge it's turned to: Games, Calendar, Memory Cards, Settings */
+    bool sc_calendar_ = false; /* the Calendar page is open */
+    float sc_zoom_ = 0;        /* 0 the cube .. 1 into a page */
+    float sc_yaw_ = 0, sc_pitch_ = 0.42f;
+    float sc_glow_[4] = {1, 0, 0, 0};
+    int sc_first_row_ = 0;     /* the games page's top row */
+    float sc_rows_ = 0;
+    int sc_recent_ = 0;        /* the calendar's chosen recent game */
+    int sc_month_ = 0;         /* months from this one */
     std::string library_count() const;          /* "12 games", "5 Wii games" */
     std::string library_note() const;           /* covers being fetched, or a flash */
 

@@ -409,6 +409,53 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    /* PREVIEW_STARCUBE=palette: Star Cube's home turned to each edge, then
+     * each page and a game's page; then stop. */
+    if (const char *sc = std::getenv("PREVIEW_STARCUBE"))
+    {
+        settings.ui_theme = 14;
+        settings.ui_palette = std::atoi(sc);
+        if (const char *e = std::getenv("PREVIEW_SCGAMES"))
+            settings.sc_games = std::atoi(e);
+        ui.language_changed();
+        settle();
+        while (gfx.theme_fonts_busy() || gfx.cjk_busy())
+        {
+            settle();
+            usleep(10000);
+        }
+        const char *names[4] = {"games", "calendar", "cards", "settings"};
+        for (int face = 0; face < 4; ++face)
+        {
+            ui.preview_starcube(face, false);
+            settle();
+            render((std::string("sc-home-") + names[face]).c_str(), [&] { ui.draw(12.0); });
+        }
+        for (int face = 0; face < 4; ++face)
+        {
+            ui.preview_starcube(face, true);
+            for (int wait = 0; wait < 40; ++wait)
+            {
+                settle();
+                usleep(10000);
+            }
+            if (face == 3)
+            {
+                press(1u << 0, 12);
+                press(kDown, 7); /* Interface */
+                press(kRight);
+                settle();
+            }
+            render((std::string("sc-page-") + names[face]).c_str(), [&] { ui.draw(12.0); });
+        }
+        ui.preview_starcube(0, true);
+        settle();
+        press(kRight);
+        press(kCross);
+        settle();
+        render("sc-page-game", [&] { ui.draw(12.0); });
+        return 0;
+    }
     /* PREVIEW_LOOKS=theme:colours:view[:memcards],...: the library (and, with
      * PREVIEW_PAGES=1, Settings > Interface and Accessibility and Memory
      * Cards) in each, then stop. */

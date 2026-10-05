@@ -732,6 +732,10 @@ void App::build_settings()
                "Move the controller to point at tiles and buttons. The touch pad turns it on and off too.",
                &settings_->ui_pointer);
     }
+    if (settings_->ui_theme == int(ThemeId::StarCube))
+        choice("sc_games", "Games page", "Star Cube's Games page: your games as spinning discs, or as covers.",
+               &settings_->sc_games, {"Discs", "Covers"});
+    else
     {
         static const char *const kHelp[8] = {
             "Cover flow: the boxes in a row, the chosen one in front.",
@@ -745,6 +749,7 @@ void App::build_settings()
         choice("lib_view", "Library view", kHelp[std::clamp(settings_->lib_view, 0, 7)], &settings_->lib_view,
                {"Cover flow", "Wheel", "Disc flow", "Shelf", "Box", "List", "Stack", "Helix"});
     }
+    if (settings_->ui_theme != int(ThemeId::StarCube))
     {
         static const char *const kHelp[4] = {
             "Cards: both memory cards side by side, their saves as icons.",
@@ -1280,7 +1285,7 @@ void App::change_setting(int dir)
     }
     if (r.key == "ui_theme")
         look_changed(theme_seen_);
-    if (r.key == "ui_theme" || r.key == "ui_layout" || r.key == "lib_view" || r.key == "mc_view")
+    if (r.key == "ui_theme" || r.key == "ui_layout" || r.key == "lib_view" || r.key == "mc_view" || r.key == "sc_games")
         build_settings(); /* rows and help that follow the look */
     if (r.key == "wii_preset" && settings_->wii_preset > 0)
     {
@@ -1628,7 +1633,8 @@ void App::draw_settings()
     /* The section's rows. */
     const float px = 500, py = 136, pw = 1330, ph = 800;
     g.panel(px, py, pw, ph, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-    const float title_w = g.text_mid(Font::Bold, ts(46), px + 50, py + 64, kWhite, Align::Left, tr(current));
+    const float title_w = g.text_mid(starcube() ? Font::ExtraBold : Font::Bold, ts(46), px + 50, py + 64, kWhite,
+                                     Align::Left, tr(current));
     if (current == "Recommended")
     {
         /* A beta: the list grows as games are tested. */

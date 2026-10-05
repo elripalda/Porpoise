@@ -263,6 +263,7 @@ Theme make_starcube()
     t.look.hue_spread = 0.5f;
     t.radius = 14;
     t.palettes = true;
+    t.fonts = "dotn";
     return t;
 }
 

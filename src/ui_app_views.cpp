@@ -40,7 +40,8 @@ void App::release_far_art(int keep)
     Gfx &g = *g_;
     auto &games = lib_->games();
     const int shown = lib_->shown();
-    const int view = settings_->lib_view;
+    const int view = starcube() ? (settings_->sc_games == 0 ? 2 : 0) : settings_->lib_view;
+    const int disc_keep = starcube() ? keep : 5;
     for (int i = 0; i < int(games.size()); ++i)
     {
         Game &game = games[std::size_t(i)];
@@ -53,7 +54,7 @@ void App::release_far_art(int keep)
         }
         /* Discs, backs and spines are only kept near the selection in the
          * views that show them (Details keeps the chosen game's). */
-        const bool near_disc = view == 2 && std::abs(i - selected_) <= 5;
+        const bool near_disc = view == 2 && std::abs(i - selected_) <= disc_keep;
         if (!near_disc && i != selected_ && game.disc)
         {
             g.free_texture(game.disc);
