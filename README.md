@@ -468,8 +468,9 @@ It stands on the work of many people. The full list, with licences, is in
   **[JP](https://github.com/google/fonts/tree/main/ofl/notosansjp)**,
   **[SC](https://github.com/google/fonts/tree/main/ofl/notosanssc)**,
   **[TC](https://github.com/google/fonts/tree/main/ofl/notosanstc)** and
-  **[KR](https://github.com/google/fonts/tree/main/ofl/notosanskr)**
-  (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
+  **[KR](https://github.com/google/fonts/tree/main/ofl/notosanskr)**,
+  **[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)** and
+  **[VT323](https://github.com/google/fonts/tree/main/ofl/vt323)** (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
 - The PS5 scene: **etaHEN**, **kstuff** and **ShadowMountPlus**, and the front
   ends **PS5SX2** and **ProsperoEden** for the inspiration. Porpoise asks the
   HEN to leave the app sandbox the way PS5SX2 does.

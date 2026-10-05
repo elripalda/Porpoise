@@ -3534,5 +3534,289 @@
  {
   "en": "latest",
   "section": "Small words (2.0)"
+ },
+ {
+  "en": "OLED",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Minimal",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Cube",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Broadcast",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Terminal",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Depth",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Aurora",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Aero",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Sapphire glass in a grid room, the boxes in a cover flow.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "A bright grid of game tiles you point at by moving the controller, with the date and time below.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "True black for OLED screens: crisp text, no glow, colour only where it matters.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Quiet charcoal and soft grey. Nothing on screen but what you need.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Indigo and violet on black: a glass cube turns over a grid that never ends.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "A tube TV from the 2000s: a curved screen in its frame, scanlines and a worn tape's tracking.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Green phosphor on black, like a computer terminal: one colour, scanlines, sharp corners.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Panes of glass drifting through a deep space, liquid glass up front.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Northern lights over a starry night, seen through liquid glass.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "A bright sky, glossy bubbles and white glass, the way the 2000s pictured the future.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Sapphire",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Indigo",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Spice",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Emerald",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Platinum",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Jet",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Rose",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Gold",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Colours",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "The theme's colours: its glass, its light and what is chosen.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Cover flow: the boxes in a row, the chosen one in front.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Wheel: the boxes around a turning wheel; the one at the front is chosen.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Disc flow: your discs, spinning into place as you go.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Shelf: rows of boxes, many at once. Up and down change row.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Box: one box at a time, its whole cover wrapped round it. The right stick turns it.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Library view",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Wheel",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Disc flow",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Shelf",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Box",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Cards: both memory cards side by side, their saves as icons.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Blocks: one card at a time, drawn as the card itself with each save's blocks.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "By game: every save on both cards and the Wii, grouped by game.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Memory Cards view",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Cards",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Blocks",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "By game",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Accessibility",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Text size",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Normal",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Large",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Larger",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Colour filter",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "For colour blindness: moves the colours you may not tell apart to ones you can. Red-weak and green-weak help with reds and greens, blue-weak with blues and yellows.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Red-weak",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Green-weak",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Blue-weak",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Greyscale",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Colour filter in games",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "The same colour filter on the game's picture too.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "High contrast",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Solid panels, clearer edges and brighter text.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Still background",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "The background holds still; everything else moves as usual.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Larger button hints",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "The button hints along the bottom of the screen, larger.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Turn the box round with the right stick.",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Wii system memory",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "of {n} blocks free",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "{n} blocks used",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "{n} free",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Memory card, Slot {slot}",
+  "section": "2.1: themes, views, accessibility"
+ },
+ {
+  "en": "Easier to see, read and follow",
+  "section": "2.1: themes, views, accessibility"
  }
 ]

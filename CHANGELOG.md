@@ -1,5 +1,61 @@
 # Changelog
 
+## 2.1 Beta 1 — 2026-10-05
+
+A test build: how Porpoise looks, and more ways to make it yours. The
+emulation is the same as 2.0 Beta 1.
+
+### A new look
+- **Liquid glass:** panels and buttons bend the room behind them at their
+  edges, catch the light along their rims with a thin spectrum, and cast a
+  soft shadow. Corners are rounder; the tab bar and buttons are fully round.
+- **Smaller button hints** along the bottom, and only one Play: the big
+  button under the chosen game is gone (Cross still plays it).
+
+### Themes
+- **Ten themes** in Settings → Interface → Theme: Porpoise, Revolution and
+  eight new ones, each with its own room behind the menus:
+  - **OLED:** true black, crisp text, no glow.
+  - **Minimal:** quiet charcoal and grey, nothing but what you need.
+  - **Cube:** indigo and violet on black, a glass cube turning over a grid
+    that never ends.
+  - **Broadcast:** a 2000s tube TV in its frame: a curved screen,
+    scanlines, a worn tape's tracking and pixel lettering.
+  - **Terminal:** green phosphor on black in a monospaced font.
+  - **Depth:** panes of glass drifting through a deep space.
+  - **Aurora:** northern lights over a starry night.
+  - **Aero:** a bright sky, glossy bubbles and white glass.
+- **Colours** for Porpoise, OLED and Depth: Sapphire, Indigo, Spice,
+  Emerald, Platinum, Jet, Rose and Gold.
+
+### Library views
+Settings → Interface → Library view, in every theme:
+- **Cover flow**, as before.
+- **Wheel:** the boxes stand around a turning wheel.
+- **Disc flow:** your discs; the chosen one slides out of its box and spins.
+- **Shelf:** rows of boxes, many at once; up and down change row.
+- **Box:** one game at a time as a real case, its front, spine and back -
+  turn it round with the right stick - beside what's known about it. Covers
+  downloaded from now on keep their spine.
+
+### Memory Cards views
+Settings → Interface → Memory Cards view:
+- **Cards**, as before.
+- **Blocks:** one card at a time, drawn as a card, its saves listed and
+  what fills it in a bar. Left and right change card.
+- **By game:** every save on both cards and the Wii, grouped by game.
+
+### Accessibility
+A new section in Settings:
+- **Text size:** Normal, Large or Larger.
+- **Colour filter** for colour blindness (red-weak, green-weak, blue-weak)
+  or greyscale, for the menus and, if you like, the game's picture too.
+- **High contrast:** solid panels, clearer edges, brighter text.
+- **Reduced motion**, **Still background** and **Larger button hints**.
+
+### Languages
+- Every new text in all sixteen languages.
+
 ## 2.0 Beta 1 — 2026-10-05
 
 The first public beta of 2.0 (a pre-release). Features marked *beta* are new

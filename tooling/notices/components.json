@@ -513,6 +513,59 @@
       "modifications": "Weight 600 instance of the variable font, subset to CJK punctuation and the characters of Porpoise's Korean menus and language names with fontTools (tools/make-cjk-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/notosanskr."
     },
     {
+      "id": "jetbrains-mono",
+      "name": "JetBrains Mono font (the Terminal theme)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/JetBrainsMono-Regular.ttf",
+        "assets/fonts/JetBrainsMono-SemiBold.ttf",
+        "assets/fonts/JetBrainsMono-Bold.ttf",
+        "assets/fonts/JetBrainsMono-ExtraBold.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/JetBrainsMono-OFL.txt",
+          "to": "OFL-JetBrainsMono.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 400, 600, 700 and 800 instances of the variable font, subset to Latin, Latin Extended-A, Cyrillic and typographic marks with fontTools (tools/make-theme-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/jetbrainsmono."
+    },
+    {
+      "id": "vt323",
+      "name": "VT323 font (the Broadcast theme)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/VT323-Regular.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2011, The VT323 Project Authors (peter.hull@oikoi.com)"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/VT323-OFL.txt",
+          "to": "OFL-VT323.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Subset to the letters Porpoise's menus use with fontTools (tools/make-theme-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/vt323."
+    },
+    {
       "id": "zacksly-ps5-icons",
       "name": "PS5 Button Icons and Controls by Zacksly (controller art and button icons)",
       "kind": "asset",
