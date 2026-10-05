@@ -732,6 +732,7 @@ void App::draw_controller_lines(float x, float y, float w, const Mapping &m)
 
 void App::draw_game_menu(double time)
 {
+    apply_look();
     if (!menu_play_)
         return;
     Gfx &g = *g_;

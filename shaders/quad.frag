@@ -4,7 +4,8 @@
  *
  * params: x filter (0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS,
  *           6 soft VHS, 7 8-bit, 8 pocket LCD),
- *         y strength 0..1, z time in seconds, w unused.
+ *         y strength 0..1, z time in seconds, w colour filter (0 off,
+ *         1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale: Accessibility).
  * size:   x, y the picture's texture size in texels; z, w its size on screen
  *         in pixels. Smooth and sharp differ only in the sampler the host
  *         binds; the others are worked out here. */
@@ -155,6 +156,28 @@ vec3 pocket(vec2 uv, float amount)
     return mix(col * 0.82, col, grid) * mix(1.0, 0.95, amount);
 }
 
+/* As the menus' (shaders/ui.frag): daltonising after Fidaner et al. */
+vec3 colour_filter(vec3 c, int mode)
+{
+    if (mode == 0)
+        return c;
+    if (mode == 4)
+        return vec3(luma(c));
+    mat3 rgb2lms = mat3(17.8824, 3.45565, 0.0299566, 43.5161, 27.1554, 0.184309, 4.11935, 3.86714, 1.46709);
+    mat3 lms2rgb = mat3(0.0809444479, -0.0102485335, -0.000365296938, -0.130504409, 0.0540193266, -0.00412161469,
+                        0.116721066, -0.113614708, 0.693511405);
+    vec3 lms = rgb2lms * c;
+    vec3 sim;
+    if (mode == 1)
+        sim = vec3(2.02344 * lms.y - 2.52581 * lms.z, lms.y, lms.z);
+    else if (mode == 2)
+        sim = vec3(lms.x, 0.494207 * lms.x + 1.24827 * lms.z, lms.z);
+    else
+        sim = vec3(lms.x, lms.y, -0.395913 * lms.x + 0.801109 * lms.y);
+    vec3 err = c - lms2rgb * sim;
+    return clamp(c + vec3(0.0, err.r * 0.7 + err.g, err.r * 0.7 + err.b), 0.0, 1.0);
+}
+
 void main()
 {
     int filter_id = int(p.params.x + 0.5);
@@ -189,5 +212,6 @@ void main()
         col = pocket(uv, amount);
     else
         col = texture(tex, uv).rgb;
+    col = colour_filter(col, int(p.params.w + 0.5));
     frag = vec4(col * edge, 1.0) * p.color;
 }

@@ -50,6 +50,8 @@ bool wait_vblank();
 /* The core's frame, aspect-fit onto the screen. aspect <= 0 uses w / h. */
 /* filter: 0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS; strength 0..1. */
 void present_core_frame(unsigned width, unsigned height, float aspect, int filter, float strength);
+/* Accessibility's colour filter on the game's picture (0 off; shaders/quad.frag). */
+void set_game_colour_filter(int mode);
 /* A copy of the game's last picture (width x height, RGBA), for thumbnails. */
 bool capture_picture(unsigned width, unsigned height, std::vector<std::uint8_t> &rgba);
 /* Where the last game picture was drawn, as x, y, w, h in 1920x1080 design space. */

@@ -115,8 +115,18 @@ struct Settings
     bool progressive = true; /* dolphin_progressive_scan */
     /* Interface */
     bool reduced_motion = false;
-    bool large_text = false;
-    int ui_theme = 0;  /* the theme: 0 Porpoise, 1 Revolution (a bright grid of tiles and a pointer) */
+    bool large_text = false; /* 2.0's Larger text: read once into text_size */
+    int ui_theme = 0;  /* the theme: porpoise::ui::ThemeId (0 Porpoise, 1 Revolution, ...) */
+    int ui_palette = 0; /* the theme's colours, for themes that offer them (ui_theme.hpp) */
+    int lib_view = 0;   /* the library: 0 cover flow, 1 wheel, 2 disc flow, 3 shelf, 4 box */
+    int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game */
+    /* Accessibility */
+    int text_size = 0;          /* 0 normal, 1 large, 2 larger */
+    int colour_filter = 0;      /* 0 off, 1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale */
+    bool colour_filter_games = false; /* the same filter on the game's picture */
+    bool high_contrast = false;
+    bool big_prompts = false;   /* the button hints along the bottom, larger */
+    bool still_background = false;
     int ui_layout = 0; /* Revolution's home: 0 a grid of tiles, 1 the cover flow */
     bool ui_pointer = true; /* Revolution: point with the controller's motion (the touch pad toggles it) */
     /* Dolphin's own per-game settings set by Porpoise, as "dolphin.<Section>.<Key>"

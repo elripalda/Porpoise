@@ -1169,7 +1169,9 @@ void App::draw_top_bar()
         bar_w += widths[i];
     }
     const float bar_x = 960 - bar_w * 0.5f;
-    g.panel(bar_x, kBarY, bar_w, kBarH, rgba(0x0A1236, 0.70f), 0.9f, kR, rgba(0x3D4F9E, 0.9f), 1.6f);
+    const bool pills = th().pills;
+    g.panel(bar_x, kBarY, bar_w, kBarH, rgba(0x0A1236, 0.70f), 0.9f, pills ? kBarH * 0.5f : kR, rgba(0x3D4F9E, 0.9f),
+            1.6f);
     {
         float tx = bar_x + 6;
         for (int i = 0; i < 3; ++i)
@@ -1184,7 +1186,8 @@ void App::draw_top_bar()
         pill_x_ = tab_x_[int(tab_)];
         pill_w_ = tab_w_[int(tab_)];
     }
-    g.panel(pill_x_, kBarY + 6, pill_w_, kBarH - 12, rgba(0x1F63F0), 0.62f, kR, rgba(0x7FD9FF), 1.6f, 6, 0.35f);
+    g.panel(pill_x_, kBarY + 6, pill_w_, kBarH - 12, rgba(0x1F63F0), 0.62f, pills ? (kBarH - 12) * 0.5f : kR,
+            rgba(0x7FD9FF), 1.6f, 6, 0.35f);
     for (int i = 0; i < 3; ++i)
     {
         const bool on = int(tab_) == i;
@@ -1252,28 +1255,30 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
         right_tr.push_back({p.first, title_case(tr(p.second))});
     const auto &left = left_tr;
     const auto &right = right_tr;
-    const float y = kPromptY, size = ts(28);
+    /* The theme sets their size (smaller than 2.0's); Accessibility can make them larger. */
+    const float sc = th().prompts * (settings_ && settings_->big_prompts ? 1.3f : 1.0f);
+    const float y = kPromptY + (1.0f - sc) * 12.0f, size = ts(28) * sc, gs = 44 * sc;
     float x = 58;
     for (std::size_t i = 0; i < left.size(); ++i)
     {
         if (i > 0)
         {
-            g.panel(x - 2, y - 22, 1.6f, 44, rgba(0x5A68A8, 0.8f), 1, 0);
-            x += 38;
+            g.panel(x - 2, y - 22 * sc, 1.6f, 44 * sc, rgba(0x5A68A8, 0.8f), 1, 0);
+            x += 38 * sc;
         }
         if (int(left[i].first) >= int(kKeyL2R2))
             x += draw_key_pair(x, y, left[i].first) - 54 + 14;
         else
-            g.glyph(left[i].first, x + 20, y, 44, kWhite);
-        x += 54;
-        x += g.text_mid(Font::SemiBold, size, x, y, kWhite, Align::Left, left[i].second) + 40;
+            g.glyph(left[i].first, x + gs * 0.45f, y, gs, kWhite);
+        x += gs + 10 * sc;
+        x += g.text_mid(Font::SemiBold, size, x, y, kWhite, Align::Left, left[i].second) + 40 * sc;
     }
     float rx = 1862;
     for (std::size_t i = right.size(); i-- > 0;)
     {
         const float w = g.measure(Font::SemiBold, size, right[i].second);
         g.text_mid(Font::SemiBold, size, rx, y, kWhite, Align::Right, right[i].second);
-        float glyph_x = rx - w - 36;
+        float glyph_x = rx - w - gs * 0.8f;
         if (int(right[i].first) >= int(kKeyL2R2))
         {
             const float kw = draw_key_pair(0, y, right[i].first, true);
@@ -1282,16 +1287,16 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
             glyph_x += 22; /* as if a glyph centred here */
         }
         else
-            g.glyph(right[i].first, glyph_x, y, 44, kWhite);
-        rx = glyph_x - 22 - 38;
+            g.glyph(right[i].first, glyph_x, y, gs, kWhite);
+        rx = glyph_x - gs * 0.5f - 38 * sc;
         if (i > 0)
         {
-            g.panel(rx, y - 22, 1.6f, 44, rgba(0x5A68A8, 0.8f), 1, 0);
-            rx -= 38;
+            g.panel(rx, y - 22 * sc, 1.6f, 44 * sc, rgba(0x5A68A8, 0.8f), 1, 0);
+            rx -= 38 * sc;
         }
     }
     if (!center.empty())
-        g.text_mid(Font::SemiBold, ts(26), 960, y, kLavender, Align::Center, center, 2.0f);
+        g.text_mid(Font::SemiBold, ts(26) * sc, 960, y, kLavender, Align::Center, center, 2.0f);
 }
 
 /* One glass tile with its cover, in perspective, and its reflection. */
@@ -1590,15 +1595,6 @@ void App::draw_library(double time)
         const float tw = g.measure(Font::Bold, ts(46), sel.title);
         g.glyph(Glyph::Star, kCx - tw * 0.5f - 34, 732, 34, rgba(0xFFD45C));
     }
-
-    /* Play: the Cross and the word, centred together in the button. */
-    const float ph = 64, py = 864, gsize = 42, gap = 14;
-    const float label_w = g.measure(Font::Bold, ts(32), tr("Play"));
-    const float group = gsize + gap + label_w, pw = std::max(214.0f, group + 84);
-    g.panel(kCx - pw * 0.5f, py, pw, ph, rgba(0x0B1640, 0.85f), 0.8f, kR, rgba(0x8BD9FF), 2.0f, 8, 0.15f);
-    const float gx = kCx - group * 0.5f;
-    g.glyph(Glyph::Cross, gx + gsize * 0.5f, py + ph * 0.5f, gsize, kWhite);
-    g.text_mid(Font::Bold, ts(32), gx + gsize + gap, py + ph * 0.5f, kWhite, Align::Left, tr("Play"));
 
     char pos[32];
     std::snprintf(pos, sizeof pos, "%02d / %02d", selected_ + 1, shown);
@@ -2036,9 +2032,39 @@ void App::release_covers()
 /* A new theme starts from its own view: Porpoise shows every game and the
  * GameCube cards; Revolution shows the Wii games (when there are any) and
  * the Wii saves. */
+void App::apply_look()
+{
+    if (!settings_)
+        return;
+    g_->set_look(look_for(*settings_));
+    kR = th().radius;
+    theme_seen_ = settings_->ui_theme;
+}
+
+/* Over everything: the theme's tube, terminal or tape, and a TV's frame. */
+void App::draw_theme_overlay()
+{
+    Gfx &g = *g_;
+    const Theme &t = th();
+    g.set_tone(false);
+    if (t.overlay)
+        g.fx(t.overlay, settings_->reduced_motion ? 0.6f : 1.0f);
+    if (t.bezel)
+    {
+        /* The set's plastic, its curved glass's dark edge, and a glint. */
+        const float inset = 26, b = 140, r = 64;
+        g.panel(inset - b, inset - b, 1920 - inset * 2 + b * 2, 1080 - inset * 2 + b * 2, kClear, 1, r + b,
+                rgba(0x15171B), b);
+        g.panel(inset, inset, 1920 - inset * 2, 1080 - inset * 2, kClear, 1, r, rgba(0x000000, 0.55f), 10);
+        g.panel(inset - 3, inset - 3, 1920 - inset * 2 + 6, 1080 - inset * 2 + 6, kClear, 1, r + 3,
+                rgba(0x3A3E46, 0.9f), 2);
+    }
+}
+
 void App::look_changed(int was)
 {
-    (void)was;
+    if ((was == 1) == (settings_->ui_theme == 1) && was >= 0)
+        return; /* only Revolution brings its own library filter and saves view */
     int want = int(Library::Show::All);
     if (settings_->ui_theme == 1)
         for (const Game &g : lib_->games())
@@ -2103,12 +2129,15 @@ void App::cover_arrived(const std::string &id)
 void App::draw(double time)
 {
     Gfx &g = *g_;
+    apply_look();
     if (revolution())
     {
         draw_revolution(time);
         return;
     }
     g.background();
+    if (th().light)
+        g.set_tone(true);
     g.set_intro(intro_fade_, intro_dy_);
     draw_top_bar();
 
@@ -2167,6 +2196,7 @@ void App::draw(double time)
     draw_dialog();
     draw_update_overlay(time);
     g.set_intro(1, 0);
+    draw_theme_overlay();
 }
 
 /* The Revolution look: its own home and opened tile, and the other screens
@@ -2328,6 +2358,7 @@ void App::set_launch_status(const std::string &status, float progress)
 
 void App::draw_launch(double time)
 {
+    apply_look();
     Gfx &g = *g_;
     if (revolution())
     {

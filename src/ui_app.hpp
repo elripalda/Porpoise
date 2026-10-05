@@ -18,6 +18,7 @@
 
 #include "porpoise_banner.hpp"
 #include "porpoise_borders.hpp"
+#include "ui_theme.hpp"
 #include "ui_cheats.hpp"
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
@@ -428,7 +429,12 @@ private:
     bool has_banner(const Game &game) const;
     bool draw_banner(Game &game, float x, float y, float w, float h, double time, float fade, bool big);
     std::string clock_text() const;
-    float ts(float size) const { return settings_ && settings_->large_text ? size * 1.15f : size; }
+    float ts(float size) const { return settings_ ? size * (1.0f + 0.15f * float(settings_->text_size)) : size; }
+    /* The theme in use, and the renderer set for it (each frame). */
+    const Theme &th() const { return theme(settings_ ? settings_->ui_theme : 0); }
+    void apply_look();
+    void draw_theme_overlay();
+    int theme_seen_ = -1;
 
     void (*sound_)(Sound) = nullptr;
     void (*jingle_)(const std::int16_t *, std::size_t) = nullptr;

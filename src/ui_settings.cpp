@@ -107,7 +107,16 @@ const Field kFields[] = {
     {"progressive", nullptr, &Settings::progressive, 0, 1},
     {"reduced_motion", nullptr, &Settings::reduced_motion, 0, 1},
     {"large_text", nullptr, &Settings::large_text, 0, 1},
-    {"ui_theme", &Settings::ui_theme, nullptr, 0, 1},
+    {"ui_theme", &Settings::ui_theme, nullptr, 0, 9},
+    {"ui_palette", &Settings::ui_palette, nullptr, 0, 7},
+    {"lib_view", &Settings::lib_view, nullptr, 0, 4},
+    {"mc_view", &Settings::mc_view, nullptr, 0, 2},
+    {"text_size", &Settings::text_size, nullptr, 0, 2},
+    {"colour_filter", &Settings::colour_filter, nullptr, 0, 4},
+    {"colour_filter_games", nullptr, &Settings::colour_filter_games, 0, 1},
+    {"high_contrast", nullptr, &Settings::high_contrast, 0, 1},
+    {"big_prompts", nullptr, &Settings::big_prompts, 0, 1},
+    {"still_background", nullptr, &Settings::still_background, 0, 1},
     {"ui_layout", &Settings::ui_layout, nullptr, 0, 1},
     {"ui_pointer", nullptr, &Settings::ui_pointer, 0, 1},
     {"ui_language", &Settings::ui_language, nullptr, 0, 16},
@@ -300,6 +309,13 @@ bool Settings::load(const std::string &path, bool overlay)
     /* 1.1: Smooth / Sharp became the first two screen filters. */
     if (legacy_sharp >= 0 && !saw_filter)
         screen_filter = legacy_sharp;
+    /* 2.1: Larger text became a text size. */
+    if (!overlay && large_text)
+    {
+        if (text_size == 0)
+            text_size = 1;
+        large_text = false;
+    }
     return true;
 }
 

@@ -60,7 +60,54 @@ enum Kind
     K_BLOB = 6,
     K_REFLECTION = 7,
     K_GLASS = 8,
+    K_FX = 9,
 };
+
+void to_hsl(const porpoise::ui::Color &c, float &h, float &s, float &l)
+{
+    const float mx = std::max(c.r, std::max(c.g, c.b)), mn = std::min(c.r, std::min(c.g, c.b));
+    h = 0;
+    s = 0;
+    l = (mx + mn) * 0.5f;
+    const float d = mx - mn;
+    if (d > 1e-5f)
+    {
+        s = l > 0.5f ? d / (2.0f - mx - mn) : d / (mx + mn);
+        if (mx == c.r)
+            h = (c.g - c.b) / d + (c.g < c.b ? 6.0f : 0.0f);
+        else if (mx == c.g)
+            h = (c.b - c.r) / d + 2.0f;
+        else
+            h = (c.r - c.g) / d + 4.0f;
+        h /= 6.0f;
+    }
+}
+
+porpoise::ui::Color from_hsl(float h, float s, float l, float a)
+{
+    auto hue = [](float p, float q, float t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1.0f / 6) return p + (q - p) * 6 * t;
+        if (t < 0.5f) return q;
+        if (t < 2.0f / 3) return p + (q - p) * (2.0f / 3 - t) * 6;
+        return p;
+    };
+    porpoise::ui::Color o;
+    o.a = a;
+    s = std::clamp(s, 0.0f, 1.0f);
+    l = std::clamp(l, 0.0f, 1.0f);
+    if (s <= 1e-5f)
+        o.r = o.g = o.b = l;
+    else
+    {
+        const float q = l < 0.5f ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+        o.r = hue(p, q, h + 1.0f / 3);
+        o.g = hue(p, q, h);
+        o.b = hue(p, q, h - 1.0f / 3);
+    }
+    return o;
+}
 
 bool read_file(const std::string &path, std::vector<unsigned char> &out)
 {
@@ -286,7 +333,7 @@ bool Gfx::create_pipeline()
     if (vkCreateDescriptorSetLayout_(device_, &dsl, nullptr, &set_layout_) != VK_SUCCESS)
         return false;
 
-    VkPushConstantRange range{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 32};
+    VkPushConstantRange range{VK_SHADER_STAGE_FRAGMENT_BIT, 0, 64};
     VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     pl.setLayoutCount = 1;
     pl.pSetLayouts = &set_layout_;
@@ -1475,48 +1522,78 @@ void fill(float *dst, std::initializer_list<float> values)
 Color Gfx::tone(Color c) const
 {
     if (!tone_)
-        return c;
+        return map_colour(c);
     /* RGB -> HSL, lightness turned over (dark navy glass -> near white, white
      * text -> slate ink, cyan -> a deeper blue), saturation eased as it gets
      * light so panels stay pale. */
-    const float mx = std::max(c.r, std::max(c.g, c.b)), mn = std::min(c.r, std::min(c.g, c.b));
-    float h = 0, sat = 0;
-    const float l = (mx + mn) * 0.5f, d = mx - mn;
-    if (d > 1e-5f)
-    {
-        sat = l > 0.5f ? d / (2.0f - mx - mn) : d / (mx + mn);
-        if (mx == c.r)
-            h = (c.g - c.b) / d + (c.g < c.b ? 6.0f : 0.0f);
-        else if (mx == c.g)
-            h = (c.b - c.r) / d + 2.0f;
-        else
-            h = (c.r - c.g) / d + 4.0f;
-        h /= 6.0f;
-    }
+    float h, sat, l;
+    to_hsl(c, h, sat, l);
     const float l2 = 0.22f + 0.76f * std::pow(std::max(0.0f, 1.0f - l), l < 0.5f ? 0.45f : 0.7f);
     /* Light labels become slate ink, dark glass near-white, and the colours
      * in between (the accents) keep most of their colour. */
     const float s2 = l > 0.82f ? sat * 0.35f : l < 0.30f ? sat * 0.22f : l < 0.42f ? sat * 0.6f : sat * 0.9f;
-    auto hue = [](float p, float q, float t) {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1.0f / 6) return p + (q - p) * 6 * t;
-        if (t < 0.5f) return q;
-        if (t < 2.0f / 3) return p + (q - p) * (2.0f / 3 - t) * 6;
-        return p;
-    };
-    Color o;
-    o.a = c.a;
-    if (s2 <= 1e-5f)
-        o.r = o.g = o.b = l2;
-    else
+    return map_colour(from_hsl(h, s2, l2, c.a));
+}
+
+/* The theme's colours (Look): the blues to its hue, its saturation, its dark
+ * fills, one-colour looks and high contrast. Warnings keep their colours. */
+Color Gfx::map_colour(Color c) const
+{
+    const Look &L = look_;
+    if (L.hue < 0 && L.saturation == 1 && L.dark == 1 && L.fill_alpha == 1 && !L.mono && !L.high_contrast)
+        return c;
+    float h, s, l;
+    to_hsl(c, h, s, l);
+    const bool neutral = s <= 0.08f;
+    const bool blue = !neutral && h > 0.45f && h < 0.83f;
+    if (L.hue >= 0 && blue)
     {
-        const float q = l2 < 0.5f ? l2 * (1 + s2) : l2 + s2 - l2 * s2, p = 2 * l2 - q;
-        o.r = hue(p, q, h + 1.0f / 3);
-        o.g = hue(p, q, h);
-        o.b = hue(p, q, h - 1.0f / 3);
+        h = L.hue + (h - 0.6f) * L.hue_spread;
+        h -= std::floor(h);
     }
-    return o;
+    s *= blue || neutral ? L.saturation : std::max(L.saturation, 0.7f);
+    if (l < 0.3f)
+    {
+        l *= L.dark;
+        c.a = std::min(1.0f, c.a * L.fill_alpha);
+    }
+    if (L.mono && (blue || neutral))
+    {
+        float mh, ms, ml;
+        to_hsl(L.mono_color, mh, ms, ml);
+        h = mh;
+        s = ms * (l < 0.3f ? 0.8f : 1.0f);
+        l = l < 0.3f ? l * 0.55f : 0.12f + (l - 0.3f) * (ml + 0.08f) / 0.7f;
+    }
+    if (L.high_contrast)
+    {
+        if (l > 0.55f)
+        {
+            l = 0.86f + (l - 0.55f) * 0.3f;
+            s *= 0.55f;
+        }
+        else if (l < 0.32f)
+            l *= 0.55f;
+    }
+    return from_hsl(h, s, l, c.a);
+}
+
+void Gfx::fx(int which, float strength)
+{
+    Vertex v[4]{};
+    float pos[4][4];
+    corners_flat(0, 0, kDesignW, kDesignH, pos);
+    const float local[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    for (int i = 0; i < 4; ++i)
+    {
+        std::memcpy(v[i].pos, pos[i], sizeof pos[i]);
+        fill(v[i].local, {local[i][0], local[i][1]});
+        fill(v[i].color, {1, 1, 1, strength});
+        fill(v[i].p0, {float(K_FX), 0, 0, 0});
+        fill(v[i].p1, {target_w_, target_h_, target_w_, target_h_});
+        fill(v[i].p2, {0, 0, float(which), 0});
+    }
+    push(nullptr, v);
 }
 
 void Gfx::background()
@@ -1543,8 +1620,24 @@ void Gfx::panel(float x, float y, float w, float h, Color fill_c, float bottom_m
         bottom_mul = 1.0f - (1.0f - bottom_mul) * 0.25f; /* no dark floor under light glass */
     fill_c = tone(fill_c);
     border = tone(border);
+    if (look_.flat)
+    {
+        glow = 0;
+        sheen = 0;
+        bottom_mul = 1.0f - (1.0f - bottom_mul) * 0.3f;
+    }
+    if (look_.high_contrast)
+    {
+        /* Solid panels and clear edges. */
+        if (fill_c.a > 0.05f)
+            fill_c.a = std::max(fill_c.a, 0.94f);
+        if (border.a > 0.05f && border_w > 0)
+            border_w = std::max(border_w * 1.6f, 2.5f);
+    }
     const float px = target_w_ / kDesignW; /* design px -> screen px */
-    const float margin = glow > 0 ? glow * 3.0f : 1.0f;
+    float margin = glow > 0 ? glow * 3.0f : 1.0f;
+    if (look_.panel_style == 1 && fill_c.a > 0.05f && !look_.high_contrast)
+        margin = std::max(margin, std::min(30.0f, std::min(w, h) * 0.5f + 8)); /* room for its shadow */
     Vertex v[4]{};
     float pos[4][4];
     corners_flat(x - margin, y - margin, w + margin * 2, h + margin * 2, pos);
@@ -1889,7 +1982,23 @@ void Gfx::record(VkCommandBuffer cmd)
     vkCmdBindPipeline_(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
     const VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers_(cmd, 0, 1, &vbufs_[slot_], &offset);
-    const float push_data[8] = {target_w_, target_h_, time_, dim_, reduced_motion_ ? 1.0f : 0.0f, 0, 0, 0};
+    const Look &L = look_;
+    const float push_data[16] = {target_w_,
+                                 target_h_,
+                                 time_,
+                                 dim_,
+                                 reduced_motion_ || L.still ? 1.0f : 0.0f,
+                                 float(L.background),
+                                 float(L.colour_filter),
+                                 float(L.high_contrast ? 0 : L.panel_style),
+                                 L.light0.r,
+                                 L.light0.g,
+                                 L.light0.b,
+                                 L.effect,
+                                 L.light1.r,
+                                 L.light1.g,
+                                 L.light1.b,
+                                 L.flat ? 1.0f : 0.0f};
     vkCmdPushConstants_(cmd, layout_, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof push_data, push_data);
     for (const Batch &b : batches_)
     {

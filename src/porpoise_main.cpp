@@ -1478,6 +1478,7 @@ int main()
         core_paths.options_reference = g_options_reference.c_str();
         core_paths.log = g_core_log.c_str();
         porpoise::core::set_fast_forward(1);
+        porpoise::vk::set_game_colour_filter(g_settings.colour_filter_games ? g_settings.colour_filter : 0);
         const long long played_from = now_ns();
         const porpoise::core::Exit exit = porpoise::core::run_game(launch->path.c_str(), core_paths, hooks, playback);
         setenv("RADV_THREADED_RECORDING", "0", 1); /* the launcher's device, made next, records directly */

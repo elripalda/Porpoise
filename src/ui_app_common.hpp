@@ -52,7 +52,7 @@ constexpr Glyph kKeyL2R2 = Glyph(32);
 constexpr Glyph kKeyL1R1 = Glyph(33);
 
 constexpr float kPi = 3.14159265f;
-constexpr float kR = 14.0f;      /* the one corner radius */
+inline float kR = 14.0f;         /* the one corner radius: the theme's (apply_look) */
 constexpr float kCx = 960.0f;    /* cover flow centre */
 constexpr float kCy = 470.0f;
 constexpr float kTileW = 320.0f; /* box art: 5 wide for 7 high */

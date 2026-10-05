@@ -409,6 +409,59 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    /* PREVIEW_LOOKS=theme:colours:view[:memcards],...: the library (and, with
+     * PREVIEW_PAGES=1, Settings > Interface and Accessibility and Memory
+     * Cards) in each, then stop. */
+    if (const char *looks = std::getenv("PREVIEW_LOOKS"); looks && *looks)
+    {
+        const bool pages = std::getenv("PREVIEW_PAGES") != nullptr;
+        for (const char *at = looks; *at;)
+        {
+            int v[4] = {0, 0, 0, 0}, n = 0;
+            while (*at && *at != ',')
+            {
+                if (*at >= '0' && *at <= '9' && n < 4)
+                    v[n] = v[n] * 10 + (*at - '0');
+                else if (*at == ':')
+                    ++n;
+                ++at;
+            }
+            if (*at == ',')
+                ++at;
+            settings.ui_theme = v[0];
+            settings.ui_palette = v[1];
+            settings.lib_view = v[2];
+            settings.mc_view = v[3];
+            ui.language_changed();
+            settle();
+            char tag[48];
+            std::snprintf(tag, sizeof tag, "look-%d-%d-%d", v[0], v[1], v[2]);
+            render((std::string(tag) + "-library").c_str(), [&] { ui.draw(12.0); });
+            if (!pages)
+                continue;
+            press(kR1, 2);
+            press(1u << 0, 12);
+            press(kDown, 7); /* Interface */
+            press(kRight);
+            settle();
+            render((std::string(tag) + "-interface").c_str(), [&] { ui.draw(12.0); });
+            press(kCircle);
+            press(kDown); /* Accessibility */
+            press(kRight);
+            settle();
+            render((std::string(tag) + "-access").c_str(), [&] { ui.draw(12.0); });
+            press(kCircle);
+            press(kR1, 2); /* to Memory Cards */
+            settle();
+            settle();
+            render((std::string(tag) + "-cards").c_str(), [&] { ui.draw(12.0); });
+            press(kR1, 2); /* back to the library */
+            settle();
+        }
+        gfx.shutdown();
+        return 0;
+    }
+
     /* PREVIEW_LANGS=13,16: only these languages' library, a long message (line
      * breaking) and Settings > Interface, then stop. */
     if (const char *langs = std::getenv("PREVIEW_LANGS"); langs && *langs)

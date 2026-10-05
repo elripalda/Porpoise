@@ -632,6 +632,18 @@ void App::build_settings()
         r.values = {value};
         rows_.push_back(r);
     };
+    auto choice = [&](const char *key, const char *label, const char *help, int *value,
+                      std::initializer_list<const char *> values) {
+        SettingRow r;
+        r.section = section;
+        r.key = key;
+        r.label = tr(label);
+        r.help = tr(help);
+        r.int_value = value;
+        for (const char *v : values)
+            r.values.push_back(tr(v));
+        rows_.push_back(r);
+    };
 
     header("Games");
     toggle("auto_search", "Find games automatically",
@@ -688,10 +700,22 @@ void App::build_settings()
         r.section = section;
         r.key = "ui_theme";
         r.label = tr("Theme");
-        r.help = tr("Porpoise: the cover flow. Revolution: a bright grid of game tiles you point at by moving the "
-                    "controller, with the date and time below.");
+        r.help = tr(th().about);
         r.int_value = &settings_->ui_theme;
-        r.values = {tr("Porpoise"), tr("Revolution")};
+        for (int i = 0; i < kThemes; ++i)
+            r.values.push_back(tr(theme(i).name));
+        rows_.push_back(r);
+    }
+    if (th().palettes)
+    {
+        SettingRow r;
+        r.section = section;
+        r.key = "ui_palette";
+        r.label = tr("Colours");
+        r.help = tr("The theme's colours: its glass, its light and what is chosen.");
+        r.int_value = &settings_->ui_palette;
+        for (int i = 0; i < kPalettes; ++i)
+            r.values.push_back(tr(palette(i).name));
         rows_.push_back(r);
     }
     if (settings_->ui_theme == 1)
@@ -708,11 +732,44 @@ void App::build_settings()
                "Move the controller to point at tiles and buttons. The touch pad turns it on and off too.",
                &settings_->ui_pointer);
     }
-    toggle("reduced_motion", "Reduced motion", "Stops the moving lights and shortens animations.",
-           &settings_->reduced_motion);
-    toggle("large_text", "Larger text", "Bigger labels across Porpoise.", &settings_->large_text);
+    {
+        static const char *const kHelp[5] = {
+            "Cover flow: the boxes in a row, the chosen one in front.",
+            "Wheel: the boxes around a turning wheel; the one at the front is chosen.",
+            "Disc flow: your discs, spinning into place as you go.",
+            "Shelf: rows of boxes, many at once. Up and down change row.",
+            "Box: one box at a time, its whole cover wrapped round it. The right stick turns it."};
+        choice("lib_view", "Library view", kHelp[std::clamp(settings_->lib_view, 0, 4)], &settings_->lib_view,
+               {"Cover flow", "Wheel", "Disc flow", "Shelf", "Box"});
+    }
+    {
+        static const char *const kHelp[3] = {
+            "Cards: both memory cards side by side, their saves as icons.",
+            "Blocks: one card at a time, drawn as the card itself with each save's blocks.",
+            "By game: every save on both cards and the Wii, grouped by game."};
+        choice("mc_view", "Memory Cards view", kHelp[std::clamp(settings_->mc_view, 0, 2)], &settings_->mc_view,
+               {"Cards", "Blocks", "By game"});
+    }
     action("Reset all settings", "Every setting back to how Porpoise ships. Games, folders and saves stay.",
            "Reset\xE2\x80\xA6", kRowResetAll);
+
+    header("Accessibility");
+    choice("text_size", "Text size", "Bigger labels across Porpoise.", &settings_->text_size,
+           {"Normal", "Large", "Larger"});
+    choice("colour_filter", "Colour filter",
+           "For colour blindness: moves the colours you may not tell apart to ones you can. Red-weak and "
+           "green-weak help with reds and greens, blue-weak with blues and yellows.",
+           &settings_->colour_filter, {"Off", "Red-weak", "Green-weak", "Blue-weak", "Greyscale"});
+    toggle("colour_filter_games", "Colour filter in games", "The same colour filter on the game's picture too.",
+           &settings_->colour_filter_games);
+    toggle("high_contrast", "High contrast", "Solid panels, clearer edges and brighter text.",
+           &settings_->high_contrast);
+    toggle("reduced_motion", "Reduced motion", "Stops the moving lights and shortens animations.",
+           &settings_->reduced_motion);
+    toggle("still_background", "Still background", "The background holds still; everything else moves as usual.",
+           &settings_->still_background);
+    toggle("big_prompts", "Larger button hints", "The button hints along the bottom of the screen, larger.",
+           &settings_->big_prompts);
 
     header("About");
     info("Porpoise", build_label(), "A GameCube and Wii emulator for PS5, powered by Dolphin.");
@@ -1218,9 +1275,9 @@ void App::change_setting(int dir)
         return;
     }
     if (r.key == "ui_theme")
-        look_changed(1 - settings_->ui_theme);
-    if (r.key == "ui_theme" || r.key == "ui_layout")
-        build_settings(); /* the layout row comes and goes with the look */
+        look_changed(theme_seen_);
+    if (r.key == "ui_theme" || r.key == "ui_layout" || r.key == "lib_view" || r.key == "mc_view")
+        build_settings(); /* rows and help that follow the look */
     if (r.key == "wii_preset" && settings_->wii_preset > 0)
     {
         /* A preset brings its whole set-up. */
@@ -1585,6 +1642,8 @@ void App::draw_settings()
         subtitle = tr("Values in blue are this game's own");
     else if (current == "Interface")
         subtitle = tr("How Porpoise looks and reads");
+    else if (current == "Accessibility")
+        subtitle = tr("Easier to see, read and follow");
     else if (current == "Developer")
         subtitle = tr("For tuning the Wii Remote; nothing here is needed to play");
     else if (current == "Recommended")

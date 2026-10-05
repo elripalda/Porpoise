@@ -134,6 +134,29 @@ struct Glass
     float fade = 1;      /* the whole piece's opacity */
 };
 
+/* How the theme looks to the renderer, set by the menus each frame. */
+struct Look
+{
+    int background = 0;    /* the shader's room (BG_* in shaders/ui.frag) */
+    int panel_style = 0;   /* 0 the classic panels, 1 liquid glass */
+    int colour_filter = 0; /* 0 off, 1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale */
+    bool still = false;    /* the background holds still */
+    Color light0{0.05f, 0.62f, 1.0f, 1.0f}; /* the room's two lights */
+    Color light1{0.48f, 0.36f, 1.0f, 1.0f};
+    float effect = 1;      /* the theme's effect strength (a tube's bend, say) */
+    /* Colours given to the drawing calls (pictures are left alone): the blue
+     * family moved to another hue, saturation, dark fills, one-colour themes. */
+    float hue = -1;        /* the blues' new hue 0..1; -1 keeps them */
+    float hue_spread = 1;  /* how far apart the blues stay */
+    float saturation = 1;
+    float dark = 1;        /* lightness of dark fills */
+    float fill_alpha = 1;  /* opacity of dark fills */
+    bool mono = false;     /* everything but warnings in mono's hue */
+    Color mono_color{};
+    bool high_contrast = false;
+    bool flat = false;     /* no glows or sheen: plain, crisp panels */
+};
+
 /* A screen-space corner after projection: what the vertex shader receives. */
 struct Corner
 {
@@ -149,6 +172,12 @@ public:
     /* After the menus' language changes: GfxInit's cjk_font and cjk_also
      * again; the CJK atlas is rebuilt (or read from the cache) if they differ. */
     void set_cjk_font(const std::string &file, const std::string &also);
+    /* The theme, for this frame and the next (it stays until changed). */
+    void set_look(const Look &look) { look_ = look; }
+    const Look &look() const { return look_; }
+    /* A full-screen overlay: 1 a tube's scanlines and edges, 2 a terminal's,
+     * 3 a worn tape's. */
+    void fx(int which, float strength = 1);
     bool cjk_busy() const { return cjk_job_ != nullptr; } /* a new CJK atlas is on its way */
 
     /* Textures. RGBA8, straight alpha. */
@@ -349,6 +378,8 @@ private:
     float time_ = 0, dim_ = 0;
     float layer_dx_ = 0, layer_dy_ = 0, layer_fade_ = 1;
     float intro_fade_ = 1, intro_dy_ = 0;
+    Look look_{};
+    Color map_colour(Color c) const;
     bool reduced_motion_ = false;
     std::vector<Vertex> vertices_;
     std::vector<Batch> batches_;

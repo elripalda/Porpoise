@@ -1151,6 +1151,13 @@ double refresh_hz()
     return s.refresh_hz > 60.5 ? 60.0 : s.refresh_hz;
 }
 
+int g_colour_filter = 0;
+
+void set_game_colour_filter(int mode)
+{
+    g_colour_filter = mode;
+}
+
 void present_core_frame(unsigned width, unsigned height, float aspect, int filter, float strength)
 {
     const bool sharp = filter == 1;
@@ -1188,6 +1195,7 @@ void present_core_frame(unsigned width, unsigned height, float aspect, int filte
     quad.params[0] = float(filter);
     quad.params[1] = strength;
     quad.params[2] = float(now.tv_sec % 3600) + float(now.tv_nsec) * 1e-9f;
+    quad.params[3] = float(g_colour_filter);
     quad.size[0] = float(width);
     quad.size[1] = float(height);
     quad.size[2] = w;
