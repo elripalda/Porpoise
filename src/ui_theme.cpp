@@ -306,13 +306,30 @@ const Palette &palette(int id)
     return kPaletteList[std::clamp(id, 0, kPalettes - 1)];
 }
 
+const FontSet &font_set(int id)
+{
+    static const FontSet all[kFontSets] = {
+        {"Nunito", ""},           {"M PLUS 1", "mplus"},     {"Nunito + Doto", "dotn"}, {"JetBrains Mono", "mono"},
+        {"JetBrains Mono + Doto", "dot"}, {"VT323", "vt"}, {"Exo 2", "exo"},          {"Porpoise Serif", "lora"}};
+    return all[std::clamp(id, 0, kFontSets - 1)];
+}
+
+const char *fonts_for(const porpoise::Settings &s)
+{
+    /* ui_font 0: the theme's own; n: font_set(n - 1). */
+    if (s.ui_font > 0)
+        return font_set(s.ui_font - 1).set;
+    return theme(s.ui_theme).fonts;
+}
+
 Look look_for(const porpoise::Settings &s)
 {
     const Theme &t = theme(s.ui_theme);
     Look l = t.look;
+    /* ui_palette 0: the theme's own colours; n: palette(n - 1). */
     if (t.palettes && s.ui_palette > 0)
     {
-        const Palette &p = palette(s.ui_palette);
+        const Palette &p = palette(s.ui_palette - 1);
         l.hue = p.hue;
         l.hue_spread = p.spread;
         /* Quiet themes stay quiet: their colour is a tint. */

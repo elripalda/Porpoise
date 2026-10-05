@@ -972,18 +972,24 @@ void show_boot_mark()
     porpoise::ui::Texture *mark = g_gfx.texture_file("/app0/assets/brand/logo.png");
     g_pacer.start(porpoise::vk::refresh_hz(), "boot");
     const float hz = float(porpoise::vk::refresh_hz() > 10 ? porpoise::vk::refresh_hz() : 60.0);
-    const int frames = int(hz * 0.5f);
-    for (int frame = 1; frame <= frames; ++frame)
+    /* The black, then the dolphin rising out of it with a soft glow. */
+    const int frames = int(hz * 0.9f);
+    for (int frame = 0; frame <= frames; ++frame)
     {
-        const float a = float(frame) / float(frames);
+        const float t = float(frame) / float(frames);
+        const float a = t * t * (3.0f - 2.0f * t);
         begin_ui_frame(0.0f);
         g_gfx.panel(-20, -20, 1960, 1120, porpoise::ui::rgba(0x02040C), 1.0f, 0);
+        g_gfx.blob(960, 540, 900 * (0.6f + 0.4f * a), 900 * (0.6f + 0.4f * a), porpoise::ui::rgba(0x2F6BFF, 0.16f * a));
         if (mark && mark->width > 0)
         {
-            const float w = 220, h = w * float(mark->height) / float(mark->width);
-            g_gfx.image(mark, 960 - w * 0.5f, 540 - h * 0.5f, w, h, porpoise::ui::rgba(0xFFFFFF, a * a));
+            const float w = 220 * (0.92f + 0.08f * a), h = w * float(mark->height) / float(mark->width);
+            g_gfx.image(mark, 960 - w * 0.5f, 540 - h * 0.5f + 10.0f * (1.0f - a), w, h,
+                        porpoise::ui::rgba(0xFFFFFF, a));
         }
         porpoise::vk::present_clear(0.008f, 0.016f, 0.047f);
+        if (frame == 0)
+            ps5::debug::mark_value("main: splash hidden", sceSystemServiceHideSplashScreen());
         g_pacer.frame_done();
     }
     if (mark)
@@ -993,8 +999,10 @@ void show_boot_mark()
 
 void leaving_game(float amount, void *)
 {
-    g_menu_open = false;
+    /* The menu stays under the curtain as it comes down, not gone at once. */
     g_curtain = amount;
+    if (amount >= 1.0f)
+        g_menu_open = false;
 }
 
 /* The menus' entrance, at the start and back from a game. The curtain (black,
@@ -1005,11 +1013,12 @@ struct Entrance
 {
     bool on = false, lifting = false;
     double held = 0, lifted = 0;
-    int quiet = 0; /* frames in a row with no picture loading */
+    int quiet = 0;  /* frames in a row with no picture loading */
+    int steady = 0; /* frames in a row drawn in time */
 };
 Entrance g_entrance;
-constexpr double kEntranceMinHold = 0.35, kEntranceMaxHold = 2.5;
-constexpr double kEntranceLift = 0.4, kEntranceUiFrom = 0.2, kEntranceUi = 0.6;
+constexpr double kEntranceMinHold = 0.35, kEntranceMaxHold = 3.0;
+constexpr double kEntranceLift = 0.75, kEntranceUiFrom = 0.35, kEntranceUi = 0.9;
 constexpr float kEntranceRise = 28.0f;
 
 void start_entrance()
@@ -1023,7 +1032,7 @@ void start_entrance()
 
 /* Once a launcher frame, before the menus update: true while the entrance
  * keeps the player's buttons from the menus. */
-bool entrance_frame(double dt)
+bool entrance_frame(double dt, double frame_ms)
 {
     Entrance &e = g_entrance;
     if (!e.on)
@@ -1032,7 +1041,10 @@ bool entrance_frame(double dt)
     {
         e.held += dt;
         e.quiet = g_gfx.loading() ? 0 : e.quiet + 1;
-        if ((e.quiet >= 8 && e.held >= kEntranceMinHold) || e.held >= kEntranceMaxHold)
+        /* Only once frames come on time: a fade drawn through hitches looks
+         * like a cut. */
+        e.steady = frame_ms < 1500.0 * dt ? e.steady + 1 : 0;
+        if ((e.quiet >= 8 && e.steady >= 12 && e.held >= kEntranceMinHold) || e.held >= kEntranceMaxHold)
         {
             e.lifting = true;
             porpoise::sound::fade_music(1.0f, 2.0f);
@@ -1150,9 +1162,8 @@ int main()
         leave(1);
     }
     mark_start("start: display open, ms");
-    /* Not the console's splash (the backdrop) while Porpoise gets ready: a
-     * black screen, then the dolphin fades in on it (show_boot_mark). */
-    ps5::debug::mark_value("main: splash hidden", sceSystemServiceHideSplashScreen());
+    /* The console's splash stays up while Porpoise gets ready; it goes
+     * with Porpoise's first frame (show_boot_mark), so there is no black gap. */
     porpoise::pad::open();
     porpoise::audio::open();
 
@@ -1291,7 +1302,11 @@ int main()
             }
             if (g_covers_again && !porpoise::covers::busy())
                 fetch_covers();
-            if (entrance_frame(dt))
+            static long long last_frame_ns = now_ns();
+            const long long frame_now = now_ns();
+            const double frame_ms = (frame_now - last_frame_ns) / 1e6;
+            last_frame_ns = frame_now;
+            if (entrance_frame(dt, frame_ms))
                 in = porpoise::ui::Input{}; /* the menus aren't on screen yet */
             const auto action = g_app.update(in, dt);
             if (action == porpoise::ui::App::Action::SettingsChanged)

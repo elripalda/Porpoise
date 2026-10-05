@@ -9,6 +9,8 @@
 #   Paper:     Lora at 400, 500, 600, 700 -> assets/fonts/PorpoiseSerif-*.ttf (renamed: Lora's
 #              Reserved Font Name stays with the original)
 #   Star Cube: Nunito, with Doto for its headings
+#   Any theme: M PLUS 1 at 400, 600, 700, 800 -> assets/fonts/MPLUS1-*.ttf (close to the
+#              GameCube's own menu lettering)
 # each subset to the letters the menus use beyond Chinese, Japanese and Korean
 # (Latin, Latin Extended-A, Cyrillic and typographic marks).
 #   python3 tools/make-theme-fonts.py path/to/google/fonts/ofl
@@ -60,6 +62,7 @@ def rename(font, old, new):
 
 
 for family, path, weights, renamed in (("Exo2", "exo2/Exo2[wght].ttf", (400, 600, 700, 800), None),
+                                       ("MPLUS1", "mplus1/MPLUS1[wght].ttf", (400, 600, 700, 800), None),
                                        ("Lora", "lora/Lora[wght].ttf", (400, 500, 600, 700), "Porpoise Serif")):
     for weight, name in zip(weights, ("Regular", "SemiBold", "Bold", "ExtraBold")):
         font = instancer.instantiateVariableFont(TTFont(os.path.join(OFL, path)), {"wght": weight})

@@ -69,6 +69,18 @@ struct Palette
 constexpr int kPalettes = 15;
 const Palette &palette(int id);
 
+/* The fonts any theme can use (Settings > Interface > Font); each theme
+ * starts with its own. set: the theme font set Gfx bakes ("" Nunito). */
+struct FontSet
+{
+    const char *name;
+    const char *set;
+};
+constexpr int kFontSets = 8;
+const FontSet &font_set(int id);
+/* The font set for these settings: the chosen one, or the theme's own. */
+const char *fonts_for(const porpoise::Settings &s);
+
 /* The renderer's Look for these settings: the theme, its colours and the
  * accessibility settings. */
 Look look_for(const porpoise::Settings &s);

@@ -117,7 +117,8 @@ struct Settings
     bool reduced_motion = false;
     bool large_text = false; /* 2.0's Larger text: read once into text_size */
     int ui_theme = 0;  /* the theme: porpoise::ui::ThemeId (0 Porpoise, 1 Revolution, ...) */
-    int ui_palette = 0; /* the theme's colours, for themes that offer them (ui_theme.hpp) */
+    int ui_palette = 0; /* the theme's colours: 0 its own, n palette n - 1 (ui_theme.hpp) */
+    int ui_font = 0;    /* the menus' font: 0 the theme's own, n font_set(n - 1) */
     int lib_view = 0;   /* the library: 0 cover flow, 1 wheel, 2 disc flow, 3 shelf, 4 box */
     int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes */
     int sc_games = 0;   /* Star Cube's Games page: 0 spinning discs, 1 covers */

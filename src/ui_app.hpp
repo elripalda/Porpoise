@@ -7,6 +7,7 @@
  * browser. ui_app_common.hpp has what they share. */
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <map>
 #include <set>
@@ -501,6 +502,13 @@ private:
     BannerTex *banner_texture(const Game &game, bool big);
     void draw_frames(const BannerTex &b, float x, float y, float w, float h, float fade, float radius, bool fill);
     float intro_fade_ = 1, intro_dy_ = 0;
+    /* The entrance in steps: what starts later (delay, of the whole) comes
+     * in after the top bar. */
+    void intro_stage(float delay)
+    {
+        const float f = std::clamp((intro_fade_ - delay) / (1.0f - delay), 0.0f, 1.0f);
+        g_->set_intro(f, intro_dy_ > 0 ? 28.0f * (1.0f - f) : 0.0f);
+    }
     Gfx *g_ = nullptr;
     Library *lib_ = nullptr;
     Settings *settings_ = nullptr;

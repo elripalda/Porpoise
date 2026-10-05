@@ -359,7 +359,7 @@ App::Action App::update(const Input &in, double dt)
     Action action = Action::None;
     home_pad_sync(); /* the Revolution look's pointer */
     pump_banners();  /* Wii discs' tiles and banners, as they come */
-    g_->set_theme_fonts(th().fonts); /* a theme's own letters, once they're made */
+    g_->set_theme_fonts(fonts_for(*settings_)); /* a theme's own letters, once they're made */
     sc_tick(dt);
 
     const bool calm = settings_->reduced_motion;
@@ -1179,7 +1179,11 @@ void App::draw_curtain(float amount)
     }
     const float a = std::min(1.0f, amount);
     g.panel(-20, -20, 1960, 1120, rgba(0x02040C, a), 1.0f, 0);
-    draw_mark(960, 540, 220, with_alpha(kWhite, a * a));
+    /* As it lifts, the dolphin swells a little and goes first, with its glow
+     * (the same as the boot's: no jump between them). */
+    const float m = a * a;
+    g.blob(960, 540, 900, 900, rgba(0x2F6BFF, 0.16f * m));
+    draw_mark(960, 540, 220 * (1.0f + 0.18f * (1.0f - a)), with_alpha(kWhite, m));
 }
 
 bool App::draw_mark(float cx, float cy, float width, Color tint)
@@ -2079,7 +2083,7 @@ void App::apply_look()
     if (!settings_)
         return;
     g_->set_look(look_for(*settings_));
-    g_->set_theme_fonts(th().fonts);
+    g_->set_theme_fonts(fonts_for(*settings_));
     kR = th().radius;
     theme_seen_ = settings_->ui_theme;
 }
@@ -2111,6 +2115,10 @@ void App::draw_theme_overlay()
 
 void App::look_changed(int was)
 {
+    /* A new theme brings its own colours and font; both can be changed after. */
+    settings_->ui_palette = 0;
+    settings_->ui_font = 0;
+    apply_look();
     if (starcube())
     {
         /* Into Star Cube from Settings: stay on its Settings page. */
@@ -2201,8 +2209,9 @@ void App::draw(double time)
     g.background();
     if (th().light)
         g.set_tone(true);
-    g.set_intro(intro_fade_, intro_dy_);
+    intro_stage(0.0f);
     draw_top_bar();
+    intro_stage(0.3f); /* then the page */
 
     /* Motion: a new tab slides in from the side it came from; a screen that
      * opens rises and fades in. */
@@ -2460,8 +2469,9 @@ void App::draw_launch(double time)
         gloss.phase = 0.5f;
         g.glass(gc, cw, ch, 0, gloss);
     }
-    else
-        draw_mark(cx, cy, 250, rgba(0x6EDCFF));
+    else if (!launch_ || launch_->cover_wait.empty())
+        draw_mark(cx, cy, 250, rgba(0x6EDCFF)); /* no cover at all (not one still coming back after the
+                                                   game took the screen: that showed the mark for a moment) */
     /* Its reflection on the floor. */
     g.blob(cx, cy + size * 0.5f + 40, size * 1.4f, 120, rgba(0x2F7BFF, 0.35f));
 

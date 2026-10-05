@@ -1439,22 +1439,17 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             }
             if (answer == kMenuLibrary || answer == kMenuHome)
             {
-                /* Quick resume: the game as it was left, for next time. */
-                if (playback.resume_path && h.have_frame)
-                {
-                    const bool kept = save_state(playback.resume_path);
-                    if (kept)
-                        porpoise::states::write_resume_picture(playback.resume_path);
-                    ps5::debug::mark(kept ? "core: quick resume kept" : "core: quick resume could not be kept");
-                }
                 exit = answer == kMenuLibrary ? Exit::Library : Exit::Home;
                 ps5::debug::mark(answer == kMenuLibrary ? "core: back to the library" : "core: closing Porpoise");
                 /* The picture fades to black, Porpoise's mark appears, and the
-                 * core closes behind it: nothing on screen stops half-way. */
+                 * core closes behind it: nothing on screen stops half-way. The
+                 * quick resume state is written after the fade, behind the
+                 * mark (written first, it held the menu still on screen). */
+                const bool keep_resume = playback.resume_path && h.have_frame;
                 if (hooks.leaving)
                 {
                     porpoise::audio::flush();
-                    constexpr int kFadeFrames = 16;
+                    constexpr int kFadeFrames = 22;
                     for (int frame = 1; frame <= kFadeFrames; ++frame)
                     {
                         hooks.leaving(float(frame) / kFadeFrames, hooks.user);
@@ -1467,6 +1462,14 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                             porpoise::vk::present_clear(0, 0, 0);
                         pacer.frame_done();
                     }
+                }
+                /* Quick resume: the game as it was left, for next time. */
+                if (keep_resume)
+                {
+                    const bool kept = save_state(playback.resume_path);
+                    if (kept)
+                        porpoise::states::write_resume_picture(playback.resume_path);
+                    ps5::debug::mark(kept ? "core: quick resume kept" : "core: quick resume could not be kept");
                 }
                 break;
             }

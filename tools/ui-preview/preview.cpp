@@ -484,6 +484,8 @@ int main(int argc, char **argv)
             settings.ui_palette = v[1];
             settings.lib_view = v[2];
             settings.mc_view = v[3];
+            if (const char *e = std::getenv("PREVIEW_FONT"))
+                settings.ui_font = std::atoi(e);
             if (const char *e = std::getenv("PREVIEW_HC"))
                 settings.high_contrast = std::atoi(e) != 0;
             if (const char *e = std::getenv("PREVIEW_FILTER"))

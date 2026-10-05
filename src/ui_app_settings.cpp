@@ -714,8 +714,21 @@ void App::build_settings()
         r.label = tr("Colours");
         r.help = tr("The theme's colours: its glass, its light and what is chosen.");
         r.int_value = &settings_->ui_palette;
+        r.values.push_back(tr("Theme default"));
         for (int i = 0; i < kPalettes; ++i)
             r.values.push_back(tr(palette(i).name));
+        rows_.push_back(r);
+    }
+    {
+        SettingRow r;
+        r.section = section;
+        r.key = "ui_font";
+        r.label = tr("Font");
+        r.help = tr("The letters across Porpoise. Each theme starts with its own; any font works with any theme.");
+        r.int_value = &settings_->ui_font;
+        r.values.push_back(tr("Theme default"));
+        for (int i = 0; i < kFontSets; ++i)
+            r.values.push_back(font_set(i).name);
         rows_.push_back(r);
     }
     if (settings_->ui_theme == 1)
@@ -1285,7 +1298,8 @@ void App::change_setting(int dir)
     }
     if (r.key == "ui_theme")
         look_changed(theme_seen_);
-    if (r.key == "ui_theme" || r.key == "ui_layout" || r.key == "lib_view" || r.key == "mc_view" || r.key == "sc_games")
+    if (r.key == "ui_theme" || r.key == "ui_layout" || r.key == "lib_view" || r.key == "mc_view" || r.key == "sc_games" ||
+        r.key == "ui_palette" || r.key == "ui_font")
         build_settings(); /* rows and help that follow the look */
     if (r.key == "wii_preset" && settings_->wii_preset > 0)
     {
