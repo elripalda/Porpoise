@@ -43,4 +43,4 @@ Still stuck? [Open an issue](https://github.com/elripalda/Porpoise/issues) with 
 
 Porpoise contains **no games and no BIOS or firmware files**. The only key it carries is the Wii disc key Dolphin itself includes, used to read a Wii disc's own banner. Play only games you own, from backups you made yourself. Porpoise is not affiliated with Nintendo or Sony. Emulation is provided by [Dolphin](https://dolphin-emu.org) (GPL-2.0-or-later). Porpoise is GPL-3.0-or-later; every component's licence and source revision is listed in `licenses/README.txt` inside the zip.
 
-`Porpoise-1.5.1.zip` SHA-256: `6178e4573fbe89c60fd8b8f0d285d655e7d09cbf3687d6f84e47cfc7d8e0cf75`
+`Porpoise-1.5.1.zip` SHA-256: `15c04d083712e551b77a83eb465c5fdd9f6bc9595ddfbecfd1aa6643dcad91ab`
