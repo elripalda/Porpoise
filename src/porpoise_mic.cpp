@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstring>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "title_threads.hpp"
 #include "trace.hpp"
@@ -40,10 +41,26 @@ using CloseFn = int (*)(std::int32_t handle);
 
 constexpr std::uint32_t kGrain = 256;      /* samples per read from the console */
 constexpr std::size_t kRing = 16000 * 2;   /* two seconds of 16 kHz mono */
+constexpr int kMics = 4;                   /* the core opens one or two at a time */
+
+/* One microphone as the core sees it: its rate, whether it's listening, and
+ * where it is in the input (in the console's samples, fractional). Kept in
+ * a fixed pool, never freed, so a read that races a close finds a valid one. */
+struct Mic
+{
+    std::atomic<bool> used{false};
+    unsigned rate = 16000;
+    std::atomic<bool> active{false};
+    double position = 0; /* under Capture::lock */
+};
 
 struct Capture
 {
+    /* lock: the ring and the mics' positions. state: opening, closing and
+     * the count of microphones open (the core's emulation thread opens and
+     * closes them; its own thread reads them). */
     pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_t state = PTHREAD_MUTEX_INITIALIZER;
     bool loaded = false, failed = false;
     OpenFn open = nullptr;
     InputFn input = nullptr;
@@ -51,22 +68,15 @@ struct Capture
     int port = -1;
     unsigned rate = 16000; /* the console's input rate */
     pthread_t thread{};
-    bool running = false;
+    bool thread_started = false;
+    std::atomic<bool> running{false}; /* the capture thread is reading */
     std::atomic<bool> stop{false};
     std::int16_t ring[kRing] = {};
     std::size_t head = 0, count = 0; /* under lock */
-    int users = 0;                   /* microphones open */
+    int users = 0;                   /* under state */
+    Mic mics[kMics];
 };
 Capture g;
-
-/* One microphone as the core sees it: its rate, whether it's listening, and
- * where it is in the input (in the console's samples, fractional). */
-struct Mic
-{
-    unsigned rate = 16000;
-    bool active = false;
-    double position = 0;
-};
 
 bool load()
 {
@@ -105,14 +115,30 @@ void *capture(void *)
     std::int16_t block[kGrain];
     while (!g.stop.load(std::memory_order_relaxed))
     {
+        std::memset(block, 0, sizeof block);
         const int got = g.input(g.port, block); /* blocks for one grain */
         if (got < 0)
         {
             ps5::debug::mark_value("mic: input failed; the microphone stops", got);
             break;
         }
+        /* The count it read; a firmware that answers 0 with the block filled
+         * still counts as a grain, and an empty block isn't waited on. */
+        std::uint32_t n = std::min<std::uint32_t>(kGrain, std::uint32_t(got));
+        if (n == 0)
+        {
+            bool sound = false;
+            for (std::uint32_t k = 0; k < kGrain && !sound; ++k)
+                sound = block[k] != 0;
+            if (!sound)
+            {
+                usleep(4000); /* nothing yet: don't spin */
+                continue;
+            }
+            n = kGrain;
+        }
         pthread_mutex_lock(&g.lock);
-        for (std::uint32_t k = 0; k < kGrain; ++k)
+        for (std::uint32_t k = 0; k < n; ++k)
         {
             g.ring[g.head] = block[k];
             g.head = (g.head + 1) % kRing;
@@ -121,13 +147,31 @@ void *capture(void *)
         }
         pthread_mutex_unlock(&g.lock);
     }
+    g.running.store(false); /* a later open starts it again */
     return nullptr;
 }
 
-bool start()
+/* Under state. */
+void finish_locked()
 {
-    if (g.running)
+    if (!g.thread_started)
+        return;
+    g.stop.store(true);
+    pthread_join(g.thread, nullptr); /* the blocking read returns within a grain */
+    g.thread_started = false;
+    g.running.store(false);
+    if (g.port >= 0)
+        g.close(g.port);
+    g.port = -1;
+    ps5::debug::mark("mic: closed");
+}
+
+/* Under state. */
+bool start_locked()
+{
+    if (g.running.load())
         return true;
+    finish_locked(); /* a thread that stopped by itself: tidy it away first */
     if (!load())
         return false;
     std::int32_t user = -1;
@@ -152,35 +196,44 @@ bool start()
     if (g.port < 0)
         return false;
     g.stop.store(false);
+    pthread_mutex_lock(&g.lock);
     g.head = g.count = 0;
-    g.running = create_title_thread(&g.thread, capture, nullptr) == 0;
-    if (!g.running)
+    pthread_mutex_unlock(&g.lock);
+    g.running.store(true);
+    g.thread_started = create_title_thread(&g.thread, capture, nullptr) == 0;
+    if (!g.thread_started)
     {
+        g.running.store(false);
         g.close(g.port);
         g.port = -1;
     }
-    return g.running;
-}
-
-void finish()
-{
-    if (!g.running)
-        return;
-    g.stop.store(true);
-    pthread_join(g.thread, nullptr); /* the blocking read returns within a grain */
-    g.close(g.port);
-    g.port = -1;
-    g.running = false;
-    ps5::debug::mark("mic: closed");
+    return g.thread_started;
 }
 
 retro_microphone_t *RETRO_CALLCONV open_mic(const retro_microphone_params_t *params)
 {
-    if (!start())
-        return nullptr;
-    auto *m = new Mic();
-    m->rate = params && params->rate >= 4000 && params->rate <= 96000 ? params->rate : 16000;
-    ++g.users;
+    pthread_mutex_lock(&g.state);
+    Mic *m = nullptr;
+    if (start_locked())
+        for (Mic &slot : g.mics)
+        {
+            bool expected = false;
+            if (slot.used.compare_exchange_strong(expected, true))
+            {
+                m = &slot;
+                break;
+            }
+        }
+    if (m)
+    {
+        m->rate = params && params->rate >= 4000 && params->rate <= 96000 ? params->rate : 16000;
+        m->active.store(false);
+        pthread_mutex_lock(&g.lock);
+        m->position = 0;
+        pthread_mutex_unlock(&g.lock);
+        ++g.users;
+    }
+    pthread_mutex_unlock(&g.state);
     return reinterpret_cast<retro_microphone_t *>(m);
 }
 
@@ -188,12 +241,15 @@ void RETRO_CALLCONV close_mic(retro_microphone_t *mic)
 {
     if (!mic)
         return;
-    delete reinterpret_cast<Mic *>(mic);
-    if (--g.users <= 0)
+    Mic *m = reinterpret_cast<Mic *>(mic);
+    pthread_mutex_lock(&g.state);
+    m->active.store(false);
+    if (m->used.exchange(false) && --g.users <= 0)
     {
         g.users = 0;
-        finish();
+        finish_locked();
     }
+    pthread_mutex_unlock(&g.state);
 }
 
 bool RETRO_CALLCONV get_params(const retro_microphone_t *mic, retro_microphone_params_t *params)
@@ -208,12 +264,14 @@ bool RETRO_CALLCONV set_state(retro_microphone_t *mic, bool state)
 {
     if (!mic)
         return false;
-    reinterpret_cast<Mic *>(mic)->active = state;
+    Mic *m = reinterpret_cast<Mic *>(mic);
+    m->active.store(state);
     if (state)
     {
         /* Fresh sound from now: what was said before it listened isn't heard. */
         pthread_mutex_lock(&g.lock);
         g.count = 0;
+        m->position = 0;
         pthread_mutex_unlock(&g.lock);
     }
     return true;
@@ -221,7 +279,7 @@ bool RETRO_CALLCONV set_state(retro_microphone_t *mic, bool state)
 
 bool RETRO_CALLCONV get_state(const retro_microphone_t *mic)
 {
-    return mic && reinterpret_cast<const Mic *>(mic)->active;
+    return mic && reinterpret_cast<const Mic *>(mic)->active.load();
 }
 
 /* As many samples as are there (up to n), at the microphone's own rate. */
@@ -230,10 +288,18 @@ int RETRO_CALLCONV read_mic(retro_microphone_t *mic, std::int16_t *out, std::siz
     if (!mic || !out)
         return -1;
     Mic &m = *reinterpret_cast<Mic *>(mic);
-    if (!m.active || !g.running)
+    if (!m.used.load() || !m.active.load() || !g.running.load())
         return 0;
     const double step = double(g.rate) / double(m.rate);
     pthread_mutex_lock(&g.lock);
+    /* No more than about a seventh of a second waiting: a game that reads
+     * slowly hears what was said just now, not seconds ago. */
+    const std::size_t keep = g.rate / 7;
+    if (g.count > keep)
+    {
+        g.count = keep;
+        m.position = 0;
+    }
     std::size_t made = 0;
     const std::size_t tail = (g.head + kRing - g.count) % kRing;
     while (made < n)
@@ -267,7 +333,14 @@ void fill(retro_microphone_interface &iface)
 
 void close_all()
 {
+    pthread_mutex_lock(&g.state);
+    for (Mic &m : g.mics)
+    {
+        m.active.store(false);
+        m.used.store(false);
+    }
     g.users = 0;
-    finish();
+    finish_locked();
+    pthread_mutex_unlock(&g.state);
 }
 } // namespace porpoise::mic

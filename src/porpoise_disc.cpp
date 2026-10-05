@@ -303,7 +303,8 @@ public:
         compressed = le64(h + 8);
         block = le32(h + 24);
         const u32 blocks = le32(h + 28);
-        if (block == 0 || blocks == 0 || block > kMaxBuffer || u64(blocks) * 12 > file.size || compressed > file.size)
+        if (block == 0 || blocks == 0 || block > kMaxBuffer || u64(blocks) * 12 > file.size || compressed > file.size ||
+            u64(blocks) * 8 > kMaxBuffer)
             return false;
         std::vector<u8> raw(std::size_t(blocks) * 8);
         if (!file.read(32, raw.data(), raw.size()))

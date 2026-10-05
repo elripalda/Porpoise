@@ -37,7 +37,7 @@ namespace
 constexpr unsigned out_rate = 48000;
 constexpr std::size_t grain = 256;                 /* frames per AudioOut write */
 constexpr std::size_t ring_frames = 16384;         /* ~340 ms */
-std::size_t target_frames = 2304;                  /* ~48 ms queued (Settings > Audio > Audio buffer) */
+std::size_t g_target_frames = 2304;                  /* ~48 ms queued (Settings > Audio > Audio buffer) */
 bool stretching = false;                           /* Settings > Audio > Audio stretching */
 constexpr std::uint32_t already_initialized = 0x8026000e;
 
@@ -167,13 +167,14 @@ void push(const std::int16_t *frames, std::size_t count)
     pthread_mutex_lock(&a.mutex);
     /* Nudge the ratio toward the target depth: a fuller queue plays slightly
      * slower input (fewer output frames), an emptier one slightly more. */
-    const double fill_error = (static_cast<double>(target_frames) - static_cast<double>(a.count)) /
-                              static_cast<double>(target_frames);
+    const double fill_error = (static_cast<double>(g_target_frames) - static_cast<double>(a.count)) /
+                              static_cast<double>(g_target_frames);
     /* Stretching: when the queue runs low (the game is running slow), the
      * sound is drawn out by up to 8% (a little lower) instead of running dry
      * and crackling; otherwise at most 0.5%, which no one hears. */
-    const double reach = stretching && fill_error > 0.5 ? 0.08 : 0.005;
-    const double nudge = std::clamp(fill_error * (stretching ? 0.08 : 0.005), -0.005, reach);
+    double nudge = std::clamp(fill_error * 0.005, -0.005, 0.005);
+    if (stretching && fill_error > 0.5)
+        nudge = std::min(0.08, 0.0025 + (fill_error - 0.5) * 0.155); /* continuous from the usual nudge: no jump */
     const double step = a.source_rate / out_rate * (1.0 - nudge);
 
     for (std::size_t i = 0; i < count; ++i)
@@ -195,7 +196,12 @@ void push(const std::int16_t *frames, std::size_t count)
 
 void set_buffer(int level)
 {
-    target_frames = level <= 0 ? 1152 : level >= 2 ? 4608 : 2304; /* ~24, 48 or 96 ms */
+    g_target_frames = level <= 0 ? 1152 : level >= 2 ? 4608 : 2304; /* ~24, 48 or 96 ms */
+}
+
+std::size_t target_frames()
+{
+    return g_target_frames;
 }
 
 void set_stretching(bool on)

@@ -11,6 +11,7 @@
  * the title's symbols (build/core_imports.inc). */
 #include "porpoise_core.hpp"
 #include "porpoise_mic.hpp"
+#include "porpoise_speaker.hpp"
 #include "porpoise_states.hpp"
 
 #include <ps5platform/libc.h>
@@ -1306,6 +1307,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     if (!h.hw_requested)
     {
         ps5::debug::mark("core: did not ask for Vulkan; Porpoise needs it");
+        porpoise::mic::close_all();
         h.api.unload_game();
         h.api.deinit();
         unload_core();
@@ -1319,6 +1321,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     porpoise::vk::close_device();
     if (!porpoise::vk::open_device(h.negotiation))
     {
+        porpoise::mic::close_all();
         h.api.unload_game();
         h.api.deinit();
         unload_core();
@@ -1330,6 +1333,19 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     if (h.hw.context_reset)
         h.hw.context_reset();
     ps5::debug::mark("core: context_reset done; running");
+    /* Only now, with no early way out left before the game runs: the thread
+     * must stop before the core goes (it does, after the loop). */
+    if (playback.controller_speakers)
+    {
+        /* The patched core hands each Remote's sound over; an older core
+         * without it leaves the routing doing nothing worse than silence. */
+        auto mix = reinterpret_cast<porpoise::speaker::MixFn>(ps5_core_dlsym(h.library, "porpoise_mix_wiimote_speaker"));
+        auto rate = reinterpret_cast<porpoise::speaker::RateFn>(ps5_core_dlsym(h.library, "porpoise_wiimote_speaker_rate"));
+        if (mix && rate)
+            porpoise::speaker::start(mix, rate);
+        else
+            ps5::debug::mark("core: no Remote speaker export in this core");
+    }
     if (const char *cpus = std::getenv("PORPOISE_VIDEO_THREAD_CPUS"))
     {
         /* Emulator on its own cores (porpoise_main.cpp, keep_cores): this
@@ -1364,8 +1380,11 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
      * frame times uneven (Wii Sports logged 140-370 ms of waiting a second at
      * full speed). Two frames' worth above the target leaves pacing to the
      * clock and keeps the speakers as the catch for a runaway only. */
-    const std::size_t kAudioHighWater = 2304 + 2 * std::size_t(48000.0 / (h.fps > 10.0 ? h.fps : 60.0)) + 256;
-    constexpr std::size_t kAudioBackstop = 4800;         /* ~100 ms: locked to the display */
+    /* Both follow Settings > Audio > Audio buffer (porpoise_audio's target
+     * depth; 2304 frames for Normal, as these were tuned for). */
+    const std::size_t target = porpoise::audio::target_frames();
+    const std::size_t kAudioHighWater = target + 2 * std::size_t(48000.0 / (h.fps > 10.0 ? h.fps : 60.0)) + 256;
+    const std::size_t kAudioBackstop = target + 2496;    /* ~100 ms at Normal: locked to the display */
     porpoise::pacer::Pacer pacer;
     auto content_hz = [] { return h.fps > 10.0 && h.fps < 60.5 ? h.fps : 60.0; };
     pacer.start(content_hz(), "game");
@@ -1595,6 +1614,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     h.running = false;
     h.fast_forward = 1;
     porpoise::mic::close_all(); /* no game listening any more */
+    porpoise::speaker::stop();   /* before the core and its mixer go */
     porpoise::audio::flush();
     porpoise::vk::close();
     /* Everything Porpoise made on the core's device goes before the core

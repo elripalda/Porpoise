@@ -4042,5 +4042,189 @@
  {
   "en": "Choose a look to start with. You can change it any time in Settings > Interface.",
   "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "No channels here",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "1 channel",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "{n} channels",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Channels",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Channel",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Virtual Console",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "WiiWare",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Homebrew",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Accurate audio",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Wii Remote speaker",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Audio buffer",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Audio stretching",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Microphone",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Wii widescreen",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "PAL games at 60 Hz",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Sensor bar",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Start Wii discs in the Wii Menu",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "GameCube boot animation",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Dolphin's exact sound chip (LLE) instead of its fast one: fixes missing or wrong sound in a few games, but needs much more of the processor. Best turned on for one game.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Sounds Wii games play from the Remote's own speaker (a bow, an item box): in the TV's sound, or from each player's controller, as on a Wii.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "How much sound is kept ready. Safe holds more, against crackling in demanding games, for a little delay.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "When a game slows down, its sound slows with it, slightly lower, instead of crackling.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "The DualSense's microphone as the GameCube Microphone (Mario Party 6 and 7; R3 is its button) and the Wii Speak.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Which console's controls the game gets: as Porpoise detected it, or GameCube or Wii, for a game it got wrong.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "In a game, touch pad + R1 steps fast forward (off, 2x, 4x) and touch pad + R2 fast-forwards while held. On a Wii Remote, the touch pad's Minus then goes when you let go of it.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "The Wii's own 16:9 setting, which Wii games follow. Off: 4:3.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "European Wii games run at 60 Hz, as a Wii set to EURGB60 does. Off: 50 Hz.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Where the Wii is told its sensor bar sits.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Wii discs start from the Wii Menu, as on a Wii. Needs your own Wii Menu, installed from your own console (its WAD in your games). Porpoise includes none.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in /data/porpoise/bios/USA, EUR or JAP. Porpoise includes none.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Help, bug reports, news and the community, on the RIPALDA Discord. Scan the code with your phone to join.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Cross gathers Porpoise's logs into /data/porpoise/reports (and onto a USB drive, when one is in). Share them in the Discord's bug reports with the game and what happened.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Porpoise, its menus, music and sounds: Ruben. @elripalda - ripalda.dev",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Ruben's projects, news and downloads, with links to the Discord and more.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Nunito; Noto Sans JP, SC, TC and KR; M PLUS 1; JetBrains Mono; VT323; Doto; Exo 2; and Lora (as Porpoise Serif). All under the SIL Open Font License.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "It's in {path}. Scan the code beside Report a bug to join the Discord, and share its files in the bug reports.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "It's in {path}, and on your USB drive as {usb}. Scan the code beside Report a bug to join the Discord, and share its files in the bug reports.",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Controller",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Low",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Below the TV",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Above the TV",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Console",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Fast forward buttons",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Discord",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "Fonts",
+  "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "TV",
+  "section": "2.0: channels, sound, Wii options, About"
  }
 ]

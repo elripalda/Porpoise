@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 1.5.1</b></a> ·
+  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 2.0</b></a> ·
   <a href="#install">Install</a> ·
   <a href="#controls">Controls</a> ·
   <a href="BUILDING.md">Build from source</a> ·
@@ -42,8 +42,11 @@ BIOS or firmware files.
 - Porpoise looks for games in the usual folders and on USB and extended drives
   (see [Adding games](#adding-games)). You can also add your own folders; each
   is searched four levels deep.
-- Formats: `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`.
-- Sort by title, recently played, most played or favourites first. Each game
+- Formats: `.iso`, `.gcm`, `.rvz`, `.ciso`, `.gcz`, `.wbfs` and `.wia`, plus
+  WiiWare, Virtual Console and channels as `.wad`, and homebrew apps (see
+  [Channels, WiiWare and homebrew](#channels-wiiware-and-homebrew)).
+- **Filter** the library to everything, GameCube, Wii or Channels.
+- Sort by title, recently played, most played or favorites first. Each game
   shows its play time and when you last played it.
 
 ### Revolution theme
@@ -55,13 +58,13 @@ BIOS or firmware files.
 - **Point with the controller:** a hand pointer that follows the DualSense,
   opens over empty space, points over anything you can choose and leans as you
   twist. The D-pad works too, the touch pad turns pointing on and off, and R3
-  centres it.
+  centers it.
 - **Wii games play their own tile and banner**, animated, read from the disc
   (any of the formats above), with the banner's jingle when a tile opens.
   GameCube games show their covers.
 - **Cross** on a tile grows it to fill the screen and opens it, with **Wii
   Controls** (or **Game Settings**) and **Start**, plus save states, save data
-  and favourite. **Square** on a tile plays it straight away.
+  and favorite. **Square** on a tile plays it straight away.
 - Memory Cards, Settings, dialogs and the in-game menu all go white with it.
   Switching to Revolution shows your Wii games and Wii saves; switching back
   shows every game and the GameCube cards.
@@ -70,16 +73,16 @@ BIOS or firmware files.
 - Each Wii game gets a Wii controller: **Remote + Nunchuk** (the default),
   **Remote**, **Remote sideways**, **Classic Controller**, or **two
   controllers** (alpha: a second DualSense is the Nunchuk).
-- The Remote's pointer comes from the gyro (hold R1 a moment to centre it),
+- The Remote's pointer comes from the gyro (hold R1 a moment to center it),
   the touch pad or the right stick. The DualSense's motion is the Remote's,
   and a quick flick shakes it.
-- **Wii Remote setup:** pick the controller, centre, then point at two corners
+- **Wii Remote setup:** pick the controller, center, then point at two corners
   of your screen, so the pointer matches your TV and how far away you sit. It
   can come up before each Wii game (Triangle skips it), has Simple and Advanced
   modes and keeps up to four presets.
 - **Grip:** Auto reads how you're holding the DualSense, or choose one.
   **How to hold it** (Settings → Wii Remote) draws the DualSense as each Wii
-  controller with every button labelled.
+  controller with every button labeled.
 
 ### Box art and game info
 - Front covers, back covers and disc art download from
@@ -97,7 +100,7 @@ BIOS or firmware files.
 - From here: **Play**, **Save states**, **Game settings** and **Save data**.
 - **Save states:** three slots per game, each with a picture. You can start a
   game from any of them.
-- **Options** marks a game as a favourite, here or in the library.
+- **Options** marks a game as a favorite, here or in the library.
 
 ### Memory cards
 - Slot A and Slot B side by side, with each save's icon, banner, title, block
@@ -118,7 +121,7 @@ BIOS or firmware files.
   control plays. Pick a GameCube button, press the DualSense button you want,
   and the two swap. It also works from the in-game menu.
 - Any game can use any layout. Analog L and R follow the triggers.
-- The light bar shows each player's colour.
+- The light bar shows each player's color.
 
 ### Settings
 Settings are split into sections:
@@ -127,13 +130,13 @@ Settings are split into sections:
 |---|---|
 | **Video** | Internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
 | **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
-| **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume |
-| **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, connected controllers |
+| **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume; and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller), **audio buffer**, **audio stretching** and the **microphone** (see [Sound](#sound-beta)) |
+| **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, **fast forward buttons**, connected controllers; per game, **Console** (Auto, GameCube or Wii) for a game Porpoise detected wrong |
 | **Wii Remote** | Wii Remote setup, presets, setup before each Wii game, How to hold it, Wii controller, pointer, pointer speed, grip, motion, flick to shake |
-| **System** | Emulated CPU clock (50–300%), dual core, fast disc loading, cheats, console language, progressive scan |
+| **System** | Emulated CPU clock (50–300%), dual core, emulator on its own cores, exact multiply-add, fast disc loading, cheats, console language, progressive scan; and, in beta, **Wii widescreen**, **PAL games at 60 Hz**, **sensor bar** position, **start Wii discs in the Wii Menu** and the **GameCube boot animation** (see [Your own BIOS and Wii Menu](#your-own-bios-and-wii-menu-beta)) |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info |
-| **Interface** | Menu language, **Theme** (Porpoise or Revolution), Revolution's home screen and pointer, reduced motion, larger text, **reset all settings** |
-| **About** | Version, **Updates** (check GitHub and install a new Porpoise), a QR code for reporting a bug, and credits |
+| **Interface** | Menu language, **Theme** (fifteen, among them Porpoise, Star Cube and Revolution), **Colors**, **Font**, library and Memory Cards views, Revolution's home screen and pointer, **reset all settings**, **Reinitialize Porpoise** |
+| **About** | Version, **Updates** (check GitHub and install a new Porpoise), the **Discord** for help and bug reports (with a QR code), **Report a bug**, and credits |
 
 - **Per-game settings.** Any game can override the Video, Graphics, Audio, Controls
   and System settings. Changed values show in blue, and *This game → Reset to
@@ -156,8 +159,8 @@ Settings are split into sections:
 ### Screen filters and borders
 - **Screen filters:** *Smooth*, *Sharp*, *Sharpen*, *CRT* (scanlines and an
   aperture grille), *Arcade CRT* (a curved tube with rounded corners), *VHS*
-  (tracking wobble, colour bleed and tape noise), *Soft VHS* (soft, faded
-  colour and a gentle glow, no glitches), *8-bit* (a small palette, big pixels
+  (tracking wobble, color bleed and tape noise), *Soft VHS* (soft, faded
+  color and a gentle glow, no glitches), *8-bit* (a small palette, big pixels
   and dithering) and *Pocket* (a four-green handheld screen), each with a
   strength.
 - **Borders** fill the bars beside a 4:3 picture when widescreen is off:
@@ -190,6 +193,11 @@ menu opens, with four tabs (**L1 / R1**):
 
 Changes apply immediately and are saved for that game.
 
+**Fast forward without the menu:** with **Settings → Controls → Fast forward
+buttons** on (the default), **touch pad + R1** steps fast forward (off, 2x,
+4x) and **touch pad + R2** fast-forwards while you hold it. A quick press of
+the touch pad alone still reaches the game.
+
 When you resume, the game ignores your buttons until you let go, so the press
 that closed the menu never reaches the game.
 
@@ -197,6 +205,22 @@ that closed the menu never reaches the game.
 - Original menu music and sound effects by Ruben. The music fades out when a
   game starts and comes back in the library.
 - Music and effects each have their own switch and volume.
+
+### Sound (beta)
+Settings → Audio, for every game or one:
+- **Accurate audio:** Dolphin's exact sound chip (LLE) instead of its fast one.
+  It fixes missing or wrong sound in a few games but needs much more of the
+  processor, so turn it on for the game that needs it.
+- **Wii Remote speaker:** the sounds Wii games play from the Remote's own
+  speaker. *TV* mixes them into the game's sound; *Controller* plays them from
+  each player's DualSense, as on a Wii (if a controller's speaker can't be
+  opened, they stay on the TV).
+- **Audio buffer:** *Low*, *Normal* or *Safe*. Safe keeps more sound ready,
+  against crackling in demanding games, for a little delay.
+- **Audio stretching:** when a game slows down, its sound slows with it,
+  slightly lower, instead of crackling.
+- **Microphone:** the DualSense's microphone becomes the GameCube Microphone
+  (Mario Party 6 and 7: hold **R3** to talk) and the Wii Speak.
 
 ### Languages
 - **Sixteen languages**, each with its flag in the language list (Chinese
@@ -237,7 +261,7 @@ that closed the menu never reaches the game.
 
 ## Install
 
-1. Download **`Porpoise-1.5.1.zip`** from the
+1. Download **`Porpoise-2.0.zip`** from the
    [latest release](https://github.com/elripalda/Porpoise/releases/latest) and
    unzip it on your computer. You get a folder named **`PPSA99764`**.
 2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
@@ -287,6 +311,33 @@ to it, and press **Square**. The browser shows the game files in each folder,
 so you can see where they are. Porpoise searches that folder and four levels
 below it. After copying new games, use **Search for games now**.
 
+### Channels, WiiWare and homebrew
+Porpoise ships no Nintendo files of any kind: everything here comes from your
+own console.
+
+- **WiiWare, Virtual Console and channels:** put the `.wad` files you made
+  from your own Wii in any games folder. They appear in the library with
+  their names and banners, marked *WiiWare*, *Virtual Console* or *Channel*
+  (the **Channels** filter shows only them). Start one like any game; its saves
+  stay in Dolphin's Wii storage between runs.
+- **Homebrew apps:** keep each app in its own folder, as the Homebrew Channel
+  does: `boot.dol` (or `boot.elf`) next to its `meta.xml` and `icon.png`, for
+  example `/data/porpoise/games/apps/MyApp/`. The app shows with its name and
+  icon. A `.dol` or `.elf` without a `meta.xml` beside it isn't listed.
+- **A game shows as GameCube but is a Wii game** (or the other way round)?
+  Open its settings: **Controls → Console** sets it to GameCube or Wii.
+
+### Your own BIOS and Wii Menu (beta)
+- **GameCube boot animation:** copy the `IPL.bin` you dumped from your own
+  GameCube to `/data/porpoise/bios/USA/`, `EUR/` or `JAP/` (the region of the
+  games you play), then turn on **Settings → System → GameCube boot
+  animation**. GameCube games then start with the console's own start-up. If
+  there's no `IPL.bin` for a game's region, the game starts as usual.
+- **Wii Menu:** put the Wii Menu `.wad` from your own Wii in a games folder and
+  start it once from the library; it stays installed. With **Settings → System
+  → Start Wii discs in the Wii Menu** on, Wii discs then start from the Wii
+  Menu, as on a Wii.
+
 ### Playing from a USB or external drive
 
 1. **Format the drive as exFAT** on your computer. FAT32 also works but can't
@@ -323,7 +374,7 @@ FTP instead (for example into `/mnt/ext0/games/`).
 | **Circle** | – | Back to the library | Back |
 | **Square** | Open Details | – | Copy to the other slot |
 | **Triangle** | Sort | Front / back of the box | Delete |
-| **Options** | Favourite | Favourite | – |
+| **Options** | Favorite | Favorite | – |
 | **L2 / R2** | – | Previous / next game | – |
 | **Right stick** | – | Turn the box | – |
 | **L1 / R1** | Switch tabs: Library, Memory Cards, Settings | | |
@@ -333,6 +384,9 @@ FTP instead (for example into `/mnt/ext0/games/`).
 | Button | Action |
 |---|---|
 | **Options + touch pad** | Pause and open the in-game menu |
+| **Touch pad + R1** | Fast forward: off, 2x, 4x |
+| **Touch pad + R2** (hold) | Fast forward while held |
+| **R3** (hold) | Talk into the GameCube Microphone (with Microphone on) |
 | **Circle** (in the menu) | Resume |
 | **L1 / R1** (in the menu) | Switch tabs: Game, Video, Graphics, Controls |
 
@@ -372,6 +426,8 @@ becomes the next player, up to four, and can join in the middle of a game.
 | `/data/porpoise/saves/User/Wii/backups/` | Wii saves you backed up from Memory Cards |
 | `/data/porpoise/latest-release.json` | What GitHub last said about the newest release |
 | `/data/porpoise/lang/` | Your own translation fixes (optional) |
+| `/data/porpoise/bios/` | Your own GameCube BIOS, as `USA/IPL.bin`, `EUR/IPL.bin` or `JAP/IPL.bin` (optional) |
+| `/data/porpoise/cache/` | The menus' lettering, made once at the first start |
 
 ## Troubleshooting
 
@@ -404,6 +460,12 @@ becomes the next player, up to four, and can join in the middle of a game.
   the daemon wasn't up, or running, on the later launch. Until it's freed,
   Porpoise keeps its things in the app's own folder
   (`/data/homebrew/PPSA99764/porpoise/`).
+- **Porpoise closes by itself just after it opens** (seen with etaHEN 2.6b's
+  jailbreak list on firmware 13.60)? Once freed from the sandbox, Porpoise reads
+  every game and banner it can find, and 2.0 reads damaged or unusual files far
+  more carefully. If it still happens, take the game files out of the way a
+  few at a time to find the one it trips on, and share `trace.txt` (below) on
+  the Discord.
 - **A game runs slowly?** Open its settings and look at **Recommended**: some
   of Dolphin's own fixes for a game cost speed on PS5, and Porpoise's picks
   turn them off where that's been tested. The speed line in `core.log` (below)
@@ -450,7 +512,7 @@ Porpoise was created by **Ruben ([@elripalda](https://ripalda.dev))**: the
 design, the launcher, the logo, the menu music and the sound effects.
 [ripalda.dev](https://ripalda.dev) · [Discord](https://discord.gg/GgDE5Vynyu)
 
-It stands on the work of many people. The full list, with licences, is in
+It stands on the work of many people. The full list, with licenses, is in
 **[CREDITS.md](CREDITS.md)**:
 
 - **[Dolphin](https://dolphin-emu.org)** by the Dolphin Emulator Project, the
@@ -513,7 +575,7 @@ Porpoise.
 Porpoise is free software, licensed under the
 **[GNU General Public License v3.0 or later](LICENSE)**. Parts carried over
 from other projects keep their own notices. Every component that ships in the
-app, with its licence and exact source revision, is listed in
+app, with its license and exact source revision, is listed in
 `licenses/README.txt` inside the release and in [CREDITS.md](CREDITS.md).
 
 <p align="center"><sub>Made with care by <a href="https://ripalda.dev">@elripalda</a> · <a href="https://discord.gg/GgDE5Vynyu">Discord</a></sub></p>

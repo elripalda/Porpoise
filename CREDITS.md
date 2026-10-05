@@ -15,11 +15,11 @@ to the PS5. His PS5 RetroArch port — the Dolphin PS5 patch, the in-process cor
 loader, threads, memory and crash reports — and his PS5_Vulkan and PS5_Mesa
 work, which put Vulkan on the PS5 through Mesa's RADV, are what Porpoise is
 built on. Porpoise began as a fork of his PS5 RetroArch, and it would not exist
-without him. Details and licences are under [PS5 platform](#ps5-platform).
+without him. Details and licenses are under [PS5 platform](#ps5-platform).
 
 ## Emulation
 
-| Project | Role in Porpoise | Licence |
+| Project | Role in Porpoise | License |
 |---|---|---|
 | [Dolphin](https://dolphin-emu.org) by the Dolphin Emulator Project and contributors | The GameCube and Wii emulator. Every game runs on Dolphin. | GPL-2.0-or-later |
 | [libretro/dolphin](https://github.com/libretro/dolphin) | Dolphin packaged as a libretro core, tracking upstream Dolphin | GPL-2.0-or-later |
@@ -32,11 +32,11 @@ Porpoise builds Dolphin from libretro/dolphin revision
 
 ## PS5 platform
 
-| Project | Role in Porpoise | Licence |
+| Project | Role in Porpoise | License |
 |---|---|---|
 | [PS5 RetroArch](https://github.com/mihawk-99/PS5_RetroArch) by **Mihawk (mihawk-99)** | Porpoise began as a fork of it. The Dolphin PS5 port patch, the in-process core loader, threads, memory, crash reports and the build scripts all come from there. | GPL-3.0-or-later |
 | [PS5_Vulkan](https://github.com/mihawk-99/PS5_Vulkan) by **Mihawk (mihawk-99)** | Vulkan on PS5: the RADV link recipe and linker script | GPL-3.0-or-later |
-| [PS5_Mesa](https://github.com/mihawk-99/PS5_Mesa) by **Mihawk (mihawk-99)**, on [Mesa](https://mesa3d.org) | Mesa's **RADV** Vulkan driver with a PS5 winsys: everything Porpoise and Dolphin draw goes through it | MIT and per-file licences |
+| [PS5_Mesa](https://github.com/mihawk-99/PS5_Mesa) by **Mihawk (mihawk-99)**, on [Mesa](https://mesa3d.org) | Mesa's **RADV** Vulkan driver with a PS5 winsys: everything Porpoise and Dolphin draw goes through it | MIT and per-file licenses |
 | [ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk) by **John Törnblom** and contributors, with [Mihawk's fork](https://github.com/mihawk-99/PS5_PayloadSDK) | The toolchain, headers and platform layer | GPL-3.0-or-later |
 | **BlackBearReloaded**: ps5-native-app-boilerplate and ProsperoLight | The native title pipeline: ELF to signed `eboot.bin`, the generated `libc.prx` loader companion | GPL-3.0-or-later |
 | [LLVM](https://llvm.org) libc++, libc++abi, libunwind, compiler-rt | The C++ runtime, linked from the SDK release | Apache-2.0 WITH LLVM-exception |
@@ -45,7 +45,7 @@ Porpoise builds Dolphin from libretro/dolphin revision
 
 ## Launcher
 
-| Project | Role in Porpoise | Licence |
+| Project | Role in Porpoise | License |
 |---|---|---|
 | [GameTDB](https://www.gametdb.com) and its contributors | Box art, back covers, disc art and game details, downloaded on the console. Nothing from GameTDB ships with Porpoise. | GameTDB terms |
 | [PS5 Button Icons and Controls](https://zacksly.itch.io) by **Zacksly** ([@_Zacksly](https://twitter.com/_Zacksly)) | The DualSense drawings on the button-mapping screen and the in-game Controls tab, and every button icon in the menus. Modified for Porpoise: rendered to PNG, the PlayStation logo and the pack's own labels removed, lines thickened (`tools/make-controller-art.py`; originals in `third_party/zacksly-ps5-icons`). | CC BY 3.0 |
@@ -72,7 +72,7 @@ material from them.
 
 ---
 
-Every component that ships inside the app, with its licence text and the exact
+Every component that ships inside the app, with its license text and the exact
 source revision it was built from, is listed in `licenses/README.txt` and
 `licenses/components.json` in the release folder.
 

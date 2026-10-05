@@ -332,7 +332,7 @@ void App::add_game_rows(Settings &t, bool per_game)
         SettingRow r;
         r.section = section;
         r.key = key;
-        r.label = tr(label);
+        r.label = beta_label(label, r.beta); /* "... (beta)": a BETA badge */
         r.help = tr(help);
         r.int_value = value;
         r.min = min;
@@ -449,9 +449,10 @@ void App::add_game_rows(Settings &t, bool per_game)
            "Dolphin's exact sound chip (LLE) instead of its fast one: fixes missing or wrong sound in a few games, but "
            "needs much more of the processor. Best turned on for one game.",
            &t.dsp_accurate);
-    toggle("wiimote_speaker", "Wii Remote speaker (beta)",
-           "Sounds Wii games play from the Remote's own speaker (a bow, an item box), in the TV's sound.",
-           &t.wiimote_speaker);
+    choice("wiimote_speaker", "Wii Remote speaker (beta)",
+           "Sounds Wii games play from the Remote's own speaker (a bow, an item box): in the TV's sound, or from "
+           "each player's controller, as on a Wii.",
+           &t.wiimote_speaker, 0, {"Off", "TV", "Controller"});
     choice("audio_buffer", "Audio buffer (beta)",
            "How much sound is kept ready. Safe holds more, against crackling in demanding games, for a little delay.",
            &t.audio_buffer, 0, {"Low", "Normal", "Safe"});

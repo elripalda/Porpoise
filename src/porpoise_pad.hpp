@@ -265,6 +265,8 @@ const State &state(int player = 0);
 /* A copy taken under the lock, for the core's own thread. */
 State snapshot(int player);
 bool connected(int player);
+/* The PS5 user holding player's controller (-1 none): for its speaker. */
+std::int32_t user_of(int player);
 int connected_count();
 /* Put the pointer back in the middle (R1 does it too). */
 void recenter(int player);

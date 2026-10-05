@@ -40,6 +40,54 @@ index 01b03ecee5..30a51970cc 100644
    add_subdirectory(Externals/cpp-ipc)
    add_definitions(-DHAVE_CPPIPC)
  endif()
+diff --git a/Source/Core/AudioCommon/AudioCommon.cpp b/Source/Core/AudioCommon/AudioCommon.cpp
+index 86cd50b192..2a601ab81d 100644
+--- a/Source/Core/AudioCommon/AudioCommon.cpp
++++ b/Source/Core/AudioCommon/AudioCommon.cpp
+@@ -3,6 +3,8 @@
+ 
+ #include "AudioCommon/AudioCommon.h"
+ 
++#include <mutex>
++
+ #include <fmt/chrono.h>
+ #include <fmt/format.h>
+ 
+@@ -56,6 +58,10 @@ static std::unique_ptr<SoundStream> CreateSoundStreamForBackend(std::string_view
+   return {};
+ }
+ 
++// Porpoise: held while the sound stream is set or freed, and while the
++// frontend pulls a Wii Remote's speaker from its mixer (DolphinLibretro/Audio.cpp).
++std::mutex g_porpoise_sound_stream_lock;
++
+ void InitSoundStream(Core::System& system)
+ {
+   std::string backend = Config::Get(Config::MAIN_AUDIO_BACKEND);
+@@ -76,7 +82,10 @@ void InitSoundStream(Core::System& system)
+     sound_stream->Init();
+   }
+ 
+-  system.SetSoundStream(std::move(sound_stream));
++  {
++    std::lock_guard<std::mutex> lock(g_porpoise_sound_stream_lock);
++    system.SetSoundStream(std::move(sound_stream));
++  }
+ }
+ 
+ void PostInitSoundStream(Core::System& system)
+@@ -98,7 +107,10 @@ void ShutdownSoundStream(Core::System& system)
+     StopAudioDump(system);
+ 
+   SetSoundStreamRunning(system, false);
+-  system.SetSoundStream(nullptr);
++  {
++    std::lock_guard<std::mutex> lock(g_porpoise_sound_stream_lock);
++    system.SetSoundStream(nullptr);
++  }
+ 
+   INFO_LOG_FMT(AUDIO, "Done shutting down sound stream");
+ }
 diff --git a/Source/Core/Common/BlockingLoop.h b/Source/Core/Common/BlockingLoop.h
 index 472a84b1f6..b4ad7a6dcd 100644
 --- a/Source/Core/Common/BlockingLoop.h
@@ -358,6 +406,24 @@ index 41afff087b..a5750cca86 100644
  #elif defined __FreeBSD__ || defined __OpenBSD__
    pthread_set_name_np(pthread_self(), name);
  #elif defined(__NetBSD__)
+diff --git a/Source/Core/Core/Boot/Boot_WiiWAD.cpp b/Source/Core/Core/Boot/Boot_WiiWAD.cpp
+index c4b5419a69..71778b9600 100644
+--- a/Source/Core/Core/Boot/Boot_WiiWAD.cpp
++++ b/Source/Core/Core/Boot/Boot_WiiWAD.cpp
+@@ -32,7 +32,12 @@ bool CBoot::BootNANDTitle(Core::System& system, const u64 title_id)
+ 
+ bool CBoot::Boot_WiiWAD(Core::System& system, const DiscIO::VolumeWAD& wad)
+ {
+-  if (!WiiUtils::InstallWAD(*system.GetIOS(), wad, WiiUtils::InstallType::Temporary))
++  // Porpoise: a system title (the Wii Menu) the player boots from their own WAD stays
++  // installed, so "boot to the Wii Menu" keeps finding it after other channels are played.
++  const bool system_title = (wad.GetTMD().GetTitleId() >> 32) == 0x00000001;
++  if (!WiiUtils::InstallWAD(*system.GetIOS(), wad,
++                            system_title ? WiiUtils::InstallType::Permanent :
++                                           WiiUtils::InstallType::Temporary))
+   {
+     PanicAlertFmtT("Cannot boot this WAD because it could not be installed to the NAND.");
+     return false;
 diff --git a/Source/Core/Core/Config/MainSettings.cpp b/Source/Core/Core/Config/MainSettings.cpp
 index f0cc8511b7..ffbcace60a 100644
 --- a/Source/Core/Core/Config/MainSettings.cpp
@@ -599,6 +665,57 @@ index 1248b1ab01..6a796b4834 100644
    m_system.GetJitInterface().UpdateMembase();
  
    CompiledCode pExecAddr = (CompiledCode)asm_routines.enter_code;
+diff --git a/Source/Core/DolphinLibretro/Audio.cpp b/Source/Core/DolphinLibretro/Audio.cpp
+index a96698067d..a4853c3586 100644
+--- a/Source/Core/DolphinLibretro/Audio.cpp
++++ b/Source/Core/DolphinLibretro/Audio.cpp
+@@ -1,8 +1,10 @@
+ #include <libretro.h>
++#include <mutex>
+ #include "Audio.h"
+ #include "Common/Logging/Log.h"
+ #include "Common/Thread.h"
+ #include "Core/Config/MainSettings.h"
++#include "Core/System.h"
+ #include "AudioCommon/AudioCommon.h"
+ #include "VideoCommon/Present.h"
+ #include "DolphinLibretro/Common/Globals.h"
+@@ -451,6 +453,35 @@ void retroarch_audio_buffer_status_cb(bool active,
+   Libretro::Audio::g_buf_underrun.store(underrun_likely, std::memory_order_relaxed);
+ }
+ 
++// Porpoise: the Wii Remotes' speakers on their own, for the controllers'
++// speakers. With Core/WiimoteAudioRoutingEnabled (and WiimoteNAudioOutputEnabled)
++// the mixer leaves a Remote's sound out of the TV's and keeps it for these.
++namespace AudioCommon
++{
++extern std::mutex g_porpoise_sound_stream_lock;
++}
++using AudioCommon::g_porpoise_sound_stream_lock;
++
++extern "C" __attribute__((visibility("default"))) size_t porpoise_mix_wiimote_speaker(unsigned index, int16_t* stereo,
++                                                                                    size_t frames)
++{
++  // The stream can be freed by the emulation thread at any time: not while this holds the lock.
++  std::lock_guard<std::mutex> lock(g_porpoise_sound_stream_lock);
++  SoundStream* sound_stream = Core::System::GetInstance().GetSoundStream();
++  if (!sound_stream || !sound_stream->GetMixer() || !stereo)
++    return 0;
++  return sound_stream->GetMixer()->MixWiimoteSpeaker(index, stereo, frames);
++}
++
++extern "C" __attribute__((visibility("default"))) unsigned porpoise_wiimote_speaker_rate()
++{
++  std::lock_guard<std::mutex> lock(g_porpoise_sound_stream_lock);
++  SoundStream* sound_stream = Core::System::GetInstance().GetSoundStream();
++  if (!sound_stream || !sound_stream->GetMixer())
++    return 0;
++  return sound_stream->GetMixer()->GetSampleRate();
++}
++
+ // retroarch hooks
+ extern "C" {
+ 
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
 index c53281053f..ffea2d747d 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp

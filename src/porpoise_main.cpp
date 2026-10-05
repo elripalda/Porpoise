@@ -34,6 +34,7 @@
 #include "porpoise_audio.hpp"
 #include "porpoise_borders.hpp"
 #include "porpoise_core.hpp"
+#include "porpoise_speaker.hpp"
 #include "porpoise_banner.hpp"
 #include "porpoise_covers.hpp"
 #include "porpoise_jailbreak.hpp"
@@ -177,6 +178,7 @@ bool g_menu_open = false;
 /* Black over the screen with Porpoise's mark (App::draw_curtain): leaving a
  * game, coming back to the library, and the start. */
 float g_curtain = 0.0f;
+bool g_controller_speakers = false; /* this game's Remote sounds go to the controllers */
 porpoise::ui::App g_app;
 double g_time = 0;
 
@@ -612,9 +614,8 @@ void fetch_covers(bool force = false)
         g_covers_force = false;
 }
 
-/* The player's own GameCube BIOS for a game's region, from <data>/bios/<USA|EUR|JAP>/IPL.bin
- * (or <data>/bios/IPL.bin), copied to where Dolphin looks for it. Porpoise
- * ships none. */
+/* The player's own GameCube BIOS for a game's region, from <data>/bios/<USA|EUR|JAP>/IPL.bin,
+ * copied to where Dolphin looks for it. Porpoise ships none. */
 bool install_ipl(const porpoise::ui::Game &game)
 {
     const std::string region = game.region == "USA"                               ? "USA"
@@ -622,17 +623,15 @@ bool install_ipl(const porpoise::ui::Game &game)
                                                                                   : "EUR";
     const std::string to_dir = g_saves_path + "/User/GC/" + region, to = to_dir + "/IPL.bin";
     struct stat src_st, dst_st;
-    std::string from = g_data + "/bios/" + region + "/IPL.bin";
+    /* Only from the region's own folder: a BIOS of another region boots the
+     * wrong video mode. */
+    const std::string from = g_data + "/bios/" + region + "/IPL.bin";
     if (stat(from.c_str(), &src_st) != 0)
-    {
-        from = g_data + "/bios/IPL.bin";
-        if (stat(from.c_str(), &src_st) != 0)
-            return stat(to.c_str(), &dst_st) == 0; /* one already in place */
-    }
+        return stat(to.c_str(), &dst_st) == 0; /* one already in place */
     if (src_st.st_size < (1 << 20) || src_st.st_size > (4 << 20))
         return false; /* a GameCube BIOS is 2 MiB */
-    if (stat(to.c_str(), &dst_st) == 0 && dst_st.st_size == src_st.st_size)
-        return true;
+    if (stat(to.c_str(), &dst_st) == 0 && dst_st.st_size == src_st.st_size && dst_st.st_mtime >= src_st.st_mtime)
+        return true; /* the same one, already copied */
     mkdir((g_saves_path + "/User").c_str(), 0777);
     mkdir((g_saves_path + "/User/GC").c_str(), 0777);
     mkdir(to_dir.c_str(), 0777);
@@ -1485,9 +1484,20 @@ int main()
          * game spends less time on the slow ubershaders and stutters less the
          * first time it shows something. */
         set_ini_value(g_saves_path + "/User/Config/GFX.ini", "Settings", "ShaderCompilerThreads", "4");
-        /* The Wii Remote's own speaker (Dolphin leaves it off by default). */
-        set_ini_value(g_saves_path + "/User/Config/Dolphin.ini", "Core", "WiimoteEnableSpeaker",
-                      g_play.wiimote_speaker ? "True" : "False");
+        /* The Wii Remote's own speaker (Dolphin leaves it off by default): in
+         * the TV's sound, or on each player's controller when its speaker
+         * opens (routing keeps it out of the TV's sound then). */
+        const std::string dolphin_ini = g_saves_path + "/User/Config/Dolphin.ini";
+        const bool wii_game = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
+        bool controller_speakers = false;
+        if (wii_game && g_play.wiimote_speaker == 2)
+            controller_speakers = porpoise::speaker::open_ports() > 0;
+        set_ini_value(dolphin_ini, "Core", "WiimoteEnableSpeaker", g_play.wiimote_speaker > 0 ? "True" : "False");
+        set_ini_value(dolphin_ini, "Core", "WiimoteAudioRoutingEnabled", controller_speakers ? "True" : "False");
+        for (int p = 0; p < 4; ++p)
+            set_ini_value(dolphin_ini, "Core", "Wiimote" + std::to_string(p + 1) + "AudioOutputEnabled",
+                          controller_speakers && porpoise::speaker::open(p) ? "True" : "False");
+        g_controller_speakers = controller_speakers;
         porpoise::audio::set_buffer(g_play.audio_buffer);
         porpoise::audio::set_stretching(g_play.audio_stretch);
         /* The GameCube's start-up: only from the player's own BIOS, put where
@@ -1560,6 +1570,7 @@ int main()
         /* The game's console: as detected, or as its own settings say. */
         const bool is_wii = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
         playback.wii = g_play.wii_config(is_wii);
+        playback.controller_speakers = g_controller_speakers;
         g_wii_hint_from = g_time + 2.0; /* once the game is up */
         g_wii_centrings = 0;
         const std::string debug_dir = g_data + "/debug";
@@ -1607,6 +1618,7 @@ int main()
         const long long played_from = now_ns();
         const porpoise::core::Exit exit = porpoise::core::run_game(launch->path.c_str(), core_paths, hooks, playback);
         setenv("RADV_THREADED_RECORDING", "0", 1); /* the launcher's device, made next, records directly */
+        porpoise::speaker::close_ports();
         keep_cores(false);
         /* Play time: the whole visit, loading included, as consoles count it. */
         if (exit != porpoise::core::Exit::Failed)

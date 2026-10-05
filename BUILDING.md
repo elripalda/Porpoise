@@ -52,7 +52,7 @@ The build runs in three steps:
    change; `PS5_FORCE_CORES=1` rebuilds it anyway.
 2. **The title.** `make app` compiles `src/`, links it with RADV and the SDK,
    and turns it into a signed `eboot.bin` with the generated `libc.prx`.
-3. **Staging.** The core, Dolphin's `Sys` data, the assets, the licence notices
+3. **Staging.** The core, Dolphin's `Sys` data, the assets, the license notices
    (`licenses/`) and a file manifest are staged into `dist/PPSA99764/`, which is
    then zipped to `dist/Porpoise-PPSA99764.zip`.
 

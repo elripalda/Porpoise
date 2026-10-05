@@ -121,13 +121,13 @@ struct Settings
     int ui_font = 0;    /* the menus' font: 0 the theme's own, n font_set(n - 1) */
     int lib_view = 0;   /* the library: 0 cover flow, 1 wheel, 2 disc flow, 3 shelf, 4 box */
     int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes */
-    int sc_games = 0;
+    int sc_games = 0;       /* Star Cube's Games page: 0 spinning discs, 1 covers */
     bool ff_buttons = true; /* touch pad + R1 / R2: fast forward in games */
     int console = 0;        /* a game's own: 0 as detected, 1 GameCube, 2 Wii (its controls) */
     /* Sound (beta): Dolphin's exact DSP (LLE), the Wii Remote's speaker in the
      * TV's sound, a fuller buffer, stretching through slowdowns. */
     bool dsp_accurate = false;
-    bool wiimote_speaker = false;
+    int wiimote_speaker = 0;   /* 0 off, 1 in the TV's sound, 2 on the controller's speaker */
     int audio_buffer = 1;   /* 0 low, 1 normal, 2 safe */
     bool audio_stretch = false;
     /* The microphone (beta): the DualSense's, as the GameCube Microphone and
@@ -138,7 +138,7 @@ struct Settings
     bool pal60 = true;
     int sensor_bar = 0;     /* 0 below the TV, 1 above */
     bool wii_menu_boot = false; /* Wii discs start from the player's own Wii Menu */
-    bool gc_bios = false;   /* the GameCube's start-up, from the player's own IPL.bin */   /* Star Cube's Games page: 0 spinning discs, 1 covers */
+    bool gc_bios = false;   /* the GameCube's start-up, from the player's own IPL.bin */
     /* Accessibility */
     int text_size = 0;          /* 0 normal, 1 large, 2 larger */
     int colour_filter = 0;      /* 0 off, 1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale */

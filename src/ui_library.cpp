@@ -262,7 +262,12 @@ bool read_wad_header(const std::string &path, Game &g)
     g.platform = "Wii";
     g.kind = "Channel";
     if (!porpoise::disc::read_wad(path, info, nullptr, error))
+    {
+        /* The Wii Menu's WAD has no banner; name it so it can be found. */
+        if (info.title_id == 0x0000000100000002ull)
+            g.title = "Wii Menu";
         return false;
+    }
     g.id = info.id;
     g.kind = wad_kind(info.title_id);
     if (info.id.size() >= 4)

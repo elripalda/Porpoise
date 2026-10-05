@@ -2,9 +2,69 @@
 
 ## 2.0 — 2026-10-05
 
-A big update: faster and steadier games, a new look with fifteen themes and
-Star Cube's own home, fonts and colors to mix, more ways to see your games and
-saves, accessibility settings and four new languages.
+A big update: faster and steadier games, WiiWare, Virtual Console and
+channels, homebrew apps, new sound and system settings, the DualSense's
+microphone and speaker, a new look with fifteen themes and Star Cube's own
+home, fonts and colors to mix, more ways to see your games and saves,
+accessibility settings, four new languages and a Discord for help.
+
+Porpoise still ships no Nintendo files: channels, the Wii Menu and the
+GameCube BIOS come from your own consoles. The README says how to add each.
+
+### Channels, WiiWare and homebrew
+- **WAD files play:** WiiWare, Virtual Console and channels you made from your
+  own Wii appear in the library with their names and banners, marked
+  *WiiWare*, *Virtual Console* or *Channel*. A new **Channels** filter shows
+  only them.
+- **Homebrew apps:** an app's folder as the Homebrew Channel keeps it
+  (`boot.dol` or `boot.elf` beside `meta.xml` and `icon.png`) shows with its
+  name and icon.
+- **WBFS and GCZ games are recognized:** their headers are read, so Wii games
+  in `.wbfs` are no longer listed as GameCube, and get their covers, banners
+  and Wii controls.
+- **Console** (a game's settings → Controls): Auto, GameCube or Wii, for a game
+  Porpoise detected wrong.
+- Covers for channels and Virtual Console titles are looked up by their
+  four-letter ID too.
+
+### Sound (beta)
+Settings → Audio, for every game or one:
+- **Accurate audio:** Dolphin's exact sound chip (LLE), for the few games
+  whose sound is missing or wrong with the fast one.
+- **Wii Remote speaker:** the Remote's own sounds in the TV's sound, or from
+  each player's DualSense speaker, as on a Wii.
+- **Audio buffer:** Low, Normal or Safe, against crackling in demanding games.
+- **Audio stretching:** a game that slows down slows its sound with it instead
+  of crackling.
+- **Microphone:** the DualSense's microphone as the GameCube Microphone (Mario
+  Party 6 and 7; hold R3 to talk) and the Wii Speak.
+
+### The consoles' own settings (beta)
+Settings → System:
+- **Wii widescreen**, **PAL games at 60 Hz** and the **sensor bar** above or
+  below the TV, as the Wii's own settings.
+- **GameCube boot animation** from your own GameCube's BIOS: its `IPL.bin` in
+  `/data/porpoise/bios/USA`, `EUR` or `JAP`.
+- **Start Wii discs in the Wii Menu**, from the Wii Menu WAD of your own Wii.
+  Started once from the library, the Wii Menu stays installed.
+
+### Fast forward buttons
+- **Touch pad + R1** steps fast forward (off, 2x, 4x) and **touch pad + R2**
+  fast-forwards while held, without opening the menu. Settings → Controls →
+  Fast forward buttons turns them off.
+
+### Help and community
+- **The RIPALDA Discord** (discord.gg/GgDE5Vynyu) is now where to get help and
+  report bugs; Settings → About has its QR code.
+- **About** is tidied: Ruben's mark beside his name, @elripalda and
+  ripalda.dev, and the credits in one place.
+
+### Sturdier
+- **Damaged or unusual game files can no longer close Porpoise** while it reads
+  the library: the disc, WAD and banner readers check every size and value in
+  a file before using it (tested against thousands of damaged files). This is
+  the likely cause of Porpoise closing quietly as it started with etaHEN 2.6b's
+  jailbreak; if it still happens, share `trace.txt` on the Discord.
 
 ### Faster games
 - **The emulator gets cores of its own.** While a game runs, Dolphin's
@@ -77,8 +137,9 @@ saves, accessibility settings and four new languages.
   or Wii save to the drive's `Porpoise Saves` folder; Settings → Games →
   Saves from a USB drive copies them back in.
 - **Report a bug:** Settings → About saves Porpoise's logs to
-  `/data/porpoise/reports` (and a USB drive), with a QR code to open an issue
-  on GitHub. **Performance report** records where a slow game spends its time.
+  `/data/porpoise/reports` (and a USB drive), with a QR code for the Discord's
+  bug reports. **Performance report** records where a slow game spends its
+  time.
 - **Choose a version:** Settings → About lists every release, betas included,
   to install a newer or an older one. **Beta updates** offers test versions
   as they come out.
@@ -223,14 +284,14 @@ A new section in Settings:
   over empty space and points over anything you can choose, leans as you twist
   the controller, with a tap of rumble and a tick as it lands on something.
   The D-pad works as well; the touch pad turns pointing on and off; R3
-  centres it.
+  centers it.
 - **Wii discs' own tiles and banners:** Porpoise reads each Wii disc's banner
   (.iso, .rvz, .wia, .wbfs, .ciso, .gcz) and plays it — animated tiles on the
   home screen, the full banner and its jingle when a tile opens. GameCube games
   keep their covers.
 - **Opened tile:** Cross on a tile grows it to fill the screen and opens it,
   with **Wii Controls** (or Game Settings) and **Start** below, save states,
-  save data and favourite; Triangle turns between the banner and the game's
+  save data and favorite; Triangle turns between the banner and the game's
   facts. Circle shrinks it back into its tile.
 - Every other screen goes white with it: Memory Cards, Settings, the Wii Remote
   setup, the guide, dialogs and the in-game menu. A cover flow layout is there
@@ -244,11 +305,11 @@ A new section in Settings:
 - Wii games get a Wii controller: **Remote + Nunchuk** (the default),
   **Remote**, **Remote sideways**, **Classic Controller**, or **two
   controllers** (alpha: a second DualSense is the Nunchuk).
-- **Point at the screen** with the gyro (hold R1 a moment to centre), the touch
+- **Point at the screen** with the gyro (hold R1 a moment to center), the touch
   pad or the right stick. The DualSense's motion is the Remote's (tilt, swing,
   point) and a quick flick shakes it. The pointer is smoothed against hand
   tremor without lagging on a sweep.
-- **Wii Remote setup:** pick the controller, centre, then point at two corners
+- **Wii Remote setup:** pick the controller, center, then point at two corners
   of your screen, so the pointer matches your TV and how far you sit. It can
   come up before each Wii game (Triangle skips it); Simple and Advanced, with
   four named presets.
@@ -317,11 +378,11 @@ A new section in Settings:
   *My layout 1* (a game's own custom buttons move to a free layout).
 - New controller art and **button icons everywhere**, from Zacksly's
   *PS5 Button Icons and Controls* (CC BY 3.0).
-- The DualSense **light bar** shows each player's colour.
+- The DualSense **light bar** shows each player's color.
 
 ### Picture
 - **Nine screen filters:** Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS,
-  **Soft VHS** (soft, faded colour and glow, no glitches), **8-bit** and
+  **Soft VHS** (soft, faded color and glow, no glitches), **8-bit** and
   **Pocket** (a green handheld screen), with a strength setting.
 - **Eight borders** for 4:3 games: **Porpoise** (the logo and name), Porpoise
   glass, Midnight, **Frost**, **Carbon**, and three cabinets — Arcade, **Retro**
@@ -329,7 +390,7 @@ A new section in Settings:
   now draw at full resolution.
 
 ### Library
-- **Favourites** (Options): a gold star on the box, and a *Favourites first*
+- **Favorites** (Options): a gold star on the box, and a *Favorites first*
   sort.
 - **Play time** for every game, and a *Most played* sort.
 

@@ -94,6 +94,9 @@ struct Playback
      * <debug_dir>/motion-<date>-<time>.csv, for tuning (developer options). */
     const char *debug_dir = nullptr;
     bool motion_log = false;
+    /* The Wii Remotes' speakers on the controllers' (porpoise_speaker): the
+     * ports are opened by the caller; this starts and stops the sending. */
+    bool controller_speakers = false;
 };
 /* The Wii Remote's settings changed in the in-game menu. */
 void set_wii(const porpoise::pad::WiiConfig &config);

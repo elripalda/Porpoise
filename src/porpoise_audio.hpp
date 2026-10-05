@@ -18,6 +18,8 @@ void push(const std::int16_t *frames, std::size_t count);
 /* 0.0 .. 1.0, applied at output. */
 /* How much sound is kept queued: 0 low, 1 normal, 2 safe (Settings > Audio). */
 void set_buffer(int level);
+/* The queue depth the resampler aims for, in 48 kHz frames. */
+std::size_t target_frames();
 /* Drawing the sound out when the game runs slow, rather than crackling. */
 void set_stretching(bool on);
 void set_volume(float volume);

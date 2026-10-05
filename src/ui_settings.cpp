@@ -76,7 +76,7 @@ const Field kFields[] = {
     {"ff_buttons", nullptr, &Settings::ff_buttons, 0, 1},
     {"console", &Settings::console, nullptr, 0, 2},
     {"dsp_accurate", nullptr, &Settings::dsp_accurate, 0, 1},
-    {"wiimote_speaker", nullptr, &Settings::wiimote_speaker, 0, 1},
+    {"wiimote_speaker", &Settings::wiimote_speaker, nullptr, 0, 2},
     {"audio_buffer", &Settings::audio_buffer, nullptr, 0, 2},
     {"audio_stretch", nullptr, &Settings::audio_stretch, 0, 1},
     {"microphone", nullptr, &Settings::microphone, 0, 1},

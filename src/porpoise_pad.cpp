@@ -668,7 +668,14 @@ State read_slot(Slot &slot)
     std::uint32_t b = newest->buttons;
     std::uint8_t right_trigger = newest->right_trigger;
     State next;
-    if (g_ff_buttons && !(b & pad_options))
+    if (g_ff_buttons && (b & pad_options) && (b & pad_touch_pad))
+    {
+        /* Options + touch pad (the menu): the touch pad's own press doesn't
+         * follow when it's let go, whichever is let go first. */
+        slot.touch_combo = true;
+        b &= ~pad_touch_pad;
+    }
+    else if (g_ff_buttons)
     {
         const bool touch = (b & pad_touch_pad) != 0, was = (slot.raw_prev & pad_touch_pad) != 0;
         if (touch)
@@ -857,6 +864,13 @@ void set_mapping(const Mapping &mapping)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     g_mapping = mapping;
+}
+
+std::int32_t user_of(int player)
+{
+    if (player < 0 || player >= kMaxPlayers || g_slots[player].handle < 0)
+        return -1;
+    return g_slots[player].user;
 }
 
 void set_fast_forward_buttons(bool enabled)
