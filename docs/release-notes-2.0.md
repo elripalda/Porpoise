@@ -1,4 +1,4 @@
-<p align="center"><img src="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
+<p align="center"><img src="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/raw/Main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
 **Porpoise 2.0** is the biggest update yet. Games run faster and smoother on a newer Dolphin and a newer PS5 graphics driver. There are fifteen themes, with colors, fonts and layouts to mix. WiiWare, Virtual Console and channels now play, along with homebrew apps. There are new sound and system options, the DualSense's microphone and speaker work in games, and sixteen languages are included.
 
