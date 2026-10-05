@@ -346,7 +346,7 @@ std::vector<std::pair<int, std::string>> App::rev_chips(const Game &game) const
     if (game.platform == "Wii")
         chips.push_back({kChipSettings, tr("Game settings")});
     chips.push_back({kChipSave, tr("Save data")});
-    chips.push_back({kChipFavourite, game.favourite ? tr("Favourite") : tr("Add to favourites")});
+    chips.push_back({kChipFavourite, game.favourite ? tr("Favorite") : tr("Add to favorites")});
     for (auto &c : chips)
         c.second = title_case(c.second);
     return chips;
@@ -470,7 +470,7 @@ App::Action App::update_rev_details(bool left, bool right, bool up, bool down, d
     if (pressed(BtnR3))
     {
         porpoise::pad::centre_now(0);
-        flash_note(tr("Pointer centred: it points where the controller points now."));
+        flash_note(tr("Pointer centered: it points where the controller points now."));
     }
     if (pressed(BtnTriangle))
     {

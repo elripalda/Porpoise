@@ -1,119 +1,10 @@
 # Changelog
 
-## 2.1 Beta 2 — 2026-10-05
+## 2.0 — 2026-10-05
 
-A second test build of 2.1: a new home, more themes and colours, more ways
-to see your games, and fixes to Beta 1's looks. The emulation is the same as
-2.0 Beta 1.
-
-### Star Cube
-- A **new theme with its own home**: a big glass cube floating on black,
-  turning slowly, with small cubes drifting and tumbling around it. Its four
-  edges are **Games**, **Calendar**, **Memory Cards** and **Settings**; the
-  stick turns the cube to an edge, Cross goes in, Circle comes back out.
-  L1 / R1 move round the edges without going back to the cube.
-- **Games:** your library on a glass page as spinning discs, or as covers
-  (Settings → Interface → Games page). Each game opens its own page: Play,
-  Save states, Game settings and Save data.
-- **Calendar:** the time and date, the month with what you played on each
-  day, and your most recent games; Cross opens one. L2 / R2 change the month.
-- **Memory Cards:** both cards side by side, each save a little glass cube.
-- **Settings:** the usual settings in the theme's violet glass, headings in
-  dot-matrix letters. Button hints read "✕ ··· Confirm".
-
-### More themes
-- **Dot Matrix:** lit dots on a dark grid, dotted headings.
-- **Synthwave:** a neon sunset over a racing grid, in its own lettering.
-- **Paper:** ink on warm paper in a book's typeface.
-- **Crystal:** clear glass with rainbow edges, light split by a prism.
-- Terminal, Broadcast, Dot Matrix, Synthwave, Paper and Star Cube each have
-  their own font.
-
-### Colours
-- New: **Crystal, Pearl, Ruby, Lime, Ocean, Sunset and Midnight Violet**,
-  alongside the classic Sapphire, Indigo, Spice, Emerald, Platinum, Jet, Rose
-  and Gold.
-- Colours now work in **Minimal, Cube, Aurora, Aero**, Synthwave, Crystal,
-  Dot Matrix and Star Cube as well.
-
-### Library and Memory Cards views
-- Three more Library views: **List** (your games by name beside the chosen
-  box; up and down go through them), **Stack** (a deck of boxes) and
-  **Helix** (the boxes climbing round a column).
-- A fourth Memory Cards view, **Cubes**: each save a glass cube on a grid.
-
-### Fixes
-- **Revolution:** the Home screen setting is now Tiles (the default) or
-  Library view, which shows your games in the Library view you chose.
-- **Box view:** the case is black plastic with the paper insert on its front,
-  spine and back, and plain plastic on the open side, top and bottom. Turning
-  it to the spine no longer makes the faces bleed into each other.
-- **Broadcast:** the TV frame's rounded corners no longer touch the menus,
-  and the moving tracking band is gone; the scanlines and pixel lettering
-  stay.
-- **Crystal** is brighter.
-- Every new text is translated into all 16 languages.
-
-## 2.1 Beta 1 — 2026-10-05
-
-A test build: how Porpoise looks, and more ways to make it yours. The
-emulation is the same as 2.0 Beta 1.
-
-### A new look
-- **Liquid glass:** panels and buttons bend the room behind them at their
-  edges, catch the light along their rims with a thin spectrum, and cast a
-  soft shadow. Corners are rounder; the tab bar and buttons are fully round.
-- **Smaller button hints** along the bottom, and only one Play: the big
-  button under the chosen game is gone (Cross still plays it).
-
-### Themes
-- **Ten themes** in Settings → Interface → Theme: Porpoise, Revolution and
-  eight new ones, each with its own room behind the menus:
-  - **OLED:** true black, crisp text, no glow.
-  - **Minimal:** quiet charcoal and grey, nothing but what you need.
-  - **Cube:** indigo and violet on black, a glass cube turning over a grid
-    that never ends.
-  - **Broadcast:** a 2000s tube TV in its frame: a curved screen,
-    scanlines, a worn tape's tracking and pixel lettering.
-  - **Terminal:** green phosphor on black in a monospaced font.
-  - **Depth:** panes of glass drifting through a deep space.
-  - **Aurora:** northern lights over a starry night.
-  - **Aero:** a bright sky, glossy bubbles and white glass.
-- **Colours** for Porpoise, OLED and Depth: Sapphire, Indigo, Spice,
-  Emerald, Platinum, Jet, Rose and Gold.
-
-### Library views
-Settings → Interface → Library view, in every theme:
-- **Cover flow**, as before.
-- **Wheel:** the boxes stand around a turning wheel.
-- **Disc flow:** your discs; the chosen one slides out of its box and spins.
-- **Shelf:** rows of boxes, many at once; up and down change row.
-- **Box:** one game at a time as a real case, its front, spine and back -
-  turn it round with the right stick - beside what's known about it. Covers
-  downloaded from now on keep their spine.
-
-### Memory Cards views
-Settings → Interface → Memory Cards view:
-- **Cards**, as before.
-- **Blocks:** one card at a time, drawn as a card, its saves listed and
-  what fills it in a bar. Left and right change card.
-- **By game:** every save on both cards and the Wii, grouped by game.
-
-### Accessibility
-A new section in Settings:
-- **Text size:** Normal, Large or Larger.
-- **Colour filter** for colour blindness (red-weak, green-weak, blue-weak)
-  or greyscale, for the menus and, if you like, the game's picture too.
-- **High contrast:** solid panels, clearer edges, brighter text.
-- **Reduced motion**, **Still background** and **Larger button hints**.
-
-### Languages
-- Every new text in all sixteen languages.
-
-## 2.0 Beta 1 — 2026-10-05
-
-The first public beta of 2.0 (a pre-release). Features marked *beta* are new
-and still being tuned; everything else is meant to be as solid as 1.5.1.
+A big update: faster and steadier games, a new look with fifteen themes and
+Star Cube's own home, fonts and colors to mix, more ways to see your games and
+saves, accessibility settings and four new languages.
 
 ### Faster games
 - **The emulator gets cores of its own.** While a game runs, Dolphin's
@@ -160,13 +51,15 @@ and still being tuned; everything else is meant to be as solid as 1.5.1.
 - **Threaded GPU recording** (beta, Settings → Graphics, off): the driver
   records Dolphin's drawing on a thread of its own. Worth trying on a
   demanding game.
-- **Quitting to the library no longer freezes halfway:** the game fades to
-  black while Porpoise saves where you were, the library's pictures load
-  behind the dolphin, and the menus fade back in once they're ready. Pictures
-  the menus load no longer make the graphics chip wait.
-- **A cleaner start:** no console splash; the dolphin fades in on black while
-  Porpoise gets ready, then the background shows and the menus fade and rise
-  in as the music comes up.
+- **Quitting to the library no longer freezes:** the in-game menu and the game
+  fade to black together, Porpoise saves where you were behind the dolphin,
+  the library's pictures load, and the menus fade back in once they're ready.
+- **No Porpoise logo flashing on the launch screen** as the game takes over
+  the screen: the game's cover stays.
+- **A proper start:** the console's splash stays until Porpoise is ready, then
+  the dolphin rises out of black with a soft glow and stays while the library
+  loads. It lifts only once the menus run smoothly: the background shows, then
+  the top bar and the page fade and rise in as the music comes up.
 - **No more Dolphin messages over the game:** the yellow notes Dolphin shows
   ("Saved to memory card", changed video settings and the like) are gone.
 
@@ -177,7 +70,7 @@ and still being tuned; everything else is meant to be as solid as 1.5.1.
   in-game menu starts it over too.
 - **Cheats and patches** (beta): each game's settings list the codes and
   patches Dolphin knows for it, one switch each.
-- **Check my setup:** shown the first time 2.0 starts, and any time from
+- **Check my setup:** shown after the first start's welcome, and any time from
   Settings → Games: a checklist of what Porpoise can see (/data, USB drives,
   games, covers) and what to do about anything missing.
 - **Saves on a USB drive** (beta): Options in Memory Cards copies a GameCube
@@ -201,6 +94,98 @@ and still being tuned; everything else is meant to be as solid as 1.5.1.
   language; the Revolution clock shows the date in each language's order.
 - Beta features carry a **BETA** badge in Settings.
 - **New icon and backdrop** on the PS5's home screen.
+
+### A new look
+- **Liquid glass:** panels and buttons bend the room behind them at their
+  edges, catch the light along their rims with a thin spectrum, and cast a
+  soft shadow. Corners are rounder; the tab bar and buttons are fully round.
+- **Smaller button hints** along the bottom, and only one Play: the big
+  button under the chosen game is gone (Cross still plays it).
+- **More motion:** highlights in Settings glide from row to row, and the
+  menus come in in steps when Porpoise starts and when you come back from a
+  game.
+- **The in-game menu matches your theme:** its glass, colors and font.
+
+### Themes
+Fifteen themes in Settings → Interface → Theme, each with its own room:
+- **Porpoise**, **Revolution** and, new:
+- **Star Cube:** a home of its own. A big glass cube floats on black, turning
+  slowly, small cubes drifting around it; its four edges are **Games**,
+  **Calendar**, **Memory Cards** and **Settings**. The stick turns the cube to
+  an edge, Cross flies in, Circle comes back out; L1 / R1 move between pages.
+  - **Games:** your library on a glass page as spinning discs or covers
+    (Settings → Interface → Games page); each game opens its own page with
+    Play, Save states, Game settings and Save data.
+  - **Calendar:** the time and date, the month with what you played each
+    day, and your latest games; L2 / R2 change the month.
+  - **Memory Cards:** each save a little glass cube.
+  - **Settings** in violet glass with dot-matrix headings, and button hints
+    that read "✕ ··· Confirm".
+- **OLED:** true black, crisp text, no glow.
+- **Minimal:** quiet charcoal and gray, nothing but what you need.
+- **Cube:** indigo and violet on black, a glass cube turning over a grid.
+- **Broadcast:** a 2000s tube TV in its frame: a curved screen, scanlines and
+  pixel lettering.
+- **Terminal:** green phosphor on black in a monospaced font.
+- **Depth:** panes of glass drifting through deep space.
+- **Aurora:** northern lights over a starry night.
+- **Aero:** a bright sky, glossy bubbles and white glass.
+- **Dot Matrix:** lit dots on a dark grid, dotted headings.
+- **Synthwave:** a neon sunset over a racing grid.
+- **Paper:** ink on warm paper in a book's typeface.
+- **Crystal:** clear glass with rainbow edges, light split by a prism.
+
+### Colors and fonts
+- **Colors** (Settings → Interface → Colors) for most themes: Sapphire,
+  Indigo, Spice, Emerald, Platinum, Jet, Crystal, Pearl, Ruby, Rose, Gold,
+  Lime, Ocean, Sunset and Midnight Violet.
+- **Font** (Settings → Interface → Font): any font in any theme: Nunito,
+  M PLUS 1 (close to the GameCube's own menu lettering), Nunito + Doto,
+  JetBrains Mono, JetBrains Mono + Doto, VT323, Exo 2 and Porpoise Serif.
+- Choosing a theme brings its own colors and font; change either after.
+
+### Library views
+Settings → Interface → Library view, in every theme:
+- **Cover flow**, as before.
+- **Wheel:** the boxes stand around a turning wheel.
+- **Disc flow:** your discs; the chosen one slides out of its box and spins.
+- **Shelf:** rows of boxes, many at once; up and down change row.
+- **Box:** one game at a time as a black plastic case with its paper insert
+  on the front, spine and back. Turn it with the right stick. Covers
+  downloaded from now on keep their spine.
+- **List:** your games by name beside the chosen box.
+- **Stack:** a deck of boxes.
+- **Helix:** the boxes climbing round a column.
+- **Revolution's home screen** is Tiles (the default) or Library view.
+
+### Memory Cards views
+Settings → Interface → Memory Cards view:
+- **Cards**, as before.
+- **Blocks:** one card at a time, drawn as a card, with its saves and what
+  fills it.
+- **By game:** every save on both cards and the Wii, grouped by game.
+- **Cubes:** each save a little glass cube on a grid.
+
+### Accessibility
+A new section in Settings:
+- **Text size:** Normal, Large or Larger.
+- **Color filter** for color blindness (red-weak, green-weak, blue-weak) or
+  grayscale, for the menus and, if you like, the game's picture too.
+- **High contrast:** solid panels, clearer edges, brighter text.
+- **Reduced motion**, **Still background** and **Larger button hints**.
+
+### A fresh start
+- **The first start** offers three looks to begin with: Porpoise, Star Cube
+  or Revolution, shown live as you choose. Then the welcome and the setup
+  checklist.
+- **Settings → Interface → Reinitialize Porpoise** starts over as if it were
+  the first time: every setting, each game's own settings too, back to how
+  Porpoise ships. Your games, folders, memory cards, saves and save states
+  stay.
+
+### Languages
+- The menus are now in US English (Favorite, Color, Center).
+- Every new text in all sixteen languages.
 
 ## 1.5.1 — 2026-10-04
 

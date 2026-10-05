@@ -647,6 +647,34 @@
       "modifications": "Weight 400, 500, 600 and 700 instances of the variable font, subset to the letters Porpoise's menus use with fontTools (tools/make-theme-fonts.py), and renamed Porpoise Serif, since Lora is a Reserved Font Name. Upstream: https://github.com/google/fonts/tree/main/ofl/lora."
     },
     {
+      "id": "mplus1",
+      "name": "M PLUS 1 font (Settings > Interface > Font)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/MPLUS1-Regular.ttf",
+        "assets/fonts/MPLUS1-SemiBold.ttf",
+        "assets/fonts/MPLUS1-Bold.ttf",
+        "assets/fonts/MPLUS1-ExtraBold.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS)"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/MPLUS1-OFL.txt",
+          "to": "OFL-MPLUS1.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 400, 600, 700 and 800 instances of the variable font, subset to the letters Porpoise's menus use with fontTools (tools/make-theme-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/mplus1."
+    },
+    {
       "id": "zacksly-ps5-icons",
       "name": "PS5 Button Icons and Controls by Zacksly (controller art and button icons)",
       "kind": "asset",

@@ -562,7 +562,7 @@ void App::draw_sc_games(double time)
     std::snprintf(pos, sizeof pos, "%02d / %02d", selected_ + 1, shown);
     g.text_mid(Font::ExtraBold, ts(30), kPageX + kPageW - 32, icy, kSoft, Align::Right, pos);
     draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Open"}, {Glyph::Circle, "Back"}},
-                 {{Glyph::Options, "Favourite"}, {Glyph::Triangle, "Sort & filter"}}, "");
+                 {{Glyph::Options, "Favorite"}, {Glyph::Triangle, "Sort & filter"}}, "");
 }
 
 /* A game's own page: its disc (or box) turning on the left, what you can
@@ -607,7 +607,7 @@ void App::draw_sc_details(double time)
     }
     if (screen_ != Screen::States)
         draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}},
-                     {{kKeyL2R2, "Other games"}, {Glyph::Options, "Favourite"}}, "");
+                     {{kKeyL2R2, "Other games"}, {Glyph::Options, "Favorite"}}, "");
 }
 
 /* ---- calendar ----------------------------------------------------------------------------- */

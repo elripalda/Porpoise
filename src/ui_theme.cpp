@@ -43,7 +43,7 @@ Theme make_midnight()
 {
     Theme t;
     t.name = "OLED";
-    t.about = "True black for OLED screens: crisp text, no glow, colour only where it matters.";
+    t.about = "True black for OLED screens: crisp text, no glow, color only where it matters.";
     t.look.background = 1;
     t.look.dark = 0.12f;
     t.look.fill_alpha = 1.5f;
@@ -59,7 +59,7 @@ Theme make_minimal()
 {
     Theme t;
     t.name = "Minimal";
-    t.about = "Quiet charcoal and soft grey. Nothing on screen but what you need.";
+    t.about = "Quiet charcoal and soft gray. Nothing on screen but what you need.";
     t.look.background = 2;
     t.look.light0 = rgb(0.085f, 0.090f, 0.100f);
     t.look.light1 = rgb(0.040f, 0.043f, 0.050f);
@@ -115,7 +115,7 @@ Theme make_terminal()
 {
     Theme t;
     t.name = "Terminal";
-    t.about = "Green phosphor on black, like a computer terminal: one colour, scanlines, sharp corners.";
+    t.about = "Green phosphor on black, like a computer terminal: one color, scanlines, sharp corners.";
     t.look.background = 5;
     t.look.light0 = rgb(0.25f, 1.0f, 0.45f);
     t.look.light1 = rgb(0.10f, 0.45f, 0.20f);

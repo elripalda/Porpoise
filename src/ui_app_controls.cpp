@@ -650,7 +650,7 @@ constexpr WiiInfo kWiiInfo[WiInputCount] = {
     {"ZR", "ZR button", kWiiWhite},
     {"L", "L trigger", kWiiWhite},
     {"R", "R trigger", kWiiWhite},
-    {"CENTRE", "Hold: centre and level", kWiiGreen},
+    {"CENTER", "Hold: center and level", kWiiGreen},
 };
 float wii_arrow(int input)
 {
@@ -993,8 +993,8 @@ void App::draw_wii_controls(float x, float y, float w, float h, const WiiConfig 
     std::string how;
     const bool held = wii.controller != WiiSideways && wii.controller != WiiClassic;
     if (wii.pointer == PointerGyro && held)
-        how = pose_left_hand(pose) ? tr("Point at the screen to aim. Hold L1 a moment to centre the pointer and level the hold.")
-                                   : tr("Point at the screen to aim. Hold R1 a moment to centre the pointer and level the hold.");
+        how = pose_left_hand(pose) ? tr("Point at the screen to aim. Hold L1 a moment to center the pointer and level the hold.")
+                                   : tr("Point at the screen to aim. Hold R1 a moment to center the pointer and level the hold.");
     else if (wii.pointer == PointerTouch && held)
         how = tr("Slide a finger on the touch pad to aim. Flick the controller to shake.");
     else
@@ -1029,12 +1029,12 @@ const char *wii_howto(int controller)
         return "Hold it as a normal pad: the buttons are where a Classic Controller has them.";
     case WiiTwoControllers:
         return "One DualSense in each hand, both stood on end with their faces toward you. The right one is the "
-               "Remote (its grips pointing right): aim with its back. Holding R1 a moment centres the pointer and levels both controllers as you hold them. The left one is the Nunchuk (its "
+               "Remote (its grips pointing right): aim with its back. Holding R1 a moment centers the pointer and levels both controllers as you hold them. The left one is the Nunchuk (its "
                "grips pointing left): its stick, C and Z, and its motion. Both feel the game's rumble. The second "
                "controller needs a second signed-in user.";
     default:
         return "Hold the DualSense face up in both hands. The right half is the Remote, the left half the Nunchuk: "
-               "the left stick is its stick, L1 is C, L2 is Z. Point the controller at the screen to aim; hold R1 a moment to centre.";
+               "the left stick is its stick, L1 is C, L2 is Z. Point the controller at the screen to aim; hold R1 a moment to center.";
     }
 }
 } // namespace
@@ -1528,7 +1528,7 @@ App::Action App::update_wii_setup(bool up, bool down, bool left, bool right)
                               half_y / half_x > 0.25f && half_y / half_x < 1.3f;
             if (!sane)
             {
-                note("That didn't look like a screen. Let's try again: centre first.");
+                note("That didn't look like a screen. Let's try again: center first.");
                 ws_step_ = kWsCentre;
                 break;
             }
@@ -1742,7 +1742,7 @@ void App::draw_wii_setup(double time)
             para(tr("Alpha: still rough. Two DualSenses, one for each hand."), rgba(0xFF8A5C));
         if (ws_row_ == 1)
             para(advanced ? tr("Advanced adds your screen's size and distance, smoothing, reach and presets.")
-                          : tr("Simple: centre, two corners, and play."),
+                          : tr("Simple: center, two corners, and play."),
                  kLavender);
         else if (ws_row_ == 2)
             para(ws_ask_ ? tr("This page comes up each time this game starts.")
@@ -1800,7 +1800,7 @@ void App::draw_wii_setup(double time)
             row(2, tr("Distance to it"), d, rx, ry, rw);
             ry += 64;
         }
-        row(3, ws_size_mode_ ? tr("Next: centre") : tr("Next: centre, then the corners"), "", rx, ry, rw);
+        row(3, ws_size_mode_ ? tr("Next: center") : tr("Next: center, then the corners"), "", rx, ry, rw);
         draw_wii_controls(870, 160, 960, 780, cfg, 1.0f, m.valid ? m.pose : -1);
         draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Cross, "Next"}, {Glyph::Circle, "Back"}}, {}, "");
         break;
@@ -1813,7 +1813,7 @@ void App::draw_wii_setup(double time)
         big_line(tr("Then hold Cross, keeping still."), 830, kLavender);
         if (ws_controller_ == WiiTwoControllers)
             big_line(tr("Hold the second controller as you'll play, too."), 900, kLavender);
-        draw_prompts({{Glyph::Cross, "Hold to centre"}, {Glyph::Circle, ws_recal_only_ ? "Close" : "Back"}}, {}, "");
+        draw_prompts({{Glyph::Cross, "Hold to center"}, {Glyph::Circle, ws_recal_only_ ? "Close" : "Back"}}, {}, "");
         break;
     }
     case kWsTopLeft:
@@ -1841,7 +1841,7 @@ void App::draw_wii_setup(double time)
                 big_line(trf("Your screen: {x}\xC2\xB0 to the sides, {y}\xC2\xB0 up and down.",
                              {{"x", std::to_string(t.wii_screen_x / 10)}, {"y", std::to_string(t.wii_screen_y / 10)}}),
                          540, kLavender);
-            big_line(tr("If it wanders while you play, hold R1 a moment to centre it."), 610,
+            big_line(tr("If it wanders while you play, hold R1 a moment to center it."), 610,
                      with_alpha(kLavender, 0.8f));
             if (m.centred)
             {

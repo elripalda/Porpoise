@@ -827,7 +827,7 @@ int menu_paused(void *)
 /* Testing the Wii Remote: what player 1's controller feels, and where the
  * pointer is, over the game. */
 /* A Wii game with the gyro pointer: how to centre it, for the first seconds,
- * and a short "centred" each time it is. */
+ * and a short "centered" each time it is. */
 double g_wii_hint_from = -1;      /* g_time the game started, or -1 */
 unsigned g_wii_centrings = 0;
 double g_wii_centred_at = -100;
@@ -850,7 +850,7 @@ void draw_wii_hint()
     float a = 0;
     if (g_time - g_wii_centred_at < 1.4)
     {
-        text = tr("Centred");
+        text = tr("Centered");
         a = float(std::min(1.0, (1.4 - (g_time - g_wii_centred_at)) * 3.0));
     }
     else if (g_wii_hint_from >= 0 && g_time >= g_wii_hint_from && g_time - g_wii_hint_from < 10.0 && m.centrings == 0)

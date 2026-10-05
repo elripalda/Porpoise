@@ -169,7 +169,7 @@ struct Slot
     float centre_hold = 0;   /* how long R1 (L1) has been held, calmly */
     bool centre_request = false; /* centre_now */
     aim::Smoother smoother;
-    unsigned centrings = 0;  /* for the "centred" note on screen */
+    unsigned centrings = 0;  /* for the "centered" note on screen */
 };
 
 /* ---- the Wii Remote ---- */

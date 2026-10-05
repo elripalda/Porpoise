@@ -213,7 +213,7 @@ void App::update_home(bool left, bool right, bool up, bool down, bool &play, boo
     if (pressed(BtnR3))
     {
         porpoise::pad::centre_now(0);
-        flash_note(tr("Pointer centred: it points where the controller points now."));
+        flash_note(tr("Pointer centered: it points where the controller points now."));
         sfx(Sound::MenuScroll);
     }
 

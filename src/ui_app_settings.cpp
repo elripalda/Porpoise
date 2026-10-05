@@ -537,7 +537,7 @@ void App::add_game_rows(Settings &t, bool per_game)
            "player's own Wii Remote, with its own pointer and motion.",
            &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
                                   "Two controllers (alpha)"});
-    choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to centre it.",
+    choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to center it.",
            &t.wii_pointer, 0, {"Gyro", "Touch pad", "Right stick"});
     choice("wii_speed", "Pointer speed",
            "How far you turn the controller to reach the screen's edge. Your screen: as measured by the Wii Remote "
@@ -711,8 +711,8 @@ void App::build_settings()
         SettingRow r;
         r.section = section;
         r.key = "ui_palette";
-        r.label = tr("Colours");
-        r.help = tr("The theme's colours: its glass, its light and what is chosen.");
+        r.label = tr("Colors");
+        r.help = tr("The theme's colors: its glass, its light and what is chosen.");
         r.int_value = &settings_->ui_palette;
         r.values.push_back(tr("Theme default"));
         for (int i = 0; i < kPalettes; ++i)
@@ -782,11 +782,11 @@ void App::build_settings()
     header("Accessibility");
     choice("text_size", "Text size", "Bigger labels across Porpoise.", &settings_->text_size,
            {"Normal", "Large", "Larger"});
-    choice("colour_filter", "Colour filter",
-           "For colour blindness: moves the colours you may not tell apart to ones you can. Red-weak and "
+    choice("colour_filter", "Color filter",
+           "For color blindness: moves the colors you may not tell apart to ones you can. Red-weak and "
            "green-weak help with reds and greens, blue-weak with blues and yellows.",
-           &settings_->colour_filter, {"Off", "Red-weak", "Green-weak", "Blue-weak", "Greyscale"});
-    toggle("colour_filter_games", "Colour filter in games", "The same colour filter on the game's picture too.",
+           &settings_->colour_filter, {"Off", "Red-weak", "Green-weak", "Blue-weak", "Grayscale"});
+    toggle("colour_filter_games", "Color filter in games", "The same color filter on the game's picture too.",
            &settings_->colour_filter_games);
     toggle("high_contrast", "High contrast", "Solid panels, clearer edges and brighter text.",
            &settings_->high_contrast);
@@ -867,7 +867,7 @@ void App::build_settings()
     info("Japanese font", "Noto Sans JP", "Noto Sans JP by Google, SIL Open Font License.");
     info("Images and audio", "stb", "stb_image, stb_truetype and stb_vorbis by Sean Barrett (public domain / MIT).");
     info("Wii banners", "Wii Banner Player",
-         "How a Wii disc's own tile and banner play: after the Wii Banner Player Project (zlib licence), rewritten "
+         "How a Wii disc's own tile and banner play: after the Wii Banner Player Project (zlib license), rewritten "
          "for Porpoise. RVZ discs are read with Zstandard's decoder (BSD).");
     info("Thanks", "PS5 scene", "etaHEN, kstuff and ShadowMountPlus make homebrew like this possible.");
     info("Trademarks", "Nintendo", "GameCube and Wii are trademarks of Nintendo. Porpoise is not affiliated with Nintendo.");

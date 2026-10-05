@@ -1516,11 +1516,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Favourite",
+  "en": "Favorite",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Favourites first",
+  "en": "Favorites first",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1784,7 +1784,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Unfavourite",
+  "en": "Unfavorite",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -2420,7 +2420,7 @@
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "Pointer centred: it points where the controller points now.",
+  "en": "Pointer centered: it points where the controller points now.",
   "section": "Home screen (Revolution)"
  },
  {
@@ -2476,7 +2476,7 @@
   "section": "Revolution theme"
  },
  {
-  "en": "Add to favourites",
+  "en": "Add to favorites",
   "section": "Revolution theme"
  },
  {
@@ -2584,7 +2584,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Hold: centre and level",
+  "en": "Hold: center and level",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2664,11 +2664,11 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Point at the screen to aim. Hold L1 a moment to centre the pointer and level the hold.",
+  "en": "Point at the screen to aim. Hold L1 a moment to center the pointer and level the hold.",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Point at the screen to aim. Hold R1 a moment to centre the pointer and level the hold.",
+  "en": "Point at the screen to aim. Hold R1 a moment to center the pointer and level the hold.",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2692,11 +2692,11 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "One DualSense in each hand, both stood on end with their faces toward you. The right one is the Remote (its grips pointing right): aim with its back. Holding R1 a moment centres the pointer and levels both controllers as you hold them. The left one is the Nunchuk (its grips pointing left): its stick, C and Z, and its motion. Both feel the game's rumble. The second controller needs a second signed-in user.",
+  "en": "One DualSense in each hand, both stood on end with their faces toward you. The right one is the Remote (its grips pointing right): aim with its back. Holding R1 a moment centers the pointer and levels both controllers as you hold them. The left one is the Nunchuk (its grips pointing left): its stick, C and Z, and its motion. Both feel the game's rumble. The second controller needs a second signed-in user.",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Hold the DualSense face up in both hands. The right half is the Remote, the left half the Nunchuk: the left stick is its stick, L1 is C, L2 is Z. Point the controller at the screen to aim; hold R1 a moment to centre.",
+  "en": "Hold the DualSense face up in both hands. The right half is the Remote, the left half the Nunchuk: the left stick is its stick, L1 is C, L2 is Z. Point the controller at the screen to aim; hold R1 a moment to center.",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2772,7 +2772,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "That didn't look like a screen. Let's try again: centre first.",
+  "en": "That didn't look like a screen. Let's try again: center first.",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2840,7 +2840,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Simple: centre, two corners, and play.",
+  "en": "Simple: center, two corners, and play.",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2908,11 +2908,11 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Next: centre",
+  "en": "Next: center",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Next: centre, then the corners",
+  "en": "Next: center, then the corners",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2928,7 +2928,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Hold to centre",
+  "en": "Hold to center",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2964,7 +2964,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "If it wanders while you play, hold R1 a moment to centre it.",
+  "en": "If it wanders while you play, hold R1 a moment to center it.",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -3248,7 +3248,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to centre it.",
+  "en": "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to center it.",
   "section": "Settings (2.0)"
  },
  {
@@ -3400,7 +3400,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "How a Wii disc's own tile and banner play: after the Wii Banner Player Project (zlib licence), rewritten for Porpoise. RVZ discs are read with Zstandard's decoder (BSD).",
+  "en": "How a Wii disc's own tile and banner play: after the Wii Banner Player Project (zlib license), rewritten for Porpoise. RVZ discs are read with Zstandard's decoder (BSD).",
   "section": "Settings (2.0)"
  },
  {
@@ -3516,7 +3516,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Centred",
+  "en": "Centered",
   "section": "Small words (2.0)"
  },
  {
@@ -3576,11 +3576,11 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "True black for OLED screens: crisp text, no glow, colour only where it matters.",
+  "en": "True black for OLED screens: crisp text, no glow, color only where it matters.",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Quiet charcoal and soft grey. Nothing on screen but what you need.",
+  "en": "Quiet charcoal and soft gray. Nothing on screen but what you need.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3592,7 +3592,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Green phosphor on black, like a computer terminal: one colour, scanlines, sharp corners.",
+  "en": "Green phosphor on black, like a computer terminal: one color, scanlines, sharp corners.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3640,11 +3640,11 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Colours",
+  "en": "Colors",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "The theme's colours: its glass, its light and what is chosen.",
+  "en": "The theme's colors: its glass, its light and what is chosen.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3736,11 +3736,11 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Colour filter",
+  "en": "Color filter",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "For colour blindness: moves the colours you may not tell apart to ones you can. Red-weak and green-weak help with reds and greens, blue-weak with blues and yellows.",
+  "en": "For color blindness: moves the colors you may not tell apart to ones you can. Red-weak and green-weak help with reds and greens, blue-weak with blues and yellows.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3756,15 +3756,15 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Greyscale",
+  "en": "Grayscale",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Colour filter in games",
+  "en": "Color filter in games",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "The same colour filter on the game's picture too.",
+  "en": "The same color filter on the game's picture too.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -4002,5 +4002,45 @@
  {
   "en": "December",
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
+ },
+ {
+  "en": "Theme default",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "The letters across Porpoise. Each theme starts with its own; any font works with any theme.",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "Reinitialize Porpoise",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "A fresh start: Porpoise opens as it did the first time and you choose a theme again. Games, folders, memory cards, saves and save states stay.",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "Reinitialize…",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "Reinitialize Porpoise?",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "Every setting, and each game's own settings, go back to how Porpoise ships, and it starts again as it did the first time. Your games, folders, memory cards, saves and save states stay.",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "Reinitialize",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "Porpoise plays your GameCube and Wii games on PS5, powered by Dolphin.",
+  "section": "2.0: fonts, Reinitialize, first start"
+ },
+ {
+  "en": "Choose a look to start with. You can change it any time in Settings > Interface.",
+  "section": "2.0: fonts, Reinitialize, first start"
  }
 ]

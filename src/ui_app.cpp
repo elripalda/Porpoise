@@ -1648,7 +1648,7 @@ void App::draw_library(double time)
     char pos[32];
     std::snprintf(pos, sizeof pos, "%02d / %02d", selected_ + 1, shown);
     draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Play"}},
-                 {{Glyph::Options, sel.favourite ? "Unfavourite" : "Favourite"}, {Glyph::Square, "Details"},
+                 {{Glyph::Options, sel.favourite ? "Unfavorite" : "Favorite"}, {Glyph::Square, "Details"},
                   {Glyph::Triangle, "Sort & filter"}},
                  pos);
 }
@@ -1678,7 +1678,7 @@ void App::draw_sort()
     const float w = 760, h = 440, x = 960 - w * 0.5f, y = 300;
     g.panel(x, y, w, h, rgba(0x13256F, 0.92f), 0.65f, kR, rgba(0x6FAEFF), 2.0f, 10, 0.25f);
     g.text_mid(Font::Bold, ts(36), x + 40, y + 62, kWhite, Align::Left, tr("Sort & filter"));
-    const std::string orders[4] = {tr("Title A-Z"), tr("Recently played"), tr("Most played"), tr("Favourites first")};
+    const std::string orders[4] = {tr("Title A-Z"), tr("Recently played"), tr("Most played"), tr("Favorites first")};
     const std::string shows[3] = {tr("All games"), tr("GameCube"), tr("Wii")};
     const std::string names[3] = {tr("Sort by"), tr("Show"), tr("Get covers and info now")};
     const std::string values[3] = {orders[int(lib_->sort_order())], shows[int(lib_->show())], ""};

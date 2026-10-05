@@ -472,8 +472,9 @@ It stands on the work of many people. The full list, with licences, is in
   **[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)**,
   **[VT323](https://github.com/google/fonts/tree/main/ofl/vt323)**,
   **[Doto](https://github.com/oliverlalan/Doto)**,
-  **[Exo 2](https://github.com/googlefonts/Exo-2.0)** and
-  **[Lora](https://github.com/cyrealtype/Lora-Cyrillic)** (as Porpoise Serif) (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
+  **[Exo 2](https://github.com/googlefonts/Exo-2.0)**,
+  **[Lora](https://github.com/cyrealtype/Lora-Cyrillic)** (as Porpoise Serif) and
+  **[M PLUS 1](https://github.com/coz-m/MPLUS_FONTS)** (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
 - The PS5 scene: **etaHEN**, **kstuff** and **ShadowMountPlus**, and the front
   ends **PS5SX2** and **ProsperoEden** for the inspiration. Porpoise asks the
   HEN to leave the app sandbox the way PS5SX2 does.
