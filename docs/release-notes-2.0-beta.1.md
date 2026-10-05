@@ -1,20 +1,20 @@
 <p align="center"><img src="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
-**Porpoise 2.0 Beta 1.** The first public beta of 2.0: faster, smoother, steadier games, a newer Dolphin and graphics driver, and a set of new features. Features marked *beta* are still being tuned. If you'd rather stay on a finished version, keep 1.5.1.
+**Porpoise 2.0 Beta 1** — the first public beta of 2.0, and the biggest performance update yet. Games run faster and smoother, on a newer Dolphin and a newer PS5 graphics driver. Features marked *beta* are still being tuned; if you'd rather stay on a finished version, keep 1.5.1.
 
-## Faster games
+## Performance highlights
 
-- **Much faster in 3D-heavy games.** Dolphin rounds every single-precision multiply-add exactly as the GameCube does, and on the PS5 that one correction was eating a third of the emulated CPU's time in WWE Day of Reckoning 2. It's now off, as it was in Dolphin until 2025. If a game ever needs it, **Settings → System → Exact multiply-add** turns it back on, for every game or just one.
-- **The emulator gets cores of its own:** the emulated CPU and its graphics each keep to a core of the PS5 that nothing else busy shares. (Settings → System → *Emulator on its own cores*.)
-- **Starts about five seconds sooner:** the menus' lettering is made once and kept, instead of at every start.
-
-## Smoother and steadier
-
-- **V-Sync on the TV's own refresh.** Every frame now waits on the TV's vblank instead of Porpoise's own timer, and a late frame doesn't wait for the next one, so a game just short of 60 doesn't drop to 30. (Settings → Video → V-Sync.)
+- **Up to twice as fast in 3D-heavy games.** WWE Day of Reckoning 2 went from about 24 fps to 50+ in testing. Dolphin rounds every single-precision multiply-add exactly as the GameCube does, and on the PS5 that one correction was eating a third of the emulated CPU's time. It's now off, as it was in Dolphin until 2025; **Settings → System → Exact multiply-add** turns it back on for any game that needs it.
+- **The emulator gets cores of its own.** The emulated CPU and its graphics each keep to a PS5 core that nothing else busy shares. (Settings → System → *Emulator on its own cores*.)
+- **V-Sync on the TV's own refresh.** Frames now wait on the TV's vblank instead of Porpoise's own timer, and a late frame doesn't wait for the next one, so a game just short of 60 doesn't drop to 30.
 - **No more waiting on the sound.** 1.5.1 held nearly every frame about 6 ms for the speakers. That's gone.
-- **Newer Dolphin core**, with the fix that saves new shader pipelines in the background instead of in the middle of a frame.
-- **Newer PS5 graphics driver** (Mihawk's PS5_Vulkan / PS5 Mesa). Porpoise now sends the TV a 1080p picture instead of drawing every frame at 4K. Want it sharper on a 4K TV? **Settings → Video → Output resolution** offers 1440p and 4K.
-- **Smoother menus:** covers load in the background and fade in, and Memory Cards opens without a hitch.
+- **1080p output by default.** The new graphics driver lets Porpoise send the TV a 1080p picture instead of drawing every frame at 4K. Want it sharper on a 4K TV? **Settings → Video → Output resolution** offers 1440p and 4K.
+- **Newer Dolphin core**, which compiles new shader pipelines in the background instead of in the middle of a frame: fewer stutters the first time a game draws something new.
+- **Starts about five seconds sooner**, and the menus stay smooth: covers load in the background and fade in, and Memory Cards opens without a hitch.
+
+## Smoother and cleaner
+
+- **Newer PS5 graphics driver:** Mihawk's PS5_Vulkan / PS5 Mesa.
 - **Threaded GPU recording** *(beta, off)*: Settings → Graphics. Worth trying on a demanding game.
 - **No more freeze when you quit to the library:** the game fades to black while Porpoise saves your spot, and the menus fade back in once everything has loaded.
 - **A cleaner start:** the dolphin fades in on black, then the menus fade in with the music.
@@ -47,4 +47,4 @@ Something wrong? Use **Settings → About → Report a bug** and [open an issue]
 
 Porpoise contains **no games and no BIOS or firmware files**. The only key it carries is the Wii disc key Dolphin itself includes, used to read a Wii disc's own banner. Play only games you own, from backups you made yourself. Porpoise is not affiliated with Nintendo or Sony. Emulation is provided by [Dolphin](https://dolphin-emu.org) (GPL-2.0-or-later). Porpoise is GPL-3.0-or-later; every component's licence and source revision is listed in `licenses/README.txt` inside the zip.
 
-`Porpoise-2.0-beta.1.zip` SHA-256: `(filled in at release)`
+`Porpoise-2.0-beta.1.zip` SHA-256: `264ba20cc4aad1de1a30e337cb7b747b5ae82b81488f653215c74af416a8df86`
