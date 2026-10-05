@@ -555,9 +555,10 @@ It stands on the work of many people. The full list, with licenses, is in
 > [!IMPORTANT]
 > **Porpoise does not condone piracy.** It contains no games and no console
 > BIOS, IPL or firmware files, and none will ever be provided or linked to. The
-> only key it carries is the Wii disc key that Dolphin itself includes, used to
-> read a Wii disc's own banner. Play only games you own, as backups you made
-> from your own discs.
+> only keys it carries are the two Wii disc keys (standard and Korean) that
+> Dolphin itself includes, used to read a Wii disc's or channel's own banner.
+> Play only games you own, as backups you made from your own discs and
+> consoles.
 
 Porpoise is an independent, free and open-source project. It is **not
 affiliated with, endorsed by or sponsored by Nintendo or Sony Interactive
