@@ -110,7 +110,7 @@ const Field kFields[] = {
     {"ui_theme", &Settings::ui_theme, nullptr, 0, 1},
     {"ui_layout", &Settings::ui_layout, nullptr, 0, 1},
     {"ui_pointer", nullptr, &Settings::ui_pointer, 0, 1},
-    {"ui_language", &Settings::ui_language, nullptr, 0, 12},
+    {"ui_language", &Settings::ui_language, nullptr, 0, 16},
 };
 
 /* Settings kept as text rather than numbers. */

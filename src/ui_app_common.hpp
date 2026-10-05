@@ -248,41 +248,97 @@ inline std::string fit(Gfx &g, Font f, float size, std::string s, float max_w)
     return s + "\xE2\x80\xA6";
 }
 
+/* Chinese and Japanese have no spaces: a line may end after any of their
+ * characters (Korean keeps its spaces and wraps like English). */
+inline bool breaks_anywhere(unsigned cp)
+{
+    return (cp >= 0x2E80 && cp <= 0xA4CF && !(cp >= 0x3130 && cp <= 0x318F)) ||
+           (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFF00 && cp <= 0xFFEF);
+}
+
+/* Punctuation and small kana that never start a line. */
+inline bool keeps_with_previous(unsigned cp)
+{
+    static constexpr unsigned kKeep[] = {
+        ',',    '.',    ':',    ';',    '!',    '?',    ')',    ']',    0x2026, 0x3001, 0x3002,
+        0x300D, 0x300F, 0x3011, 0x30FB, 0x30FC, 0xFF01, 0xFF09, 0xFF0C, 0xFF0E, 0xFF1A, 0xFF1B,
+        0xFF1F, 0x3041, 0x3043, 0x3045, 0x3047, 0x3049, 0x3063, 0x3083, 0x3085, 0x3087, 0x30A1,
+        0x30A3, 0x30A5, 0x30A7, 0x30A9, 0x30C3, 0x30E3, 0x30E5, 0x30E7};
+    for (unsigned k : kKeep)
+        if (k == cp)
+            return true;
+    return false;
+}
+
 /* Breaks text into lines no wider than max_w; the last kept line ends in an
  * ellipsis when there was more. */
-inline std::vector<std::string> wrap(Gfx &g, Font f, float size, const std::string &text, float max_w,
-                                     std::size_t max_lines = 99)
+inline std::vector<std::string> wrap(Gfx &g, Font f, float size, const std::string &text,
+                                     float max_w, std::size_t max_lines = 99)
 {
-    std::vector<std::string> lines;
-    std::string line, word;
-    bool more = false;
-    auto flush_word = [&] {
-        if (word.empty())
-            return;
-        const std::string trial = line.empty() ? word : line + " " + word;
-        if (!line.empty() && g.measure(f, size, trial) > max_w)
-        {
-            lines.push_back(line);
-            line = word;
-        }
-        else
-            line = trial;
-        word.clear();
-    };
-    for (std::size_t i = 0; i <= text.size(); ++i)
+    /* Pieces a line may break between; glued pieces join without a space. */
+    struct Piece
     {
-        const char c = i < text.size() ? text[i] : ' ';
+        std::string text;
+        bool glued = false;
+        bool newline = false;
+    };
+    std::vector<Piece> pieces;
+    bool space = true;      /* a space (or the start) came before the next piece */
+    bool open_word = false; /* the last piece is a word still being read */
+    for (std::size_t i = 0; i < text.size();)
+    {
+        const unsigned char c = static_cast<unsigned char>(text[i]);
+        const std::size_t len = c < 0x80           ? 1
+                                : (c >> 5) == 0x6  ? 2
+                                : (c >> 4) == 0xE  ? 3
+                                : (c >> 3) == 0x1E ? 4
+                                                   : 1;
+        unsigned cp = len == 1 ? c : len == 2 ? (c & 0x1F) : len == 3 ? (c & 0x0F) : (c & 0x07);
+        for (std::size_t k = 1; k < len && i + k < text.size(); ++k)
+            cp = (cp << 6) | (static_cast<unsigned char>(text[i + k]) & 0x3F);
+        const std::string ch = text.substr(i, len);
+        i += len;
         if (c == ' ' || c == '\n')
         {
-            flush_word();
-            if (c == '\n' && !line.empty())
-            {
+            if (c == '\n')
+                pieces.push_back({"", false, true});
+            space = true;
+            open_word = false;
+            continue;
+        }
+        const bool anywhere = breaks_anywhere(cp);
+        if (!pieces.empty() && !space && !pieces.back().newline && keeps_with_previous(cp))
+            pieces.back().text += ch; /* never at the start of a line */
+        else if (open_word && !anywhere)
+            pieces.back().text += ch;
+        else
+            pieces.push_back({ch, !space && !pieces.empty() && !pieces.back().newline, false});
+        open_word = !anywhere;
+        space = false;
+    }
+
+    std::vector<std::string> lines;
+    std::string line;
+    bool more = false;
+    for (const Piece &p : pieces)
+    {
+        if (p.newline)
+        {
+            if (!line.empty())
                 lines.push_back(line);
-                line.clear();
-            }
+            line.clear();
         }
         else
-            word += c;
+        {
+            const std::string trial = line.empty() ? p.text : line + (p.glued ? "" : " ") + p.text;
+            if (!line.empty() && g.measure(f, size, trial) > max_w)
+            {
+                lines.push_back(line);
+                line = p.text;
+            }
+            else
+                line = trial;
+        }
         if (lines.size() > max_lines)
         {
             more = true;

@@ -435,7 +435,82 @@
         "path": ".",
         "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
       },
-      "modifications": "Weight 600 instance of the variable font, subset to kana, CJK punctuation and the characters of Porpoise's Japanese menus with fontTools (tools/make-jp-font.py). Upstream: https://github.com/google/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosansjp."
+      "modifications": "Weight 600 instance of the variable font, subset to kana, CJK punctuation and the characters of Porpoise's Japanese menus and language names with fontTools (tools/make-cjk-fonts.py). Upstream: https://github.com/google/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosansjp."
+    },
+    {
+      "id": "noto-sans-sc",
+      "name": "Noto Sans SC font (Simplified Chinese menus)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/NotoSansSC-Porpoise.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/NotoSansSC-OFL.txt",
+          "to": "OFL-NotoSansSC.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 600 instance of the variable font, subset to CJK punctuation and the characters of Porpoise's Simplified Chinese menus and language names with fontTools (tools/make-cjk-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/notosanssc."
+    },
+    {
+      "id": "noto-sans-tc",
+      "name": "Noto Sans TC font (Traditional Chinese menus)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/NotoSansTC-Porpoise.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/NotoSansTC-OFL.txt",
+          "to": "OFL-NotoSansTC.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 600 instance of the variable font, subset to CJK punctuation and the characters of Porpoise's Traditional Chinese menus and language names with fontTools (tools/make-cjk-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/notosanstc."
+    },
+    {
+      "id": "noto-sans-kr",
+      "name": "Noto Sans KR font (Korean menus)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/NotoSansKR-Porpoise.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/NotoSansKR-OFL.txt",
+          "to": "OFL-NotoSansKR.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 600 instance of the variable font, subset to CJK punctuation and the characters of Porpoise's Korean menus and language names with fontTools (tools/make-cjk-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/notosanskr."
     },
     {
       "id": "zacksly-ps5-icons",

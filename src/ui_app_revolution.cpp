@@ -167,11 +167,16 @@ std::string App::short_date() const
     static const char *const kDays[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     const std::string day = tr(kDays[std::clamp(tm.tm_wday, 0, 6)]);
     const std::string m = std::to_string(tm.tm_mon + 1), d = std::to_string(tm.tm_mday);
-    /* Month first in English and Japanese, the day first elsewhere. */
+    /* Month first in English, Japanese, Korean and Chinese, the day first
+     * elsewhere. */
     switch (language())
     {
     case Language::English: return day + " " + m + "/" + d;
-    case Language::Japanese: return m + "/" + d + " (" + day + ")";
+    case Language::Japanese:
+    case Language::Korean: return m + "/" + d + " (" + day + ")";
+    case Language::ChineseSimplified:
+    case Language::ChineseTraditional: return m + "/" + d + " " + day;
+    case Language::Turkish: return day + " " + d + "." + m;
     case Language::German:
     case Language::Polish:
     case Language::Russian: return day + " " + d + "." + m + ".";

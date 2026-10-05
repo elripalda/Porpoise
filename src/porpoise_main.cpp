@@ -271,6 +271,8 @@ bool start_gfx()
     init.get_device_proc = c.get_device_proc;
     init.queue_mutex = c.queue_mutex;
     init.asset_dir = "/app0/assets";
+    init.cjk_font = porpoise::ui::cjk_font(); /* the menus' language is set by now */
+    init.cjk_also = porpoise::ui::language_names();
     if (!g_data.empty())
     {
         init.cache_dir = g_data + "/cache";

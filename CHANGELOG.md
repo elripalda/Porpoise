@@ -1,10 +1,9 @@
 # Changelog
 
-## 2.0 beta 3 — 2026-10-05
+## 2.0 Beta 1 — 2026-10-05
 
-A test version (pre-release). Features marked *beta* are new and still being
-tuned; everything else is meant to be as solid as 1.5.1. (Betas 1 and 2 were
-test builds only.)
+The first public beta of 2.0 (a pre-release). Features marked *beta* are new
+and still being tuned; everything else is meant to be as solid as 1.5.1.
 
 ### Faster games
 - **The emulator gets cores of its own.** While a game runs, Dolphin's
@@ -51,16 +50,21 @@ test builds only.)
 - **Threaded GPU recording** (beta, Settings → Graphics, off): the driver
   records Dolphin's drawing on a thread of its own. Worth trying on a
   demanding game.
+- **Quitting to the library no longer freezes halfway:** the game fades to
+  black while Porpoise saves where you were, and the library fades back in.
+- **A boot screen:** the Porpoise dolphin shows from the moment the app
+  opens, instead of a blank screen while the library is read.
 
 ### New
-- **Quick resume** (beta, Settings → Graphics): leaving a game from the
-  in-game menu keeps where you were, and it picks up right there next time.
-  Restart in the in-game menu starts it over.
+- **Quick resume** (beta, Settings → Graphics, off): leaving a game from the
+  in-game menu keeps where you were. Next time, Porpoise asks **Resume** or
+  **Start Over**, with a picture of where you left off. Restart in the
+  in-game menu starts it over too.
 - **Cheats and patches** (beta): each game's settings list the codes and
   patches Dolphin knows for it, one switch each.
 - **Check my setup:** shown the first time 2.0 starts, and any time from
-  Settings → Games: what Porpoise can see (/data, USB drives, games, covers)
-  and what to do about anything missing.
+  Settings → Games: a checklist of what Porpoise can see (/data, USB drives,
+  games, covers) and what to do about anything missing.
 - **Saves on a USB drive** (beta): Options in Memory Cards copies a GameCube
   or Wii save to the drive's `Porpoise Saves` folder; Settings → Games →
   Saves from a USB drive copies them back in.
@@ -72,9 +76,16 @@ test builds only.)
   as they come out.
 - **Wii multiplayer:** in Wii games every other controller is another
   player's own Wii Remote, with its own pointer and motion.
+- **Four new languages:** **简体中文** (Simplified Chinese), **繁體中文**
+  (Traditional Chinese), **한국어** (Korean) and **Türkçe** (Turkish), sixteen
+  in all. Porpoise picks them up from the PS5's own language, or Settings →
+  Interface → Language. Chinese and Japanese text now wraps between
+  characters, as those languages do.
 - **Every menu translated again:** the texts added since the Wii work (the
-  Wii Remote setup, Revolution, Wii saves and 2.0's settings) in all eleven
-  languages; the Revolution clock shows the date in each language's order.
+  Wii Remote setup, Revolution, Wii saves and 2.0's settings) in every
+  language; the Revolution clock shows the date in each language's order.
+- Beta features carry a **BETA** badge in Settings.
+- **New icon and backdrop** on the PS5's home screen.
 
 ## 1.5.1 — 2026-10-04
 

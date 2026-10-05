@@ -32,20 +32,31 @@ enum class Language
     Dutch,
     Polish,
     Russian,
+    ChineseSimplified,
+    ChineseTraditional,
+    Korean,
+    Turkish,
 };
-constexpr int kLanguages = 12;
+constexpr int kLanguages = 16;
 
 /* The PS5's language (sceSystemServiceParamGetInt 1), told once at start. */
 void set_system_language(int ps5_language);
 /* setting: 0 follows the console, else Language + 1 (1 English, 2 Spanish,
  * 3 French, 4 Portuguese, 5 Italian, 6 Japanese, 7 Latin American Spanish,
- * 8 Brazilian Portuguese, 9 German, 10 Dutch, 11 Polish, 12 Russian). */
+ * 8 Brazilian Portuguese, 9 German, 10 Dutch, 11 Polish, 12 Russian, 13 Simplified Chinese, 14 Traditional
+ * Chinese, 15 Korean, 16 Turkish). */
 void apply_language(int setting, const std::string &override_dir = "");
 Language language();
 /* The choices for the Language setting, each in its own language. */
 const char *language_choice(int setting);
 /* The settings' numbers in the order the Language setting lists them. */
 const std::vector<int> &language_order();
+/* The font (in assets/fonts) for characters beyond Nunito's: the current
+ * language's when it is Japanese, Chinese or Korean, else the Japanese one. */
+const char *cjk_font();
+/* Every language's name and "System" in it, as the Language setting shows
+ * them: the characters every CJK font must find somewhere. */
+std::string language_names();
 
 /* The text in the current language (the English itself when there is none). */
 const std::string &tr(const std::string &english);

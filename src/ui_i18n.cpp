@@ -37,7 +37,8 @@ const Entry kTable[] = {
 /* "System" in each language, in Language's order. */
 const char *const kSystemChoice[kLanguages] = {
     "System", "Sistema", "Syst\xC3\xA8me", "Sistema", "Sistema", "\xE6\x9C\xAC\xE4\xBD\x93\xE3\x81\xAE\xE8\xA8\xAD\xE5\xAE\x9A",
-    "Sistema", "Sistema", "System", "Systeem", "Systemowy", "\xD0\xA1\xD0\xB8\xD1\x81\xD1\x82\xD0\xB5\xD0\xBC\xD0\xBD\xD1\x8B\xD0\xB9"};
+    "Sistema", "Sistema", "System", "Systeem", "Systemowy", "\xD0\xA1\xD0\xB8\xD1\x81\xD1\x82\xD0\xB5\xD0\xBC\xD0\xBD\xD1\x8B\xD0\xB9",
+    "\xE8\xB7\x9F\xE9\x9A\x8F\xE7\xB3\xBB\xE7\xBB\x9F", "\xE8\xB7\x9F\xE9\x9A\xA8\xE7\xB3\xBB\xE7\xB5\xB1", "\xEC\x8B\x9C\xEC\x8A\xA4\xED\x85\x9C \xEC\x84\xA4\xEC\xA0\x95", "Sistem"};
 
 /* Each language by its own name, in Language's order. */
 const char *const kNames[kLanguages] = {
@@ -53,10 +54,14 @@ const char *const kNames[kLanguages] = {
     "Nederlands",
     "Polski",
     "\xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9",
+    "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87", /* Chinese, Simplified */
+    "\xE7\xB9\x81\xE9\xAB\x94\xE4\xB8\xAD\xE6\x96\x87", /* Chinese, Traditional */
+    "\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4",
+    "T\xC3\xBCrk\xC3\xA7" "e",
 };
 
 /* Codes for the testers' correction files: lang/<code>.txt. */
-const char *const kCodes[kLanguages] = {"en", "es", "fr", "pt", "it", "ja", "es-419", "pt-BR", "de", "nl", "pl", "ru"};
+const char *const kCodes[kLanguages] = {"en", "es", "fr", "pt", "it", "ja", "es-419", "pt-BR", "de", "nl", "pl", "ru", "zh-Hans", "zh-Hant", "ko", "tr"};
 
 int g_system = 1; /* the PS5's language id */
 Language g_lang = Language::English;
@@ -89,6 +94,10 @@ Language from_ps5(int id)
     case 6: return Language::Dutch;
     case 16: return Language::Polish;
     case 8: return Language::Russian;
+    case 11: return Language::ChineseSimplified;
+    case 10: return Language::ChineseTraditional;
+    case 9: return Language::Korean;
+    case 19: return Language::Turkish;
     default: return Language::English;
     }
 }
@@ -182,8 +191,27 @@ const char *language_choice(int setting)
 const std::vector<int> &language_order()
 {
     /* As the PS5 lists them: by their own names. */
-    static const std::vector<int> order = {0, 1, 9, 2, 7, 3, 5, 10, 11, 4, 8, 12, 6};
+    static const std::vector<int> order = {0, 1, 9, 2, 7, 3, 5, 10, 11, 4, 8, 16, 12, 6, 15, 13, 14};
     return order;
+}
+
+const char *cjk_font()
+{
+    switch (g_lang)
+    {
+    case Language::ChineseSimplified: return "NotoSansSC-Porpoise.ttf";
+    case Language::ChineseTraditional: return "NotoSansTC-Porpoise.ttf";
+    case Language::Korean: return "NotoSansKR-Porpoise.ttf";
+    default: return "NotoSansJP-Porpoise.ttf";
+    }
+}
+
+std::string language_names()
+{
+    std::string all;
+    for (int i = 0; i < kLanguages; ++i)
+        all += std::string(kNames[i]) + kSystemChoice[i];
+    return all;
 }
 
 const std::string &tr(const std::string &english)

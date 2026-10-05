@@ -198,6 +198,7 @@ int main(int argc, char **argv)
     gi.get_instance_proc = vkGetInstanceProcAddr;
     gi.get_device_proc = gdpa;
     gi.asset_dir = assets;
+    gi.cjk_also = porpoise::ui::language_names();
     if (const char *cache = std::getenv("PREVIEW_CACHE"))
         gi.cache_dir = cache; /* the baked text atlases, as Porpoise keeps them */
     Gfx gfx;
@@ -407,6 +408,60 @@ int main(int argc, char **argv)
     };
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
+
+    /* PREVIEW_LANGS=13,16: only these languages' library, a long message (line
+     * breaking) and Settings > Interface, then stop. */
+    if (const char *langs = std::getenv("PREVIEW_LANGS"); langs && *langs)
+    {
+        static const char *const tags[] = {"",    "en-",    "es-",   "fr-", "pt-", "it-",
+                                           "ja-", "es419-", "ptbr-", "de-", "nl-", "pl-",
+                                           "ru-", "zhs-",   "zht-",  "ko-", "tr-"};
+        for (const char *at = langs; *at;)
+        {
+            const int lang = std::atoi(at);
+            while (*at && *at != ',')
+                ++at;
+            if (*at == ',')
+                ++at;
+            if (lang < 1 || lang > 16)
+                continue;
+            const std::string tag = tags[lang];
+            settings.ui_language = lang;
+            porpoise::ui::apply_language(lang);
+            ui.language_changed();
+            settle();
+            while (gfx.cjk_busy()) /* the language's CJK atlas, made on a worker */
+                settle();
+            render((tag + "library").c_str(), [&] { ui.draw(12.0); });
+            ui.show_message(
+                porpoise::ui::tr("Porpoise can't reach /data"),
+                porpoise::ui::tr(
+                    "The console started Porpoise inside the app sandbox, so it can't see "
+                    "/data or USB drives, and no jailbreak daemon freed it. A daemon that "
+                    "frees Porpoise must be running before you open it:\n"
+                    "\xE2\x80\xA2 etaHEN: turn on Legacy Command Server in etaHEN's Toolbox "
+                    "settings (etaHEN's built-in app list can't be edited to add Porpoise).\n"
+                    "\xE2\x80\xA2 OnionHEN: add PPSA99764 to exact_title_ids in "
+                    "/data/OnionHEN/config.ini.\n"
+                    "\xE2\x80\xA2 Or run a standalone daemon such as Lapy.\n"
+                    "Then open Porpoise again; if a launch still lands here, try once more. "
+                    "Until then, games go in /app0/porpoise/games."));
+            settle();
+            render((tag + "message").c_str(), [&] { ui.draw(12.0); });
+            press(kCross);
+            press(kR1, 2);
+            press(1u << 0, 9);
+            press(kDown, 7); /* Interface */
+            press(kRight);
+            settle();
+            render((tag + "settings-interface").c_str(), [&] { ui.draw(12.0); });
+            press(kCircle);
+            press(kR1);
+            settle();
+        }
+        gfx.shutdown();
+        return 0;
+    }
 
     if (async)
     {
@@ -1054,14 +1109,16 @@ int main(int argc, char **argv)
      * American Spanish, Brazilian Portuguese, Dutch. */
     for (int lang : {6, 5, 9, 12, 11, 7, 8, 10})
     {
-        static const char *const tags[] = {"", "en-", "es-", "fr-", "pt-", "it-", "ja-",
-                                           "es419-", "ptbr-", "de-", "nl-", "pl-", "ru-"};
+        static const char *const tags[] = {"",    "en-", "es-", "fr-",  "pt-",  "it-", "ja-", "es419-", "ptbr-",
+                                           "de-", "nl-", "pl-", "ru-", "zhs-", "zht-", "ko-", "tr-"};
         const std::string tag = tags[lang];
         settings.ui_language = lang;
         porpoise::ui::apply_language(lang);
         ui.language_changed();
         press(kCircle, 3);
         settle();
+        while (gfx.cjk_busy())
+            settle();
         render((tag + "library").c_str(), [&] { ui.draw(12.0); });
         press(kSquare);
         settle();

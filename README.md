@@ -199,16 +199,19 @@ that closed the menu never reaches the game.
 - Music and effects each have their own switch and volume.
 
 ### Languages
-- **Twelve languages**, each with its flag in the language list: English,
+- **Sixteen languages**, each with its flag in the language list (Chinese
+  with its script's character instead): English,
   Español (España), **Español (Latinoamérica)**, Français, **Deutsch**,
   Italiano, **Nederlands**, **Polski**, Português (Portugal), **Português
-  (Brasil)**, **Русский** and **日本語**. Porpoise follows your PS5's system
+  (Brasil)**, **Türkçe**, **Русский**, **日本語**, **한국어**, **简体中文** and
+  **繁體中文**. Porpoise follows your PS5's system
   language, and **Settings → Interface → Language** overrides it.
 - Game descriptions from GameTDB come in Spanish, French, Portuguese, Italian,
   German and Dutch too, where GameTDB has them (English otherwise).
 - The translations are first drafts, and fixes are welcome. To fix a line
   without waiting for an update, create `/data/porpoise/lang/<code>.txt` —
-  `es`, `es-419`, `fr`, `pt`, `pt-BR`, `it`, `de`, `nl`, `pl`, `ru` or `ja` —
+  `es`, `es-419`, `fr`, `pt`, `pt-BR`, `it`, `de`, `nl`, `pl`, `ru`, `tr`,
+  `ja`, `ko`, `zh-Hans` or `zh-Hant` —
   with lines such as `Quit to library = Volver a la biblioteca`. In the source,
   translations live in [`i18n/`](i18n).
 
@@ -461,8 +464,11 @@ It stands on the work of many people. The full list, with licences, is in
   (zlib), for how a Wii disc's banner is read and played, and the
   **[Zstandard](https://github.com/facebook/zstd)** educational decoder, for
   reading `.rvz` discs.
-- **[Nunito](https://github.com/googlefonts/nunito)** and
-  **[Noto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp)**
+- **[Nunito](https://github.com/googlefonts/nunito)** and Noto Sans
+  **[JP](https://github.com/google/fonts/tree/main/ofl/notosansjp)**,
+  **[SC](https://github.com/google/fonts/tree/main/ofl/notosanssc)**,
+  **[TC](https://github.com/google/fonts/tree/main/ofl/notosanstc)** and
+  **[KR](https://github.com/google/fonts/tree/main/ofl/notosanskr)**
   (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
 - The PS5 scene: **etaHEN**, **kstuff** and **ShadowMountPlus**, and the front
   ends **PS5SX2** and **ProsperoEden** for the inspiration. Porpoise asks the

@@ -113,6 +113,11 @@ struct GfxInit
     std::mutex *queue_mutex = nullptr; /* held around this renderer's own submits */
     std::string asset_dir;             /* fonts/ and brand/ live here */
     std::string cache_dir;             /* the baked text atlases are kept here, if set */
+    /* Japanese, Chinese or Korean: the font in fonts/ the menus fall back to
+     * beyond Nunito, and characters to take from the other such fonts when it
+     * lacks them (the languages' own names). */
+    std::string cjk_font = "NotoSansJP-Porpoise.ttf";
+    std::string cjk_also;
 };
 
 /* How a piece of glass looks (Gfx::glass). */
@@ -141,6 +146,10 @@ public:
     bool init(const GfxInit &init);
     void shutdown();
     bool ready() const { return device_ != VK_NULL_HANDLE; }
+    /* After the menus' language changes: GfxInit's cjk_font and cjk_also
+     * again; the CJK atlas is rebuilt (or read from the cache) if they differ. */
+    void set_cjk_font(const std::string &file, const std::string &also);
+    bool cjk_busy() const { return cjk_job_ != nullptr; } /* a new CJK atlas is on its way */
 
     /* Textures. RGBA8, straight alpha. */
     Texture *texture_rgba(const std::uint8_t *pixels, int width, int height);
@@ -245,7 +254,7 @@ private:
         float u0, v0, u1, v1;   /* atlas UVs */
         float xoff, yoff, w, h; /* at base size, pixels */
         float advance;
-        bool cjk = false; /* in the Japanese font's atlas */
+        bool cjk = false; /* in the CJK font's atlas */
     };
     struct FontData
     {
@@ -262,9 +271,24 @@ private:
 
     bool load_functions();
     bool create_pipeline();
+    struct Pen
+    {
+        int x = 1, y = 1, row_h = 0;
+    };
+    struct CjkJob;
     bool build_fonts();
-    bool load_atlas_cache(const std::string &path, std::vector<std::uint8_t> &atlas, std::vector<std::uint8_t> &cjk);
-    void save_atlas_cache(const std::string &path) const;
+    void first_cjk();
+    bool make_cjk(const std::string &font, const std::string &also, FontData &cjk,
+                  std::vector<std::uint8_t> &pixels) const;
+    static void *cjk_work(void *job);
+    void finish_cjk_job(bool adopt);
+    bool load_font(const std::string &file, FontData &fd) const;
+    static void unload_font(FontData &fd);
+    void bake(FontData &fd, std::uint32_t cp, GlyphInfo &g, std::vector<std::uint8_t> &atlas, Pen &pen) const;
+    bool load_atlas_cache(const std::string &path, FontData *const *fonts, int count,
+                          std::vector<std::uint8_t> &atlas) const;
+    bool save_atlas_cache(const std::string &path, const FontData *const *fonts, int count,
+                          const std::vector<std::uint8_t> &atlas) const;
     const GlyphInfo *find(const FontData &f, std::uint32_t cp) const;
     void push(Texture *t, const Vertex v[4]);
     void corners_flat(float x, float y, float w, float h, float out[4][4]) const;
@@ -301,11 +325,14 @@ private:
     int uploads_left_ = 0; /* texture_file_async's this frame */
     FontData fonts_[4];
     std::vector<std::uint8_t> atlas_pixels_; /* kept across device changes */
-    /* Japanese: one weight of Noto Sans JP, subset to the characters the menus
-     * use, in an atlas of its own; any font falls back to it. */
+    /* Japanese, Chinese or Korean (init_.cjk_font): one weight of Noto Sans,
+     * subset to the characters the menus use, in an atlas of its own; any font
+     * falls back to it. */
     FontData cjk_;
     Texture *cjk_atlas_ = nullptr;
     std::vector<std::uint8_t> cjk_pixels_;
+    std::string cjk_font_, cjk_also_; /* what cjk_ and its atlas hold */
+    CjkJob *cjk_job_ = nullptr;       /* the next one, being made */
     bool fonts_built_ = false;
 
     unsigned slot_ = 0;

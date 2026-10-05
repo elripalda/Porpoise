@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # Porpoise - draws assets/ui/flags.png, the flags beside the languages in
-# Settings > Interface > Language: twelve 96x64 cells in a row, in the
+# Settings > Interface > Language: sixteen 96x64 cells in a row, in the
 # setting's numbering after System (porpoise::ui::Language): English (US),
 # Spanish (Spain), French, Portuguese (Portugal), Italian, Japanese, Spanish
 # (Latin America: Mexico's flag), Portuguese (Brazil), German, Dutch, Polish,
-# Russian. Simplified for a 40-pixel flag on a TV.
-# Needs Pillow.  SPDX-License-Identifier: GPL-3.0-or-later
+# Russian, Chinese (Simplified), Chinese (Traditional), Korean, Turkish.
+# Simplified for a 40-pixel flag on a TV. The two Chinese scripts are read in
+# several places, so they get a plain tile with the script's own character
+# (简 / 繁, drawn from Noto Sans SC / TC) instead of a flag.
+# Needs Pillow; the Noto fonts are looked for in $NOTO_DIR (default
+# ~/google/fonts/ofl).  SPDX-License-Identifier: GPL-3.0-or-later
 import math
 import os
 import sys
@@ -117,7 +121,66 @@ def ru(d, w, h):
         d.rectangle([0, i * h / 3, w, (i + 1) * h / 3], fill=c)
 
 
-FLAGS = [us, es, fr, pt, it, ja, mx, br, de, nl, pl, ru]
+NOTO = os.environ.get("NOTO_DIR", os.path.expanduser("~/google/fonts/ofl"))
+
+
+def script_tile(char, font_file):
+    def draw(d, w, h):
+        from PIL import ImageFont
+        d.rectangle([0, 0, w, h], fill=(64, 78, 104))
+        font = ImageFont.truetype(os.path.join(NOTO, font_file), int(h * 0.62))
+        try:
+            font.set_variation_by_axes([700])
+        except Exception:
+            pass
+        d.text((w / 2, h / 2), char, font=font, fill=(255, 255, 255), anchor="mm")
+    return draw
+
+
+zh_hans = script_tile("\u7b80", "notosanssc/NotoSansSC[wght].ttf")
+zh_hant = script_tile("\u7e41", "notosanstc/NotoSansTC[wght].ttf")
+
+
+def ko(d, w, h):
+    d.rectangle([0, 0, w, h], fill=(255, 255, 255))
+    cx, cy, r = w / 2, h / 2, h * 0.25
+    # The taegeuk: red above, blue below, with the two small circles.
+    d.pieslice([cx - r, cy - r, cx + r, cy + r], 180 + 33.7, 360 + 33.7, fill=(205, 46, 58))
+    d.pieslice([cx - r, cy - r, cx + r, cy + r], 33.7, 180 + 33.7, fill=(0, 71, 160))
+    a = math.radians(33.7)
+    for k, col in ((-1, (205, 46, 58)), (1, (0, 71, 160))):
+        sx, sy = cx + k * math.cos(a) * r / 2, cy + k * math.sin(a) * r / 2
+        d.ellipse([sx - r / 2, sy - r / 2, sx + r / 2, sy + r / 2], fill=col)
+    # The four trigrams, as plain bars on the diagonals.
+    for ang, broken in ((180 + 33.7, (0, 0, 0)), (-33.7, (1, 0, 1)), (33.7, (1, 1, 1)), (180 - 33.7, (0, 1, 0))):
+        t = math.radians(ang)
+        ux, uy = math.cos(t), math.sin(t)
+        px, py = -uy, ux
+        for i, split in enumerate(broken):
+            dist = r * 1.45 + i * r * 0.28
+            bx, by = cx + ux * dist, cy + uy * dist
+            half, thick = r * 0.5, r * 0.09
+            pieces = [(-half, -half * 0.12), (half * 0.12, half)] if split else [(-half, half)]
+            for a0, a1 in pieces:
+                pts = [(bx + px * a0 + ux * -thick, by + py * a0 + uy * -thick),
+                       (bx + px * a1 + ux * -thick, by + py * a1 + uy * -thick),
+                       (bx + px * a1 + ux * thick, by + py * a1 + uy * thick),
+                       (bx + px * a0 + ux * thick, by + py * a0 + uy * thick)]
+                d.polygon(pts, fill=(0, 0, 0))
+
+
+def tr(d, w, h):
+    red = (227, 10, 23)
+    d.rectangle([0, 0, w, h], fill=red)
+    cx, cy, r = w * 0.36, h / 2, h * 0.25
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(255, 255, 255))
+    r2 = r * 0.8
+    c2 = cx + r * 0.25
+    d.ellipse([c2 - r2, cy - r2, c2 + r2, cy + r2], fill=red)
+    star(d, cx + r * 1.15, cy, r * 0.55, (255, 255, 255))
+
+
+FLAGS = [us, es, fr, pt, it, ja, mx, br, de, nl, pl, ru, zh_hans, zh_hant, ko, tr]
 sheet = Image.new("RGBA", (W * len(FLAGS), H), (0, 0, 0, 0))
 for i, fn in enumerate(FLAGS):
     big = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))

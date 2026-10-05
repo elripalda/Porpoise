@@ -46,10 +46,13 @@ std::string key_of(const Game &g, bool big)
 }
 } // namespace
 
-/* Once a frame: the language, the jingle that was waiting, and textures no
- * longer drawn given back. */
+/* Once a frame: the language (the banners' and the menus' font for Japanese,
+ * Chinese or Korean), the jingle that was waiting, and textures no longer
+ * drawn given back. */
 void App::pump_banners()
 {
+    static const std::string names = language_names();
+    g_->set_cjk_font(cjk_font(), names);
     const std::string lang = banner_language(language());
     if (lang != banner_lang_)
     {

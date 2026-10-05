@@ -388,6 +388,14 @@
   "section": "In-game menu"
  },
  {
+  "en": "Pick up where you left off?",
+  "section": "In-game menu"
+ },
+ {
+  "en": "Start Over",
+  "section": "In-game menu"
+ },
+ {
   "en": "FPS counter",
   "section": "In-game menu"
  },
@@ -2104,7 +2112,7 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "The console started Porpoise inside the app sandbox, so it can't see /data or USB drives, and asking the HEN didn't free it. Add PPSA99764 to your HEN's list of apps to jailbreak (etaHEN or OnionHEN), then open Porpoise again. Until then, games go in /app0/porpoise/games.",
+  "en": "The console started Porpoise inside the app sandbox, so it can't see /data or USB drives, and no jailbreak daemon freed it. A daemon that frees Porpoise must be running before you open it:\n• etaHEN: turn on Legacy Command Server in etaHEN's Toolbox settings (etaHEN's built-in app list can't be edited to add Porpoise).\n• OnionHEN: add PPSA99764 to exact_title_ids in /data/OnionHEN/config.ini.\n• Or run a standalone daemon such as Lapy.\nThen open Porpoise again; if a launch still lands here, try once more. Until then, games go in /app0/porpoise/games.",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -3172,7 +3180,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Threaded GPU recording (beta)",
+  "en": "Threaded GPU recording",
   "section": "Settings (2.0)"
  },
  {
@@ -3184,7 +3192,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Quick resume (beta)",
+  "en": "Quick resume",
   "section": "Settings (2.0)"
  },
  {
@@ -3312,7 +3320,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Saves from a USB drive (beta)",
+  "en": "Saves from a USB drive",
   "section": "Settings (2.0)"
  },
  {
@@ -3506,5 +3514,25 @@
  {
   "en": "Gives the emulated console's processor and its graphics a core of the PS5 each, away from Porpoise's other work. Usually faster; turn it off if a game runs worse.",
   "section": "Settings (2.0)"
+ },
+ {
+  "en": "Centred",
+  "section": "Small words (2.0)"
+ },
+ {
+  "en": "empty",
+  "section": "Small words (2.0)"
+ },
+ {
+  "en": "installed",
+  "section": "Small words (2.0)"
+ },
+ {
+  "en": "beta",
+  "section": "Small words (2.0)"
+ },
+ {
+  "en": "latest",
+  "section": "Small words (2.0)"
  }
 ]
