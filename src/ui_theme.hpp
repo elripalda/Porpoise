@@ -46,6 +46,7 @@ struct Theme
     bool bezel = false;   /* a TV's frame around the picture */
     bool palettes = false; /* offers the Colours setting */
     float prompts = 0.82f; /* the button hints along the bottom, against 1.0 in 2.0 */
+    const char *fonts = "";  /* its own letters (Gfx::set_theme_fonts), or Nunito */
 };
 
 const Theme &theme(int id);

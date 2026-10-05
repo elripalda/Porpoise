@@ -179,6 +179,11 @@ public:
      * 3 a worn tape's. */
     void fx(int which, float strength = 1);
     bool cjk_busy() const { return cjk_job_ != nullptr; } /* a new CJK atlas is on its way */
+    /* The theme's own letters: "" Nunito, "mono" JetBrains Mono (Terminal),
+     * "vt" VT323 (Broadcast). Made on a worker the first time (then cached);
+     * Nunito until they're ready, and for anything they lack. */
+    void set_theme_fonts(const std::string &set);
+    bool theme_fonts_busy() const { return theme_job_ != nullptr; }
 
     /* Textures. RGBA8, straight alpha. */
     Texture *texture_rgba(const std::uint8_t *pixels, int width, int height);
@@ -292,7 +297,8 @@ private:
         float u0, v0, u1, v1;   /* atlas UVs */
         float xoff, yoff, w, h; /* at base size, pixels */
         float advance;
-        bool cjk = false; /* in the CJK font's atlas */
+        bool cjk = false;   /* in the CJK font's atlas */
+        bool theme = false; /* in the theme's own fonts' atlas */
     };
     struct FontData
     {
@@ -371,6 +377,20 @@ private:
     std::vector<std::uint8_t> cjk_pixels_;
     std::string cjk_font_, cjk_also_; /* what cjk_ and its atlas hold */
     CjkJob *cjk_job_ = nullptr;       /* the next one, being made */
+    /* A theme's own fonts, in the same four weights, in an atlas of their own. */
+    struct ThemeJob;
+    FontData theme_fonts_[4];
+    Texture *theme_atlas_ = nullptr;
+    std::vector<std::uint8_t> theme_pixels_;
+    std::string theme_set_;          /* what theme_fonts_ hold */
+    ThemeJob *theme_job_ = nullptr;
+    bool make_theme_fonts(const std::string &set, FontData *out, std::vector<std::uint8_t> &pixels) const;
+    static void *theme_work(void *job);
+    void finish_theme_job(bool adopt);
+    const FontData &face(Font f) const
+    {
+        return theme_atlas_ && !theme_set_.empty() ? theme_fonts_[int(f)] : fonts_[int(f)];
+    }
     bool fonts_built_ = false;
 
     unsigned slot_ = 0;

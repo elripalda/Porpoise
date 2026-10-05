@@ -359,6 +359,7 @@ App::Action App::update(const Input &in, double dt)
     Action action = Action::None;
     home_pad_sync(); /* the Revolution look's pointer */
     pump_banners();  /* Wii discs' tiles and banners, as they come */
+    g_->set_theme_fonts(th().fonts); /* a theme's own letters, once they're made */
 
     const bool calm = settings_->reduced_motion;
     const float rate = calm ? 40.0f : 14.0f;
@@ -2046,6 +2047,7 @@ void App::apply_look()
     if (!settings_)
         return;
     g_->set_look(look_for(*settings_));
+    g_->set_theme_fonts(th().fonts);
     kR = th().radius;
     theme_seen_ = settings_->ui_theme;
 }

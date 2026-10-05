@@ -949,6 +949,8 @@ bool Gfx::build_fonts()
         atlas_ = upload(atlas_pixels_.data(), kAtlas, kAtlas);
         if (!cjk_pixels_.empty())
             cjk_atlas_ = upload(cjk_pixels_.data(), kAtlas, kAtlas);
+        if (!theme_pixels_.empty())
+            theme_atlas_ = upload(theme_pixels_.data(), kAtlas, kAtlas);
         return atlas_ != nullptr;
     }
     static const char *const files[4] = {"Nunito-Regular.ttf", "Nunito-SemiBold.ttf", "Nunito-Bold.ttf",
@@ -1256,6 +1258,190 @@ bool Gfx::make_cjk(const std::string &font, const std::string &also, FontData &c
     return true;
 }
 
+/* ---- a theme's own fonts ---------------------------------------------------------------- */
+
+struct Gfx::ThemeJob
+{
+    const Gfx *gfx = nullptr;
+    std::string set;
+    FontData fd[4];
+    std::vector<std::uint8_t> pixels;
+    bool ok = false;
+    std::atomic<bool> done{false};
+    bool threaded = false;
+    pthread_t thread{};
+};
+
+void *Gfx::theme_work(void *arg)
+{
+    auto *job = static_cast<ThemeJob *>(arg);
+    job->ok = job->gfx->make_theme_fonts(job->set, job->fd, job->pixels);
+    job->done.store(true, std::memory_order_release);
+    return nullptr;
+}
+
+void Gfx::finish_theme_job(bool adopt)
+{
+    if (!theme_job_)
+        return;
+    if (theme_job_->threaded)
+        pthread_join(theme_job_->thread, nullptr);
+    if (adopt)
+    {
+        if (theme_atlas_)
+            free_texture(theme_atlas_);
+        theme_atlas_ = nullptr;
+        for (FontData &f : theme_fonts_)
+            unload_font(f);
+        theme_pixels_.clear();
+        theme_set_ = theme_job_->set;
+        if (theme_job_->ok)
+        {
+            for (int i = 0; i < 4; ++i)
+            {
+                theme_fonts_[i] = std::move(theme_job_->fd[i]);
+                theme_job_->fd[i] = FontData{};
+            }
+            theme_pixels_ = std::move(theme_job_->pixels);
+            theme_atlas_ = upload(theme_pixels_.data(), kAtlas, kAtlas);
+        }
+    }
+    for (FontData &f : theme_job_->fd)
+        unload_font(f);
+    delete theme_job_;
+    theme_job_ = nullptr;
+}
+
+void Gfx::set_theme_fonts(const std::string &set)
+{
+    if (!fonts_built_)
+        return;
+    if (theme_job_)
+    {
+        if (!theme_job_->done.load(std::memory_order_acquire))
+            return;
+        finish_theme_job(true);
+    }
+    if (set == theme_set_)
+        return;
+    if (set.empty())
+    {
+        /* Back to Nunito: the theme's atlas goes. */
+        if (theme_atlas_)
+            free_texture(theme_atlas_);
+        theme_atlas_ = nullptr;
+        for (FontData &f : theme_fonts_)
+            unload_font(f);
+        theme_pixels_.clear();
+        theme_set_.clear();
+        return;
+    }
+    auto *job = new ThemeJob();
+    job->gfx = this;
+    job->set = set;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 1u << 20);
+    job->threaded = pthread_create(&job->thread, &attr, theme_work, job) == 0;
+    pthread_attr_destroy(&attr);
+    theme_job_ = job;
+    if (!job->threaded)
+    {
+        theme_work(job);
+        finish_theme_job(true);
+    }
+}
+
+/* The theme's four weights, sized so their capitals stand as tall as
+ * Nunito's, with the same letters baked. */
+bool Gfx::make_theme_fonts(const std::string &set, FontData *out, std::vector<std::uint8_t> &pixels) const
+{
+    static const char *const kMono[4] = {"JetBrainsMono-Regular.ttf", "JetBrainsMono-SemiBold.ttf",
+                                         "JetBrainsMono-Bold.ttf", "JetBrainsMono-ExtraBold.ttf"};
+    static const char *const kVt[4] = {"VT323-Regular.ttf", "VT323-Regular.ttf", "VT323-Regular.ttf",
+                                       "VT323-Regular.ttf"};
+    const char *const *files = set == "mono" ? kMono : set == "vt" ? kVt : nullptr;
+    if (!files)
+        return false;
+    for (int f = 0; f < 4; ++f)
+    {
+        FontData &fd = out[f];
+        if (!load_font(files[f], fd))
+            return false;
+        auto *info = static_cast<stbtt_fontinfo *>(fd.info);
+        int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+        const int cap_units = stbtt_GetCodepointBox(info, 'H', &x0, &y0, &x1, &y1) && y1 > 0 ? y1 : 700;
+        fd.scale = fonts_[f].cap / float(cap_units);
+        int ascent = 0, descent = 0, gap = 0;
+        stbtt_GetFontVMetrics(info, &ascent, &descent, &gap);
+        fd.ascent = ascent * fd.scale;
+        fd.descent = descent * fd.scale;
+        fd.line_gap = gap * fd.scale;
+        fd.cap = fonts_[f].cap;
+    }
+
+    std::string cache;
+    if (!init_.cache_dir.empty())
+    {
+        CacheKey key;
+        const char version[] = "porpoise-theme-1";
+        key.mix(version, sizeof version);
+        const int dims[4] = {kAtlas, int(kBase), kPad, int(sizeof(GlyphInfo))};
+        key.mix(dims, sizeof dims);
+        for (int f = 0; f < 4; ++f)
+        {
+            key.mix(out[f].ttf.data(), out[f].ttf.size());
+            key.mix(&out[f].scale, sizeof out[f].scale);
+        }
+        char hex[24];
+        std::snprintf(hex, sizeof hex, "%016llx", static_cast<unsigned long long>(key.key));
+        cache = init_.cache_dir + "/text-theme-" + set + "-" + hex + ".bin";
+        std::vector<std::uint8_t> atlas;
+        FontData *all[4] = {&out[0], &out[1], &out[2], &out[3]};
+        if (load_atlas_cache(cache, all, 4, atlas))
+        {
+            pixels = std::move(atlas);
+            std::fprintf(stderr, "[gfx] %s fonts read from %s\n", set.c_str(), cache.c_str());
+            return true;
+        }
+    }
+
+    std::vector<std::uint8_t> atlas = blank_atlas(kAtlas);
+    Pen pen;
+    for (int f = 0; f < 4; ++f)
+    {
+        FontData &fd = out[f];
+        auto *info = static_cast<stbtt_fontinfo *>(fd.info);
+        for (std::uint32_t cp = 32; cp < 127; ++cp)
+        {
+            if (!stbtt_FindGlyphIndex(info, int(cp)) && cp != 32)
+                continue;
+            bake(fd, cp, fd.glyphs[cp], atlas, pen);
+            fd.glyphs[cp].theme = true;
+        }
+        fd.extra.clear();
+        for (const auto &e : fonts_[f].extra)
+        {
+            if (!stbtt_FindGlyphIndex(info, int(e.first)))
+                continue;
+            GlyphInfo g;
+            bake(fd, e.first, g, atlas, pen);
+            g.theme = true;
+            if (g.present)
+                fd.extra.push_back({e.first, g});
+        }
+    }
+    std::fprintf(stderr, "[gfx] %s fonts: atlas filled to row %d of %d\n", set.c_str(), pen.y + pen.row_h, kAtlas);
+    pixels = std::move(atlas);
+    if (!cache.empty())
+    {
+        const FontData *all[4] = {&out[0], &out[1], &out[2], &out[3]};
+        if (save_atlas_cache(cache, all, 4, pixels))
+            forget_others(init_.cache_dir, "text-theme-" + set + "-", cache.substr(init_.cache_dir.size()));
+    }
+    return true;
+}
+
 /* A cache file: a header, each font's glyphs, then the atlas's coverage (one
  * byte a pixel; the colour is always white). */
 namespace
@@ -1373,13 +1559,14 @@ void Gfx::shutdown()
     if (vkDeviceWaitIdle_)
         vkDeviceWaitIdle_(device_);
     finish_cjk_job(false);
+    finish_theme_job(false);
     for (Texture *t : textures_)
         destroy_texture(t);
     textures_.clear();
     for (auto &dead : graveyard_)
         destroy_texture(dead.first);
     graveyard_.clear();
-    white_ = atlas_ = brand_mask_ = icons_ = cjk_atlas_ = nullptr;
+    white_ = atlas_ = brand_mask_ = icons_ = cjk_atlas_ = theme_atlas_ = nullptr;
     for (std::size_t i = 0; i < vbufs_.size(); ++i)
     {
         if (vmaps_[i])
@@ -1861,12 +2048,17 @@ void Gfx::glass(const Corner c[4], float shape_w, float shape_h, float margin, c
 
 const Gfx::GlyphInfo *Gfx::find(const FontData &f, std::uint32_t cp) const
 {
-    if (cp < 128)
-        return f.glyphs[cp].present ? &f.glyphs[cp] : nullptr;
+    if (cp < 128 && f.glyphs[cp].present)
+        return &f.glyphs[cp];
     const auto it = std::lower_bound(f.extra.begin(), f.extra.end(), cp,
                                      [](const std::pair<std::uint32_t, GlyphInfo> &e, std::uint32_t c) { return e.first < c; });
     if (it != f.extra.end() && it->first == cp)
         return &it->second;
+    /* A theme's font without the letter: Nunito's. */
+    if (&f >= theme_fonts_ && &f < theme_fonts_ + 4)
+        return find(fonts_[&f - theme_fonts_], cp);
+    if (cp < 128)
+        return nullptr;
     if (cjk_atlas_ && cp >= 0x2000)
     {
         const auto jt = std::lower_bound(cjk_.extra.begin(), cjk_.extra.end(), cp,
@@ -1881,7 +2073,7 @@ const Gfx::GlyphInfo *Gfx::find(const FontData &f, std::uint32_t cp) const
 
 float Gfx::measure(Font font, float size, const std::string &s, float spacing) const
 {
-    const FontData &f = fonts_[int(font)];
+    const FontData &f = face(font);
     const float k = size / kBase;
     float w = 0;
     std::size_t i = 0;
@@ -1904,7 +2096,7 @@ float Gfx::measure(Font font, float size, const std::string &s, float spacing) c
 float Gfx::text_mid(Font font, float size, float x, float cy, Color c, Align a, const std::string &s,
                     float spacing, float weight)
 {
-    const FontData &f = fonts_[int(font)];
+    const FontData &f = face(font);
     const float k = size / kBase;
     /* text() takes the top of the line box: baseline = top + ascent. */
     const float top = cy + f.cap * k * 0.5f - f.ascent * k;
@@ -1913,7 +2105,7 @@ float Gfx::text_mid(Font font, float size, float x, float cy, Color c, Align a, 
 
 float Gfx::line_height(Font font, float size) const
 {
-    const FontData &f = fonts_[int(font)];
+    const FontData &f = face(font);
     return (f.ascent - f.descent) * size / kBase;
 }
 
@@ -1921,7 +2113,7 @@ float Gfx::text(Font font, float size, float x, float y, Color c, Align a, const
                 float weight)
 {
     c = tone(c);
-    const FontData &f = fonts_[int(font)];
+    const FontData &f = face(font);
     const float k = size / kBase;
     const float width = measure(font, size, s, spacing);
     if (a == Align::Center)
@@ -1962,7 +2154,7 @@ float Gfx::text(Font font, float size, float x, float y, Color c, Align a, const
                 fill(v[n].p0, {float(K_TEXT), w8, 0, 0});
                 fill(v[n].p1, {gw * px, gh * px, gw * px, gh * px});
             }
-            push(g->cjk ? cjk_atlas_ : atlas_, v);
+            push(g->cjk ? cjk_atlas_ : g->theme ? theme_atlas_ : atlas_, v);
         }
         pen += g->advance * k + spacing;
         prev = cp;

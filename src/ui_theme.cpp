@@ -104,6 +104,7 @@ Theme make_broadcast()
     t.radius = 10;
     t.overlay = 3;
     t.bezel = true;
+    t.fonts = "vt";
     return t;
 }
 
@@ -122,6 +123,7 @@ Theme make_terminal()
     t.look.flat = true;
     t.radius = 0;
     t.overlay = 2;
+    t.fonts = "mono";
     return t;
 }
 

@@ -432,8 +432,19 @@ int main(int argc, char **argv)
             settings.ui_palette = v[1];
             settings.lib_view = v[2];
             settings.mc_view = v[3];
+            if (const char *e = std::getenv("PREVIEW_HC"))
+                settings.high_contrast = std::atoi(e) != 0;
+            if (const char *e = std::getenv("PREVIEW_FILTER"))
+                settings.colour_filter = std::atoi(e);
+            if (const char *e = std::getenv("PREVIEW_TEXT"))
+                settings.text_size = std::atoi(e);
             ui.language_changed();
             settle();
+            while (gfx.theme_fonts_busy() || gfx.cjk_busy()) /* made on workers */
+            {
+                settle();
+                usleep(10000);
+            }
             char tag[48];
             std::snprintf(tag, sizeof tag, "look-%d-%d-%d-%d", v[0], v[1], v[2], v[3]);
             render((std::string(tag) + "-library").c_str(), [&] { ui.draw(12.0); });

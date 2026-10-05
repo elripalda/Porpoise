@@ -513,7 +513,7 @@ vec4 glass(vec2 p, vec2 shape)
     float yn = clamp(p.y / shape.y + 0.5, 0.0, 1.0);
     float ang = atan(p.y, p.x) / 6.28318;
     vec3 rainbow = spectrum(ang + v_p2.x * 1.3 + t * 0.012);
-    rainbow = mix(rainbow, vec3(0.85), pc.look1.w); /* plain themes: clear glass, no spectrum */
+    rainbow = mix(rainbow, v_bcolor.rgb, pc.look1.w); /* plain themes: the rim's own colour, no spectrum */
 
     if (face == 1)
     {
