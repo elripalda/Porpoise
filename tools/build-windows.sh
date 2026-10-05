@@ -75,10 +75,9 @@ echo "==> [windows] staging"
 cp -f "$SDL3/bin/SDL3.dll" "$out/"
 mkdir -p "$out/cores" "$out/assets" "$out/system" "$out/data"
 [[ -f $CORE ]] && cp -f "$CORE" "$out/cores/dolphin_libretro.dll"
-# The core's own runtime DLLs, if it was linked against them.
-for dll in libc++.dll libunwind.dll libwinpthread-1.dll; do
-    [[ -f $MINGW/x86_64-w64-mingw32/bin/$dll ]] && cp -f "$MINGW/x86_64-w64-mingw32/bin/$dll" "$out/"
-done
+# Both Porpoise.exe and the core carry their C++ runtime; only Windows' own
+# UCRT (built into Windows 10 and 11) and SDL3.dll are needed beside them.
+rm -f "$out/libc++.dll" "$out/libunwind.dll" "$out/libwinpthread-1.dll"
 rsync -a --delete "$root/assets/" "$out/assets/"
 if [[ -d $root/build/cores/stage/system ]]; then
     rsync -a --delete "$root/build/cores/stage/system/" "$out/system/"
