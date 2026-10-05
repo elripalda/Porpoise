@@ -327,87 +327,135 @@ void App::draw_shelf(double time)
 
 /* ---- box -------------------------------------------------------------------------------- */
 
-/* A game case: the front cover, the spine down its left side, the back,
- * and the plastic of the open side, each face drawn when it faces you. */
+/* A game case: black plastic, with the printed paper insert under its clear
+ * sleeve - the cover on the front, the spine down the left, the back behind -
+ * and plastic on the open side, top and bottom. A face is drawn when its
+ * corners, as projected, turn clockwise (it faces you), so at any angle each
+ * shows cleanly and none bleeds through another. */
 void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha)
 {
     Gfx &g = *g_;
+    const bool toned = g.toned();
+    g.set_tone(false); /* the case is black in every theme */
     const float hw = w * 0.5f, hh = h * 0.5f;
-    const float c = std::cos(yaw), s = std::sin(yaw);
-    /* A face is seen when its normal (nx, nz), turned by yaw, points at us (-z). */
-    auto facing = [&](float nx, float nz) { return nx * s + nz * c < -0.02f; };
-    const Color plastic = rgba(0x0D1220, alpha);
+    struct P
+    {
+        float x, y, z;
+    };
+    auto corner = [&](P p) { return project(cx, cy, p.x, p.y, yaw, p.z); };
+    auto seen = [](const Corner q[4]) {
+        float area = 0;
+        for (int i = 0; i < 4; ++i)
+        {
+            const Corner &a = q[i], &b = q[(i + 1) % 4];
+            area += a.x * b.y - b.x * a.y;
+        }
+        return area > 1.0f;
+    };
+    /* A face's corners (top left, top right, bottom right, bottom left as
+     * seen from outside), and a rectangle inset into it by (iu, iv). */
+    auto face = [&](const P f[4], float iu, float iv, Corner out[4]) {
+        const P &tl = f[0], &tr = f[1], &bl = f[3];
+        const P du{tr.x - tl.x, tr.y - tl.y, tr.z - tl.z}, dv{bl.x - tl.x, bl.y - tl.y, bl.z - tl.z};
+        const float lu = std::sqrt(du.x * du.x + du.y * du.y + du.z * du.z);
+        const float lv = std::sqrt(dv.x * dv.x + dv.y * dv.y + dv.z * dv.z);
+        const float u0 = lu > 0 ? iu / lu : 0, v0 = lv > 0 ? iv / lv : 0;
+        const float uv[4][2] = {{u0, v0}, {1 - u0, v0}, {1 - u0, 1 - v0}, {u0, 1 - v0}};
+        for (int i = 0; i < 4; ++i)
+            out[i] = corner(P{tl.x + du.x * uv[i][0] + dv.x * uv[i][1], tl.y + du.y * uv[i][0] + dv.y * uv[i][1],
+                              tl.z + du.z * uv[i][0] + dv.z * uv[i][1]});
+    };
+    const Color black = Color{0.035f, 0.038f, 0.045f, alpha};
+    const Color edge_light = Color{0.16f, 0.17f, 0.19f, alpha};
 
     /* Its shadow on the floor. */
     g.blob(cx, cy + hh + 26, w * 1.3f, 60, rgba(0x000000, 0.5f * alpha));
 
-    if (facing(-1, 0))
+    const P front[4] = {{-hw, -hh, 0}, {hw, -hh, 0}, {hw, hh, 0}, {-hw, hh, 0}};
+    const P back[4] = {{hw, -hh, depth}, {-hw, -hh, depth}, {-hw, hh, depth}, {hw, hh, depth}};
+    const P spine[4] = {{-hw, -hh, depth}, {-hw, -hh, 0}, {-hw, hh, 0}, {-hw, hh, depth}};
+    const P open_side[4] = {{hw, -hh, 0}, {hw, -hh, depth}, {hw, hh, depth}, {hw, hh, 0}};
+    const P top[4] = {{-hw, -hh, depth}, {hw, -hh, depth}, {hw, -hh, 0}, {-hw, -hh, 0}};
+    const P bottom[4] = {{-hw, hh, 0}, {hw, hh, 0}, {hw, hh, depth}, {-hw, hh, depth}};
+    const float paper = 7; /* the plastic showing round the insert */
+
+    Corner q[4];
+    for (const P *f : {top, bottom})
     {
-        /* The spine: its art, or the cover's left edge. */
-        Corner q[4] = {project(cx, cy, -hw, -hh, yaw, depth), project(cx, cy, -hw, -hh, yaw, 0),
-                       project(cx, cy, -hw, hh, yaw, 0), project(cx, cy, -hw, hh, yaw, depth)};
-        if (Texture *spine = spine_of(game))
-            g.quad3d(spine, q, depth, h, with_alpha(kWhite, alpha), 2, false, false);
+        for (int i = 0; i < 4; ++i)
+            q[i] = corner(f[i]);
+        if (seen(q))
+            g.quad3d(nullptr, q, w, depth, black, 2, false, false);
+    }
+    for (int i = 0; i < 4; ++i)
+        q[i] = corner(open_side[i]);
+    if (seen(q))
+    {
+        /* The open side: plastic, with the ridge of its clasp catching the light. */
+        g.quad3d(nullptr, q, depth, h, black, 3, false, false);
+        Corner r[4];
+        face(open_side, depth * 0.40f, h * 0.30f, r);
+        g.quad3d(nullptr, r, depth * 0.2f, h * 0.4f, edge_light, 1, false, false);
+    }
+    for (int i = 0; i < 4; ++i)
+        q[i] = corner(spine[i]);
+    if (seen(q))
+    {
+        g.quad3d(nullptr, q, depth, h, black, 2, false, false);
+        Corner in[4];
+        face(spine, 3, paper, in);
+        if (Texture *art = spine_of(game))
+            g.quad3d(art, in, depth - 6, h - paper * 2, with_alpha(kWhite, alpha), 1, false, false);
         else if (Texture *cover = cover_of(game))
         {
-            const float uv[4] = {0.0f, 0.0f, 0.07f, 1.0f};
-            g.quad3d(cover, q, depth, h, with_alpha(rgba(0xB8C0D0), alpha), 2, false, false, uv);
+            const float uv[4] = {0.0f, 0.0f, 0.06f, 1.0f};
+            g.quad3d(cover, in, depth - 6, h - paper * 2, Color{0.62f, 0.64f, 0.70f, alpha}, 1, false, false, uv);
         }
-        else
-            g.quad3d(nullptr, q, depth, h, plastic, 2, false, false);
+        gloss_over(g, q, depth, h, 2, cx / 1920.0f + yaw * 0.1f, alpha * 0.6f);
     }
-    if (facing(1, 0))
+    for (int i = 0; i < 4; ++i)
+        q[i] = corner(back[i]);
+    if (seen(q))
     {
-        /* The open side: the case's plastic, the pages' edge inside. */
-        Corner q[4] = {project(cx, cy, hw, -hh, yaw, 0), project(cx, cy, hw, -hh, yaw, depth),
-                       project(cx, cy, hw, hh, yaw, depth), project(cx, cy, hw, hh, yaw, 0)};
-        g.quad3d(nullptr, q, depth, h, plastic, 3, false, false);
-        Corner p[4] = {project(cx, cy, hw, -hh + 8, yaw, depth * 0.25f), project(cx, cy, hw, -hh + 8, yaw, depth * 0.75f),
-                       project(cx, cy, hw, hh - 8, yaw, depth * 0.75f), project(cx, cy, hw, hh - 8, yaw, depth * 0.25f)};
-        g.quad3d(nullptr, p, depth * 0.5f, h - 16, rgba(0xDDE3EC, 0.75f * alpha), 1, false, false);
-    }
-    if (facing(0, 1))
-    {
-        Corner q[4] = {project(cx, cy, hw, -hh, yaw, depth), project(cx, cy, -hw, -hh, yaw, depth),
-                       project(cx, cy, -hw, hh, yaw, depth), project(cx, cy, hw, hh, yaw, depth)};
-        if (Texture *back = back_of(game))
+        g.quad3d(nullptr, q, w, h, black, 6, false, false);
+        Corner in[4];
+        face(back, paper, paper, in);
+        if (Texture *art = back_of(game))
         {
             float uv[4];
-            cover_uv(back, w, h, uv);
-            g.quad3d(back, q, w, h, with_alpha(kWhite, alpha), 6, false, false, uv);
+            cover_uv(art, w - paper * 2, h - paper * 2, uv);
+            g.quad3d(art, in, w - paper * 2, h - paper * 2, with_alpha(kWhite, alpha), 3, false, false, uv);
         }
-        else
+        else if (Texture *mark = logo_ ? logo_ : g.brand_mask())
         {
-            g.quad3d(nullptr, q, w, h, rgba(0x13286F, alpha), 6, false, false);
-            if (Texture *mark = logo_ ? logo_ : g.brand_mask())
-            {
-                const float lw = w * 0.42f, lh = lw * float(mark->height) / float(std::max(1, mark->width));
-                Corner l[4] = {project(cx, cy, lw * 0.5f, -lh * 0.5f, yaw, depth),
-                               project(cx, cy, -lw * 0.5f, -lh * 0.5f, yaw, depth),
-                               project(cx, cy, -lw * 0.5f, lh * 0.5f, yaw, depth),
-                               project(cx, cy, lw * 0.5f, lh * 0.5f, yaw, depth)};
-                g.quad3d(mark, l, lw, lh, with_alpha(logo_ ? kWhite : kCyan, 0.85f * alpha), 0, false, false);
-            }
+            const float lw = w * 0.42f, lh = lw * float(mark->height) / float(std::max(1, mark->width));
+            Corner l[4] = {corner(P{lw * 0.5f, -lh * 0.5f, depth}), corner(P{-lw * 0.5f, -lh * 0.5f, depth}),
+                           corner(P{-lw * 0.5f, lh * 0.5f, depth}), corner(P{lw * 0.5f, lh * 0.5f, depth})};
+            g.quad3d(mark, l, lw, lh, with_alpha(logo_ ? kWhite : kCyan, 0.85f * alpha), 0, false, false);
         }
         gloss_over(g, q, w, h, 6, cx / 1920.0f + yaw * 0.1f, alpha);
     }
-    if (facing(0, -1))
+    for (int i = 0; i < 4; ++i)
+        q[i] = corner(front[i]);
+    if (seen(q))
     {
-        Corner q[4] = {project(cx, cy, -hw, -hh, yaw, 0), project(cx, cy, hw, -hh, yaw, 0),
-                       project(cx, cy, hw, hh, yaw, 0), project(cx, cy, -hw, hh, yaw, 0)};
+        g.quad3d(nullptr, q, w, h, black, 6, false, false);
+        Corner in[4];
+        face(front, paper, paper, in);
         if (Texture *cover = cover_of(game))
         {
             float uv[4];
-            cover_uv(cover, w, h, uv);
-            g.quad3d(cover, q, w, h, with_alpha(kWhite, alpha), 6, false, false, uv);
+            cover_uv(cover, w - paper * 2, h - paper * 2, uv);
+            g.quad3d(cover, in, w - paper * 2, h - paper * 2, with_alpha(kWhite, alpha), 3, false, false, uv);
         }
         else
         {
-            g.quad3d(nullptr, q, w, h, rgba(0x16328F, alpha), 6, false, false);
+            g.quad3d(nullptr, in, w - paper * 2, h - paper * 2, rgba(0x16328F, alpha), 3, false, false);
             draw_mark(cx, cy - h * 0.12f, w * 0.42f, with_alpha(rgba(0x6FD8FF), 0.9f * alpha));
         }
         gloss_over(g, q, w, h, 6, cx / 1920.0f + yaw * 0.1f, alpha);
     }
+    g.set_tone(toned);
 }
 
 /* One game at a time: its box, big, on the left - the right stick turns it
@@ -481,6 +529,175 @@ void App::draw_box_view(double time)
                fit(g, Font::Regular, ts(24), tr("Turn the box round with the right stick."), pw - 80));
 }
 
+/* ---- list ------------------------------------------------------------------------------- */
+
+/* Your games by name, down the right; the chosen one's box on the left. */
+void App::draw_list_view(double time)
+{
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    const int shown = lib_->shown();
+    if (shown == 0)
+        return;
+    Game &sel = games[std::size_t(selected_)];
+    const float sway = settings_->reduced_motion ? 0.0f : std::sin(float(time) * 0.6f) * 0.08f;
+    draw_tile(&sel, 470, kCy + 30, kTileW * 1.05f, kTileH * 1.05f, 0.18f + sway, 1.0f, true, false);
+    g.text(Font::Bold, ts(40), 470, 840, kWhite, Align::Center, fit(g, Font::Bold, ts(40), sel.title, 640));
+    g.text(Font::SemiBold, ts(24), 470, 900, kLavender, Align::Center, game_meta(sel));
+
+    const float lx = 860, ly = 250, lw = 980, row_h = 76;
+    const int visible = 9;
+    /* The list slides so the chosen row stays near the middle. */
+    const float top = std::clamp(scroll_ - 3.5f, 0.0f, std::max(0.0f, float(shown - visible)));
+    g.panel(lx, ly - 14, lw, row_h * visible + 28, rgba(0x0F1F63, 0.55f), 0.75f, kR, rgba(0x4C6FD8, 0.8f), 1.6f, 0, 0.1f);
+    for (int i = std::max(0, int(top) - 1); i < std::min(shown, int(top) + visible + 1); ++i)
+    {
+        const float y = ly + (float(i) - top) * row_h;
+        if (y < ly - row_h * 0.5f || y > ly + row_h * (visible - 0.5f))
+            continue;
+        const float edge = std::clamp(std::min(y - (ly - row_h * 0.5f), ly + row_h * (visible - 0.5f) - y) / row_h, 0.0f, 1.0f);
+        Game &game = games[std::size_t(i)];
+        const bool on = i == selected_;
+        if (on)
+            g.panel(lx + 12, y, lw - 24, row_h - 8, rgba(0x1F63F0, 0.9f), 0.62f, kR, rgba(0x7FD9FF), 1.6f, 6, 0.3f);
+        if (Texture *cover = cover_of(game))
+            g.image(cover, lx + 28, y + 4, 44, 60, with_alpha(kWhite, edge), 4);
+        g.text_mid(on ? Font::Bold : Font::SemiBold, ts(27), lx + 92, y + (row_h - 8) * 0.5f, with_alpha(kWhite, edge),
+                   Align::Left, fit(g, Font::Bold, ts(27), game.title, lw - 380));
+        if (game.favourite)
+            g.glyph(Glyph::Star, lx + lw - 250, y + (row_h - 8) * 0.5f, 26, rgba(0xFFD45C, edge));
+        g.text_mid(Font::Regular, ts(22), lx + lw - 36, y + (row_h - 8) * 0.5f, with_alpha(on ? kWhite : kLavender, edge),
+                   Align::Right, game.platform);
+    }
+}
+
+/* ---- stack ------------------------------------------------------------------------------ */
+
+/* A deck: the chosen box in front, the next ones behind it, rising away; the
+ * ones gone by drop forward out of sight. */
+void App::draw_stack(double time)
+{
+    auto &games = lib_->games();
+    const int shown = lib_->shown();
+    std::vector<int> order;
+    for (int i = 0; i < shown; ++i)
+    {
+        const float k = float(i) - scroll_;
+        if (k > -1.2f && k < 6.0f)
+            order.push_back(i);
+    }
+    std::sort(order.begin(), order.end(), [&](int a, int b) { return a > b; }); /* far first */
+    for (int i : order)
+    {
+        const float k = float(i) - scroll_;
+        float x = kCx, y = kCy - 10, s = 1.0f, yaw = -0.12f, alpha = 1.0f;
+        if (k >= 0)
+        {
+            x += k * 92.0f;
+            y -= k * 26.0f;
+            s = 1.0f - k * 0.075f;
+            yaw = -0.12f - k * 0.04f;
+            alpha = std::clamp(1.0f - (k - 3.5f) * 0.5f, 0.0f, 1.0f) * (1.0f - k * 0.08f);
+        }
+        else
+        {
+            /* Going: it tips forward and drops. */
+            const float a = -k;
+            y += a * 420.0f;
+            x -= a * 120.0f;
+            yaw = -0.12f - a * 0.6f;
+            alpha = std::clamp(1.0f - a * 1.2f, 0.0f, 1.0f);
+        }
+        const bool focused = i == selected_ && std::fabs(k) < 0.5f;
+        const float sway = focused && !settings_->reduced_motion ? std::sin(float(time) * 0.9f) * 0.05f : 0.0f;
+        draw_tile(&games[std::size_t(i)], x, y, kTileW * s, kTileH * s, yaw + sway, alpha, focused, false);
+    }
+}
+
+/* ---- helix ------------------------------------------------------------------------------ */
+
+/* The boxes climb round a column, turning to bring the chosen one round. */
+void App::draw_helix(double time)
+{
+    Gfx &g = *g_;
+    (void)time;
+    auto &games = lib_->games();
+    const int shown = lib_->shown();
+    const float step = 0.85f, radius = 560.0f, rise = 118.0f;
+    /* The column. */
+    g.panel(kCx - 5, 200, 10, 560, rgba(0x5CD3FF, 0.14f), 1, 6, rgba(0x8BD9FF, 0.25f), 1.0f, 8);
+    struct Item
+    {
+        int i;
+        float a, z;
+    };
+    std::vector<Item> items;
+    for (int i = 0; i < shown; ++i)
+    {
+        const float k = float(i) - scroll_;
+        if (std::fabs(k) < 4.0f)
+            items.push_back({i, k * step, radius * (1.0f - std::cos(k * step))});
+    }
+    std::sort(items.begin(), items.end(), [](const Item &x, const Item &y) { return x.z > y.z; });
+    for (const Item &it : items)
+    {
+        const float k = float(it.i) - scroll_;
+        const float s = kFocal / (kFocal + it.z);
+        const float x = kCx + radius * std::sin(it.a) * s;
+        const float y = kCy - 10 - k * rise * s;
+        /* Fade before the top bar or the title below. */
+        const float room = std::clamp(std::min(y - 250.0f, 700.0f - y) / 90.0f + 1.0f, 0.0f, 1.0f);
+        const float alpha = room * std::clamp((4.0f - std::fabs(k)) / 1.2f, 0.0f, 1.0f) * (it.z > radius ? 0.5f : 1.0f);
+        const bool focused = it.i == selected_ && std::fabs(k) < 0.5f;
+        draw_tile(&games[std::size_t(it.i)], x, y, kTileW * 0.66f * s, kTileH * 0.66f * s, it.a, alpha, focused, false);
+    }
+}
+
+/* ---- a glass cube ---------------------------------------------------------------------- */
+
+/* A cube of glass turned every way, each face it shows lit by where it faces;
+ * a picture on its front face. lit: a brighter rim (chosen). */
+void App::draw_glass_cube(float cx, float cy, float size, float yaw, float pitch, float roll, Color tint, Color rim,
+                          Texture *front, float alpha, bool lit)
+{
+    Gfx &g = *g_;
+    const float h = size * 0.5f;
+    const V3 faces[6][4] = {
+        {{-h, -h, -h}, {h, -h, -h}, {h, h, -h}, {-h, h, -h}}, /* front */
+        {{h, -h, h}, {-h, -h, h}, {-h, h, h}, {h, h, h}},     /* back */
+        {{-h, -h, h}, {-h, -h, -h}, {-h, h, -h}, {-h, h, h}}, /* left */
+        {{h, -h, -h}, {h, -h, h}, {h, h, h}, {h, h, -h}},     /* right */
+        {{-h, -h, h}, {h, -h, h}, {h, -h, -h}, {-h, -h, -h}}, /* top */
+        {{-h, h, -h}, {h, h, -h}, {h, h, h}, {-h, h, h}},     /* bottom */
+    };
+    const float light[6] = {1.0f, 0.55f, 0.70f, 0.80f, 1.15f, 0.50f};
+    for (int f = 0; f < 6; ++f)
+    {
+        Corner q[4];
+        for (int i = 0; i < 4; ++i)
+            q[i] = seen3(cx, cy, turn3(faces[f][i], yaw, pitch, roll));
+        if (!facing_you(q))
+            continue;
+        Glass face;
+        face.tint = Color{tint.r * light[f], tint.g * light[f], tint.b * light[f], tint.a};
+        face.rim = rim;
+        face.radius = size * 0.10f;
+        face.rim_w = lit ? 2.6f : 1.6f;
+        face.phase = cx / 1920.0f + float(f) * 0.13f;
+        face.fade = alpha;
+        g.glass(q, size, size, 0, face);
+        if (f == 0 && front)
+        {
+            Corner p[4];
+            const float in = h * 0.70f;
+            const V3 pic[4] = {{-in, -in, -h}, {in, -in, -h}, {in, in, -h}, {-in, in, -h}};
+            for (int i = 0; i < 4; ++i)
+                p[i] = seen3(cx, cy, turn3(pic[i], yaw, pitch, roll));
+            g.quad3d(front, p, in * 2, in * 2, with_alpha(kWhite, alpha), 4, false, false);
+        }
+    }
+}
+
 /* Moving through the library in the views that move differently: the shelf
  * goes by rows, the box turns with the right stick. True when it moved. */
 bool App::update_view_nav(bool left, bool right, bool up, bool down, double dt)
@@ -497,6 +714,20 @@ bool App::update_view_nav(bool left, bool right, bool up, bool down, double dt)
     {
         ++selected_;
         moved = true;
+    }
+    if (view == 5)
+    {
+        /* The list: up and down too. */
+        if (up && selected_ > 0)
+        {
+            --selected_;
+            moved = true;
+        }
+        if (down && selected_ + 1 < shown)
+        {
+            ++selected_;
+            moved = true;
+        }
     }
     if (view == 3)
     {

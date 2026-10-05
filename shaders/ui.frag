@@ -46,6 +46,11 @@ const int BG_TERMINAL = 5;  /* phosphor on black */
 const int BG_DEPTH = 6;     /* a deep space of floating panes */
 const int BG_AURORA = 7;    /* northern lights over a night sky */
 const int BG_AERO = 8;      /* a bright sky with glossy bubbles */
+const int BG_DOTS = 9;      /* a dark grid, a dot-matrix display's */
+const int BG_SYNTH = 10;    /* a neon sunset over a racing grid */
+const int BG_PAPER = 11;    /* warm paper */
+const int BG_CRYSTAL = 12;  /* light split by a prism */
+const int BG_STARCUBE = 13; /* black, a fine grid far below */
 
 float sdRoundBox(vec2 p, vec2 b, float r)
 {
@@ -84,6 +89,11 @@ float coverage(float d)
 {
     float aa = max(fwidth(d), 1e-4) * 0.75;
     return 1.0 - smoothstep(-aa, aa, d);
+}
+
+vec3 spectrum(float h)
+{
+    return 0.5 + 0.5 * cos(6.28318 * (h + vec3(0.0, 0.33, 0.67)));
 }
 
 float hash(vec2 q)
@@ -404,6 +414,109 @@ vec3 aero(vec2 uv)
     return col;
 }
 
+/* Dot Matrix: a dark grid of small squares, faintly lit in the middle. */
+vec3 dots(vec2 uv)
+{
+    vec2 px = uv * pc.screen.xy / (pc.screen.y / 1080.0);
+    vec2 cell = abs(fract(px / 34.0) - 0.5);
+    float line = smoothstep(0.47, 0.5, max(cell.x, cell.y));
+    vec2 vc = uv - 0.5;
+    vec3 col = vec3(0.012) + pc.look0.rgb * 0.035 * exp(-dot(vc, vc) * 3.0);
+    col += vec3(0.07, 0.08, 0.075) * line;
+    return col;
+}
+
+/* Synthwave: a striped sun sinking behind mountains, a neon grid racing in. */
+vec3 synth(vec2 uv)
+{
+    vec2 res = pc.screen.xy;
+    float t = now();
+    float aspect = res.x / res.y;
+    float horizon = 0.60;
+    vec3 col;
+    if (uv.y < horizon)
+    {
+        float k = uv.y / horizon;
+        col = mix(vec3(0.03, 0.01, 0.10), vec3(0.45, 0.06, 0.38), pow(k, 2.2));
+        col = mix(col, vec3(1.0, 0.45, 0.20), pow(k, 9.0) * 0.6);
+        float stars = step(0.9985, hash(floor(uv * res * 0.5))) * (1.0 - k);
+        col += vec3(stars) * 0.8;
+        /* The sun, cut by bars that thicken toward the horizon. */
+        vec2 sp = vec2((uv.x - 0.5) * aspect, uv.y - (horizon - 0.02));
+        float r = length(sp);
+        if (r < 0.26 && sp.y < 0.0)
+        {
+            float bars = step(0.5, fract(-sp.y * 26.0 + t * 0.15)) + step(-0.10, sp.y + 0.0);
+            float cut = sp.y > -0.12 ? step(0.38 + sp.y * 2.5, fract(-sp.y * 30.0 + t * 0.2)) : 1.0;
+            vec3 sun = mix(vec3(1.0, 0.85, 0.25), vec3(1.0, 0.25, 0.55), smoothstep(-0.26, 0.0, sp.y));
+            col = mix(col, sun, smoothstep(0.26, 0.255, r) * cut);
+        }
+        col += vec3(1.0, 0.3, 0.6) * exp(-pow(length(sp) / 0.35, 2.0)) * 0.12;
+        /* Mountains. */
+        float m = horizon - 0.05 - 0.06 * abs(sin(uv.x * 7.0 + 1.3)) - 0.03 * abs(sin(uv.x * 19.0));
+        col = mix(col, vec3(0.05, 0.01, 0.10), smoothstep(m - 0.002, m + 0.002, uv.y));
+    }
+    else
+    {
+        float depth = 0.28 / (uv.y - horizon + 0.001);
+        vec2 g = vec2((uv.x - 0.5) * aspect * depth * 6.0, depth * 6.0 + t * 0.9);
+        float l = grid_lines(g, 1.4) * exp(-depth * 0.06);
+        col = vec3(0.04, 0.0, 0.08) + mix(pc.look0.rgb, pc.look1.rgb, uv.x) * l * 0.9;
+        col += pc.look0.rgb * exp(-pow((uv.y - horizon) / 0.01, 2.0)) * 0.8;
+    }
+    return col;
+}
+
+/* Paper: warm, with a little grain and fibre. */
+vec3 paper(vec2 uv)
+{
+    vec3 col = mix(vec3(0.965, 0.950, 0.915), vec3(0.925, 0.905, 0.860), uv.y);
+    float grain = hash(floor(uv * pc.screen.xy)) - 0.5;
+    float fibre = noise(uv * vec2(900.0, 120.0)) - 0.5;
+    col += grain * 0.018 + fibre * 0.012;
+    vec2 vc = uv - 0.5;
+    col *= 1.0 - dot(vc, vc) * 0.18;
+    return col;
+}
+
+/* Crystal: dark, with light through a prism laid across it in slow bands. */
+vec3 crystal(vec2 uv)
+{
+    vec2 res = pc.screen.xy;
+    float t = now();
+    float aspect = res.x / res.y;
+    vec2 p = vec2(uv.x * aspect, uv.y);
+    vec3 col = vec3(0.012, 0.016, 0.030);
+    for (int i = 0; i < 3; ++i)
+    {
+        float fi = float(i);
+        float a = 0.6 + fi * 0.9 + 0.1 * sin(t * 0.05 + fi);
+        vec2 d = vec2(cos(a), sin(a));
+        float s = dot(p, d) + fi * 0.37 + t * 0.012 * (fi + 1.0);
+        float band = exp(-pow((fract(s * 0.7) - 0.5) / 0.09, 2.0));
+        vec3 split = spectrum(fract(s * 0.7) * 2.0 + fi * 0.3);
+        col += split * band * 0.10 * (0.6 + 0.4 * noise(p * 3.0 + fi));
+    }
+    col += mix(pc.look0.rgb, pc.look1.rgb, uv.x) * exp(-dot(uv - vec2(0.5, 1.1), uv - vec2(0.5, 1.1)) / 0.2) * 0.12;
+    return col;
+}
+
+/* Star Cube: black, and far below, a fine grid that fades into the dark. */
+vec3 starcube(vec2 uv)
+{
+    vec2 res = pc.screen.xy;
+    float t = now();
+    float aspect = res.x / res.y;
+    vec3 col = vec3(0.0);
+    vec2 px = uv * res / (res.y / 1080.0);
+    vec2 cell = abs(fract(px / 40.0) - 0.5);
+    float line = smoothstep(0.475, 0.5, max(cell.x, cell.y));
+    vec2 vc = uv - 0.5;
+    col += vec3(0.10, 0.10, 0.13) * line * (1.0 - smoothstep(0.05, 0.45, dot(vc, vc)));
+    col += pc.look0.rgb * 0.05 * exp(-dot(vc, vc) * 5.0) * (0.8 + 0.2 * sin(t * 0.3));
+    return col;
+}
+
 vec3 background_at(vec2 uv)
 {
     int kind = int(pc.extra.y + 0.5);
@@ -424,6 +537,16 @@ vec3 background_at(vec2 uv)
         col = aurora(uv);
     else if (kind == BG_AERO)
         col = aero(uv);
+    else if (kind == BG_DOTS)
+        col = dots(uv);
+    else if (kind == BG_SYNTH)
+        col = synth(uv);
+    else if (kind == BG_PAPER)
+        col = paper(uv);
+    else if (kind == BG_CRYSTAL)
+        col = crystal(uv);
+    else if (kind == BG_STARCUBE)
+        col = starcube(uv);
     else
         col = room(uv);
     /* Dim darkens for the launch screen. */
@@ -490,10 +613,6 @@ vec4 glyph(vec2 p, float r)
     return vec4(v_color.rgb, v_color.a * coverage(d));
 }
 
-vec3 spectrum(float h)
-{
-    return 0.5 + 0.5 * cos(6.28318 * (h + vec3(0.0, 0.33, 0.67)));
-}
 
 /* Thick GameCube-style glass.
  *  p2 = (reflection phase, side light, face, fade)

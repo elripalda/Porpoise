@@ -141,6 +141,36 @@ inline void rect_at(float cx, float cy, float hw, float hh, float yaw, float lz,
     out[3] = project(cx, cy, -hw, hh, yaw, lz, z0);
 }
 
+/* A point in the room, for things turned every way (a cube): turned by yaw
+ * (about the vertical), pitch (about the horizontal) and roll (in the
+ * screen's plane), then seen in the room's perspective about (cx, cy). */
+struct V3
+{
+    float x, y, z;
+};
+inline V3 turn3(V3 p, float yaw, float pitch, float roll = 0)
+{
+    const float cr = std::cos(roll), sr = std::sin(roll);
+    p = V3{p.x * cr - p.y * sr, p.x * sr + p.y * cr, p.z};
+    const float cp = std::cos(pitch), sp = std::sin(pitch);
+    p = V3{p.x, p.y * cp - p.z * sp, p.y * sp + p.z * cp};
+    const float cy = std::cos(yaw), sy = std::sin(yaw);
+    return V3{p.x * cy - p.z * sy, p.y, p.x * sy + p.z * cy};
+}
+inline Corner seen3(float cx, float cy, V3 p)
+{
+    const float k = kFocal / (kFocal + p.z);
+    return Corner{kVpX + (cx + p.x - kVpX) * k, kVpY + (cy + p.y - kVpY) * k, 1.0f / k};
+}
+/* A face (corners clockwise as seen from outside) faces the viewer. */
+inline bool facing_you(const Corner q[4])
+{
+    float area = 0;
+    for (int i = 0; i < 4; ++i)
+        area += q[i].x * q[(i + 1) % 4].y - q[(i + 1) % 4].x * q[i].y;
+    return area > 1.0f;
+}
+
 /* A glass block: its thickness as stacked slices, far side first, then the
  * face toward the viewer. from_behind: the block has turned past 90 degrees,
  * so its back (at lz = depth) is the face that shows. margin is room around

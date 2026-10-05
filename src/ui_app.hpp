@@ -271,6 +271,7 @@ private:
     std::vector<SaveGroup> saves_by_game();
     void draw_card_blocks(double time);
     void draw_saves_by_game(double time);
+    void draw_card_cubes(Card &card, int which, float x, float y, double time);
     void update_saves_by_game(bool up, bool down);
     int mc_game_sel_ = 0;
     float mc_game_scroll_ = 0;
@@ -280,6 +281,11 @@ private:
     void draw_disc_flow(double time);
     void draw_shelf(double time);
     void draw_box_view(double time);
+    void draw_list_view(double time);
+    void draw_stack(double time);
+    void draw_helix(double time);
+    void draw_glass_cube(float cx, float cy, float size, float yaw, float pitch, float roll, Color tint, Color rim,
+                         Texture *front, float alpha, bool lit);
     void draw_disc(Game *game, float cx, float cy, float d, float spin, float yaw, float alpha, bool focused);
     void draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha);
     void release_far_art(int keep);

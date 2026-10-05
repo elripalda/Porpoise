@@ -1548,20 +1548,23 @@ void App::draw_library(double time)
     }
 
     /* The games, in the view chosen in Settings > Interface. */
-    const int view = std::clamp(settings_->lib_view, 0, 4);
+    const int view = std::clamp(settings_->lib_view, 0, 7);
     switch (view)
     {
     case 1: draw_wheel(time); break;
     case 2: draw_disc_flow(time); break;
     case 3: draw_shelf(time); break;
     case 4: draw_box_view(time); break;
+    case 5: draw_list_view(time); break;
+    case 6: draw_stack(time); break;
+    case 7: draw_helix(time); break;
     default: draw_cover_flow(time); break;
     }
-    release_far_art(view == 3 ? 20 : 9);
+    release_far_art(view == 3 || view == 5 ? 20 : 9);
 
     /* Side arrows. (No marker over the chosen cover: its glow says it, and a
      * triangle there read as the Triangle button.) */
-    if (view != 3)
+    if (view != 3 && view != 5)
     {
         if (selected_ > 0)
             g.glyph(Glyph::Arrow, 34, kCy, 46, rgba(0x58B8FF), -kPi * 0.5f);
@@ -1582,9 +1585,9 @@ void App::draw_library(double time)
 
     /* Title and details (the shelf and the box show their own). */
     Game &sel = games[std::size_t(selected_)];
-    if (view <= 2)
+    if (view <= 2 || view >= 6)
     {
-        const float ty = view == 0 ? 748.0f : 800.0f;
+        const float ty = view == 0 || view == 6 ? 748.0f : 800.0f;
         g.text(Font::Bold, ts(46), kCx, ty, kWhite, Align::Center, sel.title);
         g.text(Font::SemiBold, ts(28), kCx, ty + 64, kLavender, Align::Center, game_meta(sel));
         if (sel.favourite)
@@ -1961,8 +1964,16 @@ void App::draw_memory_cards(double time)
         return;
     }
     ensure_saves(false);
-    draw_card(card_a_, 0, kMcX[0], kMcY, time);
-    draw_card(card_b_, 1, kMcX[1], kMcY, time);
+    if (settings_->mc_view == 3)
+    {
+        draw_card_cubes(card_a_, 0, kMcX[0], kMcY, time);
+        draw_card_cubes(card_b_, 1, kMcX[1], kMcY, time);
+    }
+    else
+    {
+        draw_card(card_a_, 0, kMcX[0], kMcY, time);
+        draw_card(card_b_, 1, kMcX[1], kMcY, time);
+    }
 
     /* Information bar: the focused save's banner and what it is. */
     const float ix = kMcX[0], iy = 812, iw = kMcX[1] + kMcW - kMcX[0], ih = 128, icy = iy + ih * 0.5f;
@@ -2058,6 +2069,11 @@ void App::draw_theme_overlay()
     Gfx &g = *g_;
     const Theme &t = th();
     g.set_tone(false);
+    {
+        Look full = g.look();
+        full.content_scale = 1; /* the frame is the TV's, round everything */
+        g.set_look(full);
+    }
     if (t.overlay)
         g.fx(t.overlay, settings_->reduced_motion ? 0.6f : 1.0f);
     if (t.bezel)

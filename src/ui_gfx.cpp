@@ -1360,7 +1360,16 @@ bool Gfx::make_theme_fonts(const std::string &set, FontData *out, std::vector<st
                                          "JetBrainsMono-Bold.ttf", "JetBrainsMono-ExtraBold.ttf"};
     static const char *const kVt[4] = {"VT323-Regular.ttf", "VT323-Regular.ttf", "VT323-Regular.ttf",
                                        "VT323-Regular.ttf"};
-    const char *const *files = set == "mono" ? kMono : set == "vt" ? kVt : nullptr;
+    static const char *const kDot[4] = {"JetBrainsMono-Regular.ttf", "JetBrainsMono-SemiBold.ttf", "Doto-Black.ttf",
+                                        "Doto-Black.ttf"};
+    static const char *const kExo[4] = {"Exo2-Regular.ttf", "Exo2-SemiBold.ttf", "Exo2-Bold.ttf", "Exo2-ExtraBold.ttf"};
+    static const char *const kLora[4] = {"Lora-Regular.ttf", "Lora-SemiBold.ttf", "Lora-Bold.ttf", "Lora-ExtraBold.ttf"};
+    const char *const *files = set == "mono"   ? kMono
+                               : set == "vt"   ? kVt
+                               : set == "dot"  ? kDot
+                               : set == "exo"  ? kExo
+                               : set == "lora" ? kLora
+                                               : nullptr;
     if (!files)
         return false;
     for (int f = 0; f < 4; ++f)
@@ -1676,13 +1685,17 @@ void Gfx::push(Texture *t, const Vertex v[4])
         batches_.push_back({set, std::uint32_t(vertices_.size()), 0});
     static const int order[6] = {0, 1, 2, 0, 2, 3};
     const float fade = layer_fade_ * intro_fade_, dy = layer_dy_ + intro_dy_;
-    const bool layered = layer_dx_ != 0 || dy != 0 || fade < 1;
+    const float scale = look_.content_scale;
+    const bool layered = layer_dx_ != 0 || dy != 0 || fade < 1 || scale != 1;
     for (int i : order)
     {
         vertices_.push_back(v[i]);
-        if (!layered || int(v[i].p0[0] + 0.5f) == K_BACKGROUND)
+        const int kind = int(v[i].p0[0] + 0.5f);
+        if (!layered || kind == K_BACKGROUND || kind == K_FX)
             continue;
         Vertex &o = vertices_.back();
+        o.pos[0] *= scale; /* clip space: about the middle of the screen */
+        o.pos[1] *= scale;
         o.pos[0] += layer_dx_ * 2.0f / kDesignW * o.pos[3];
         o.pos[1] += dy * 2.0f / kDesignH * o.pos[3];
         if (int(o.p0[0] + 0.5f) == K_GLASS)
@@ -2160,6 +2173,54 @@ float Gfx::text(Font font, float size, float x, float y, Color c, Align a, const
         prev = cp;
     }
     return width;
+}
+
+void Gfx::text_mapped(Font font, float size, const std::string &s, Color c, Align a,
+                      const std::function<Corner(float x, float y)> &map, float weight)
+{
+    c = tone(c);
+    const FontData &f = face(font);
+    const float k = size / kBase;
+    const float width = measure(font, size, s, 0);
+    float pen = a == Align::Center ? -width * 0.5f : a == Align::Right ? -width : 0.0f;
+    const float baseline = f.cap * k * 0.5f; /* the capitals' middle at y = 0 */
+    std::size_t i = 0;
+    std::uint32_t prev = 0;
+    while (i < s.size())
+    {
+        const std::uint32_t cp = next_codepoint(s, i);
+        const GlyphInfo *g = find(f, cp);
+        if (!g)
+            continue;
+        if (prev && f.info && !g->cjk)
+            pen += stbtt_GetCodepointKernAdvance(static_cast<stbtt_fontinfo *>(f.info), int(prev), int(cp)) *
+                   f.scale * k;
+        if (g->w > 0)
+        {
+            const float gx = pen + g->xoff * k, gy = baseline + g->yoff * k;
+            const float gw = g->w * k, gh = g->h * k;
+            const Corner q[4] = {map(gx, gy), map(gx + gw, gy), map(gx + gw, gy + gh), map(gx, gy + gh)};
+            /* Its size on screen, for the edge's softness. */
+            const float sw = std::hypot(q[1].x - q[0].x, q[1].y - q[0].y) * target_w_ / kDesignW;
+            const float sh = std::hypot(q[3].x - q[0].x, q[3].y - q[0].y) * target_w_ / kDesignW;
+            Vertex v[4]{};
+            const float uv[4][2] = {{g->u0, g->v0}, {g->u1, g->v0}, {g->u1, g->v1}, {g->u0, g->v1}};
+            const float local[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+            for (int n = 0; n < 4; ++n)
+            {
+                to_clip(q[n], v[n].pos);
+                fill(v[n].uv, {uv[n][0], uv[n][1]});
+                fill(v[n].local, {local[n][0], local[n][1]});
+                fill(v[n].color, {c.r, c.g, c.b, c.a});
+                const float w8 = g->cjk ? weight + 0.03f * float(int(font)) : weight;
+                fill(v[n].p0, {float(K_TEXT), w8, 0, 0});
+                fill(v[n].p1, {sw, sh, sw, sh});
+            }
+            push(g->cjk ? cjk_atlas_ : g->theme ? theme_atlas_ : atlas_, v);
+        }
+        pen += g->advance * k;
+        prev = cp;
+    }
 }
 
 void Gfx::record(VkCommandBuffer cmd)

@@ -724,31 +724,35 @@ void App::build_settings()
         r.section = section;
         r.key = "ui_layout";
         r.label = tr("Home screen");
-        r.help = tr("Tiles: a grid you point at, twelve to a page. Cover flow: the boxes in a row, in white.");
+        r.help = tr("Tiles: a grid you point at, twelve to a page. Library view: your games in the Library view below.");
         r.int_value = &settings_->ui_layout;
-        r.values = {tr("Tiles"), tr("Cover flow")};
+        r.values = {tr("Tiles"), tr("Library view")};
         rows_.push_back(r);
         toggle("ui_pointer", "Point with the controller",
                "Move the controller to point at tiles and buttons. The touch pad turns it on and off too.",
                &settings_->ui_pointer);
     }
     {
-        static const char *const kHelp[5] = {
+        static const char *const kHelp[8] = {
             "Cover flow: the boxes in a row, the chosen one in front.",
             "Wheel: the boxes around a turning wheel; the one at the front is chosen.",
             "Disc flow: your discs, spinning into place as you go.",
             "Shelf: rows of boxes, many at once. Up and down change row.",
-            "Box: one box at a time, its whole cover wrapped round it. The right stick turns it."};
-        choice("lib_view", "Library view", kHelp[std::clamp(settings_->lib_view, 0, 4)], &settings_->lib_view,
-               {"Cover flow", "Wheel", "Disc flow", "Shelf", "Box"});
+            "Box: one box at a time, its whole cover wrapped round it. The right stick turns it.",
+            "List: your games by name, the chosen one's box beside them. Up and down go through them.",
+            "Stack: a deck of boxes; the front one flips away as you go.",
+            "Helix: the boxes climbing round a turning column."};
+        choice("lib_view", "Library view", kHelp[std::clamp(settings_->lib_view, 0, 7)], &settings_->lib_view,
+               {"Cover flow", "Wheel", "Disc flow", "Shelf", "Box", "List", "Stack", "Helix"});
     }
     {
-        static const char *const kHelp[3] = {
+        static const char *const kHelp[4] = {
             "Cards: both memory cards side by side, their saves as icons.",
             "Blocks: one card at a time, drawn as the card itself with each save's blocks.",
-            "By game: every save on both cards and the Wii, grouped by game."};
-        choice("mc_view", "Memory Cards view", kHelp[std::clamp(settings_->mc_view, 0, 2)], &settings_->mc_view,
-               {"Cards", "Blocks", "By game"});
+            "By game: every save on both cards and the Wii, grouped by game.",
+            "Cubes: both cards side by side, each save a little glass cube on a grid."};
+        choice("mc_view", "Memory Cards view", kHelp[std::clamp(settings_->mc_view, 0, 3)], &settings_->mc_view,
+               {"Cards", "Blocks", "By game", "Cubes"});
     }
     action("Reset all settings", "Every setting back to how Porpoise ships. Games, folders and saves stay.",
            "Reset\xE2\x80\xA6", kRowResetAll);

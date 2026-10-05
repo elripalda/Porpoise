@@ -390,4 +390,58 @@ void App::update_saves_by_game(bool up, bool down)
     if (pressed(BtnOptions))
         export_save_to_usb();
 }
+
+/* ---- Cubes ------------------------------------------------------------------------------- */
+
+/* Both cards side by side, each save a little glass cube with its icon on
+ * the front; the chosen one rises and turns toward you. */
+void App::draw_card_cubes(Card &card, int which, float x, float y, double time)
+{
+    Gfx &g = *g_;
+    const bool active = mc_card_ == which;
+    const int n = int(card.saves.size());
+    /* The slot letter and its free blocks, over the grid. */
+    g.text_mid(Font::ExtraBold, ts(60), x + 40, y + 40, kWhite, Align::Left, card.slot);
+    const std::string free = card.present ? std::to_string(card.free_blocks) : std::to_string(card.total_blocks);
+    g.text_mid(Font::SemiBold, ts(24), x + 120, y + 40, kSoft, Align::Left, trc("memcard", "Open"));
+    const float bw = std::max(110.0f, g.measure(Font::Bold, ts(30), free) + 40);
+    g.panel(x + 210, y + 16, bw, 48, rgba(0x07102E, 0.6f), 1, 6, rgba(0xDDE6FF, 0.9f), 1.8f);
+    g.text_mid(Font::Bold, ts(30), x + 210 + bw * 0.5f, y + 40, kWhite, Align::Center, free);
+
+    const int sel = mc_sel_[which];
+    const int rows_total = std::max(kMcRows, (n + kMcCols - 1) / kMcCols);
+    int first = int(mc_scroll_[which]);
+    if (sel / kMcCols < first)
+        first = sel / kMcCols;
+    if (sel / kMcCols > first + kMcRows - 1)
+        first = sel / kMcCols - (kMcRows - 1);
+    first = std::clamp(first, 0, rows_total - kMcRows);
+    mc_scroll_[which] = float(first);
+    const float cell = 168, size = 104;
+    const float gx = x + 40 + cell * 0.5f, gy = y + 150 + cell * 0.5f;
+    const float spin = settings_->reduced_motion ? 0.0f : float(time);
+    for (int pass = 0; pass < 2; ++pass)
+        for (int r = 0; r < kMcRows; ++r)
+            for (int c = 0; c < kMcCols; ++c)
+            {
+                const int idx = (first + r) * kMcCols + c;
+                const bool focused = active && idx == sel;
+                if ((pass == 1) != focused)
+                    continue;
+                const float cx = gx + float(c) * cell, cy = gy + float(r) * cell;
+                if (idx >= n)
+                {
+                    /* An empty place: a dim, flat square on the grid. */
+                    g.panel(cx - size * 0.42f, cy - size * 0.42f, size * 0.84f, size * 0.84f, rgba(0x0B1A55, 0.55f), 1,
+                            6, focused ? kIcy : rgba(0x2A3C80, 0.6f), focused ? 2.2f : 1.2f);
+                    continue;
+                }
+                Save &s = card.saves[std::size_t(idx)];
+                const float lift = focused ? 1.0f : 0.0f;
+                const float yaw = focused ? 0.35f * std::sin(spin * 1.1f) : -0.32f;
+                const float pitch = focused ? 0.18f : 0.38f;
+                draw_glass_cube(cx, cy - lift * 22, size * (focused ? 1.18f : 1.0f), yaw, pitch, 0,
+                                rgba(0x1C48D8, 0.55f), focused ? kIcy : kEdge, save_icon(s), 1.0f, focused);
+            }
+}
 } // namespace porpoise::ui

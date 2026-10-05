@@ -445,6 +445,13 @@ int main(int argc, char **argv)
                 settle();
                 usleep(10000);
             }
+            if (const char *e = std::getenv("PREVIEW_TURN")) /* the right stick held for this many frames */
+                for (int f = 0, frames = std::atoi(e); f < frames; ++f)
+                {
+                    Input turn;
+                    turn.right_x = 1.0f;
+                    ui.update(turn, 0.016);
+                }
             char tag[48];
             std::snprintf(tag, sizeof tag, "look-%d-%d-%d-%d", v[0], v[1], v[2], v[3]);
             render((std::string(tag) + "-library").c_str(), [&] { ui.draw(12.0); });

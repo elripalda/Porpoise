@@ -31,8 +31,13 @@ enum class ThemeId
     Depth,
     Aurora,
     Aero,
+    DotMatrix,
+    Synthwave,
+    Paper,
+    Crystal,
+    StarCube, /* its own interface: a glass cube with a section on each edge */
 };
-constexpr int kThemes = 10;
+constexpr int kThemes = 15;
 
 struct Theme
 {
@@ -61,7 +66,7 @@ struct Palette
     float dark;
     Color light0, light1;
 };
-constexpr int kPalettes = 8;
+constexpr int kPalettes = 15;
 const Palette &palette(int id);
 
 /* The renderer's Look for these settings: the theme, its colours and the

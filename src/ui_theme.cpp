@@ -69,6 +69,7 @@ Theme make_minimal()
     t.look.flat = true;
     t.radius = 16;
     t.prompts = 0.78f;
+    t.palettes = true;
     return t;
 }
 
@@ -85,6 +86,7 @@ Theme make_cube()
     t.look.hue_spread = 0.35f;
     t.radius = 20;
     t.pills = true;
+    t.palettes = true;
     return t;
 }
 
@@ -92,7 +94,7 @@ Theme make_broadcast()
 {
     Theme t;
     t.name = "Broadcast";
-    t.about = "A tube TV from the 2000s: a curved screen in its frame, scanlines and a worn tape's tracking.";
+    t.about = "A tube TV from the 2000s: a curved screen in its frame, scanlines and pixel lettering.";
     t.look.background = 4;
     t.look.light0 = rgb(0.06f, 0.12f, 0.26f);
     t.look.light1 = rgb(0.02f, 0.04f, 0.10f);
@@ -102,8 +104,9 @@ Theme make_broadcast()
     t.look.saturation = 0.75f;
     t.look.flat = true;
     t.radius = 10;
-    t.overlay = 3;
+    t.overlay = 1; /* scanlines and the glass's edges; no rolling band */
     t.bezel = true;
+    t.look.content_scale = 0.94f; /* the menus sit inside the TV's frame */
     t.fonts = "vt";
     return t;
 }
@@ -155,6 +158,7 @@ Theme make_aurora()
     t.look.hue_spread = 0.7f;
     t.radius = 24;
     t.pills = true;
+    t.palettes = true;
     return t;
 }
 
@@ -170,6 +174,95 @@ Theme make_aero()
     t.radius = 22;
     t.pills = true;
     t.light = true;
+    t.palettes = true;
+    return t;
+}
+
+Theme make_dots()
+{
+    Theme t;
+    t.name = "Dot Matrix";
+    t.about = "Lit dots on a dark grid, like an old display board: big dotted headings, plain text below.";
+    t.look.background = 9;
+    t.look.light0 = rgb(0.30f, 1.0f, 0.45f);
+    t.look.hue = 0.37f;
+    t.look.hue_spread = 0.3f;
+    t.look.saturation = 0.9f;
+    t.look.dark = 0.6f;
+    t.look.fill_alpha = 1.3f;
+    t.look.flat = true;
+    t.radius = 4;
+    t.fonts = "dot";
+    t.palettes = true;
+    return t;
+}
+
+Theme make_synthwave()
+{
+    Theme t;
+    t.name = "Synthwave";
+    t.about = "A neon sunset over a racing grid, chrome lettering and pink and cyan glass.";
+    t.look.background = 10;
+    t.look.panel_style = 1;
+    t.look.light0 = rgb(1.0f, 0.22f, 0.78f);
+    t.look.light1 = rgb(0.20f, 0.85f, 1.0f);
+    t.look.hue = 0.86f;
+    t.look.hue_spread = 0.7f;
+    t.radius = 18;
+    t.pills = true;
+    t.fonts = "exo";
+    t.palettes = true;
+    return t;
+}
+
+Theme make_paper()
+{
+    Theme t;
+    t.name = "Paper";
+    t.about = "Ink on warm paper: light, calm and easy on the eyes, in a book's typeface.";
+    t.look.background = 11;
+    t.look.hue = 0.07f;
+    t.look.hue_spread = 0.3f;
+    t.look.saturation = 0.45f;
+    t.look.flat = true;
+    t.radius = 12;
+    t.light = true;
+    t.fonts = "lora";
+    return t;
+}
+
+Theme make_crystal()
+{
+    Theme t;
+    t.name = "Crystal";
+    t.about = "Clear glass with rainbow edges, and light split by a prism behind it.";
+    t.look.background = 12;
+    t.look.panel_style = 1;
+    t.look.light0 = rgb(0.55f, 0.95f, 1.0f);
+    t.look.light1 = rgb(1.0f, 0.70f, 0.95f);
+    t.look.hue = 0.55f;
+    t.look.hue_spread = 0.5f;
+    t.look.saturation = 0.35f;
+    t.radius = 30;
+    t.pills = true;
+    t.palettes = true;
+    return t;
+}
+
+Theme make_starcube()
+{
+    Theme t;
+    t.name = "Star Cube";
+    t.about = "Its own home: a glass cube with Games, Memory Cards, Settings and the calendar on its edges. "
+              "Turn it with the stick.";
+    t.look.background = 13;
+    t.look.panel_style = 1;
+    t.look.light0 = rgb(0.40f, 0.34f, 1.0f);
+    t.look.light1 = rgb(0.60f, 0.48f, 1.0f);
+    t.look.hue = 0.70f;
+    t.look.hue_spread = 0.5f;
+    t.radius = 14;
+    t.palettes = true;
     return t;
 }
 
@@ -177,10 +270,12 @@ const Theme *themes()
 {
     static const Theme all[kThemes] = {make_porpoise(), make_revolution(), make_midnight(), make_minimal(),
                                        make_cube(),     make_broadcast(),  make_terminal(), make_depth(),
-                                       make_aurora(),   make_aero()};
+                                       make_aurora(),   make_aero(),       make_dots(),     make_synthwave(),
+                                       make_paper(),    make_crystal(),    make_starcube()};
     return all;
 }
 
+/* The classic console colourways first, then the rest. */
 const Palette kPaletteList[kPalettes] = {
     {"Sapphire", -1.0f, 1.0f, 1.0f, 1.0f, rgb(0.05f, 0.62f, 1.0f), rgb(0.48f, 0.36f, 1.0f)},
     {"Indigo", 0.72f, 0.55f, 1.0f, 1.0f, rgb(0.45f, 0.30f, 1.0f), rgb(0.72f, 0.42f, 1.0f)},
@@ -188,8 +283,15 @@ const Palette kPaletteList[kPalettes] = {
     {"Emerald", 0.42f, 0.50f, 1.0f, 1.0f, rgb(0.10f, 0.95f, 0.58f), rgb(0.10f, 0.68f, 0.95f)},
     {"Platinum", -1.0f, 1.0f, 0.10f, 1.0f, rgb(0.78f, 0.82f, 0.90f), rgb(0.56f, 0.60f, 0.70f)},
     {"Jet", -1.0f, 1.0f, 0.0f, 0.55f, rgb(0.36f, 0.36f, 0.40f), rgb(0.20f, 0.20f, 0.23f)},
+    {"Crystal", 0.52f, 0.35f, 0.30f, 1.0f, rgb(0.70f, 0.95f, 1.0f), rgb(0.85f, 0.80f, 1.0f)},
+    {"Pearl", 0.92f, 0.30f, 0.22f, 1.0f, rgb(1.0f, 0.88f, 0.92f), rgb(0.85f, 0.88f, 1.0f)},
+    {"Ruby", 0.975f, 0.35f, 1.0f, 1.0f, rgb(1.0f, 0.15f, 0.30f), rgb(0.85f, 0.10f, 0.55f)},
     {"Rose", 0.93f, 0.45f, 1.0f, 1.0f, rgb(1.0f, 0.36f, 0.62f), rgb(0.72f, 0.36f, 1.0f)},
     {"Gold", 0.12f, 0.35f, 0.9f, 1.0f, rgb(1.0f, 0.80f, 0.30f), rgb(1.0f, 0.55f, 0.20f)},
+    {"Lime", 0.25f, 0.40f, 1.0f, 1.0f, rgb(0.62f, 1.0f, 0.20f), rgb(0.20f, 0.95f, 0.55f)},
+    {"Ocean", 0.53f, 0.45f, 1.0f, 1.0f, rgb(0.05f, 0.85f, 0.90f), rgb(0.10f, 0.45f, 1.0f)},
+    {"Sunset", 0.02f, 0.80f, 1.0f, 1.0f, rgb(1.0f, 0.45f, 0.20f), rgb(0.95f, 0.25f, 0.65f)},
+    {"Midnight Violet", 0.78f, 0.40f, 0.9f, 0.75f, rgb(0.55f, 0.25f, 0.95f), rgb(0.30f, 0.15f, 0.65f)},
 };
 } // namespace
 
@@ -212,10 +314,12 @@ Look look_for(const porpoise::Settings &s)
         const Palette &p = palette(s.ui_palette);
         l.hue = p.hue;
         l.hue_spread = p.spread;
-        l.saturation *= p.saturation;
+        /* Quiet themes stay quiet: their colour is a tint. */
+        l.saturation = p.saturation * (t.look.saturation < 0.5f ? 0.45f : t.look.saturation);
         l.dark *= p.dark;
-        /* Only the rooms with coloured light take the palette's lights. */
-        if (l.background == 0 || l.background == 1 || l.background == 6)
+        /* The rooms lit in colour take the palette's lights. */
+        const int bg = l.background;
+        if (bg == 0 || bg == 1 || bg == 3 || bg == 6 || bg == 7 || bg == 9 || bg == 10 || bg == 12 || bg == 13)
         {
             l.light0 = p.light0;
             l.light1 = p.light1;

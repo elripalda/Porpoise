@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -155,6 +156,7 @@ struct Look
     Color mono_color{};
     bool high_contrast = false;
     bool flat = false;     /* no glows or sheen: plain, crisp panels */
+    float content_scale = 1; /* everything but the room shrunk about the middle (a TV's frame round it) */
 };
 
 /* A screen-space corner after projection: what the vertex shader receives. */
@@ -260,6 +262,12 @@ public:
                  float radius, Color border, float border_w, float glow, float sheen);
     /* Glass from four projected corners; margin is room around the shape for the glow. */
     void glass(const Corner c[4], float shape_w, float shape_h, float margin, const Glass &g);
+
+    /* Text laid on any surface: map takes a point of the line (x along it from
+     * its start as aligned, y down from the middle of its capitals) to the
+     * screen - a cube's face in perspective, a turned label. */
+    void text_mapped(Font f, float size, const std::string &s, Color c, Align a,
+                     const std::function<Corner(float x, float y)> &map, float weight = 0);
 
     /* Text. y is the top of the line box; returns the advance width. */
     float text(Font f, float size, float x, float y, Color c, Align a, const std::string &s,

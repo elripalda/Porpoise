@@ -4,6 +4,9 @@
 #   Terminal:  JetBrains Mono at weights 400, 600, 700 and 800
 #              -> assets/fonts/JetBrainsMono-{Regular,SemiBold,Bold,ExtraBold}.ttf
 #   Broadcast: VT323 -> assets/fonts/VT323-Regular.ttf
+#   Dot Matrix: Doto (round dots) at 900, for headings -> assets/fonts/Doto-Black.ttf
+#   Synthwave: Exo 2 at 400, 600, 700, 800 -> assets/fonts/Exo2-*.ttf
+#   Paper:     Lora at 400, 500, 600, 700 -> assets/fonts/Lora-*.ttf
 # each subset to the letters the menus use beyond Chinese, Japanese and Korean
 # (Latin, Latin Extended-A, Cyrillic and typographic marks).
 #   python3 tools/make-theme-fonts.py path/to/google/fonts/ofl
@@ -41,3 +44,12 @@ for weight, name in ((400, "Regular"), (600, "SemiBold"), (700, "Bold"), (800, "
                                              {"wght": weight})
     cut(font, os.path.join(OUT, "JetBrainsMono-%s.ttf" % name))
 cut(TTFont(os.path.join(OFL, "vt323", "VT323-Regular.ttf")), os.path.join(OUT, "VT323-Regular.ttf"))
+for weight, name in ((900, "Black"),):
+    font = instancer.instantiateVariableFont(TTFont(os.path.join(OFL, "doto", "Doto[ROND,wght].ttf")),
+                                             {"wght": weight, "ROND": 100})
+    cut(font, os.path.join(OUT, "Doto-%s.ttf" % name))
+for family, path, weights in (("Exo2", "exo2/Exo2[wght].ttf", (400, 600, 700, 800)),
+                              ("Lora", "lora/Lora[wght].ttf", (400, 500, 600, 700))):
+    for weight, name in zip(weights, ("Regular", "SemiBold", "Bold", "ExtraBold")):
+        font = instancer.instantiateVariableFont(TTFont(os.path.join(OFL, path)), {"wght": weight})
+        cut(font, os.path.join(OUT, "%s-%s.ttf" % (family, name)))
