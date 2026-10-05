@@ -34,8 +34,10 @@ struct Settings
     int filter_strength = 6; /* 1..10 */
     std::string border;      /* "" none, or a border's name (built in, or a PNG in /data/porpoise/borders) */
     bool fps_overlay = false;
+    bool vsync = true;            /* frames on the TV's own vblank (porpoise_pacer); off: Porpoise's timer */
     /* Graphics (advanced) */
     int shader_mode = 2;          /* dolphin_shader_compilation_mode 0..3: async ubershaders */
+    bool threaded_gpu = true;     /* RADV_THREADED_RECORDING for the game's device (beta) */
     int texture_cache = 0;        /* dolphin_texture_cache_accuracy: Fast, Middle, Safe */
     bool pixel_lighting = false;  /* dolphin_pixel_lighting */
     bool disable_fog = false;     /* dolphin_disable_fog */
@@ -96,6 +98,8 @@ struct Settings
     /* Developer options: unlocked in About, for tuning the Wii Remote. Without
      * them the readout, inverted pointer and motion logs are off. */
     bool developer = false;
+    bool beta_updates = false; /* Updates offer pre-releases too (a beta build always does) */
+    bool perf_profile = false; /* the sampling profiler (/app0/ps5-sampler.txt) from the next start */
     bool motion_logs = true; /* a CSV of the controller's motion per Wii game (developer options) */
     /* System */
     int cpu_clock = 5;       /* index into the clock list (50% .. 300%): 100% */

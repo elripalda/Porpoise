@@ -18,7 +18,14 @@
  * A floor of 96% of a vblank keeps a loop that is not held from racing.
  *
  * Locked to the display, a 59.94 Hz game runs 0.1% fast; the audio
- * resampler's rate control absorbs that without anyone hearing it. */
+ * resampler's rate control absorbs that without anyone hearing it.
+ *
+ * 2.0: on the console the swapchain never held the loop (the probe found 0
+ * of 120 presents held), so every game and the menus ran on the own clock,
+ * with a frame now and then landing a vblank late or early. V-Sync now waits
+ * on the display's vblank itself (VideoOut's): a frame finished before its
+ * vblank waits for it; one finished after doesn't wait at all, so a game
+ * that can't quite hold 60 runs as fast as it can instead of dropping to 30. */
 #pragma once
 
 namespace porpoise::pacer
@@ -32,8 +39,17 @@ public:
     void frame_done();
     /* After a pause or a stall: start counting again from now. */
     void resync();
-    bool locked() const { return mode_ == Mode::Locked || mode_ == Mode::Probing; }
-    bool display_locked() const { return mode_ == Mode::Locked; }
+    bool locked() const { return mode_ == Mode::Locked || mode_ == Mode::Probing || mode_ == Mode::Vblank; }
+    bool display_locked() const { return mode_ == Mode::Locked || mode_ == Mode::Vblank; }
+    bool vsynced() const { return mode_ == Mode::Vblank; }
+    /* Frames that finished after the vblank they were meant for, since the
+     * last call (V-Sync only). */
+    int take_misses()
+    {
+        const int n = misses_;
+        misses_ = 0;
+        return n;
+    }
 
 private:
     enum class Mode
@@ -41,7 +57,14 @@ private:
         Probing,
         Locked,
         Clock,
+        Vblank, /* V-Sync: waits on the TV's own vblank (porpoise::vk::wait_vblank) */
     };
+    void enter_vblank();
+    void vblank_frame();
+    long long last_vblank_ns_ = 0;
+    int quick_vblanks_ = 0;
+    int misses_ = 0;
+    int vblank_retry_ = 0;
     Mode mode_ = Mode::Clock;
     long long period_ns_ = 16666667;  /* content */
     long long vblank_ns_ = 16666667;  /* display */
@@ -54,6 +77,9 @@ private:
     const char *who_ = "";
 };
 
+/* V-Sync on (the default) or off (Porpoise's own timer), from the Video
+ * settings; takes effect at the next start(). */
+void set_vsync(bool on);
 long long now_ns();
 /* Sleeps most of the way, then spins the last stretch: a sleep can overshoot
  * by up to a millisecond. */

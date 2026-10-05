@@ -45,6 +45,7 @@
 #include "title_threads.hpp"
 #include "trace.hpp"
 #include "ui_app.hpp"
+#include "ui_app_common.hpp"
 #include "ui_gfx.hpp"
 #include "ui_i18n.hpp"
 #include "ui_library.hpp"
@@ -503,13 +504,32 @@ void set_ini_value(const std::string &path, const std::string &section, const st
 
 /* The newest release, as the last check wrote it: GitHub's own answer. */
 porpoise::update::Release g_release;
+std::vector<porpoise::update::Release> g_releases; /* every one GitHub lists, for Choose a version */
 void read_latest_release()
 {
+    /* A beta of Porpoise always looks for the next beta; a final release
+     * only when Beta updates is on. */
+    const bool betas = g_settings.beta_updates || porpoise::ui::look::kVersionBeta > 0;
     porpoise::update::Release r;
-    if (porpoise::update::read_cached(g_data + "/latest-release.json", r))
+    if (porpoise::update::read_cached(g_data + "/latest-release.json", r, betas))
     {
         g_release = r;
         g_app.set_latest_release(r.tag, r.page, r.size, r.build);
+    }
+    if (porpoise::update::read_cached_list(g_data + "/latest-release.json", g_releases))
+    {
+        std::vector<std::string> tags;
+        std::vector<int> builds;
+        std::vector<bool> pre;
+        std::vector<std::size_t> sizes;
+        for (const porpoise::update::Release &each : g_releases)
+        {
+            tags.push_back(each.tag);
+            builds.push_back(each.build);
+            pre.push_back(each.prerelease);
+            sizes.push_back(each.size);
+        }
+        g_app.set_versions(tags, builds, pre, sizes);
     }
 }
 
@@ -594,6 +614,22 @@ void apply_settings()
     porpoise::sound::set_effects(g_settings.menu_sounds, g_settings.sounds_volume / 10.0f);
     porpoise::pad::set_mapping(g_settings.mapping());
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
+    porpoise::pacer::set_vsync(g_settings.vsync);
+    /* Settings > About > Performance report: the sampling profiler
+     * (sampler_ps5.cpp) reads this file when Porpoise starts. */
+    const char *const profile = "/app0/ps5-sampler.txt";
+    struct stat st;
+    const bool present = stat(profile, &st) == 0;
+    if (g_settings.perf_profile && !present)
+    {
+        if (std::FILE *f = std::fopen(profile, "w"))
+        {
+            std::fputs("stall-ms 1\nall-threads\nleaves\n", f);
+            std::fclose(f);
+        }
+    }
+    else if (!g_settings.perf_profile && present)
+        std::remove(profile);
 }
 
 /* ---- the launch, as seen by the core host -------------------------------------------- */
@@ -1053,6 +1089,7 @@ int main()
             if (action == porpoise::ui::App::Action::SettingsChanged)
             {
                 apply_settings();
+                read_latest_release(); /* Beta updates may have changed what counts as newer */
                 if (g_library.paths().info != shown_info_path())
                 {
                     /* The menus changed language: descriptions in it too. */
@@ -1075,6 +1112,16 @@ int main()
                 porpoise::covers::stop();
                 ps5::debug::mark(("main: updating to " + g_release.tag).c_str());
                 porpoise::update::start_install(g_release, install_dir());
+            }
+            if (action == porpoise::ui::App::Action::InstallVersion)
+            {
+                const int pick = g_app.picked_version();
+                if (pick >= 0 && pick < int(g_releases.size()))
+                {
+                    porpoise::covers::stop();
+                    ps5::debug::mark(("main: installing chosen version " + g_releases[std::size_t(pick)].tag).c_str());
+                    porpoise::update::start_install(g_releases[std::size_t(pick)], install_dir());
+                }
             }
             if (action == porpoise::ui::App::Action::Quit)
             {
@@ -1103,6 +1150,11 @@ int main()
         g_play = g_settings;
         if (g_play.load(g_app.game_settings_path(*launch), true))
             ps5::debug::mark("main: the game has its own settings");
+        porpoise::pacer::set_vsync(g_play.vsync);
+        /* The driver reads this when Dolphin makes the game's device
+         * (PS5_Mesa's threaded layer); the launcher's own device never has it. */
+        setenv("RADV_THREADED_RECORDING", g_play.threaded_gpu ? "1" : "0", 1);
+        ps5::debug::mark(g_play.threaded_gpu ? "main: threaded GPU recording on" : "main: threaded GPU recording off");
         g_play.write_core_options(g_options_path);
         /* Fast save states: Dolphin leaves its GPU texture cache out of them
          * (Dolphin.ini's base layer, read when the core starts). */
@@ -1200,6 +1252,7 @@ int main()
         porpoise::core::set_fast_forward(1);
         const long long played_from = now_ns();
         const porpoise::core::Exit exit = porpoise::core::run_game(launch->path.c_str(), core_paths, hooks, playback);
+        setenv("RADV_THREADED_RECORDING", "0", 1); /* the launcher's device, made next, records directly */
         /* Play time: the whole visit, loading included, as consoles count it. */
         if (exit != porpoise::core::Exit::Failed)
             g_library.add_play_time(*launch, (now_ns() - played_from) / 1000000000LL);
@@ -1231,6 +1284,7 @@ int main()
                                                 "Porpoise can't read yet. Details are in porpoise/core.log."));
         ps5::debug::mark("main: back in the library");
         fetch_covers();
+        porpoise::pacer::set_vsync(g_settings.vsync);
         g_pacer.start(hz, "launcher");
     }
 }

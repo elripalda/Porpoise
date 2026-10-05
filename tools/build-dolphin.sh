@@ -36,7 +36,7 @@ sdk="$root/.deps/native/ps5-payload-sdk"
 export PS5_PAYLOAD_SDK="$sdk"
 export PS5_CLANG=/usr/bin/clang
 
-revision=c6630001e05780b7c03e661a4a539b59ef716ebc  # libretro/dolphin master, Dolphin 2609
+revision=4d23cf151640eb810cb1b8e9d9fc922cf59c0b87  # libretro/dolphin master after Dolphin 2609: pipeline UID writes deferred
 info_revision=5a74858ab2f7a50cebb5a6330895bc38899531c0
 info_sha=8e4e763481ba4a44fa2421c33f79a4f011d3897542528dc876dda71e4c191346
 cache="$root/.deps/downloads"
@@ -66,7 +66,11 @@ else
     echo "==> [dolphin] resetting the pinned tree and applying the port patch"
     git -C "$source_dir" checkout --force --quiet "$revision"
     git -C "$source_dir" clean -qfdx
-    git -C "$source_dir" submodule update --init --recursive --quiet --jobs 8
+    # bzip2's home is gitlab.com, which some build machines can't reach; its
+    # GitHub mirror carries the same commits, so the pin is unchanged.
+    git -C "$source_dir" \
+        -c url.https://github.com/libarchive/bzip2.git.insteadOf=https://gitlab.com/bzip2/bzip2.git \
+        submodule update --init --recursive --quiet --jobs 8
     git -C "$source_dir" apply --whitespace=nowarn "$root/patches/dolphin/ps5-port.patch"
 fi
 got=$(git -C "$source_dir" rev-parse HEAD)

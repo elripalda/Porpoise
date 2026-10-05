@@ -38,6 +38,12 @@ double refresh_hz();
 double display_hz();
 /* How long the last present waited for the display to free an image. */
 double last_present_wait_ms();
+/* The TV's refresh, waited for directly (VideoOut's vblank), for V-Sync.
+ * vblank_ready(): the display's VideoOut output has been found (it opens
+ * with the first swapchain). wait_vblank(): blocks until the next vblank;
+ * false when it could not. */
+bool vblank_ready();
+bool wait_vblank();
 
 /* The core's frame, aspect-fit onto the screen. aspect <= 0 uses w / h. */
 /* filter: 0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS; strength 0..1. */

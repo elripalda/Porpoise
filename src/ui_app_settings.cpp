@@ -10,11 +10,13 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <dirent.h>
 #include <pthread.h>
 #include <sys/stat.h>
 
 #include "porpoise_pad.hpp"
+#include "porpoise_update.hpp"
 #include "ui_app.hpp"
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
@@ -33,22 +35,145 @@ namespace porpoise::ui
 using namespace look;
 using namespace porpoise::pad;
 
+/* "2.0 beta 1", "1.5.1", "1.1 (build 15)": how a release is named to the player. */
+std::string App::version_label(const std::string &tag, int build)
+{
+    int major = 0, minor = 0, patch = 0, beta = 0;
+    if (!porpoise::update::tag_version(tag, major, minor, patch, beta))
+        return tag;
+    std::string shown = std::to_string(major) + "." + std::to_string(minor);
+    if (patch)
+        shown += "." + std::to_string(patch);
+    if (beta)
+        shown += " beta " + std::to_string(beta);
+    if (build > 0)
+        shown += " (build " + std::to_string(build) + ")";
+    return shown;
+}
+
+namespace
+{
+bool copy_file(const std::string &from, const std::string &to, std::size_t keep_tail = 0)
+{
+    std::FILE *in = std::fopen(from.c_str(), "rb");
+    if (!in)
+        return false;
+    /* A long log keeps its end, where the problem is. */
+    if (keep_tail && std::fseek(in, 0, SEEK_END) == 0)
+    {
+        const long size = std::ftell(in);
+        std::fseek(in, size > long(keep_tail) ? size - long(keep_tail) : 0, SEEK_SET);
+    }
+    std::FILE *out = std::fopen(to.c_str(), "wb");
+    bool ok = out != nullptr;
+    char buf[65536];
+    std::size_t n;
+    while (ok && (n = std::fread(buf, 1, sizeof buf, in)) > 0)
+        ok = std::fwrite(buf, 1, n, out) == n;
+    std::fclose(in);
+    if (out)
+        ok = std::fclose(out) == 0 && ok;
+    return ok;
+}
+} // namespace
+
+std::string App::save_report(std::string &usb)
+{
+    usb.clear();
+    const std::time_t now = std::time(nullptr);
+    std::tm tm{};
+    localtime_r(&now, &tm);
+    char stamp[32];
+    std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", &tm);
+    const std::string name = std::string("report-") + stamp;
+    const std::string dir = data_dir_ + "/reports/" + name;
+    mkdir((data_dir_ + "/reports").c_str(), 0777);
+    if (mkdir(dir.c_str(), 0777) != 0)
+        return "";
+    /* What happened (the newest 2 MB of each log), the settings, and a note
+     * of what this is. */
+    copy_file("/app0/trace.txt", dir + "/trace.txt", 2u << 20);
+    copy_file("/app0/porpoise/core.log", dir + "/core.log", 2u << 20);
+    copy_file(settings_path_, dir + "/settings.ini");
+    if (std::FILE *f = std::fopen((dir + "/about.txt").c_str(), "w"))
+    {
+        std::fprintf(f, "Porpoise %s\n", build_label().c_str());
+        std::fprintf(f, "Saved %s\n", stamp);
+        std::fprintf(f, "Games in the library: %d\n", int(lib_->games().size()));
+        if (selected_ >= 0 && selected_ < int(lib_->games().size()))
+        {
+            const Game &g = lib_->games()[std::size_t(selected_)];
+            std::fprintf(f, "Selected game: %s (%s, %s)\n", g.title.c_str(), g.id.c_str(), g.platform.c_str());
+        }
+        std::fprintf(f, "Player data: %s\n", data_dir_.c_str());
+        std::fclose(f);
+    }
+    /* A copy on a USB drive, for a computer. */
+    for (int i = 0; i < 8; ++i)
+    {
+        const std::string root = "/mnt/usb" + std::to_string(i);
+        struct stat st;
+        if (stat(root.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
+            continue;
+        const std::string to = root + "/porpoise-" + name;
+        if (mkdir(to.c_str(), 0777) != 0)
+            continue;
+        bool any = false;
+        for (const char *file : {"trace.txt", "core.log", "settings.ini", "about.txt"})
+            any |= copy_file(dir + "/" + file, to + "/" + file);
+        if (any)
+        {
+            usb = "porpoise-" + name;
+            break;
+        }
+    }
+    return dir;
+}
+
+void App::set_versions(const std::vector<std::string> &tags, const std::vector<int> &builds,
+                       const std::vector<bool> &betas, const std::vector<std::size_t> &sizes)
+{
+    const std::string was = version_pick_ >= 0 && version_pick_ < int(version_tags_.size())
+                                ? version_tags_[std::size_t(version_pick_)]
+                                : "";
+    version_tags_ = tags;
+    version_builds_ = builds;
+    version_sizes_ = sizes;
+    version_labels_.clear();
+    version_pick_ = 0;
+    bool latest_marked = false;
+    for (std::size_t i = 0; i < tags.size(); ++i)
+    {
+        std::string label = version_label(tags[i], builds[i]);
+        int major = 0, minor = 0, patch = 0, beta = 0;
+        porpoise::update::tag_version(tags[i], major, minor, patch, beta);
+        if (porpoise::update::compare_versions(major, minor, patch, beta, builds[i], kVersionMajor, kVersionMinor,
+                                               kVersionPatch, kVersionBeta, kBuild) == 0)
+            label += "  \xE2\x80\xA2  " + tr("installed");
+        else if (betas[i])
+            label += "  \xE2\x80\xA2  " + tr("beta");
+        else if (!latest_marked)
+            label += "  \xE2\x80\xA2  " + tr("latest");
+        if (!betas[i])
+            latest_marked = true;
+        version_labels_.push_back(label);
+        if (tags[i] == was)
+            version_pick_ = int(i);
+    }
+    if (screen_ != Screen::GameSettings && screen_ != Screen::Mapping && !map_in_game_)
+        build_settings();
+}
+
 void App::set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size, int build)
 {
     latest_size_ = zip_size;
-    /* "v1.2" or "1.2.1": newer than this build? */
-    int major = 0, minor = 0, patch = 0;
-    const char *t = tag.c_str();
-    while (*t && (*t < '0' || *t > '9'))
-        ++t;
-    if (std::sscanf(t, "%d.%d.%d", &major, &minor, &patch) < 2)
+    /* "v1.2", "1.2.1" or "v2.0-beta.2": newer than this build? */
+    int major = 0, minor = 0, patch = 0, beta = 0;
+    if (!porpoise::update::tag_version(tag, major, minor, patch, beta))
         return;
-    const bool newer = major > kVersionMajor || (major == kVersionMajor && minor > kVersionMinor) ||
-                       (major == kVersionMajor && minor == kVersionMinor && patch > kVersionPatch) ||
-                       (major == kVersionMajor && minor == kVersionMinor && patch == kVersionPatch && build > kBuild);
-    std::string shown = t;
-    if (build > 0 && major == kVersionMajor && minor == kVersionMinor && patch == kVersionPatch)
-        shown += " (build " + std::to_string(build) + ")";
+    const bool newer = porpoise::update::compare_versions(major, minor, patch, beta, build, kVersionMajor,
+                                                          kVersionMinor, kVersionPatch, kVersionBeta, kBuild) > 0;
+    const std::string shown = version_label(tag, build);
     latest_version_ = newer ? shown : "";
     latest_url_ = newer ? url : "";
     /* Only while the global settings are what rows_ holds: a game's settings
@@ -102,6 +227,8 @@ void App::set_update_progress(int phase, std::size_t done, std::size_t total, co
 std::string App::build_label() const
 {
     std::string label = kVersion;
+    if (kBuild > 0)
+        label += " (build " + std::to_string(kBuild) + ")";
 #ifdef PS5_RETROARCH_BUILD_ID
     const std::string id = PS5_RETROARCH_BUILD_ID;
     const auto colon = id.rfind(": ");
@@ -213,6 +340,10 @@ void App::add_game_rows(Settings &t, bool per_game)
         rows_.push_back(r);
     }
     toggle("fps_overlay", "FPS overlay", "Shows the frame rate in the corner while you play.", &t.fps_overlay);
+    toggle("vsync", "V-Sync",
+           "Shows every frame on the TV's own refresh, for the smoothest motion. Off times frames with Porpoise's "
+           "own clock instead.",
+           &t.vsync);
 
     if (!per_game)
         add_setup_rows(false);
@@ -221,6 +352,11 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("shader_mode", "Shader compilation",
            "Ubershaders hide the stutter when a game draws something new, at a GPU cost.", &t.shader_mode, 0,
            {"Synchronous", "Ubershaders", "Async ubershaders", "Async, skip drawing"});
+    toggle("threaded_gpu", "Threaded GPU recording (beta)",
+           "The graphics driver records Dolphin's drawing on a thread of its own, so Dolphin's video thread spends "
+           "less time in the driver. Can speed up demanding games. Turn it off if a game crashes or looks wrong. "
+           "Applies the next time a game starts.",
+           &t.threaded_gpu);
     choice("texture_cache", "Texture cache accuracy", "Safe fixes some games' text and effects; Fast is quickest.",
            &t.texture_cache, 0, {"Fast", "Middle", "Safe"});
     toggle("pixel_lighting", "Per-pixel lighting", "Smoother lighting on surfaces. A little heavier.",
@@ -512,15 +648,45 @@ void App::build_settings()
         r.action = kRowUpdate;
         rows_.push_back(r);
     }
+    toggle("beta_updates", "Beta updates",
+           "Offer test versions (pre-releases) too when they come out: newer, but less tested. A beta of Porpoise "
+           "always offers the next beta.",
+           &settings_->beta_updates);
+    if (!version_labels_.empty())
+    {
+        SettingRow r;
+        r.section = section;
+        r.key = "version_pick";
+        r.label = tr("Choose a version");
+        r.help = tr("Any Porpoise release, newer or older, betas included: left and right to pick, Cross to install. "
+                    "Going back keeps your games, saves and settings; save states made by a newer Porpoise may not "
+                    "load in an older one.");
+        r.values = version_labels_;
+        r.int_value = &version_pick_;
+        r.action = kRowPickVersion;
+        rows_.push_back(r);
+    }
     info("Created by", "@elripalda", "Ruben - www.elripalda.com");
     rows_.back().key = "creator"; /* three presses: developer options (not advertised) */
     info("Dolphin on PS5", "Mihawk (mihawk-99)",
          "Mihawk (mihawk-99) brought the Dolphin core to the PS5. Porpoise is built on his port of Dolphin and "
          "RetroArch.");
     info("Website", "www.elripalda.com", "Updates, news and more from the creator of Porpoise.");
-    info("Report a bug", "github.com/elripalda/Porpoise",
-         "Found a problem? Scan the code with your phone and open an issue with the game, what happened and "
-         "porpoise/core.log.");
+    {
+        SettingRow r;
+        r.section = section;
+        r.label = tr("Report a bug");
+        r.help = tr("Cross gathers Porpoise's logs into /data/porpoise/reports (and onto a USB drive, when one is "
+                    "in). Scan the code with your phone to open an issue on GitHub, and attach them with the game "
+                    "and what happened.");
+        r.values = {tr("Save a report\xE2\x80\xA6")};
+        r.action = kRowSendReport;
+        rows_.push_back(r);
+    }
+    toggle("perf_profile", "Performance report",
+           "For a game that runs slowly: from the next time Porpoise starts, it records where the emulator spends "
+           "its time, for a bug report. Slows games a little; turn it off again afterwards.",
+           &settings_->perf_profile);
     info("Music and sounds", "@elripalda", "The menu music and sound effects, made for Porpoise by Ruben.");
     info("Controller art", "Zacksly",
          "PS5 Button Icons and Controls by Zacksly - zacksly.itch.io, @_Zacksly on Twitter. CC BY 3.0, adapted for "
@@ -951,6 +1117,54 @@ App::Action App::activate_row(const SettingRow &row)
         sfx(Sound::MenuScroll);
         update_phase_ = 1; /* until the updater says otherwise: a quick failure still shows */
         return Action::CheckUpdate;
+    case kRowSendReport:
+    {
+        sfx(Sound::MenuScroll);
+        std::string usb;
+        const std::string where = save_report(usb);
+        if (where.empty())
+            open_dialog(DialogKind::Info, tr("No report saved"),
+                        tr("Porpoise couldn't write the report folder. Copy trace.txt and porpoise/core.log from "
+                           "Porpoise's app folder by FTP instead."),
+                        "");
+        else
+            open_dialog(DialogKind::Info, tr("Report saved"),
+                        usb.empty() ? trf("It's in {path}. Scan the code beside Report a bug to open an issue on "
+                                          "GitHub and attach its files.",
+                                          {{"path", where}})
+                                    : trf("It's in {path}, and on your USB drive as {usb}. Scan the code beside "
+                                          "Report a bug to open an issue on GitHub and attach its files.",
+                                          {{"path", where}, {"usb", usb}}),
+                        "");
+        return Action::None;
+    }
+    case kRowPickVersion:
+    {
+        if (updating() || update_phase_ == 1 || version_pick_ < 0 || version_pick_ >= int(version_tags_.size()))
+            return Action::None;
+        const std::string shown = version_label(version_tags_[std::size_t(version_pick_)],
+                                                version_builds_[std::size_t(version_pick_)]);
+        int major = 0, minor = 0, patch = 0, beta = 0;
+        porpoise::update::tag_version(version_tags_[std::size_t(version_pick_)], major, minor, patch, beta);
+        const int order = porpoise::update::compare_versions(major, minor, patch, beta,
+                                                             version_builds_[std::size_t(version_pick_)], kVersionMajor,
+                                                             kVersionMinor, kVersionPatch, kVersionBeta, kBuild);
+        const std::string mb = std::to_string((version_sizes_[std::size_t(version_pick_)] + (1 << 20) - 1) >> 20);
+        open_dialog(DialogKind::InstallVersion, trf("Install Porpoise {version}?", {{"version", shown}}),
+                    order < 0 ? trf("{mb} MB from GitHub. This goes back to an older Porpoise: your games, saves and "
+                                    "settings stay, but save states made by this version may not load in it. "
+                                    "Porpoise closes when it's done.",
+                                    {{"mb", mb}})
+                    : order == 0
+                        ? trf("{mb} MB from GitHub. This is the version you have: it is put in place again, which "
+                              "repairs a damaged install. Porpoise closes when it's done.",
+                              {{"mb", mb}})
+                        : trf("{mb} MB from GitHub. Porpoise checks the download, puts the new files in place, and "
+                              "then closes so you can open the new one. Your games, saves and settings stay.",
+                              {{"mb", mb}}),
+                    tr("Install"));
+        return Action::None;
+    }
     case kRowUseSetup:
         if (screen_ == Screen::GameSettings && game_for_)
         {
@@ -1078,6 +1292,12 @@ App::Action App::update_settings(bool up, bool down, bool left, bool right)
         /* A recommendation's switch: Cross, or left / right toward off / on. */
         if (pressed(BtnCross) || (left && row.toggle) || (right && !row.toggle))
             toggle_recommended(row.rec);
+        return Action::None;
+    }
+    if (row.action == kRowPickVersion && (left || right) && !row.values.empty())
+    {
+        version_pick_ = std::clamp(version_pick_ + (right ? 1 : -1), 0, int(row.values.size()) - 1);
+        sfx(Sound::MenuScroll);
         return Action::None;
     }
     if (row.action)

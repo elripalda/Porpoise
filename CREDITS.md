@@ -27,7 +27,7 @@ without him. Details and licences are under [PS5 platform](#ps5-platform).
 | [libretro-core-info](https://github.com/libretro/libretro-core-info) | The Dolphin core's `.info` metadata | MIT |
 
 Porpoise builds Dolphin from libretro/dolphin revision
-`c6630001e05780b7c03e661a4a539b59ef716ebc` with one patch,
+`4d23cf151640eb810cb1b8e9d9fc922cf59c0b87` with one patch,
 [`patches/dolphin/ps5-port.patch`](patches/dolphin/ps5-port.patch).
 
 ## PS5 platform

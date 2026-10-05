@@ -54,6 +54,7 @@ public:
         FetchCovers, /* covers and game info now (Sort & filter) */
         CheckUpdate, /* look for a newer Porpoise now */
         InstallUpdate,
+        InstallVersion, /* the one picked in About > Choose a version (picked_version()) */
         Quit,        /* close Porpoise (after an update) */
     };
 
@@ -138,6 +139,11 @@ public:
     /* Fast forward chosen in the menu: 1 (off), 2 or 4. Not saved. */
     int menu_fast_forward() const { return menu_ff_ == 2 ? 4 : menu_ff_ == 1 ? 2 : 1; }
     /* The newest release on GitHub ("v1.2" and its page), for the update notice. */
+    /* Every release GitHub lists (newest first), for About > Choose a version. */
+    void set_versions(const std::vector<std::string> &tags, const std::vector<int> &builds,
+                      const std::vector<bool> &betas, const std::vector<std::size_t> &sizes);
+    int picked_version() const { return version_pick_; }
+    static std::string version_label(const std::string &tag, int build);
     void set_latest_release(const std::string &tag, const std::string &url, std::size_t zip_size = 0,
                             int build = 0);
     /* The updater, as porpoise::update::Phase numbers: 0 idle, 1 checking,
@@ -200,6 +206,7 @@ private:
         CopySave,
         DeleteState,
         InstallUpdate,
+        InstallVersion,
         CopyGame,
         DeleteWiiSave,
     };
@@ -260,6 +267,14 @@ private:
     void draw_browser();
     Action update_browser(bool up, bool down);
     std::string build_label() const;
+    /* About > Report a bug: Porpoise's logs into <data>/reports/<time>, and a
+     * copy on the first USB drive (usb: its folder there, "" when none).
+     * Returns the report's folder, "" when it couldn't be written. */
+    std::string save_report(std::string &usb);
+    std::vector<std::string> version_tags_, version_labels_;
+    std::vector<std::size_t> version_sizes_;
+    std::vector<int> version_builds_;
+    int version_pick_ = 0;
     long long change_count() const;
 
     /* Button mapping (ui_app_controls.cpp) */

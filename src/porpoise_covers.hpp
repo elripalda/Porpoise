@@ -25,8 +25,8 @@ struct Request
     bool force = false;
 };
 /* Where they come from. */
-constexpr const char *kFeedUrl = "https://raw.githubusercontent.com/elripalda/Porpoise/main/data/recommended.ini";
-constexpr const char *kReleaseUrl = "https://api.github.com/repos/elripalda/Porpoise/releases/latest";
+constexpr const char *kFeedUrl = "https://raw.githubusercontent.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/main/data/recommended.ini";
+constexpr const char *kReleaseUrl = "https://api.github.com/repos/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases?per_page=30";
 /* Starts a worker for whatever of that is missing: covers first, then the
  * game info, then disc art. False when a run is still going (ask again when
  * busy() turns false); true when it started or nothing is missing. */

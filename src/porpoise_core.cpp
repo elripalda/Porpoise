@@ -1324,7 +1324,14 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
      * Dolphin reports 32 kHz audio before the game starts but its sound
      * stream runs at 48 kHz; the rate is asked for again once sound flows,
      * or the resampler would stretch the audio by half and overflow. */
-    constexpr std::size_t kAudioHighWater = 2304 + 512;  /* 48 kHz frames, ~59 ms: own clock */
+    /* The own-clock backstop has to sit above what one frame pushes on top of
+     * the resampler's target (2304 frames, ~48 ms): a frame adds about 800 at
+     * 48 kHz. At 2304 + 512 (1.5) nearly every frame waited ~6 ms for the
+     * speakers, and those waits, quantised to AudioOut's 5.3 ms grain, made
+     * frame times uneven (Wii Sports logged 140-370 ms of waiting a second at
+     * full speed). Two frames' worth above the target leaves pacing to the
+     * clock and keeps the speakers as the catch for a runaway only. */
+    const std::size_t kAudioHighWater = 2304 + 2 * std::size_t(48000.0 / (h.fps > 10.0 ? h.fps : 60.0)) + 256;
     constexpr std::size_t kAudioBackstop = 4800;         /* ~100 ms: locked to the display */
     porpoise::pacer::Pacer pacer;
     auto content_hz = [] { return h.fps > 10.0 && h.fps < 60.5 ? h.fps : 60.0; };

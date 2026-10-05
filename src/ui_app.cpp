@@ -651,6 +651,13 @@ App::Action App::confirm_dialog(DialogKind kind)
         update_done_ = 0;
         update_total_ = latest_size_;
         return Action::InstallUpdate;
+    case DialogKind::InstallVersion:
+        update_phase_ = 2;
+        update_done_ = 0;
+        update_total_ = version_pick_ >= 0 && version_pick_ < int(version_sizes_.size())
+                            ? version_sizes_[std::size_t(version_pick_)]
+                            : 0;
+        return Action::InstallVersion;
     case DialogKind::CopyGame:
         start_game_copy(browse_copy_name_);
         return Action::None;

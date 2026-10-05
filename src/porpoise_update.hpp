@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace porpoise::update
 {
@@ -29,11 +30,25 @@ struct Release
     std::string sha256;  /* of the zip, as GitHub gives it ("" when it doesn't) */
     std::size_t size = 0;
     int build = 0;       /* from the release's name, "Porpoise 1.1 (build 14)"; 0 when it has none */
+    int beta = 0;        /* from the tag, "v2.0-beta.1": 1; 0 for a final release */
+    bool prerelease = false;
+    std::string name;    /* "Porpoise 2.0 beta 1" */
 };
 
-/* GitHub's /releases/latest answer. */
+/* One release object of GitHub's answer. */
 bool parse(const std::string &json, Release &out);
-bool read_cached(const std::string &path, Release &out);
+/* GitHub's /releases answer (newest first), or a single release object;
+ * drafts and releases without a Porpoise zip are left out. */
+bool parse_list(const std::string &json, std::vector<Release> &out);
+/* The newest release in the cached answer; betas: pre-releases count too. */
+bool read_cached(const std::string &path, Release &out, bool betas = false);
+bool read_cached_list(const std::string &path, std::vector<Release> &out);
+/* Orders versions: (major, minor, patch, beta - a final release after its
+ * betas -, build). Returns <0, 0 or >0. */
+int compare_versions(int major_a, int minor_a, int patch_a, int beta_a, int build_a, int major_b, int minor_b,
+                     int patch_b, int beta_b, int build_b);
+/* A tag's numbers: "v1.5.1" -> 1 5 1, "v2.0-beta.1" -> 2 0 0 beta 1. */
+bool tag_version(const std::string &tag, int &major, int &minor, int &patch, int &beta);
 
 enum class Phase
 {
@@ -53,7 +68,8 @@ struct Progress
     std::string error;
 };
 Progress progress();
-/* Looks for a newer release now; the answer is written to cache_path. */
+/* Looks for releases now (GitHub's list, betas and older ones too); the
+ * answer is written to cache_path. */
 void start_check(const std::string &cache_path);
 /* Downloads the release and puts it in app_dir; the zip is held in memory. */
 void start_install(const Release &release, const std::string &app_dir = "/app0");

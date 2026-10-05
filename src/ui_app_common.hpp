@@ -20,9 +20,10 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "1.5.1";
-constexpr int kBuild = 1; /* a release named "... (build N)" with a higher N is newer */
-constexpr int kVersionMajor = 1, kVersionMinor = 5, kVersionPatch = 1;
+constexpr const char *kVersion = "2.0 beta 1";
+constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
+constexpr int kVersionMajor = 2, kVersionMinor = 0, kVersionPatch = 0;
+constexpr int kVersionBeta = 1; /* 0 for a final release; its betas come before it */
 
 /* What a settings row does when pressed, besides changing a value. */
 enum RowAction
@@ -39,6 +40,8 @@ enum RowAction
     kRowRecommended,
     kRowUseSetup,
     kRowUpdate,
+    kRowPickVersion, /* About > Choose a version: left / right pick, Cross installs */
+    kRowSendReport,  /* About > Report a bug: the logs into a report folder (and onto a USB drive) */
     kRowDeveloperOff,
 };
 

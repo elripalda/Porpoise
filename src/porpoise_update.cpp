@@ -291,7 +291,7 @@ void *check_worker(void *)
 {
     porpoise::http::Session http("porpoise-update");
     std::vector<std::uint8_t> data;
-    const int status = http.init() ? http.get("https://api.github.com/repos/elripalda/Porpoise/releases/latest", data)
+    const int status = http.init() ? http.get("https://api.github.com/repos/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases?per_page=30", data)
                                    : -1;
     http.term();
     if (status != 200)
@@ -499,6 +499,36 @@ std::size_t matching(const std::string &json, std::size_t open)
     return std::string::npos;
 }
 
+bool tag_version(const std::string &tag, int &major, int &minor, int &patch, int &beta)
+{
+    major = minor = patch = beta = 0;
+    const char *t = tag.c_str();
+    while (*t && (*t < '0' || *t > '9'))
+        ++t;
+    if (std::sscanf(t, "%d.%d.%d", &major, &minor, &patch) < 2)
+        return false;
+    const std::size_t b = tag.find("beta");
+    if (b != std::string::npos)
+    {
+        const char *n = tag.c_str() + b + 4;
+        while (*n && (*n < '0' || *n > '9'))
+            ++n;
+        beta = *n ? std::max(1, std::atoi(n)) : 1;
+    }
+    return true;
+}
+
+int compare_versions(int major_a, int minor_a, int patch_a, int beta_a, int build_a, int major_b, int minor_b,
+                     int patch_b, int beta_b, int build_b)
+{
+    const long long a[5] = {major_a, minor_a, patch_a, beta_a ? beta_a : 1000000, build_a};
+    const long long b[5] = {major_b, minor_b, patch_b, beta_b ? beta_b : 1000000, build_b};
+    for (int i = 0; i < 5; ++i)
+        if (a[i] != b[i])
+            return a[i] < b[i] ? -1 : 1;
+    return 0;
+}
+
 bool parse(const std::string &json, Release &out)
 {
     out = Release{};
@@ -507,10 +537,17 @@ bool parse(const std::string &json, Release &out)
     /* The release's own name comes before its assets (theirs are inside them). */
     {
         const std::size_t assets = json.find("\"assets\"");
-        const std::string name = field(json, 0, assets == std::string::npos ? json.size() : assets, "name");
+        const std::size_t own = assets == std::string::npos ? json.size() : assets;
+        const std::string name = field(json, 0, own, "name");
+        out.name = name;
         const std::size_t b = name.find("build ");
         if (b != std::string::npos)
             out.build = std::atoi(name.c_str() + b + 6);
+        out.prerelease = field(json, 0, own, "prerelease") == "true";
+    }
+    {
+        int major = 0, minor = 0, patch = 0;
+        tag_version(out.tag, major, minor, patch, out.beta);
     }
     /* The release's Porpoise-*.zip: each asset is looked at on its own, its
      * name taken from the end of its download link. */
@@ -539,9 +576,66 @@ bool parse(const std::string &json, Release &out)
     return !out.tag.empty();
 }
 
-bool read_cached(const std::string &path, Release &out)
+bool parse_list(const std::string &json, std::vector<Release> &out)
 {
-    return parse(read_file(path), out);
+    out.clear();
+    const std::size_t first = json.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos)
+        return false;
+    if (json[first] == '{')
+    {
+        Release r;
+        if (parse(json, r) && !r.zip_url.empty())
+            out.push_back(r);
+        return !out.empty();
+    }
+    if (json[first] != '[')
+        return false;
+    const std::size_t close = matching(json, first);
+    for (std::size_t at = json.find('{', first); at != std::string::npos && at < close;)
+    {
+        const std::size_t end = matching(json, at);
+        if (end == std::string::npos)
+            break;
+        const std::string one = json.substr(at, end - at + 1);
+        const std::size_t assets = one.find("\"assets\"");
+        Release r;
+        if (parse(one, r) && !r.zip_url.empty() &&
+            field(one, 0, assets == std::string::npos ? one.size() : assets, "draft") != "true")
+            out.push_back(r);
+        at = json.find('{', end);
+    }
+    return !out.empty();
+}
+
+bool read_cached_list(const std::string &path, std::vector<Release> &out)
+{
+    return parse_list(read_file(path), out);
+}
+
+bool read_cached(const std::string &path, Release &out, bool betas)
+{
+    std::vector<Release> all;
+    if (!parse_list(read_file(path), all))
+        return false;
+    /* The newest by version, not by date: a fix for an older line can come
+     * out after a newer release. */
+    const Release *best = nullptr;
+    for (const Release &r : all)
+    {
+        if (r.prerelease && !betas)
+            continue;
+        int a[4], b[4];
+        tag_version(r.tag, a[0], a[1], a[2], a[3]);
+        if (best)
+            tag_version(best->tag, b[0], b[1], b[2], b[3]);
+        if (!best || compare_versions(a[0], a[1], a[2], a[3], r.build, b[0], b[1], b[2], b[3], best->build) > 0)
+            best = &r;
+    }
+    if (!best)
+        return false;
+    out = *best;
+    return true;
 }
 
 Progress progress()

@@ -34,6 +34,9 @@
 
 extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance,
                                                                          const char *name);
+/* VideoOut (libSceVideoOut, linked for the driver's WSI): V-Sync. */
+extern "C" int sceVideoOutGetFlipStatus(int handle, std::uint64_t status[16]);
+extern "C" int sceVideoOutWaitVblank(int handle);
 
 namespace
 {
@@ -1053,6 +1056,53 @@ double display_hz()
 double last_present_wait_ms()
 {
     return s.last_wait_ns / 1e6;
+}
+
+/* V-Sync. The driver's VideoOut output (opened by its swapchain, PS5_Mesa's
+ * wsi_common_videoout.c) is the one the TV's vblanks come from; Porpoise
+ * finds its handle by asking each small handle for its flip status (an
+ * output this process has not opened answers with an error) and waits on its
+ * vblank itself. The driver's own acquire never held Porpoise's loop to the
+ * vblank on the console (1.5's logs: "held 0 of 120 presents"), so frames
+ * went out on Porpoise's own timer instead of the display's. */
+namespace
+{
+int g_videoout = -1;
+int g_videoout_tries = 0;
+} // namespace
+
+bool vblank_ready()
+{
+    if (g_videoout >= 0)
+        return true;
+    if (!s.swapchain || g_videoout_tries >= 8)
+        return false;
+    ++g_videoout_tries;
+    for (int handle = 0; handle < 64; ++handle)
+    {
+        std::uint64_t status[16] = {};
+        if (sceVideoOutGetFlipStatus(handle, status) == 0)
+        {
+            g_videoout = handle;
+            char line[256];
+            std::snprintf(line, sizeof line,
+                          "vk: VideoOut output %d for V-Sync; flip status %llx %llx %llx %llx %llx %llx %llx %llx",
+                          handle, (unsigned long long)status[0], (unsigned long long)status[1],
+                          (unsigned long long)status[2], (unsigned long long)status[3],
+                          (unsigned long long)status[4], (unsigned long long)status[5],
+                          (unsigned long long)status[6], (unsigned long long)status[7]);
+            ps5::debug::mark(line);
+            return true;
+        }
+    }
+    if (g_videoout_tries == 8)
+        ps5::debug::mark("vk: no VideoOut output answered; V-Sync uses Porpoise's timer");
+    return false;
+}
+
+bool wait_vblank()
+{
+    return g_videoout >= 0 && sceVideoOutWaitVblank(g_videoout) == 0;
 }
 
 double refresh_hz()
