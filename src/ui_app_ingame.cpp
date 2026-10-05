@@ -733,6 +733,13 @@ void App::draw_controller_lines(float x, float y, float w, const Mapping &m)
 void App::draw_game_menu(double time)
 {
     apply_look();
+    {
+        /* Over the game: liquid glass would bend the menus' room, which
+         * isn't behind it here. */
+        Look over_game = g_->look();
+        over_game.panel_style = 0;
+        g_->set_look(over_game);
+    }
     if (!menu_play_)
         return;
     Gfx &g = *g_;

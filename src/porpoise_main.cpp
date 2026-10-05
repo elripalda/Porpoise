@@ -923,6 +923,12 @@ void launch_frame(bool core_frame, double fps, void *)
     if (!g_gfx.ready())
         return;
     begin_ui_frame(core_frame ? 0.0f : 0.6f);
+    {
+        /* Over the game: plain panels (liquid glass bends the menus' room). */
+        porpoise::ui::Look over_game = g_gfx.look();
+        over_game.panel_style = 0;
+        g_gfx.set_look(over_game);
+    }
     if (!core_frame)
     {
         g_app.draw_launch(g_time);
