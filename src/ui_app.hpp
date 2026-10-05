@@ -256,6 +256,22 @@ private:
                      std::string (Library::*where)(const Game &) const, const Game &g);
     static bool cover_loading(const Game &g) { return !g.cover && !g.cover_wait.empty(); }
     Texture *disc_of(Game &g);
+    /* The library's views (ui_app_views.cpp). */
+    void draw_cover_flow(double time);
+    void draw_wheel(double time);
+    void draw_disc_flow(double time);
+    void draw_shelf(double time);
+    void draw_box_view(double time);
+    void draw_disc(Game *game, float cx, float cy, float d, float spin, float yaw, float alpha, bool focused);
+    void draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha);
+    void release_far_art(int keep);
+    std::string game_meta(const Game &g) const;
+    bool update_view_nav(bool left, bool right, bool up, bool down, double dt);
+    static constexpr int kShelfCols = 6;
+    float row_scroll_ = 0;  /* the shelf's first row, sliding */
+    float view_yaw_ = 0;    /* the box view's turn (the right stick) */
+    double view_idle_ = 0;  /* how long the right stick has been still */
+    Texture *spine_of(Game &g);
     Texture *back_of(Game &g);
     void set_tab(int tab, int dir);
     void open_screen(Screen s);

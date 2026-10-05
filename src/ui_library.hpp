@@ -38,6 +38,9 @@ struct Game
     bool disc_tried = false;
     Texture *back = nullptr; /* the back of the box */
     bool back_tried = false;
+    Texture *spine = nullptr; /* the box's spine (the Box view) */
+    bool spine_tried = false;
+    std::string spine_wait;
 };
 
 /* Game files in dir and up to depth folders below it. */
@@ -106,6 +109,7 @@ public:
     std::string cover_path(const Game &g) const;
     std::string disc_path(const Game &g) const; /* <covers>/<ID>.disc.png, or "" */
     std::string back_path(const Game &g) const; /* <covers>/<ID>.back.png, or "" */
+    std::string spine_path(const Game &g) const; /* <covers>/<ID>.spine.png, or "" */
     /* Reads info.tsv into the games (after a scan, or when it was downloaded). */
     void load_info();
     /* Another info.tsv (the descriptions in another language). */

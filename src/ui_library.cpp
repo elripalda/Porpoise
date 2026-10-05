@@ -281,6 +281,16 @@ std::string Library::disc_path(const Game &g) const
     return stat(p.c_str(), &st) == 0 ? p : "";
 }
 
+std::string Library::spine_path(const Game &g) const
+{
+    std::string p = back_path(g);
+    if (p.empty())
+        return "";
+    p = p.substr(0, p.size() - 9) + ".spine.png";
+    struct stat st;
+    return stat(p.c_str(), &st) == 0 ? p : "";
+}
+
 std::string Library::back_path(const Game &g) const
 {
     if (paths_.covers.empty())

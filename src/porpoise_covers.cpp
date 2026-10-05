@@ -141,6 +141,8 @@ bool is_image(const std::vector<std::uint8_t> &d)
  * its back the left-hand side, each 135 wide for 190 high (a GameCube or Wii
  * case). front_path / back_path: "" to skip. Returns whether what was asked
  * for was written. */
+/* A full box (back, spine, front side by side) or a front alone. The back
+ * goes to back_path and, with it, the spine to <ID>.spine.png beside it. */
 bool save_box(const std::vector<std::uint8_t> &data, const std::string &front_path, const std::string &back_path)
 {
     int w = 0, h = 0, n = 0;
@@ -149,19 +151,25 @@ bool save_box(const std::vector<std::uint8_t> &data, const std::string &front_pa
         return false;
     const bool front_only = w < h;
     const int fw = front_only ? w : std::min(w, int(h * 135.0 / 190.0 + 0.5));
-    auto write = [&](int x0, const std::string &path) {
-        std::vector<unsigned char> part(std::size_t(fw) * std::size_t(h) * 4);
+    auto write = [&](int x0, int pw, const std::string &path) {
+        std::vector<unsigned char> part(std::size_t(pw) * std::size_t(h) * 4);
         for (int y = 0; y < h; ++y)
-            std::copy(px + (std::size_t(y) * w + x0) * 4, px + (std::size_t(y) * w + x0 + fw) * 4,
-                      part.begin() + std::ptrdiff_t(std::size_t(y) * fw * 4));
+            std::copy(px + (std::size_t(y) * w + x0) * 4, px + (std::size_t(y) * w + x0 + pw) * 4,
+                      part.begin() + std::ptrdiff_t(std::size_t(y) * pw * 4));
         const std::string tmp = path + ".part";
-        return stbi_write_png(tmp.c_str(), fw, h, 4, part.data(), fw * 4) && std::rename(tmp.c_str(), path.c_str()) == 0;
+        return stbi_write_png(tmp.c_str(), pw, h, 4, part.data(), pw * 4) && std::rename(tmp.c_str(), path.c_str()) == 0;
     };
     bool ok = true;
     if (!front_path.empty())
-        ok &= write(w - fw, front_path);
+        ok &= write(w - fw, fw, front_path);
     if (!back_path.empty())
-        ok &= !front_only && write(0, back_path);
+    {
+        ok &= !front_only && write(0, fw, back_path);
+        const int sw = std::max(4, w - fw * 2);
+        const std::string::size_type dot = back_path.rfind(".back.png");
+        if (ok && dot != std::string::npos)
+            write(std::min(fw, w - sw), sw, back_path.substr(0, dot) + ".spine.png"); /* the box view's spine */
+    }
     stbi_image_free(px);
     return ok;
 }
@@ -442,7 +450,8 @@ bool start(const Request &request)
     /* Backs of boxes whose fronts are already here (new covers bring theirs). */
     if (request.covers)
         for (const std::string &id : ids)
-            if (exists(g.dir + "/" + id + ".png") && !exists(g.dir + "/" + id + ".back.png"))
+            if (exists(g.dir + "/" + id + ".png") &&
+                (!exists(g.dir + "/" + id + ".back.png") || !exists(g.dir + "/" + id + ".spine.png")))
                 g.jobs.push_back({Job::Back, id});
     if (g.jobs.empty())
         return true;

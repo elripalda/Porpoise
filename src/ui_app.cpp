@@ -59,6 +59,8 @@ void App::forget_textures()
         g.disc_tried = false;
         g.back = nullptr;
         g.back_tried = false;
+        g.spine = nullptr;
+        g.spine_tried = false;
     }
     for (Card *c : {&card_a_, &card_b_})
         for (Save &s : c->saves)
@@ -137,6 +139,11 @@ Texture *App::disc_of(Game &g)
 Texture *App::back_of(Game &g)
 {
     return picture(g.back, g.back_tried, g.back_wait, &Library::back_path, g);
+}
+
+Texture *App::spine_of(Game &g)
+{
+    return picture(g.spine, g.spine_tried, g.spine_wait, &Library::spine_path, g);
 }
 
 Texture *App::save_icon(Save &s)
@@ -552,19 +559,12 @@ App::Action App::update(const Input &in, double dt)
         const int shown = lib_->shown();
         selected_ = std::clamp(selected_, 0, std::max(0, shown - 1));
         bool play = false, details = false, fav = false;
-        if (revolution())
+        if (revolution() && settings_->ui_layout == 0)
             update_home(left, right, up, down, play, details, fav, dt);
         else
         {
-            if (left && selected_ > 0)
+            if (update_view_nav(left, right, up, down, dt))
             {
-                --selected_;
-                lift_ = 0.4f;
-                sfx(Sound::GameRow);
-            }
-            if (right && selected_ + 1 < shown)
-            {
-                ++selected_;
                 lift_ = 0.4f;
                 sfx(Sound::GameRow);
             }
@@ -1512,64 +1512,27 @@ void App::draw_library(double time)
                    tr("Settings > About"));
     }
 
-    /* Layout of a tile at offset k from the selection (k may be fractional
-     * while sliding): x, scale and yaw. */
-    auto layout = [](float k, float &x, float &scale, float &yaw) {
-        const float a = std::fabs(k), s = k < 0 ? -1.0f : 1.0f;
-        if (a <= 1.0f)
-        {
-            x = kCx + s * a * 372.0f;
-            scale = 1.0f - 0.14f * a;
-            yaw = s * a * 0.22f;
-        }
-        else
-        {
-            x = kCx + s * (372.0f + (a - 1.0f) * 284.0f);
-            scale = std::max(0.5f, 0.86f - 0.10f * (a - 1.0f));
-            yaw = s * 0.22f;
-        }
-    };
-
-    /* Back to front: far tiles first, the selection last. */
-    std::vector<int> order;
-    for (int i = 0; i < shown; ++i)
-        if (std::fabs(float(i) - scroll_) < 4.2f)
-            order.push_back(i);
-    std::sort(order.begin(), order.end(), [&](int a, int b) {
-        return std::fabs(float(a) - scroll_) > std::fabs(float(b) - scroll_);
-    });
-    for (int pass = 0; pass < 2; ++pass) /* reflections, then tiles */
-        for (int i : order)
-        {
-            const float k = float(i) - scroll_;
-            float x, s, yaw;
-            layout(k, x, s, yaw);
-            const float a = std::fabs(k);
-            const float alpha = std::clamp(1.0f - (a - 3.0f), 0.0f, 1.0f);
-            const bool focused = i == selected_ && a < 0.5f;
-            const float lift = focused ? (lift_ * 6.0f) : 0.0f;
-            /* The focused block turns gently, showing its glass edge. */
-            const float sway = settings_->reduced_motion ? 0.0f : std::sin(float(time) * 0.9f) * 0.06f * (1.0f - std::min(a * 2.0f, 1.0f));
-            draw_tile(&games[std::size_t(i)], x, kCy - lift, kTileW * s, kTileH * s, yaw + sway, alpha, focused,
-                      pass == 0);
-        }
-
-    /* Covers far from the selection give their memory back; they reload
-     * when they come into view again. */
-    for (int i = 0; i < int(games.size()); ++i)
-        if ((std::abs(i - selected_) > 9 || i >= shown) && games[std::size_t(i)].cover)
-        {
-            g.free_texture(games[std::size_t(i)].cover);
-            games[std::size_t(i)].cover = nullptr;
-            games[std::size_t(i)].cover_tried = false;
-        }
+    /* The games, in the view chosen in Settings > Interface. */
+    const int view = std::clamp(settings_->lib_view, 0, 4);
+    switch (view)
+    {
+    case 1: draw_wheel(time); break;
+    case 2: draw_disc_flow(time); break;
+    case 3: draw_shelf(time); break;
+    case 4: draw_box_view(time); break;
+    default: draw_cover_flow(time); break;
+    }
+    release_far_art(view == 3 ? 20 : 9);
 
     /* Side arrows. (No marker over the chosen cover: its glow says it, and a
      * triangle there read as the Triangle button.) */
-    if (selected_ > 0)
-        g.glyph(Glyph::Arrow, 34, kCy, 46, rgba(0x58B8FF), -kPi * 0.5f);
-    if (selected_ + 1 < shown)
-        g.glyph(Glyph::Arrow, 1886, kCy, 46, rgba(0x58B8FF), kPi * 0.5f);
+    if (view != 3)
+    {
+        if (selected_ > 0)
+            g.glyph(Glyph::Arrow, 34, kCy, 46, rgba(0x58B8FF), -kPi * 0.5f);
+        if (selected_ + 1 < shown)
+            g.glyph(Glyph::Arrow, 1886, kCy, 46, rgba(0x58B8FF), kPi * 0.5f);
+    }
 
     if (shown == 0)
     {
@@ -1582,18 +1545,18 @@ void App::draw_library(double time)
         return;
     }
 
-    /* Title, details, play. */
+    /* Title and details (the shelf and the box show their own). */
     Game &sel = games[std::size_t(selected_)];
-    g.text(Font::Bold, ts(46), kCx, 748, kWhite, Align::Center, sel.title);
-    std::string meta =
-        sel.platform + "   \xE2\x80\xA2   " + relative_time(sel.last_played, (long long)std::time(nullptr));
-    if (sel.play_seconds >= 60)
-        meta += "   \xE2\x80\xA2   " + play_time_text(sel.play_seconds);
-    g.text(Font::SemiBold, ts(28), kCx, 812, kLavender, Align::Center, meta);
-    if (sel.favourite)
+    if (view <= 2)
     {
-        const float tw = g.measure(Font::Bold, ts(46), sel.title);
-        g.glyph(Glyph::Star, kCx - tw * 0.5f - 34, 732, 34, rgba(0xFFD45C));
+        const float ty = view == 0 ? 748.0f : 800.0f;
+        g.text(Font::Bold, ts(46), kCx, ty, kWhite, Align::Center, sel.title);
+        g.text(Font::SemiBold, ts(28), kCx, ty + 64, kLavender, Align::Center, game_meta(sel));
+        if (sel.favourite)
+        {
+            const float tw = g.measure(Font::Bold, ts(46), sel.title);
+            g.glyph(Glyph::Star, kCx - tw * 0.5f - 34, ty - 16, 34, rgba(0xFFD45C));
+        }
     }
 
     char pos[32];
@@ -2022,8 +1985,10 @@ void App::release_covers()
             g_->free_texture(game.disc);
         if (game.back)
             g_->free_texture(game.back);
-        game.cover = game.disc = game.back = nullptr;
-        game.cover_tried = game.disc_tried = game.back_tried = false;
+        if (game.spine)
+            g_->free_texture(game.spine);
+        game.cover = game.disc = game.back = game.spine = nullptr;
+        game.cover_tried = game.disc_tried = game.back_tried = game.spine_tried = false;
     }
 }
 
@@ -2119,8 +2084,10 @@ void App::cover_arrived(const std::string &id)
                 g_->free_texture(game.disc);
             if (game.back)
                 g_->free_texture(game.back);
-            game.cover = game.disc = game.back = nullptr;
-            game.cover_tried = game.disc_tried = game.back_tried = false;
+            if (game.spine)
+                g_->free_texture(game.spine);
+            game.cover = game.disc = game.back = game.spine = nullptr;
+            game.cover_tried = game.disc_tried = game.back_tried = game.spine_tried = false;
         }
 }
 
