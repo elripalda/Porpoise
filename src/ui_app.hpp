@@ -256,6 +256,24 @@ private:
                      std::string (Library::*where)(const Game &) const, const Game &g);
     static bool cover_loading(const Game &g) { return !g.cover && !g.cover_wait.empty(); }
     Texture *disc_of(Game &g);
+    /* Memory Cards' other views (ui_app_cards.cpp). */
+    struct SaveRef
+    {
+        int kind = 0; /* 0 Slot A, 1 Slot B, 2 the Wii */
+        int index = 0;
+    };
+    struct SaveGroup
+    {
+        std::string key, title;
+        Game *game = nullptr;
+        std::vector<SaveRef> saves;
+    };
+    std::vector<SaveGroup> saves_by_game();
+    void draw_card_blocks(double time);
+    void draw_saves_by_game(double time);
+    void update_saves_by_game(bool up, bool down);
+    int mc_game_sel_ = 0;
+    float mc_game_scroll_ = 0;
     /* The library's views (ui_app_views.cpp). */
     void draw_cover_flow(double time);
     void draw_wheel(double time);

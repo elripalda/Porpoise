@@ -611,6 +611,14 @@ App::Action App::update(const Input &in, double dt)
     }
     else if (tab_ == Tab::Settings)
         action = update_settings(up, down, left, right);
+    else if (tab_ == Tab::MemoryCards && settings_->mc_view == 2)
+    {
+        /* By game: every save in one list. */
+        if (cards_scanned_ || wii_scanned_)
+            update_saves_by_game(up, down);
+        if (pressed(BtnCircle))
+            set_tab(int(Tab::Library), -1);
+    }
     else if (tab_ == Tab::MemoryCards)
     {
         /* L2 / R2: the GameCube memory cards or the Wii saves. */
@@ -623,6 +631,32 @@ App::Action App::update(const Input &in, double dt)
         }
         if (mc_wii_)
             update_wii_saves(left, right, up, down);
+        else if (cards_scanned_ && settings_->mc_view == 1)
+        {
+            /* Blocks: up and down the card's saves, left and right the other card. */
+            const int n = int((mc_card_ == 0 ? card_a_ : card_b_).saves.size());
+            int &sel = mc_sel_[mc_card_];
+            const int before = sel;
+            if (up && sel > 0)
+                --sel;
+            if (down && sel + 1 < n)
+                ++sel;
+            if (left || right)
+            {
+                mc_card_ = 1 - mc_card_;
+                tab_anim_ = 0.5f;
+                tab_dir_ = right ? +1 : -1;
+                sfx(Sound::MovingTab);
+            }
+            else if (sel != before)
+                sfx(Sound::MenuScroll);
+            if (pressed(BtnTriangle))
+                ask_delete_save();
+            if (pressed(BtnSquare))
+                ask_copy_save();
+            if (pressed(BtnOptions))
+                export_save_to_usb();
+        }
         else if (cards_scanned_)
         {
             if (left)
@@ -1910,9 +1944,19 @@ void App::draw_card(Card &card, int which, float x, float y, double time)
 void App::draw_memory_cards(double time)
 {
     Gfx &g = *g_;
+    if (settings_->mc_view == 2)
+    {
+        draw_saves_by_game(time);
+        return;
+    }
     if (mc_wii_)
     {
         draw_wii_saves(time);
+        return;
+    }
+    if (settings_->mc_view == 1)
+    {
+        draw_card_blocks(time);
         return;
     }
     ensure_saves(false);

@@ -435,7 +435,7 @@ int main(int argc, char **argv)
             ui.language_changed();
             settle();
             char tag[48];
-            std::snprintf(tag, sizeof tag, "look-%d-%d-%d", v[0], v[1], v[2]);
+            std::snprintf(tag, sizeof tag, "look-%d-%d-%d-%d", v[0], v[1], v[2], v[3]);
             render((std::string(tag) + "-library").c_str(), [&] { ui.draw(12.0); });
             if (!pages)
                 continue;
@@ -452,8 +452,11 @@ int main(int argc, char **argv)
             render((std::string(tag) + "-access").c_str(), [&] { ui.draw(12.0); });
             press(kCircle);
             press(kR1, 2); /* to Memory Cards */
-            settle();
-            settle();
+            for (int wait = 0; wait < 60; ++wait) /* the cards are read on a worker */
+            {
+                settle();
+                usleep(20000);
+            }
             render((std::string(tag) + "-cards").c_str(), [&] { ui.draw(12.0); });
             press(kR1, 2); /* back to the library */
             settle();
