@@ -1,5 +1,58 @@
 # Changelog
 
+## 2.0 beta 1 — 2026-10-04
+
+A test version (pre-release). Features marked *beta* are new and still being
+tuned; everything else is meant to be as solid as 1.5.1.
+
+### Smoother and steadier
+- **V-Sync on the TV's own refresh.** Frames now wait on the display's vblank
+  itself instead of Porpoise's own timer (which never locked to the TV in
+  1.5.1). A frame that is late doesn't wait for the next vblank, so a game
+  that runs just short of 60 doesn't fall to 30. Settings → Video → V-Sync
+  (on); off keeps the old timer.
+- **No more waiting on the speakers.** In 1.5.1 nearly every frame waited
+  about 6 ms for the sound buffer to drain; the buffer's ceiling now sits
+  above the resampler's target, so it doesn't.
+- **Newer Dolphin core** (libretro/dolphin after Dolphin 2609), with the fix
+  that writes new shader pipelines to the cache in the background instead of
+  in the middle of a frame. The core builds from source again.
+- **Newer PS5 graphics driver** (Mihawk's PS5_Vulkan / PS5 Mesa dc82d01). The
+  console's video output now offers 1080p, so Porpoise sends a 1080p picture
+  instead of drawing every menu and game frame at 3840×2160.
+  **Settings → Video → Output resolution** can choose 1440p or 4K instead
+  (from the next start).
+- **Menus:** covers, disc art and box backs are read and decoded in the
+  background and fade in, instead of stalling a frame for each cover that
+  scrolls into view; memory card icons no longer wait on the GPU one by one.
+- **Threaded GPU recording** (beta, Settings → Graphics, off): the driver
+  records Dolphin's drawing on a thread of its own. Worth trying on a
+  demanding game.
+
+### New
+- **Quick resume** (beta, Settings → Graphics): leaving a game from the
+  in-game menu keeps where you were, and it picks up right there next time.
+  Restart in the in-game menu starts it over.
+- **Cheats and patches** (beta): each game's settings list the codes and
+  patches Dolphin knows for it, one switch each.
+- **Check my setup:** shown the first time 2.0 starts, and any time from
+  Settings → Games: what Porpoise can see (/data, USB drives, games, covers)
+  and what to do about anything missing.
+- **Saves on a USB drive** (beta): Options in Memory Cards copies a GameCube
+  or Wii save to the drive's `Porpoise Saves` folder; Settings → Games →
+  Saves from a USB drive copies them back in.
+- **Report a bug:** Settings → About saves Porpoise's logs to
+  `/data/porpoise/reports` (and a USB drive), with a QR code to open an issue
+  on GitHub. **Performance report** records where a slow game spends its time.
+- **Choose a version:** Settings → About lists every release, betas included,
+  to install a newer or an older one. **Beta updates** offers test versions
+  as they come out.
+- **Wii multiplayer:** in Wii games every other controller is another
+  player's own Wii Remote, with its own pointer and motion.
+- **Every menu translated again:** the texts added since the Wii work (the
+  Wii Remote setup, Revolution, Wii saves and 2.0's settings) in all eleven
+  languages; the Revolution clock shows the date in each language's order.
+
 ## 1.5.1 — 2026-10-04
 
 ### Getting out of the sandbox

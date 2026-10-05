@@ -38,7 +38,7 @@ struct Settings
     bool vsync = true;            /* frames on the TV's own vblank (porpoise_pacer); off: Porpoise's timer */
     /* Graphics (advanced) */
     int shader_mode = 2;          /* dolphin_shader_compilation_mode 0..3: async ubershaders */
-    bool threaded_gpu = true;     /* RADV_THREADED_RECORDING for the game's device (beta) */
+    bool threaded_gpu = false;    /* RADV_THREADED_RECORDING for the game's device (beta; off until it measures faster) */
     int texture_cache = 0;        /* dolphin_texture_cache_accuracy: Fast, Middle, Safe */
     bool pixel_lighting = false;  /* dolphin_pixel_lighting */
     bool disable_fog = false;     /* dolphin_disable_fog */
