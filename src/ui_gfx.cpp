@@ -837,6 +837,7 @@ bool Gfx::build_fonts()
         stbtt_FreeSDF(sdf, nullptr);
     };
 
+    /* The fonts themselves and their measurements: quick. */
     for (int f = 0; f < 4; ++f)
     {
         FontData &fd = fonts_[f];
@@ -857,6 +858,65 @@ bool Gfx::build_fonts()
             fd.cap = float(y1) * fd.scale;
         else
             fd.cap = fd.ascent * 0.7f;
+    }
+    if (read_file(init_.asset_dir + "/fonts/NotoSansJP-Porpoise.ttf", cjk_.ttf))
+    {
+        auto *info = new stbtt_fontinfo();
+        if (stbtt_InitFont(info, cjk_.ttf.data(), stbtt_GetFontOffsetForIndex(cjk_.ttf.data(), 0)))
+        {
+            cjk_.info = info;
+            /* The same em as Nunito, a touch smaller: kana and kanji fill their em. */
+            const float nunito_em = fonts_[0].scale * 1000.0f;
+            cjk_.scale = stbtt_ScaleForMappingEmToPixels(info, nunito_em * 0.92f);
+        }
+        else
+        {
+            delete info;
+            cjk_.ttf.clear();
+        }
+    }
+
+    /* The glyphs' distance fields take seconds to bake on the console, so
+     * they are kept in the cache folder, named for everything they depend on,
+     * and read back at the next start. */
+    std::string cache;
+    if (!init_.cache_dir.empty())
+    {
+        std::uint64_t key = 1469598103934665603ULL;
+        auto mix = [&](const void *data, std::size_t n) {
+            const auto *b = static_cast<const unsigned char *>(data);
+            for (std::size_t i = 0; i < n; ++i)
+                key = (key ^ b[i]) * 1099511628211ULL;
+        };
+        const char version[] = "porpoise-atlas-1";
+        mix(version, sizeof version);
+        const int dims[4] = {kAtlas, int(kBase), kPad, int(sizeof(GlyphInfo))};
+        mix(dims, sizeof dims);
+        for (const FontData &fd : fonts_)
+            mix(fd.ttf.data(), fd.ttf.size());
+        mix(cjk_.ttf.data(), cjk_.ttf.size());
+        char name[64];
+        std::snprintf(name, sizeof name, "/text-atlas-%016llx.bin", static_cast<unsigned long long>(key));
+        cache = init_.cache_dir + name;
+        std::vector<std::uint8_t> cjk;
+        if (load_atlas_cache(cache, atlas, cjk))
+        {
+            atlas_ = upload(atlas.data(), kAtlas, kAtlas);
+            atlas_pixels_ = std::move(atlas);
+            if (!cjk.empty())
+            {
+                cjk_atlas_ = upload(cjk.data(), kAtlas, kAtlas);
+                cjk_pixels_ = std::move(cjk);
+            }
+            std::fprintf(stderr, "[gfx] text atlases read from %s\n", cache.c_str());
+            fonts_built_ = true;
+            return atlas_ != nullptr;
+        }
+    }
+
+    for (int f = 0; f < 4; ++f)
+    {
+        FontData &fd = fonts_[f];
         for (std::uint32_t cp = 32; cp < 127; ++cp)
             bake(fd, cp, fd.glyphs[cp]);
         /* Latin-1 letters and marks, Polish and Dutch letters, Russian's
@@ -889,15 +949,11 @@ bool Gfx::build_fonts()
     std::fprintf(stderr, "[gfx] text atlas filled to row %d of %d\n", pen_y + row_h, kAtlas);
 
     /* Japanese, when its font is there: every character the subset holds. */
-    if (read_file(init_.asset_dir + "/fonts/NotoSansJP-Porpoise.ttf", cjk_.ttf))
+    if (cjk_.info)
     {
-        auto *info = new stbtt_fontinfo();
-        if (stbtt_InitFont(info, cjk_.ttf.data(), stbtt_GetFontOffsetForIndex(cjk_.ttf.data(), 0)))
+        auto *info = static_cast<stbtt_fontinfo *>(cjk_.info);
         {
-            cjk_.info = info;
-            /* The same em as Nunito, a touch smaller: kana and kanji fill their em. */
-            const float nunito_em = fonts_[0].scale * 1000.0f;
-            cjk_.scale = stbtt_ScaleForMappingEmToPixels(info, nunito_em * 0.92f);
+            cjk_.extra.clear();
             std::vector<std::uint8_t> cjk(std::size_t(kAtlas) * kAtlas * 4, 0);
             for (std::size_t i = 0; i < cjk.size(); i += 4)
                 cjk[i] = cjk[i + 1] = cjk[i + 2] = 255;
@@ -921,11 +977,109 @@ bool Gfx::build_fonts()
             cjk_atlas_ = upload(cjk.data(), kAtlas, kAtlas);
             cjk_pixels_ = std::move(cjk);
         }
-        else
-            delete info;
     }
     fonts_built_ = true;
+    if (!cache.empty() && atlas_)
+        save_atlas_cache(cache);
     return atlas_ != nullptr;
+}
+
+/* The cache file: a header, each font's glyphs, then the atlases' coverage
+ * (one byte a pixel; the colour is always white). */
+namespace
+{
+struct AtlasHeader
+{
+    char magic[8];
+    std::uint32_t glyph_size, atlas, fonts, cjk;
+};
+} // namespace
+
+bool Gfx::load_atlas_cache(const std::string &path, std::vector<std::uint8_t> &atlas, std::vector<std::uint8_t> &cjk)
+{
+    std::vector<unsigned char> bytes;
+    if (!read_file(path, bytes))
+        return false;
+    std::size_t at = 0;
+    auto take = [&](void *out, std::size_t n) {
+        if (at + n > bytes.size())
+            return false;
+        std::memcpy(out, bytes.data() + at, n);
+        at += n;
+        return true;
+    };
+    AtlasHeader h{};
+    if (!take(&h, sizeof h) || std::memcmp(h.magic, "PPATLAS1", 8) != 0 || h.glyph_size != sizeof(GlyphInfo) ||
+        h.atlas != std::uint32_t(kAtlas) || h.fonts != 4 || h.cjk != (cjk_.info ? 1u : 0u))
+        return false;
+    FontData *all[5] = {&fonts_[0], &fonts_[1], &fonts_[2], &fonts_[3], &cjk_};
+    for (int f = 0; f < 4 + int(h.cjk); ++f)
+    {
+        FontData &fd = *all[f];
+        if (f < 4 && !take(fd.glyphs, sizeof fd.glyphs))
+            return false;
+        std::uint32_t n = 0;
+        if (!take(&n, sizeof n) || n > 65536)
+            return false;
+        fd.extra.resize(n);
+        for (auto &e : fd.extra)
+            if (!take(&e.first, sizeof e.first) || !take(&e.second, sizeof e.second))
+                return false;
+    }
+    const std::size_t pixels = std::size_t(kAtlas) * kAtlas;
+    auto expand = [&](std::vector<std::uint8_t> &out) {
+        if (at + pixels > bytes.size())
+            return false;
+        out.assign(pixels * 4, 255);
+        for (std::size_t i = 0; i < pixels; ++i)
+            out[i * 4 + 3] = bytes[at + i];
+        at += pixels;
+        return true;
+    };
+    if (!expand(atlas))
+        return false;
+    if (h.cjk && !expand(cjk))
+        return false;
+    return true;
+}
+
+void Gfx::save_atlas_cache(const std::string &path) const
+{
+    const std::string staged = path + ".tmp";
+    std::FILE *f = std::fopen(staged.c_str(), "wb");
+    if (!f)
+        return;
+    const bool with_cjk = !cjk_pixels_.empty() && cjk_.info;
+    AtlasHeader h{};
+    std::memcpy(h.magic, "PPATLAS1", 8);
+    h.glyph_size = sizeof(GlyphInfo);
+    h.atlas = std::uint32_t(kAtlas);
+    h.fonts = 4;
+    h.cjk = with_cjk ? 1u : 0u;
+    bool ok = std::fwrite(&h, sizeof h, 1, f) == 1;
+    const FontData *all[5] = {&fonts_[0], &fonts_[1], &fonts_[2], &fonts_[3], &cjk_};
+    for (int i = 0; ok && i < 4 + int(h.cjk); ++i)
+    {
+        const FontData &fd = *all[i];
+        if (i < 4)
+            ok &= std::fwrite(fd.glyphs, sizeof fd.glyphs, 1, f) == 1;
+        const std::uint32_t n = std::uint32_t(fd.extra.size());
+        ok &= std::fwrite(&n, sizeof n, 1, f) == 1;
+        for (const auto &e : fd.extra)
+            ok &= std::fwrite(&e.first, sizeof e.first, 1, f) == 1 && std::fwrite(&e.second, sizeof e.second, 1, f) == 1;
+    }
+    std::vector<std::uint8_t> alpha(std::size_t(kAtlas) * kAtlas);
+    auto squeeze = [&](const std::vector<std::uint8_t> &rgba) {
+        for (std::size_t i = 0; i < alpha.size(); ++i)
+            alpha[i] = rgba[i * 4 + 3];
+        return std::fwrite(alpha.data(), 1, alpha.size(), f) == alpha.size();
+    };
+    ok &= atlas_pixels_.size() == alpha.size() * 4 && squeeze(atlas_pixels_);
+    if (ok && with_cjk)
+        ok &= cjk_pixels_.size() == alpha.size() * 4 && squeeze(cjk_pixels_);
+    ok &= std::fclose(f) == 0;
+    if (!ok || std::rename(staged.c_str(), path.c_str()) != 0)
+        std::remove(staged.c_str());
 }
 
 bool Gfx::init(const GfxInit &init)

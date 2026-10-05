@@ -266,6 +266,11 @@ bool start_gfx()
     init.get_device_proc = c.get_device_proc;
     init.queue_mutex = c.queue_mutex;
     init.asset_dir = "/app0/assets";
+    if (!g_data.empty())
+    {
+        init.cache_dir = g_data + "/cache";
+        mkdir(init.cache_dir.c_str(), 0777);
+    }
     const long long t0 = now_ns();
     const bool ok = g_gfx.init(init);
     ps5::debug::mark_value(ok ? "ui: renderer ready, ms" : "ui: renderer FAILED, ms", (now_ns() - t0) / 1000000);

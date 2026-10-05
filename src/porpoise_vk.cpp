@@ -23,6 +23,7 @@
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -36,6 +37,11 @@ extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInst
                                                                          const char *name);
 /* VideoOut (libSceVideoOut, linked for the driver's WSI): V-Sync. */
 extern "C" int sceVideoOutGetFlipStatus(int handle, std::uint64_t status[16]);
+/* The link wraps sceVideoOutOpen (tools/build-porpoise.sh, --wrap): the
+ * driver's WSI opens the display through here, and Porpoise keeps the handle
+ * to wait on its vblank (V-Sync). */
+extern "C" int __real_sceVideoOutOpen(int user, int bus, int index, const void *parameter);
+extern "C" int __wrap_sceVideoOutOpen(int user, int bus, int index, const void *parameter);
 extern "C" int sceVideoOutWaitVblank(int handle);
 
 namespace
@@ -1081,7 +1087,16 @@ namespace
 {
 int g_videoout = -1;
 int g_videoout_tries = 0;
+/* The handle the driver's WSI got from sceVideoOutOpen (below). */
+std::atomic<int> g_videoout_opened{-1};
 } // namespace
+
+void note_videoout(int handle)
+{
+    g_videoout_opened.store(handle);
+    g_videoout_tries = 0; /* a new handle: look again */
+    g_videoout = -1;
+}
 
 bool vblank_ready()
 {
@@ -1090,8 +1105,14 @@ bool vblank_ready()
     if (!s.swapchain || g_videoout_tries >= 8)
         return false;
     ++g_videoout_tries;
-    for (int handle = 0; handle < 64; ++handle)
+    /* VideoOut's handles are large numbers (0x4e100100 and up, as PS5_Vulkan
+     * recorded), not small ones: the driver's own sceVideoOutOpen call is
+     * caught on its way (__wrap_sceVideoOutOpen) and its answer used. */
+    const int opened = g_videoout_opened.load();
+    for (int handle : {opened})
     {
+        if (handle < 0)
+            continue;
         std::uint64_t status[16] = {};
         if (sceVideoOutGetFlipStatus(handle, status) == 0)
         {
@@ -1108,7 +1129,12 @@ bool vblank_ready()
         }
     }
     if (g_videoout_tries == 8)
-        ps5::debug::mark("vk: no VideoOut output answered; V-Sync uses Porpoise's timer");
+    {
+        char line[128];
+        std::snprintf(line, sizeof line, "vk: VideoOut output %#x didn't answer; V-Sync uses Porpoise's timer",
+                      unsigned(opened));
+        ps5::debug::mark(line);
+    }
     return false;
 }
 
@@ -1292,3 +1318,12 @@ void close()
         (void)vkDeviceWaitIdle(s.device);
 }
 } // namespace porpoise::vk
+
+/* The driver's WSI opening VideoOut: the handle is kept for V-Sync. */
+extern "C" int __wrap_sceVideoOutOpen(int user, int bus, int index, const void *parameter)
+{
+    const int handle = __real_sceVideoOutOpen(user, bus, index, parameter);
+    if (handle >= 0)
+        porpoise::vk::note_videoout(handle);
+    return handle;
+}

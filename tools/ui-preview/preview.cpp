@@ -198,6 +198,8 @@ int main(int argc, char **argv)
     gi.get_instance_proc = vkGetInstanceProcAddr;
     gi.get_device_proc = gdpa;
     gi.asset_dir = assets;
+    if (const char *cache = std::getenv("PREVIEW_CACHE"))
+        gi.cache_dir = cache; /* the baked text atlases, as Porpoise keeps them */
     Gfx gfx;
     /* Covers decode on a worker thread in Porpoise; here, in place, so every
      * scene shows them (PREVIEW_ASYNC=1 to see the worker's way). */

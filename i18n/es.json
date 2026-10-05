@@ -871,5 +871,7 @@
  "A patch Dolphin turns on for this game by itself.": "Un parche que Dolphin activa por sí mismo en este juego.",
  "A patch from Dolphin's list for this game.": "Un parche de la lista de Dolphin para este juego.",
  "A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Un truco Gecko de la lista de Dolphin. Activar uno activa los trucos de este juego.",
- "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Un truco Action Replay de la lista de Dolphin. Activar uno activa los trucos de este juego."
+ "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Un truco Action Replay de la lista de Dolphin. Activar uno activa los trucos de este juego.",
+ "Exact multiply-add": "Multiplicación-suma exacta",
+ "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.": "Redondea las multiplicaciones-sumas de coma flotante de la consola con exactitud, como Dolphin en un PC. Mucho más lento en juegos con mucho cálculo 3D, y muy pocos juegos lo necesitan."
 }

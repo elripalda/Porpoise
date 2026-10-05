@@ -1,6 +1,11 @@
 <p align="center"><img src="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
-**Porpoise 2.0 beta 1.** A test version of 2.0: smoother, steadier games, a newer Dolphin and graphics driver, and a set of new features. Features marked *beta* are still being tuned. If you'd rather stay on a finished version, keep 1.5.1.
+**Porpoise 2.0 beta 2.** A test version of 2.0: faster, smoother, steadier games, a newer Dolphin and graphics driver, and a set of new features. Features marked *beta* are still being tuned. If you'd rather stay on a finished version, keep 1.5.1.
+
+## Faster games
+
+- **Much faster in 3D-heavy games.** Dolphin rounds every single-precision multiply-add exactly as the GameCube does, and on the PS5 that one correction was eating a third of the emulated CPU's time in WWE Day of Reckoning 2. It's now off, as it was in Dolphin until 2025. If a game ever needs it, **Settings → System → Exact multiply-add** turns it back on, for every game or just one.
+- **Starts about five seconds sooner:** the menus' lettering is made once and kept, instead of at every start.
 
 ## Smoother and steadier
 
@@ -25,7 +30,7 @@
 ## Install or update
 
 1.5.1's updater only offers finished versions, so this beta goes on by hand once. From then on, **Settings → About → Choose a version** can move you to any release, and back to 1.5.1.
-1. Download **`Porpoise-2.0-beta.1.zip`** below and unzip it. You get a folder named **`PPSA99764`**.
+1. Download **`Porpoise-2.0-beta.2.zip`** below and unzip it. You get a folder named **`PPSA99764`**.
 2. If you're updating, delete `/data/homebrew/PPSA99764/` on the PS5 first. Your games, saves, covers and settings live in `/data/porpoise/` and are kept.
 3. Copy the **`PPSA99764`** folder into **`/data/homebrew/`** over FTP or with PS5 Upload.
 4. For a new install, register it like your other homebrew (for example with ShadowMountPlus).
@@ -36,4 +41,4 @@ Something wrong? Use **Settings → About → Report a bug** and [open an issue]
 
 Porpoise contains **no games and no BIOS or firmware files**. The only key it carries is the Wii disc key Dolphin itself includes, used to read a Wii disc's own banner. Play only games you own, from backups you made yourself. Porpoise is not affiliated with Nintendo or Sony. Emulation is provided by [Dolphin](https://dolphin-emu.org) (GPL-2.0-or-later). Porpoise is GPL-3.0-or-later; every component's licence and source revision is listed in `licenses/README.txt` inside the zip.
 
-`Porpoise-2.0-beta.1.zip` SHA-256: `(filled in at release)`
+`Porpoise-2.0-beta.2.zip` SHA-256: `(filled in at release)`

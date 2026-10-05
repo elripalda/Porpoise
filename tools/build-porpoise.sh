@@ -29,7 +29,9 @@ radv_archive=${RADV_ARCHIVE:-$vulkan_dir/.deps/native/radv-release/lib/libvulkan
 [[ -f $radv_archive ]] || { echo "error: RADV is not built: $radv_archive" >&2; exit 2; }
 source "$vulkan_dir/tools/radv-link.sh"
 radv_link_recipe "$vulkan_dir" "$sdk" "$radv_archive" || exit 2
-vulkan_flags="--no-dynamic-linker -z nodynamic-undefined-weak"
+# --wrap=sceVideoOutOpen: Porpoise keeps the handle the driver opens the display
+# with, to wait on its vblank (src/porpoise_vk.cpp, V-Sync).
+vulkan_flags="--no-dynamic-linker -z nodynamic-undefined-weak --wrap=sceVideoOutOpen"
 for flag in "${radv_link_flags[@]}"; do
     case $flag in
         --wrap=malloc | --wrap=calloc | --wrap=realloc | --wrap=free | --wrap=posix_memalign | \

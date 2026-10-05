@@ -43,6 +43,8 @@ double last_present_wait_ms();
  * with the first swapchain). wait_vblank(): blocks until the next vblank;
  * false when it could not. */
 bool vblank_ready();
+/* The display's VideoOut handle, from the driver's sceVideoOutOpen (V-Sync). */
+void note_videoout(int handle);
 bool wait_vblank();
 
 /* The core's frame, aspect-fit onto the screen. aspect <= 0 uses w / h. */

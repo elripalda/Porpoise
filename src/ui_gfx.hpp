@@ -112,6 +112,7 @@ struct GfxInit
     PFN_vkGetDeviceProcAddr get_device_proc = nullptr;
     std::mutex *queue_mutex = nullptr; /* held around this renderer's own submits */
     std::string asset_dir;             /* fonts/ and brand/ live here */
+    std::string cache_dir;             /* the baked text atlases are kept here, if set */
 };
 
 /* How a piece of glass looks (Gfx::glass). */
@@ -262,6 +263,8 @@ private:
     bool load_functions();
     bool create_pipeline();
     bool build_fonts();
+    bool load_atlas_cache(const std::string &path, std::vector<std::uint8_t> &atlas, std::vector<std::uint8_t> &cjk);
+    void save_atlas_cache(const std::string &path) const;
     const GlyphInfo *find(const FontData &f, std::uint32_t cp) const;
     void push(Texture *t, const Vertex v[4]);
     void corners_flat(float x, float y, float w, float h, float out[4][4]) const;

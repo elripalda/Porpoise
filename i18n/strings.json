@@ -3490,5 +3490,13 @@
  {
   "en": "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.",
   "section": "Cheats and patches"
+ },
+ {
+  "en": "Exact multiply-add",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.",
+  "section": "Settings (2.0)"
  }
 ]

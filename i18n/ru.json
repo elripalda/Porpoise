@@ -871,5 +871,7 @@
  "A patch Dolphin turns on for this game by itself.": "Патч, который Dolphin сам включает для этой игры.",
  "A patch from Dolphin's list for this game.": "Патч из списка Dolphin для этой игры.",
  "A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Чит Gecko из списка Dolphin. Включение любого из них включает читы для этой игры.",
- "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Чит Action Replay из списка Dolphin. Включение любого из них включает читы для этой игры."
+ "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Чит Action Replay из списка Dolphin. Включение любого из них включает читы для этой игры.",
+ "Exact multiply-add": "Точное умножение-сложение",
+ "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.": "Округляет операции умножения-сложения с плавающей точкой точно как консоль, как Dolphin на ПК. Намного медленнее в играх с большим объёмом 3D-вычислений, и нужно очень немногим играм."
 }

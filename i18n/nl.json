@@ -871,5 +871,7 @@
  "A patch Dolphin turns on for this game by itself.": "Een patch die Dolphin voor deze game vanzelf aanzet.",
  "A patch from Dolphin's list for this game.": "Een patch uit de lijst van Dolphin voor deze game.",
  "A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Een Gecko-cheat uit de lijst van Dolphin. Zet je er een aan, dan gaan de cheats voor deze game aan.",
- "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Een Action Replay-cheat uit de lijst van Dolphin. Zet je er een aan, dan gaan de cheats voor deze game aan."
+ "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Een Action Replay-cheat uit de lijst van Dolphin. Zet je er een aan, dan gaan de cheats voor deze game aan.",
+ "Exact multiply-add": "Exacte vermenigvuldig-optelling",
+ "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.": "Rondt de drijvendekomma-vermenigvuldig-optellingen van de console exact af, zoals Dolphin op een pc. Veel trager in games met veel 3D-rekenwerk, en maar heel weinig games hebben het nodig."
 }

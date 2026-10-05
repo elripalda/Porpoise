@@ -1,14 +1,27 @@
 # Changelog
 
-## 2.0 beta 1 — 2026-10-04
+## 2.0 beta 2 — 2026-10-05
 
 A test version (pre-release). Features marked *beta* are new and still being
-tuned; everything else is meant to be as solid as 1.5.1.
+tuned; everything else is meant to be as solid as 1.5.1. (Beta 1 was a test
+build only.)
+
+### Faster games
+- **Much faster emulated CPU in 3D-heavy games.** A profile of WWE Day of
+  Reckoning 2 on the console showed a third of the emulated CPU's time going
+  to one correction routine: Dolphin (since 2025) rounds every
+  single-precision multiply-add exactly as the GameCube does, at a cost the
+  PS5 feels badly in games full of 3D math. It's now off, as Dolphin itself
+  was until last year; **Settings → System → Exact multiply-add** turns it
+  back on, for every game or one.
+- The video thread waits more gently while it polls for work, leaving more of
+  the processor to the emulated CPU.
 
 ### Smoother and steadier
 - **V-Sync on the TV's own refresh.** Frames now wait on the display's vblank
   itself instead of Porpoise's own timer (which never locked to the TV in
-  1.5.1). A frame that is late doesn't wait for the next vblank, so a game
+  1.5.1). Porpoise takes the display's handle from the graphics driver as it
+  opens the screen. A frame that is late doesn't wait for the next vblank, so a game
   that runs just short of 60 doesn't fall to 30. Settings → Video → V-Sync
   (on); off keeps the old timer.
 - **No more waiting on the speakers.** In 1.5.1 nearly every frame waited
@@ -22,6 +35,9 @@ tuned; everything else is meant to be as solid as 1.5.1.
   instead of drawing every menu and game frame at 3840×2160.
   **Settings → Video → Output resolution** can choose 1440p or 4K instead
   (from the next start).
+- **Starts about five seconds sooner.** The menus' text is drawn from
+  pictures of every letter that took about six seconds to make at each start;
+  they are now kept in `/data/porpoise/cache` after the first.
 - **Menus:** covers, disc art and box backs are read and decoded in the
   background and fade in, instead of stalling a frame for each cover that
   scrolls into view; memory card icons no longer wait on the GPU one by one.

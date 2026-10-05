@@ -40,6 +40,34 @@ index 01b03ecee5..30a51970cc 100644
    add_subdirectory(Externals/cpp-ipc)
    add_definitions(-DHAVE_CPPIPC)
  endif()
+diff --git a/Source/Core/Common/BlockingLoop.h b/Source/Core/Common/BlockingLoop.h
+index 472a84b1f6..b4ad7a6dcd 100644
+--- a/Source/Core/Common/BlockingLoop.h
++++ b/Source/Core/Common/BlockingLoop.h
+@@ -4,6 +4,9 @@
+ #pragma once
+ 
+ #include <atomic>
++#ifdef __PROSPERO__
++#include <immintrin.h>
++#endif
+ #include <mutex>
+ #include <thread>
+ 
+@@ -171,6 +174,13 @@ public:
+         else
+         {
+           // Busy loop.
++#ifdef __PROSPERO__
++          // PS5: the GPU thread polls the FIFO this way for as long as the
++          // emulated CPU never idles, and on the console it can share a core
++          // with the CPU thread. A pause between polls hands that core's
++          // pipeline back to it, and stops hammering the FIFO registers' line.
++          _mm_pause();
++#endif
+           break;
+         }
+         [[fallthrough]];
 diff --git a/Source/Core/Common/MemArena.h b/Source/Core/Common/MemArena.h
 index 1a3093cc4d..22a59f7a47 100644
 --- a/Source/Core/Common/MemArena.h
@@ -502,7 +530,7 @@ index 871bb3f615..bad7c5d42a 100644
  #endif
  }
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..885cdfac84 100644
+index c53281053f..ffea2d747d 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -280,6 +280,8 @@ bool retro_load_game(const struct retro_game_info* game)
@@ -565,8 +593,19 @@ index c53281053f..885cdfac84 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
+@@ -357,6 +395,10 @@ bool retro_load_game(const struct retro_game_info* game)
+ #endif
+   Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
+     Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
++#ifdef __PROSPERO__
++  Config::SetBase(Config::MAIN_ACCURATE_FMADDS,
++                  Libretro::GetOption<bool>(core::ACCURATE_FMADDS, /*def=*/false));
++#endif
+ 
+   Config::SetBase(Config::MAIN_DSP_HLE,
+                      Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
 diff --git a/Source/Core/DolphinLibretro/Common/Options.cpp b/Source/Core/DolphinLibretro/Common/Options.cpp
-index 7d27a1ea3c..0d882dcb74 100644
+index 52791da8de..74bb0297af 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.cpp
 +++ b/Source/Core/DolphinLibretro/Common/Options.cpp
 @@ -1,6 +1,13 @@
@@ -583,7 +622,30 @@ index 7d27a1ea3c..0d882dcb74 100644
  #include "DolphinLibretro/Common/Options.h"
  
  namespace Libretro
-@@ -1870,9 +1877,61 @@ void Init()
+@@ -243,6 +250,22 @@ static struct retro_core_option_v2_definition option_defs[] = {
+     },
+     "disabled"
+   },
++#ifdef __PROSPERO__
++  {
++    Libretro::Options::core::ACCURATE_FMADDS,
++    "Core > Accurate single-precision multiply-add",
++    "Accurate single-precision multiply-add",
++    "Rounds fmadds and ps_madd exactly as the console does. Slower; only a few games need it.",
++    nullptr,
++    CATEGORY_CORE,
++    {
++      { "disabled", nullptr },
++      { "enabled",  nullptr },
++      { nullptr, nullptr }
++    },
++    "disabled"
++  },
++#endif
+   {
+     Libretro::Options::core::CHEATS_ENABLED,
+     "Core > Internal Cheats",
+@@ -1876,9 +1899,61 @@ void Init()
    CheckForUpdatedVariables();
  }
  
@@ -645,6 +707,24 @@ index 7d27a1ea3c..0d882dcb74 100644
  
    struct retro_core_options_v2 options_us = {
      const_cast<retro_core_option_v2_category*>(option_cats),
+diff --git a/Source/Core/DolphinLibretro/Common/Options.h b/Source/Core/DolphinLibretro/Common/Options.h
+index 0601c80065..2f0345a32a 100644
+--- a/Source/Core/DolphinLibretro/Common/Options.h
++++ b/Source/Core/DolphinLibretro/Common/Options.h
+@@ -140,6 +140,13 @@ namespace core {
+   constexpr const char FASTMEM[] = "dolphin_fastmem";
+   constexpr const char FASTMEM_ARENA[] = "dolphin_fastmem_arena";
+   constexpr const char MAIN_ACCURATE_CPU_CACHE[] = "dolphin_main_accurate_cpu_cache";
++#ifdef __PROSPERO__
++  // PS5: whether single-precision multiply-adds are rounded exactly as the
++  // hardware does (Dolphin's AccurateFmadds, on upstream). Each ps_madd and
++  // fmadds then calls an error-correction routine; in Day of Reckoning 2 that
++  // was a third of the emulated CPU's time on the console. Off by default here.
++  constexpr const char ACCURATE_FMADDS[] = "dolphin_accurate_fmadds";
++#endif
+   constexpr const char CHEATS_ENABLED[] = "dolphin_cheats_enabled";
+   constexpr const char SKIP_GC_BIOS[] = "dolphin_skip_gc_bios";
+   constexpr const char DISC_BASED_GAMES_BOOT_TO_WII_MENU[] = "dolphin_disc_based_games_boot_to_wii_menu";
 diff --git a/Source/Core/DolphinLibretro/Main.cpp b/Source/Core/DolphinLibretro/Main.cpp
 index cd8753b666..85271453ba 100644
 --- a/Source/Core/DolphinLibretro/Main.cpp
