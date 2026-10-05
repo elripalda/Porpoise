@@ -4,9 +4,15 @@
 # (the backdrop behind the selected title: 3840x2160 BC7, as
 # tools/validate-assets.sh requires) from backdrop.jpg.
 #   python3 tools/make-ps5-art.py        (needs Pillow and etcpak)
+# With BC7ENC=path/to/bc7enc (github.com/richgel999/bc7enc_rdo), the backdrop
+# is packed with its reduced-entropy, rate-distortion mode instead (-u4 -e
+# -z1): it looks the same on a TV and zips to under half the size, which keeps
+# the release zip small.
 # SPDX-License-Identifier: GPL-3.0-or-later
 import os
 import struct
+import subprocess
+import tempfile
 
 import etcpak
 from PIL import Image
@@ -34,7 +40,16 @@ def dds_bc7(rgba, w, h):
     header += struct.pack("<IIIII", 0x1000, 0, 0, 0, 0)  # caps: texture
     header += struct.pack("<IIIII", 98, 3, 0, 1, 1)  # BC7_UNORM, 2D, no flags, one, straight alpha
     assert len(header) == 148
-    return header + etcpak.compress_bc7(rgba, w, h)
+    tool = os.environ.get("BC7ENC")
+    if not tool:
+        return header + etcpak.compress_bc7(rgba, w, h)
+    with tempfile.TemporaryDirectory() as tmp:
+        src, out = os.path.join(tmp, "in.png"), os.path.join(tmp, "out.dds")
+        Image.frombytes("RGBA", (w, h), rgba).save(src)
+        subprocess.run([tool, "-q", "-g", "-u4", "-e", "-z1", src, out], check=True, stdout=subprocess.DEVNULL)
+        blocks = open(out, "rb").read()[148:]
+    assert len(blocks) == linear
+    return header + blocks
 
 
 def main():
