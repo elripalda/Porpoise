@@ -87,6 +87,8 @@ std::uint64_t g_ring[kRingSize][kFrames + 1];
  * every thread sampled). */
 std::uint64_t g_stack_top[kMaxThreads];
 
+extern "C" int sceKernelGetCurrentCpu(void);
+
 void on_sample(int, siginfo_t *, void *context_pointer)
 {
     const auto *context = static_cast<const ucontext_t *>(context_pointer);
@@ -100,7 +102,10 @@ void on_sample(int, siginfo_t *, void *context_pointer)
     for (unsigned index = 0; index < count; ++index)
         if (pthread_equal(g_threads[index], self))
             thread = index;
-    sample[0] = (g_stall.load(std::memory_order_relaxed) ? 1u : 0u) | (std::uint64_t{thread} << 8);
+    /* Bits 16-23: the processor the thread was on (which threads share a core). */
+    const int cpu = sceKernelGetCurrentCpu();
+    sample[0] = (g_stall.load(std::memory_order_relaxed) ? 1u : 0u) | (std::uint64_t{thread} << 8) |
+                (std::uint64_t(cpu >= 0 && cpu < 255 ? cpu : 255) << 16);
     /* Only a stack top the interrupted rsp lies under is trusted; without one
      * the sample keeps its leaf and [rsp] alone. */
     const std::uint64_t known = g_stack_top[thread];
@@ -224,6 +229,22 @@ void report(std::uint32_t from, std::uint32_t to, std::uint32_t stall_samples)
             continue;
         std::fprintf(stderr, "sampler: thread=%u samples=%u busy=%u\n", thread, totals[thread],
                      busy[thread]);
+        {
+            /* Which processors its busy samples ran on. */
+            std::uint32_t cpus[256] = {};
+            for (std::uint32_t at = from; at != to; ++at)
+            {
+                const std::uint64_t *const sample = g_ring[at & (kRingSize - 1)];
+                if ((sample[0] & 1u) != 0 && ((sample[0] >> 8) & 0xff) == thread && !system_address(sample[1]))
+                    ++cpus[(sample[0] >> 16) & 0xff];
+            }
+            char line[512];
+            int used = std::snprintf(line, sizeof line, "sampler:   cpus thread=%u", thread);
+            for (unsigned cpu = 0; cpu < 256 && used > 0 && used < 480; ++cpu)
+                if (cpus[cpu] != 0)
+                    used += std::snprintf(line + used, sizeof line - used, " %u:%u", cpu, cpus[cpu]);
+            std::fprintf(stderr, "%s\n", line);
+        }
         /* Its most frequent groups, blocked ones too (where a busy thread
          * waits), each with one chain. */
         for (unsigned rank = 0; rank < 6; ++rank)

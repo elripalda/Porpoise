@@ -108,6 +108,7 @@ struct Settings
     int cpu_clock = 5;       /* index into the clock list (50% .. 300%): 100% */
     bool dual_core = true;   /* dolphin_main_cpu_thread */
     bool accurate_fma = false; /* dolphin_accurate_fmadds: exact multiply-add rounding (slow on the PS5) */
+    bool own_cores = true;     /* the emulated CPU on a core of its own (porpoise_main.cpp, keep_cores) */
     bool fast_disc = false;  /* dolphin_fast_disc_speed */
     bool cheats = false;     /* dolphin_cheats_enabled */
     int language = 0;        /* 0..9: English first */

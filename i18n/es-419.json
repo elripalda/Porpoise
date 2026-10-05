@@ -873,5 +873,7 @@
  "A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Un truco Gecko de la lista de Dolphin. Activar uno activa los trucos de este juego.",
  "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "Un truco Action Replay de la lista de Dolphin. Activar uno activa los trucos de este juego.",
  "Exact multiply-add": "Multiplicación-suma exacta",
- "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.": "Redondea con exactitud las multiplicaciones-sumas de punto flotante de la consola, como Dolphin en una PC. Mucho más lento en juegos con mucho cálculo 3D, y muy pocos juegos lo necesitan."
+ "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.": "Redondea con exactitud las multiplicaciones-sumas de punto flotante de la consola, como Dolphin en una PC. Mucho más lento en juegos con mucho cálculo 3D, y muy pocos juegos lo necesitan.",
+ "Emulator on its own cores": "Emulador en sus propios núcleos",
+ "Gives the emulated console's processor and its graphics a core of the PS5 each, away from Porpoise's other work. Usually faster; turn it off if a game runs worse.": "Le da al procesador de la consola emulada y a sus gráficos un núcleo de la PS5 a cada uno, lejos del resto del trabajo de Porpoise. Suele ser más rápido; desactívalo si un juego corre peor."
 }

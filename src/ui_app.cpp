@@ -8,6 +8,8 @@
 #include "porpoise_states.hpp"
 #include "ui_app.hpp"
 
+#include <pthread.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -160,8 +162,87 @@ Texture *App::save_banner(Save &s)
 
 void App::scan_memory_cards()
 {
+    save_scan_.reset(); /* read now: a scan still running is stale */
     free_card_textures();
     load_cards(saves_dir_, card_a_, card_b_);
+    finish_card_scan();
+}
+
+struct App::SaveScan
+{
+    std::atomic<bool> done{false};
+    std::string dir;
+    Card a, b;
+    std::vector<WiiSave> wii;
+};
+
+namespace
+{
+void *save_scan_work(void *opaque)
+{
+    auto *handed = static_cast<std::shared_ptr<App::SaveScan> *>(opaque);
+    const std::shared_ptr<App::SaveScan> scan = *handed;
+    delete handed;
+    load_cards(scan->dir, scan->a, scan->b);
+    load_wii_saves(scan->dir, scan->wii);
+    scan->done.store(true, std::memory_order_release);
+    return nullptr;
+}
+} // namespace
+
+void App::start_save_scan()
+{
+    auto scan = std::make_shared<SaveScan>();
+    scan->dir = saves_dir_;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 1u << 20);
+    pthread_t thread;
+    auto *handed = new std::shared_ptr<SaveScan>(scan);
+    const bool started = pthread_create(&thread, &attr, save_scan_work, handed) == 0;
+    pthread_attr_destroy(&attr);
+    if (!started)
+    {
+        delete handed;
+        save_scan_.reset();
+        cards_scanned_ = wii_scanned_ = false; /* read on the spot instead */
+        return;
+    }
+    pthread_detach(thread);
+    save_scan_ = scan;
+}
+
+void App::take_save_scan()
+{
+    if (!save_scan_ || !save_scan_->done.load(std::memory_order_acquire))
+        return;
+    const std::shared_ptr<SaveScan> scan = std::move(save_scan_);
+    save_scan_.reset();
+    free_card_textures();
+    card_a_ = std::move(scan->a);
+    card_b_ = std::move(scan->b);
+    finish_card_scan();
+    free_wii_textures();
+    wii_saves_ = std::move(scan->wii);
+    finish_wii_scan();
+}
+
+void App::ensure_saves(bool wii)
+{
+    take_save_scan();
+    if (save_scan_)
+        return; /* still reading: the tab shows what it has */
+    if (wii ? !wii_scanned_ : !cards_scanned_)
+    {
+        if (wii)
+            scan_wii_saves();
+        else
+            scan_memory_cards();
+    }
+}
+
+void App::finish_card_scan()
+{
     cards_scanned_ = true;
     Card *cards[2] = {&card_a_, &card_b_};
     for (int i = 0; i < 2; ++i)
@@ -573,7 +654,7 @@ void App::set_tab(int tab, int dir)
     tab_dir_ = dir;
     tab_anim_ = 1.0f;
     if (tab_ == Tab::MemoryCards)
-        cards_scanned_ = wii_scanned_ = false; /* fresh from disk each visit */
+        start_save_scan(); /* fresh from disk each visit, read on a worker thread */
     if (tab_ == Tab::Settings)
     {
         on_rail_ = true;
@@ -684,6 +765,7 @@ App::Action App::confirm_dialog(DialogKind kind)
                                 {{"path", wii_saves_[std::size_t(wii_sel_)].data_dir}}),
                             "");
             wii_scanned_ = false;
+            save_scan_.reset(); /* a scan already running read the old state */
         }
         return Action::None;
     case DialogKind::DeleteSave:
@@ -697,6 +779,7 @@ App::Action App::confirm_dialog(DialogKind kind)
                 return Action::None;
             }
             cards_scanned_ = false;
+            save_scan_.reset(); /* a scan already running read the old state */
         }
         return Action::None;
     case DialogKind::CopySave:
@@ -728,6 +811,7 @@ App::Action App::confirm_dialog(DialogKind kind)
                 open_dialog(DialogKind::Info, tr("Could not copy the save"),
                             trf("Writing {path} failed.", {{"path", target}}), "");
             cards_scanned_ = false;
+            save_scan_.reset(); /* a scan already running read the old state */
         }
         return Action::None;
     default:
@@ -1658,7 +1742,9 @@ void App::draw_card(Card &card, int which, float x, float y, double time)
     g.text_mid(Font::ExtraBold, 44, bx + bs * 0.5f, head_cy, kWhite, Align::Center, card.slot);
     const int n = int(card.saves.size());
     std::string sub;
-    if (!card.present)
+    if (saves_loading() && !cards_scanned_)
+        sub = ""; /* still being read */
+    else if (!card.present)
         sub = tr("No saves yet");
     else
         sub = plural(n, "1 save", "{n} saves");
@@ -1764,8 +1850,7 @@ void App::draw_memory_cards(double time)
         draw_wii_saves(time);
         return;
     }
-    if (!cards_scanned_)
-        scan_memory_cards();
+    ensure_saves(false);
     draw_card(card_a_, 0, kMcX[0], kMcY, time);
     draw_card(card_b_, 1, kMcX[1], kMcY, time);
 

@@ -1072,6 +1072,7 @@ void App::return_from_game()
     screen_anim_ = 1.0f;
     held_ = prev_ = 0xFFFFFFFFu; /* the button that quit doesn't press anything here */
     cards_scanned_ = false;
+    save_scan_.reset(); /* a scan already running read the old state */
     lift_ = 0.4f;
 }
 } // namespace porpoise::ui

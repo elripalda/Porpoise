@@ -100,6 +100,7 @@ const Field kFields[] = {
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
     {"dual_core", nullptr, &Settings::dual_core, 0, 1},
     {"accurate_fma", nullptr, &Settings::accurate_fma, 0, 1},
+    {"own_cores", nullptr, &Settings::own_cores, 0, 1},
     {"fast_disc", nullptr, &Settings::fast_disc, 0, 1},
     {"cheats", nullptr, &Settings::cheats, 0, 1},
     {"language", &Settings::language, nullptr, 0, 9},

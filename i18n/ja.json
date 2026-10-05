@@ -873,5 +873,7 @@
  "A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.": "DolphinのリストにあるGeckoチートです。1つでもオンにすると、このゲームのチートが有効になります。",
  "An Action Replay cheat from Dolphin's list. Turning one on turns this game's cheats on.": "DolphinのリストにあるAction Replayチートです。1つでもオンにすると、このゲームのチートが有効になります。",
  "Exact multiply-add": "正確な積和演算",
- "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.": "本体の浮動小数点の積和演算を、PC版のDolphinと同じく正確に丸めます。3D計算の多いゲームではかなり遅くなり、必要なゲームはごくわずかです。"
+ "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.": "本体の浮動小数点の積和演算を、PC版のDolphinと同じく正確に丸めます。3D計算の多いゲームではかなり遅くなり、必要なゲームはごくわずかです。",
+ "Emulator on its own cores": "エミュレーターに専用コア",
+ "Gives the emulated console's processor and its graphics a core of the PS5 each, away from Porpoise's other work. Usually faster; turn it off if a game runs worse.": "エミュレートする本体のプロセッサーと描画に、それぞれPS5のコアを1つずつ割り当て、Porpoiseのほかの処理から離します。通常は速くなります。ゲームの動きが悪くなる場合はオフにしてください。"
 }

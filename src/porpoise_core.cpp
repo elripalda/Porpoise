@@ -11,6 +11,8 @@
  * the title's symbols (build/core_imports.inc). */
 #include "porpoise_core.hpp"
 
+#include <ps5platform/libc.h>
+
 #include <atomic>
 #include <algorithm>
 #include <cerrno>
@@ -1096,6 +1098,8 @@ void set_picture(int filter, float strength)
 
 Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, const Playback &playback)
 {
+    const long long launch_ns = now_ns(); /* for the trace: how long each step of a launch takes */
+    auto since_launch = [&](const char *what) { ps5::debug::mark_value(what, (now_ns() - launch_ns) / 1000000); };
     /* A fresh start: the previous game's core state is gone with its core. */
     h.paths = paths;
     h.library = nullptr;
@@ -1245,7 +1249,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         unload_core();
         return Exit::Failed;
     }
-    ps5::debug::mark("core: game loaded");
+    since_launch("core: game loaded, ms after the launch");
     /* Player 1's GameCube port always has a controller; the others get one
      * for each controller that is on, now or when it joins mid-game. A port
      * keeps its controller when a player leaves, so no game pauses for it. */
@@ -1309,6 +1313,16 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     if (h.hw.context_reset)
         h.hw.context_reset();
     ps5::debug::mark("core: context_reset done; running");
+    if (const char *cpus = std::getenv("PORPOISE_VIDEO_THREAD_CPUS"))
+    {
+        /* Emulator on its own cores (porpoise_main.cpp, keep_cores): this
+         * thread runs Dolphin's video loop; the threads the device needed are
+         * made by now, on the other processors. */
+        const unsigned long long mask = std::strtoull(cpus, nullptr, 16);
+        if (mask != 0)
+            ps5::debug::mark_value("core: the video loop keeps to its processor",
+                                   ps5_pthread_setaffinity_np(pthread_self(), sizeof mask, &mask));
+    }
 
     unsigned long long frames = 0;
     /* Pacing (porpoise_pacer.hpp). The display is the clock when it runs at
@@ -1514,7 +1528,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             fps_frames = 0;
         }
         if (frames == 1)
-            ps5::debug::mark("core: first frame run");
+            since_launch("core: first frame run, ms after the launch");
         const long long now = monotonic_ns();
         if (now - window_start >= 10'000'000'000LL && h.log)
         {

@@ -3498,5 +3498,13 @@
  {
   "en": "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in games heavy on 3D math, and very few games need it.",
   "section": "Settings (2.0)"
+ },
+ {
+  "en": "Emulator on its own cores",
+  "section": "Settings (2.0)"
+ },
+ {
+  "en": "Gives the emulated console's processor and its graphics a core of the PS5 each, away from Porpoise's other work. Usually faster; turn it off if a game runs worse.",
+  "section": "Settings (2.0)"
  }
 ]

@@ -27,6 +27,8 @@
 #include <typeinfo>
 #include <unistd.h>
 
+#include <ps5platform/libc.h>
+
 #include "../build/title_build_identity.h"
 #include "memory_diagnostics.hpp"
 #include "porpoise_audio.hpp"
@@ -952,8 +954,50 @@ void launch_frame(bool core_frame, double fps, void *)
 }
 } // namespace
 
+extern "C" int sceKernelGetCurrentCpu(void);
+extern "C" void ps5_core_threads_set_affinity(unsigned long long mask);
+long long g_main_ns = 0;
+
+/* Settings > System > Emulator on its own cores. A title's threads run on
+ * processors 0-12 (PS5_PayloadSDK PROBE.md: mask 0x1fff), the two halves of
+ * each core numbered side by side. While a game runs, Dolphin's CPU thread
+ * keeps to processor 10 and its video loop (this thread) to processor 8, and
+ * every other thread to the rest, so neither shares its core with busy work.
+ * Only on the mask that was measured; anything else is left alone. */
+constexpr unsigned long long kTitleCpus = 0x1fff;
+constexpr unsigned long long kEmulatorCores = 0xf00; /* processors 8-11: two cores */
+unsigned long long g_start_cpus = 0;
+
+void keep_cores(bool on)
+{
+    if (g_start_cpus != kTitleCpus)
+        return;
+    const unsigned long long rest = on ? kTitleCpus & ~kEmulatorCores : kTitleCpus;
+    const int self = ps5_pthread_setaffinity_np(pthread_self(), sizeof rest, &rest);
+    ps5_core_threads_set_affinity(on ? rest : 0);
+    if (on)
+    {
+        setenv("PORPOISE_CPU_THREAD_CPUS", "400", 1);   /* processor 10 */
+        setenv("PORPOISE_VIDEO_THREAD_CPUS", "100", 1); /* processor 8, once the game runs */
+    }
+    else
+    {
+        unsetenv("PORPOISE_CPU_THREAD_CPUS");
+        unsetenv("PORPOISE_VIDEO_THREAD_CPUS");
+    }
+    char line[96];
+    std::snprintf(line, sizeof line, "main: emulator on its own cores %s (%d)", on ? "on" : "off", self);
+    ps5::debug::mark(line);
+}
+/* For the trace: how long Porpoise took to reach each step of its start. */
+void mark_start(const char *what)
+{
+    ps5::debug::mark_value(what, (now_ns() - g_main_ns) / 1000000);
+}
+
 int main()
 {
+    g_main_ns = now_ns();
     ps5::debug::mark("Porpoise: main() entered");
     /* Before any thread is started: clone this process's credential, so a Lapy
      * owned-root daemon will free it later (choose_data_dir -> jailbreak). */
@@ -973,6 +1017,17 @@ int main()
     ps5_memory_report("startup", 0, 0);
     ps5_core_threads_start();
     ps5_sampler_start();
+    {
+        /* Which processors Porpoise may run on (the sampler says which each
+         * thread did), for the trace. */
+        unsigned long long mask = 0;
+        const int got = ps5_pthread_getaffinity_np(pthread_self(), sizeof mask, &mask);
+        g_start_cpus = got == 0 ? mask : 0;
+        char line[96];
+        std::snprintf(line, sizeof line, "main: may run on processors %#llx (%d), now on %d", mask, got,
+                      sceKernelGetCurrentCpu());
+        ps5::debug::mark(line);
+    }
 
     mkdir("/app0/content", 0777);
     mkdir("/app0/savefiles", 0777);
@@ -987,10 +1042,12 @@ int main()
         ps5::debug::mark("main: no display; nothing can be shown");
         leave(1);
     }
+    mark_start("start: display open, ms");
     porpoise::pad::open();
     porpoise::audio::open();
 
     choose_data_dir();
+    mark_start("start: player data found, ms");
     g_settings.load(g_settings_path);
     {
         /* Games' own settings from 1.0, brought up to date once. */
@@ -1022,6 +1079,7 @@ int main()
 
     g_library.scan(library_paths());
     ps5::debug::mark_value("main: games in the library", static_cast<long long>(g_library.games().size()));
+    mark_start("start: library read, ms");
 
     /* The launcher runs on Porpoise's own device. */
     if (!porpoise::vk::open_device(nullptr) || !start_gfx())
@@ -1169,6 +1227,12 @@ int main()
             begin_ui_frame(0.0f);
             g_app.draw(g_time);
             porpoise::vk::present_clear(0, 0, 0);
+            static bool first_menu_frame = true;
+            if (first_menu_frame)
+            {
+                first_menu_frame = false;
+                mark_start("start: first menu frame, ms");
+            }
             porpoise::sound::pump();
             g_pacer.frame_done();
         }
@@ -1187,6 +1251,7 @@ int main()
         /* The driver reads this when Dolphin makes the game's device
          * (PS5_Mesa's threaded layer); the launcher's own device never has it. */
         setenv("RADV_THREADED_RECORDING", g_play.threaded_gpu ? "1" : "0", 1);
+        keep_cores(g_play.own_cores);
         ps5::debug::mark(g_play.threaded_gpu ? "main: threaded GPU recording on" : "main: threaded GPU recording off");
         g_play.write_core_options(g_options_path);
         /* Fast save states: Dolphin leaves its GPU texture cache out of them
@@ -1301,6 +1366,7 @@ int main()
         const long long played_from = now_ns();
         const porpoise::core::Exit exit = porpoise::core::run_game(launch->path.c_str(), core_paths, hooks, playback);
         setenv("RADV_THREADED_RECORDING", "0", 1); /* the launcher's device, made next, records directly */
+        keep_cores(false);
         /* Play time: the whole visit, loading included, as consoles count it. */
         if (exit != porpoise::core::Exit::Failed)
             g_library.add_play_time(*launch, (now_ns() - played_from) / 1000000000LL);

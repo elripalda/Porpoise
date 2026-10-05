@@ -1,12 +1,17 @@
 # Changelog
 
-## 2.0 beta 2 — 2026-10-05
+## 2.0 beta 3 — 2026-10-05
 
 A test version (pre-release). Features marked *beta* are new and still being
-tuned; everything else is meant to be as solid as 1.5.1. (Beta 1 was a test
-build only.)
+tuned; everything else is meant to be as solid as 1.5.1. (Betas 1 and 2 were
+test builds only.)
 
 ### Faster games
+- **The emulator gets cores of its own.** While a game runs, Dolphin's
+  emulated CPU and its video loop each keep to a core of the PS5 that
+  Porpoise's other work stays off, so neither shares a core with something
+  busy. **Settings → System → Emulator on its own cores** (on) turns it off,
+  for every game or one.
 - **Much faster emulated CPU in 3D-heavy games.** A profile of WWE Day of
   Reckoning 2 on the console showed a third of the emulated CPU's time going
   to one correction routine: Dolphin (since 2025) rounds every
@@ -35,6 +40,8 @@ build only.)
   instead of drawing every menu and game frame at 3840×2160.
   **Settings → Video → Output resolution** can choose 1440p or 4K instead
   (from the next start).
+- **Memory Cards opens without a hitch:** both cards and the Wii saves are
+  read in the background as the tab slides in.
 - **Starts about five seconds sooner.** The menus' text is drawn from
   pictures of every letter that took about six seconds to make at each start;
   they are now kept in `/data/porpoise/cache` after the first.

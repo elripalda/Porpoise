@@ -12,6 +12,7 @@
 #include <set>
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,7 @@ enum class Sound
 class App
 {
 public:
+    struct SaveScan; /* Memory Cards read on a worker thread (ui_app.cpp) */
     enum class Action
     {
         None,
@@ -322,6 +324,14 @@ private:
 
     /* Memory cards */
     void scan_memory_cards();
+    void finish_card_scan();
+    /* Entering Memory Cards reads both cards and the Wii saves on a worker
+     * thread, so the tab slides in without a hitch (ui_app.cpp). */
+    std::shared_ptr<SaveScan> save_scan_;
+    void start_save_scan();
+    void take_save_scan();
+    void ensure_saves(bool wii);
+    bool saves_loading() const { return save_scan_ != nullptr; }
     void move_memcard(int dx, int dy);
     void free_card_textures();
     Save *focused_save();
@@ -466,6 +476,7 @@ private:
     int wii_sel_ = 0;
     float wii_scroll_ = 0;
     void scan_wii_saves();
+    void finish_wii_scan();
     void free_wii_textures();
     Texture *wii_save_banner(WiiSave &s);
     Texture *wii_save_icon(WiiSave &s);

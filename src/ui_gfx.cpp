@@ -1079,7 +1079,12 @@ void Gfx::save_atlas_cache(const std::string &path) const
         ok &= cjk_pixels_.size() == alpha.size() * 4 && squeeze(cjk_pixels_);
     ok &= std::fclose(f) == 0;
     if (!ok || std::rename(staged.c_str(), path.c_str()) != 0)
+    {
         std::remove(staged.c_str());
+        std::fprintf(stderr, "[gfx] the text atlases could not be kept in %s\n", path.c_str());
+        return;
+    }
+    std::fprintf(stderr, "[gfx] text atlases kept in %s for the next start\n", path.c_str());
 }
 
 bool Gfx::init(const GfxInit &init)

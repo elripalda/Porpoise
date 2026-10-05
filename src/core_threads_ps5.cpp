@@ -53,6 +53,9 @@ constexpr size_t core_minimum_stack = 2u * 1024u * 1024u;
  * one (src/core_loader_ps5.cpp). */
 std::atomic<unsigned> live_core_threads{0};
 
+/* The processors new core threads keep to; 0: wherever the console puts them. */
+std::atomic<unsigned long long> core_thread_mask{0};
+
 struct Start
 {
     void *(*start)(void *);
@@ -78,6 +81,10 @@ void *core_thread_trampoline(void *opaque)
 {
     const Start run = *static_cast<Start *>(opaque);
     std::free(opaque);
+    /* Porpoise: the processors a core's threads keep to, when it keeps a
+     * core for the emulated CPU alone (ps5_core_threads_set_affinity). */
+    if (const unsigned long long mask = core_thread_mask.load(std::memory_order_relaxed))
+        ps5_pthread_setaffinity_np(pthread_self(), sizeof mask, &mask);
     const bool registered =
         ps5___cxa_thread_atexit_impl(core_thread_finished, nullptr, nullptr) == 0;
     void *const result = run.start(run.argument);
@@ -250,4 +257,11 @@ PS5_CORE_WRAPPER void *ps5_core_pthread_getspecific(pthread_key_t key)
 PS5_CORE_WRAPPER int ps5_core_pthread_setspecific(pthread_key_t key, const void *value)
 {
     return pthread_setspecific(key, value);
+}
+
+/* Porpoise: the processors a core's threads created from now on keep to (0:
+ * any). */
+extern "C" void ps5_core_threads_set_affinity(unsigned long long mask)
+{
+    core_thread_mask.store(mask, std::memory_order_relaxed);
 }

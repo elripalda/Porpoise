@@ -541,6 +541,10 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
            &t.cpu_clock, 0, {"50%", "60%", "70%", "80%", "90%", "100%", "150%", "200%", "250%", "300%"});
     toggle("dual_core", "Dual core", "Faster. Turn it off for a game that freezes or glitches.", &t.dual_core);
+    toggle("own_cores", "Emulator on its own cores",
+           "Gives the emulated console's processor and its graphics a core of the PS5 each, away from "
+           "Porpoise's other work. Usually faster; turn it off if a game runs worse.",
+           &t.own_cores);
     toggle("accurate_fma", "Exact multiply-add",
            "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in "
            "games heavy on 3D math, and very few games need it.",
@@ -1270,6 +1274,7 @@ App::Action App::activate_row(const SettingRow &row)
         int gc = 0, wii = 0, skipped = 0;
         import_usb_saves(saves_dir_, a, gc, wii, skipped);
         cards_scanned_ = wii_scanned_ = false;
+        save_scan_.reset(); /* a scan already running read the old state */
         std::string text = trf("GameCube saves copied onto Slot A: {gc}. Wii saves copied: {wii}.",
                                {{"gc", std::to_string(gc)}, {"wii", std::to_string(wii)}});
         if (skipped)

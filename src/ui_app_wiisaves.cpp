@@ -51,8 +51,14 @@ void App::free_wii_textures()
 
 void App::scan_wii_saves()
 {
+    save_scan_.reset(); /* read now: a scan still running is stale */
     free_wii_textures();
     load_wii_saves(saves_dir_, wii_saves_);
+    finish_wii_scan();
+}
+
+void App::finish_wii_scan()
+{
     wii_scanned_ = true;
     wii_sel_ = std::clamp(wii_sel_, 0, std::max(0, int(wii_saves_.size()) - 1));
     if (!wii_focus_code_.empty())
@@ -157,8 +163,7 @@ void App::draw_wii_saves(double time)
 {
     Gfx &g = *g_;
     (void)time;
-    if (!wii_scanned_)
-        scan_wii_saves();
+    ensure_saves(true);
     const int n = int(wii_saves_.size());
     g.panel(kPanelX, kPanelY, kPanelW, kPanelH, rgba(0x0A1236, 0.62f), 0.85f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
     long long total = 0;
@@ -189,7 +194,7 @@ void App::draw_wii_saves(double time)
                        fit(g, Font::SemiBold, ts(24), s.title, kCellW - 116));
         }
     }
-    if (n == 0)
+    if (n == 0 && !(saves_loading() && !wii_scanned_))
     {
         draw_mark(960, kPanelY + kPanelH * 0.42f, 150, with_alpha(kCyan, 0.5f));
         g.text_mid(Font::Bold, ts(32), 960, kPanelY + kPanelH * 0.66f, kWhite, Align::Center, tr("No Wii saves yet"));

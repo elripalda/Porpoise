@@ -378,10 +378,23 @@ index f0cc8511b7..ffbcace60a 100644
  const Info<bool> MAIN_DSP_HLE{{System::Main, "Core", "DSPHLE"}, true};
  const Info<int> MAIN_MAX_FALLBACK{{System::Main, "Core", "MaxFallback"}, 100};
 diff --git a/Source/Core/Core/Core.cpp b/Source/Core/Core/Core.cpp
-index cda66bffd1..627791a960 100644
+index cda66bffd1..42dac3e0df 100644
 --- a/Source/Core/Core/Core.cpp
 +++ b/Source/Core/Core/Core.cpp
-@@ -97,6 +97,8 @@ static bool s_wants_determinism;
+@@ -3,6 +3,12 @@
+ 
+ #include "Core/Core.h"
+ 
++#ifdef __PROSPERO__
++#include <cstdlib>
++#include <pthread.h>
++#include <pthread_np.h>
++#endif
++
+ #include <algorithm>
+ #include <atomic>
+ #include <functional>
+@@ -97,6 +103,8 @@ static bool s_wants_determinism;
  
  #ifdef __LIBRETRO__
  static std::vector<Common::ScopeGuard<Common::MoveOnlyFunction<void()>>> s_emu_thread_scope_guards;
@@ -390,7 +403,32 @@ index cda66bffd1..627791a960 100644
  std::unique_ptr<BootParameters> g_boot_params;
  #endif
  // Declarations and definitions
-@@ -456,6 +458,23 @@ static void FifoPlayerThread(Core::System& system, const std::optional<std::stri
+@@ -351,6 +359,24 @@ static void CpuThread(Core::System& system, const std::optional<std::string> sav
+   else
+     Common::SetCurrentThreadName("CPU-GPU thread");
+ 
++#ifdef __PROSPERO__
++  // PS5: the emulated CPU is what limits most games on the console, and its
++  // thread loses a share of its core whenever another busy thread runs on the
++  // same core's other half. Porpoise names the processors this thread keeps
++  // to (PORPOISE_CPU_THREAD_CPUS, a hex mask) and keeps its own threads off
++  // that core.
++  if (const char* cpus = std::getenv("PORPOISE_CPU_THREAD_CPUS"))
++  {
++    const unsigned long long mask = std::strtoull(cpus, nullptr, 16);
++    if (mask != 0)
++    {
++      const int result = pthread_setaffinity_np(pthread_self(), sizeof mask,
++                                                reinterpret_cast<const cpuset_t*>(&mask));
++      NOTICE_LOG_FMT(CORE, "PS5: the CPU thread keeps to processors {:#x} ({})", mask, result);
++    }
++  }
++#endif
++
+ #ifdef USE_ANALYTICS
+   // This needs to be delayed until after the video backend is ready.
+   DolphinAnalytics::Instance().ReportGameStart();
+@@ -456,6 +482,23 @@ static void FifoPlayerThread(Core::System& system, const std::optional<std::stri
  
      CPUSetInitialExecutionState(system);
  
@@ -414,7 +452,7 @@ index cda66bffd1..627791a960 100644
      system.GetCPU().Run();
  
      system.GetPowerPC().InjectExternalCPUCore(nullptr);
-@@ -1036,6 +1055,7 @@ void Shutdown(Core::System& system)
+@@ -1036,6 +1079,7 @@ void Shutdown(Core::System& system)
    if (s_emu_thread.joinable())
      s_emu_thread.join();
  #ifdef __LIBRETRO__
@@ -529,6 +567,38 @@ index 871bb3f615..bad7c5d42a 100644
    sigaction(SIGBUS, &old_sa_bus, nullptr);
  #endif
  }
+diff --git a/Source/Core/Core/PowerPC/Jit64/Jit.cpp b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
+index 1248b1ab01..6a796b4834 100644
+--- a/Source/Core/Core/PowerPC/Jit64/Jit.cpp
++++ b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
+@@ -21,6 +21,7 @@
+ #include "Common/GekkoDisassembler.h"
+ #include "Common/HostDisassembler.h"
+ #include "Common/IOFile.h"
++#include "Common/CPUDetect.h"
+ #include "Common/Logging/Log.h"
+ #include "Common/Swap.h"
+ #include "Common/x64ABI.h"
+@@ -734,6 +735,19 @@ void Jit64::WriteExternalExceptionExit()
+ void Jit64::Run()
+ {
+   ProtectStack();
++#ifdef __PROSPERO__
++  // PS5: what the JIT runs with, once, for the log: the host CPU's features
++  // decide the code it emits, and without the stack guard every return goes
++  // through the dispatcher (no BLR optimization).
++  static bool reported = false;
++  if (!reported)
++  {
++    reported = true;
++    NOTICE_LOG_FMT(POWERPC, "PS5 JIT: {}; BLR optimization {}; fastmem {}; accurate fmadds {}",
++                   cpu_info.Summarize(), m_enable_blr_optimization ? "on" : "off",
++                   jo.fastmem ? "on" : "off", m_accurate_fmadds ? "on" : "off");
++  }
++#endif
+   m_system.GetJitInterface().UpdateMembase();
+ 
+   CompiledCode pExecAddr = (CompiledCode)asm_routines.enter_code;
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
 index c53281053f..ffea2d747d 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
