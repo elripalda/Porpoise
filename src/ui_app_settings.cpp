@@ -1626,16 +1626,37 @@ void App::draw_settings()
         sy += 92;
     }
 
+    /* The highlights glide from where they were to where they go. */
+    const float glide_dt = float(std::clamp(time_ - glide_time_, 0.0, 0.1));
+    glide_time_ = time_;
+    auto glide = [&](float &at, float target, float jump) {
+        if (at < 0 || settings_->reduced_motion || std::fabs(target - at) > jump)
+            at = target;
+        else
+            at += (target - at) * std::min(1.0f, glide_dt * 16.0f);
+        return at;
+    };
+    {
+        float hy = sy;
+        for (const SettingRow &r : rows_)
+            if (r.header)
+            {
+                if (r.section == current)
+                    break;
+                hy += 68;
+            }
+        const float y = glide(rail_glide_, hy, 2000);
+        if (on_rail_)
+            g.panel(rx + 14, y, rw - 28, 60, rgba(0x1F63F0), 0.62f, kR, rgba(0x7FD9FF), 1.6f, 6, 0.35f);
+        else
+            g.panel(rx + 14, y, rw - 28, 60, rgba(0x1F63F0, 0.25f), 0.8f, kR, rgba(0x7FD9FF, 0.55f), 1.4f);
+    }
     for (const SettingRow &r : rows_)
     {
         if (!r.header)
             continue;
         const bool here = r.section == current;
         const float ih = 60;
-        if (here && on_rail_)
-            g.panel(rx + 14, sy, rw - 28, ih, rgba(0x1F63F0), 0.62f, kR, rgba(0x7FD9FF), 1.6f, 6, 0.35f);
-        else if (here)
-            g.panel(rx + 14, sy, rw - 28, ih, rgba(0x1F63F0, 0.25f), 0.8f, kR, rgba(0x7FD9FF, 0.55f), 1.4f);
         g.text_mid(here ? Font::Bold : Font::SemiBold, ts(29), rx + 46, sy + ih * 0.5f, here ? kWhite : kSoft,
                    Align::Left, tr(r.section));
         if (here && on_rail_)
@@ -1688,6 +1709,15 @@ void App::draw_settings()
     for (std::size_t k = 0; k < section_rows.size(); ++k)
         if (!on_rail_ && section_rows[k] == settings_row_ && k >= kVisible)
             first = k - kVisible + 1;
+    if (on_rail_)
+        row_glide_ = -1;
+    else
+        for (std::size_t k = first; k < section_rows.size() && k < first + kVisible; ++k)
+            if (section_rows[k] == settings_row_)
+            {
+                const float hy = glide(row_glide_, y + float(k - first) * row_h, row_h * 3.5f);
+                g.panel(row_x, hy + 4, row_w, row_h - 8, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
+            }
     for (std::size_t k = first; k < section_rows.size() && k < first + kVisible; ++k)
     {
         const int i = section_rows[k];
@@ -1697,7 +1727,7 @@ void App::draw_settings()
                          std::find(game_keys_.begin(), game_keys_.end(), r.key) != game_keys_.end();
         const float cy = y + row_h * 0.5f;
         if (on)
-            g.panel(row_x, y + 4, row_w, row_h - 8, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
+            ; /* the gliding highlight, above */
         else if (k + 1 < section_rows.size() && k + 1 < first + kVisible && (on_rail_ || section_rows[k + 1] != settings_row_))
             g.panel(row_x + 24, y + row_h - 1, row_w - 48, 1.5f, rgba(0x3D4F9E, 0.55f), 1, 0);
         {

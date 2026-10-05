@@ -2050,6 +2050,10 @@ void Gfx::glass(const Corner c[4], float shape_w, float shape_h, float margin, c
         return;
     }
     Glass g = g0;
+    /* Glass takes the theme's colours too (the menus' panels, the in-game
+     * menu's), as panels do. */
+    g.tint = map_colour(g.tint);
+    g.rim = map_colour(g.rim);
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     const float local[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};

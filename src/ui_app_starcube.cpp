@@ -26,7 +26,7 @@ using namespace porpoise::pad;
 
 namespace
 {
-constexpr float kHomeCx = 960.0f, kHomeCy = 470.0f, kHomeSize = 400.0f;
+constexpr float kHomeCx = 960.0f, kHomeCy = 480.0f, kHomeSize = 500.0f;
 constexpr int kGridCols = 6, kGridRows = 2;
 constexpr float kPageX = 90.0f, kPageY = 132.0f, kPageW = 1740.0f, kPageH = 660.0f;
 constexpr float kInfoY = 812.0f, kInfoH = 128.0f;
@@ -79,6 +79,7 @@ void App::sc_open(int face, bool zoom)
     }
     sc_recent_ = 0;
     sc_month_ = 0;
+    sc_page_time_ = 0; /* its pieces arrive one after another */
 }
 
 void App::sc_go_home()
@@ -101,8 +102,24 @@ void App::sc_tick(double dt)
         sc_zoom_ = std::min(target, sc_zoom_ + float(dt) * 2.4f);
     else
         sc_zoom_ = std::max(target, sc_zoom_ - float(dt) * 2.4f);
-    sc_yaw_ = calm ? kLeanYaw[sc_face_] : smooth(sc_yaw_, kLeanYaw[sc_face_], dt, 6.0f);
-    sc_pitch_ = calm ? kLeanPitch[sc_face_] : smooth(sc_pitch_, kLeanPitch[sc_face_], dt, 6.0f);
+    /* The cube turns on a spring: it swings a touch past the edge and settles. */
+    const float step = float(std::min(dt, 0.05));
+    if (calm)
+    {
+        sc_yaw_ = kLeanYaw[sc_face_];
+        sc_pitch_ = kLeanPitch[sc_face_];
+        sc_vyaw_ = sc_vpitch_ = 0;
+    }
+    else
+    {
+        constexpr float kStiff = 70.0f, kDamp = 10.5f;
+        sc_vyaw_ += (kStiff * (kLeanYaw[sc_face_] - sc_yaw_) - kDamp * sc_vyaw_) * step;
+        sc_vpitch_ += (kStiff * (kLeanPitch[sc_face_] - sc_pitch_) - kDamp * sc_vpitch_) * step;
+        sc_yaw_ += sc_vyaw_ * step;
+        sc_pitch_ += sc_vpitch_ * step;
+    }
+    sc_pulse_ = calm ? 0.0f : std::max(0.0f, sc_pulse_ - step * 2.5f);
+    sc_page_time_ += step;
     for (int i = 0; i < 4; ++i)
         sc_glow_[i] = calm ? (i == sc_face_ ? 1.0f : 0.0f) : smooth(sc_glow_[i], i == sc_face_ ? 1.0f : 0.0f, dt, 8.0f);
     /* The games page keeps the chosen row in view. */
@@ -166,6 +183,7 @@ App::Action App::update_starcube(bool left, bool right, bool up, bool down, bool
         if (to >= 0 && to != sc_face_)
         {
             sc_face_ = to;
+            sc_pulse_ = 1.0f;
             sfx(Sound::MenuScroll);
         }
         if (pressed(BtnCross))
@@ -210,11 +228,13 @@ App::Action App::update_starcube(bool left, bool right, bool up, bool down, bool
         if (left || pressed(BtnL2))
         {
             --sc_month_;
+            sc_page_time_ = 0.15f;
             sfx(Sound::MovingTab);
         }
         if (right || pressed(BtnR2))
         {
             ++sc_month_;
+            sc_page_time_ = 0.15f;
             sfx(Sound::MovingTab);
         }
         if (pressed(BtnTriangle) && sc_month_ != 0)
@@ -282,7 +302,7 @@ App::Action App::update_starcube(bool left, bool right, bool up, bool down, bool
 /* ---- drawing: pieces ---------------------------------------------------------------------- */
 
 /* Small cubes drifting past and tumbling, far behind everything. */
-void App::draw_sc_drift(double time, float alpha)
+void App::draw_sc_drift(double time, float alpha, float rush)
 {
     const float t = settings_->reduced_motion || settings_->still_background ? 0.0f : float(time);
     for (int i = 0; i < 16; ++i)
@@ -297,9 +317,12 @@ void App::draw_sc_drift(double time, float alpha)
             x += span;
         x -= 160.0f;
         const float y = 120.0f + hash1(f + 9.3f) * 820.0f + std::sin(t * 0.4f + f) * 18.0f;
-        /* Clear of the big cube's middle at home. */
+        /* Going in, they rush past outward, the near ones fastest. */
+        const float k = 1.0f + rush * (1.2f + 2.0f * depth);
+        x = kHomeCx + (x - kHomeCx) * k;
+        const float yy = kHomeCy + (y - kHomeCy) * k;
         const float a = alpha * (0.22f + 0.38f * depth);
-        draw_glass_cube(x, y, size, t * (0.2f + 0.3f * hash1(f + 1.0f)) + f, t * (0.15f + 0.25f * hash1(f + 2.0f)) + f * 0.5f,
+        draw_glass_cube(x, yy, size * (1.0f + rush * depth), t * (0.2f + 0.3f * hash1(f + 1.0f)) + f, t * (0.15f + 0.25f * hash1(f + 2.0f)) + f * 0.5f,
                         t * 0.1f * (hash1(f + 4.0f) - 0.5f), rgba(0x2A3FD8, 0.35f), rgba(0x8FA0FF, 0.6f), nullptr, a, false);
     }
 }
@@ -335,13 +358,19 @@ void App::draw_sc_home(double time, float zoom)
     const float alpha = 1.0f - sstep(0.15f, 0.85f, zoom);
     if (alpha <= 0.002f)
         return;
-    draw_sc_drift(time, alpha);
+    draw_sc_drift(time, alpha, out);
 
-    const float size = kHomeSize * (1.0f + out * 2.6f);
+    /* Coming in (the entrance): it flies in from far off, spinning. */
+    const float arrive = calm ? 1.0f : sstep(0.0f, 1.0f, intro_fade_);
+    const float pulse = sc_pulse_ * sc_pulse_;
+    const float size = kHomeSize * (1.0f + out * 2.6f) * (0.45f + 0.55f * arrive) * (1.0f + 0.035f * pulse);
     const float cx = kHomeCx, cy = kHomeCy + (calm ? 0.0f : std::sin(t * 0.8f) * 9.0f) * (1.0f - out);
-    /* A slow turn about its lean, always back to the chosen edge. */
-    const float yaw = sc_yaw_ - 0.12f + (calm ? 0.0f : std::sin(t * 0.33f) * 0.07f);
-    const float pitch = sc_pitch_ + 0.12f + (calm ? 0.0f : std::sin(t * 0.27f + 1.0f) * 0.05f);
+    /* A slow turn about its lean, always back to the chosen edge; going in, it
+     * turns further toward it. */
+    const float yaw = sc_yaw_ * (1.0f + out * 1.2f) - 0.12f + (calm ? 0.0f : std::sin(t * 0.33f) * 0.07f) +
+                      (1.0f - arrive) * 2.4f;
+    const float pitch = sc_pitch_ * (1.0f + out * 1.2f) + 0.12f + (calm ? 0.0f : std::sin(t * 0.27f + 1.0f) * 0.05f) +
+                        (1.0f - arrive) * 0.8f;
     const float roll = calm ? 0.0f : std::sin(t * 0.21f) * 0.025f;
     const float h = size * 0.5f;
 
@@ -384,7 +413,7 @@ void App::draw_sc_home(double time, float zoom)
         g.glass(r, size, size, 0, face_glass(f, alpha, true));
     }
     /* A smaller cube turning inside. */
-    draw_glass_cube(cx, cy, size * 0.36f, t * 0.45f + 0.6f, t * 0.31f + 0.4f, t * 0.17f, rgba(0x5B3CFF, 0.45f),
+    draw_glass_cube(cx, cy, size * 0.30f, t * 0.45f + 0.6f, t * 0.31f + 0.4f, t * 0.17f, rgba(0x5B3CFF, 0.45f),
                     rgba(0xE0D6FF, 0.9f), nullptr, alpha, true);
     for (int f = 0; f < 6; ++f)
     {
@@ -409,8 +438,8 @@ void App::draw_sc_home(double time, float zoom)
         const Edge &ed = edges[e];
         const float vx = -ed.uy, vy = ed.ux; /* down, for the letters */
         const float glow = sc_glow_[e];
-        float px = ts(38) * (size / kHomeSize);
-        const float room = size * 0.80f;
+        float px = ts(54) * (size / kHomeSize);
+        const float room = size * 0.84f;
         const float w = g.measure(Font::ExtraBold, px, names[e]);
         if (w > room)
             px *= room / w;
@@ -437,7 +466,8 @@ void App::draw_sc_home(double time, float zoom)
         const Color on = rgba(0xFFFFFF, alpha), off = rgba(0x9C98E8, 0.78f * alpha);
         const Color c{off.r + (on.r - off.r) * glow, off.g + (on.g - off.g) * glow, off.b + (on.b - off.b) * glow,
                       off.a + (on.a - off.a) * glow};
-        g.text_mapped(Font::ExtraBold, px * (1.0f + 0.08f * glow), names[e], c, Align::Center, map);
+        g.text_mapped(Font::ExtraBold, px * (1.0f + 0.08f * glow + 0.10f * glow * pulse), names[e], c, Align::Center,
+                      map);
     }
 
     if (out > 0.02f)
@@ -450,9 +480,13 @@ void App::draw_sc_home(double time, float zoom)
         sub = short_date() + "   " + clock_text();
     else if (sc_face_ == 3)
         sub = build_label();
-    g.text_mid(Font::ExtraBold, ts(46), 960, 878, kWhite, Align::Center, names[sc_face_]);
+    /* The caption under it slides in with each turn. */
+    const float cap = 1.0f - pulse;
+    g.text_mid(Font::ExtraBold, ts(50), 960 + 30.0f * pulse, 890, with_alpha(kWhite, 0.3f + 0.7f * cap), Align::Center,
+               names[sc_face_]);
     if (!sub.empty())
-        g.text_mid(Font::SemiBold, ts(26), 960, 930, kLavender, Align::Center, sub);
+        g.text_mid(Font::SemiBold, ts(27), 960 + 18.0f * pulse, 944, with_alpha(kLavender, 0.3f + 0.7f * cap),
+                   Align::Center, sub);
     g.text_mid(Font::SemiBold, ts(27), 1866, kBarCy, kWhite, Align::Right, clock_text());
     draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Cross, "Confirm"}}, {}, "");
 }
@@ -492,16 +526,23 @@ void App::draw_sc_games(double time)
             if (r < -0.9f || r > kGridRows - 0.1f)
                 continue;
             const float edge = std::clamp(std::min(r + 0.9f, kGridRows - 0.1f - r) / 0.6f, 0.0f, 1.0f);
-            const float cx = x0 + float(i % kGridCols) * cell_w, cy = y0 + r * cell_h - (focused ? 14.0f * lift_ : 0.0f);
+            /* Opening the page, the discs arrive one after another. */
+            const float order = float((i / kGridCols - sc_first_row_) * kGridCols + i % kGridCols);
+            const float in = settings_->reduced_motion ? 1.0f : sstep(0.0f, 1.0f, (sc_page_time_ - 0.03f * order) / 0.35f);
+            if (in <= 0.0f)
+                continue;
+            const float cx = x0 + float(i % kGridCols) * cell_w,
+                        cy = y0 + r * cell_h - (focused ? 14.0f * lift_ : 0.0f) + 40.0f * (1.0f - in);
             Game *game = &games[std::size_t(i)];
             if (discs)
             {
                 const float d = focused ? 236.0f : 200.0f;
-                draw_disc(game, cx, cy - 16, d, spin * (focused ? 1.2f : 0.25f) + float(i) * 0.7f, 0, edge, focused);
+                draw_disc(game, cx, cy - 16, d * (0.7f + 0.3f * in),
+                          spin * (focused ? 1.2f : 0.25f) + float(i) * 0.7f + (1.0f - in) * 3.0f, 0, edge * in, focused);
             }
             else
-                draw_tile(game, cx, cy - 6, focused ? 190.0f : 168.0f, focused ? 266.0f : 236.0f, 0, edge, focused,
-                          false);
+                draw_tile(game, cx, cy - 6, focused ? 190.0f : 168.0f, focused ? 266.0f : 236.0f, (1.0f - in) * 1.4f,
+                          edge * in, focused, false);
             if (game->favourite)
                 g.glyph(Glyph::Star, cx + 84, cy - 120, 30, rgba(0xFFD45C, edge));
             if (focused)
@@ -672,6 +713,8 @@ void App::draw_sc_calendar(double time)
         const int cell = lead + d - 1;
         const float x = gx + cw * float(cell % 7), y = top + ch * float(cell / 7);
         const bool is_today = sc_month_ == 0 && d == today.tm_mday;
+        const float in = settings_->reduced_motion ? 1.0f : sstep(0.0f, 1.0f, (sc_page_time_ - 0.012f * float(d)) / 0.3f);
+        g.set_layer(layer_dx_, layer_dy_ + 18.0f * (1.0f - in), layer_fade_ * in);
         if (is_today)
             g.panel(x + 4, y + 4, cw - 8, ch - 8, rgba(0x3A3FE8, 0.85f), 0.65f, kR * 0.6f, rgba(0xC8F2FF), 2.0f, 8,
                     0.25f);
@@ -690,6 +733,7 @@ void App::draw_sc_calendar(double time)
         }
     }
 
+    g.set_layer(layer_dx_, layer_dy_, layer_fade_);
     /* The chosen recent game, along the bottom. */
     g.panel(kPageX, kInfoY, kPageW, kInfoH, rgba(0x0B0F3A, 0.72f), 0.85f, kR, rgba(0x6F7CFF, 0.85f), 1.8f, 0, 0.12f);
     const float icy = kInfoY + kInfoH * 0.5f;

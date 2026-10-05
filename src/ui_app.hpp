@@ -502,6 +502,8 @@ private:
     BannerTex *banner_texture(const Game &game, bool big);
     void draw_frames(const BannerTex &b, float x, float y, float w, float h, float fade, float radius, bool fill);
     float intro_fade_ = 1, intro_dy_ = 0;
+    float rail_glide_ = -1, row_glide_ = -1; /* Settings' highlights, gliding */
+    double glide_time_ = 0;
     /* The entrance in steps: what starts later (delay, of the whole) comes
      * in after the top bar. */
     void intro_stage(float delay)
@@ -543,7 +545,7 @@ private:
     Action update_starcube(bool left, bool right, bool up, bool down, bool &handled);
     void draw_starcube(double time);
     void draw_sc_home(double time, float zoom);
-    void draw_sc_drift(double time, float alpha);
+    void draw_sc_drift(double time, float alpha, float rush = 0);
     void draw_sc_header(const std::string &title, double time);
     void draw_sc_page(float x, float y, float w, float h);
     void draw_sc_games(double time);
@@ -559,6 +561,9 @@ private:
     float sc_rows_ = 0;
     int sc_recent_ = 0;        /* the calendar's chosen recent game */
     int sc_month_ = 0;         /* months from this one */
+    float sc_vyaw_ = 0, sc_vpitch_ = 0; /* the cube's turn, on a spring */
+    float sc_pulse_ = 0;       /* a new edge chosen: the labels and caption pop */
+    float sc_page_time_ = 9;   /* since a page opened: its pieces arrive in turn */
     std::string library_count() const;          /* "12 games", "5 Wii games" */
     std::string library_note() const;           /* covers being fetched, or a flash */
 

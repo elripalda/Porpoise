@@ -459,6 +459,33 @@ int main(int argc, char **argv)
         press(kCross);
         settle();
         render("sc-page-game", [&] { ui.draw(12.0); });
+        /* The in-game menu in a few themes: it takes the theme's colours and font. */
+        for (int theme : {14, 12, 11, 5})
+        {
+            settings.ui_theme = theme;
+            settle();
+            while (gfx.theme_fonts_busy())
+            {
+                settle();
+                usleep(10000);
+            }
+            porpoise::Settings play = settings;
+            ui.open_game_menu(&lib.games()[3], &play);
+            for (int i = 0; i < 40; ++i)
+                ui.update_game_menu(none, 0.016);
+            Texture *frame = gfx.texture_file(covers + "/PRVW07.png");
+            render(("sc-ingame-" + std::to_string(theme)).c_str(), [&] {
+                gfx.background();
+                if (frame)
+                    gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
+                ui.draw_game_menu(12.0);
+            });
+            Input c;
+            c.held = kCircle;
+            ui.update_game_menu(c, 0.016);
+            for (int i = 0; i < 40; ++i)
+                ui.update_game_menu(none, 0.016);
+        }
         return 0;
     }
     /* PREVIEW_LOOKS=theme:colours:view[:memcards],...: the library (and, with
