@@ -1,5 +1,59 @@
 # Changelog
 
+## 2.1 Beta 2 — 2026-10-05
+
+A second test build of 2.1: a new home, more themes and colours, more ways
+to see your games, and fixes to Beta 1's looks. The emulation is the same as
+2.0 Beta 1.
+
+### Star Cube
+- A **new theme with its own home**: a big glass cube floating on black,
+  turning slowly, with small cubes drifting and tumbling around it. Its four
+  edges are **Games**, **Calendar**, **Memory Cards** and **Settings**; the
+  stick turns the cube to an edge, Cross goes in, Circle comes back out.
+  L1 / R1 move round the edges without going back to the cube.
+- **Games:** your library on a glass page as spinning discs, or as covers
+  (Settings → Interface → Games page). Each game opens its own page: Play,
+  Save states, Game settings and Save data.
+- **Calendar:** the time and date, the month with what you played on each
+  day, and your most recent games; Cross opens one. L2 / R2 change the month.
+- **Memory Cards:** both cards side by side, each save a little glass cube.
+- **Settings:** the usual settings in the theme's violet glass, headings in
+  dot-matrix letters. Button hints read "✕ ··· Confirm".
+
+### More themes
+- **Dot Matrix:** lit dots on a dark grid, dotted headings.
+- **Synthwave:** a neon sunset over a racing grid, in its own lettering.
+- **Paper:** ink on warm paper in a book's typeface.
+- **Crystal:** clear glass with rainbow edges, light split by a prism.
+- Terminal, Broadcast, Dot Matrix, Synthwave, Paper and Star Cube each have
+  their own font.
+
+### Colours
+- New: **Crystal, Pearl, Ruby, Lime, Ocean, Sunset and Midnight Violet**,
+  alongside the classic Sapphire, Indigo, Spice, Emerald, Platinum, Jet, Rose
+  and Gold.
+- Colours now work in **Minimal, Cube, Aurora, Aero**, Synthwave, Crystal,
+  Dot Matrix and Star Cube as well.
+
+### Library and Memory Cards views
+- Three more Library views: **List** (your games by name beside the chosen
+  box; up and down go through them), **Stack** (a deck of boxes) and
+  **Helix** (the boxes climbing round a column).
+- A fourth Memory Cards view, **Cubes**: each save a glass cube on a grid.
+
+### Fixes
+- **Revolution:** the Home screen setting is now Tiles (the default) or
+  Library view, which shows your games in the Library view you chose.
+- **Box view:** the case is black plastic with the paper insert on its front,
+  spine and back, and plain plastic on the open side, top and bottom. Turning
+  it to the spine no longer makes the faces bleed into each other.
+- **Broadcast:** the TV frame's rounded corners no longer touch the menus,
+  and the moving tracking band is gone; the scanlines and pixel lettering
+  stay.
+- **Crystal** is brighter.
+- Every new text is translated into all 16 languages.
+
 ## 2.1 Beta 1 — 2026-10-05
 
 A test build: how Porpoise looks, and more ways to make it yours. The

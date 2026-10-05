@@ -563,6 +563,9 @@ void App::draw_list_view(double time)
             g.panel(lx + 12, y, lw - 24, row_h - 8, rgba(0x1F63F0, 0.9f), 0.62f, kR, rgba(0x7FD9FF), 1.6f, 6, 0.3f);
         if (Texture *cover = cover_of(game))
             g.image(cover, lx + 28, y + 4, 44, 60, with_alpha(kWhite, edge), 4);
+        else
+            g.panel(lx + 28, y + 4, 44, 60, with_alpha(kTileFill, 0.55f * edge), 0.6f, 4, with_alpha(kEdge, 0.6f * edge),
+                    1.2f);
         g.text_mid(on ? Font::Bold : Font::SemiBold, ts(27), lx + 92, y + (row_h - 8) * 0.5f, with_alpha(kWhite, edge),
                    Align::Left, fit(g, Font::Bold, ts(27), game.title, lw - 380));
         if (game.favourite)

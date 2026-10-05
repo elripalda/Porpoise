@@ -417,6 +417,11 @@ int main(int argc, char **argv)
         settings.ui_palette = std::atoi(sc);
         if (const char *e = std::getenv("PREVIEW_SCGAMES"))
             settings.sc_games = std::atoi(e);
+        if (const char *e = std::getenv("PREVIEW_SCLANG"))
+        {
+            settings.ui_language = std::atoi(e);
+            porpoise::ui::apply_language(settings.ui_language);
+        }
         ui.language_changed();
         settle();
         while (gfx.theme_fonts_busy() || gfx.cjk_busy())

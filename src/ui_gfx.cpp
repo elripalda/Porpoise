@@ -1365,7 +1365,8 @@ bool Gfx::make_theme_fonts(const std::string &set, FontData *out, std::vector<st
     /* Star Cube: Nunito, its headings in dots. */
     static const char *const kDotN[4] = {"Nunito-Regular.ttf", "Nunito-SemiBold.ttf", "Nunito-Bold.ttf", "Doto-Black.ttf"};
     static const char *const kExo[4] = {"Exo2-Regular.ttf", "Exo2-SemiBold.ttf", "Exo2-Bold.ttf", "Exo2-ExtraBold.ttf"};
-    static const char *const kLora[4] = {"Lora-Regular.ttf", "Lora-SemiBold.ttf", "Lora-Bold.ttf", "Lora-ExtraBold.ttf"};
+    static const char *const kLora[4] = {"PorpoiseSerif-Regular.ttf", "PorpoiseSerif-SemiBold.ttf", "PorpoiseSerif-Bold.ttf",
+                                         "PorpoiseSerif-ExtraBold.ttf"}; /* Lora, renamed */
     const char *const *files = set == "mono"   ? kMono
                                : set == "vt"   ? kVt
                                : set == "dot"  ? kDot

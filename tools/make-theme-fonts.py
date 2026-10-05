@@ -6,7 +6,9 @@
 #   Broadcast: VT323 -> assets/fonts/VT323-Regular.ttf
 #   Dot Matrix: Doto (round dots) at 900, for headings -> assets/fonts/Doto-Black.ttf
 #   Synthwave: Exo 2 at 400, 600, 700, 800 -> assets/fonts/Exo2-*.ttf
-#   Paper:     Lora at 400, 500, 600, 700 -> assets/fonts/Lora-*.ttf
+#   Paper:     Lora at 400, 500, 600, 700 -> assets/fonts/PorpoiseSerif-*.ttf (renamed: Lora's
+#              Reserved Font Name stays with the original)
+#   Star Cube: Nunito, with Doto for its headings
 # each subset to the letters the menus use beyond Chinese, Japanese and Korean
 # (Latin, Latin Extended-A, Cyrillic and typographic marks).
 #   python3 tools/make-theme-fonts.py path/to/google/fonts/ofl
@@ -48,8 +50,19 @@ for weight, name in ((900, "Black"),):
     font = instancer.instantiateVariableFont(TTFont(os.path.join(OFL, "doto", "Doto[ROND,wght].ttf")),
                                              {"wght": weight, "ROND": 100})
     cut(font, os.path.join(OUT, "Doto-%s.ttf" % name))
-for family, path, weights in (("Exo2", "exo2/Exo2[wght].ttf", (400, 600, 700, 800)),
-                              ("Lora", "lora/Lora[wght].ttf", (400, 500, 600, 700))):
+def rename(font, old, new):
+    """Lora has a Reserved Font Name: a modified copy (these instances, cut
+    down) must not be called Lora, so ours is Porpoise Serif."""
+    for rec in font["name"].names:
+        text = rec.toUnicode()
+        if old in text and rec.nameID not in (0, 13, 14):  # not the copyright or licence
+            rec.string = text.replace(old, new) if rec.nameID != 6 else text.replace(old, new.replace(" ", ""))
+
+
+for family, path, weights, renamed in (("Exo2", "exo2/Exo2[wght].ttf", (400, 600, 700, 800), None),
+                                       ("Lora", "lora/Lora[wght].ttf", (400, 500, 600, 700), "Porpoise Serif")):
     for weight, name in zip(weights, ("Regular", "SemiBold", "Bold", "ExtraBold")):
         font = instancer.instantiateVariableFont(TTFont(os.path.join(OFL, path)), {"wght": weight})
-        cut(font, os.path.join(OUT, "%s-%s.ttf" % (family, name)))
+        if renamed:
+            rename(font, family, renamed)
+        cut(font, os.path.join(OUT, "%s-%s.ttf" % ((renamed or family).replace(" ", ""), name)))

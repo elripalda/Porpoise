@@ -566,6 +566,87 @@
       "modifications": "Subset to the letters Porpoise's menus use with fontTools (tools/make-theme-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/vt323."
     },
     {
+      "id": "doto",
+      "name": "Doto font (the Dot Matrix and Star Cube themes' headings)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/Doto-Black.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2024 The Doto Project Authors (https://github.com/oliverlalan/Doto)"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/Doto-OFL.txt",
+          "to": "OFL-Doto.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "A weight 900, round-dot instance of the variable font, subset to the letters Porpoise's menus use with fontTools (tools/make-theme-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/doto."
+    },
+    {
+      "id": "exo-2",
+      "name": "Exo 2 font (the Synthwave theme)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/Exo2-Regular.ttf",
+        "assets/fonts/Exo2-SemiBold.ttf",
+        "assets/fonts/Exo2-Bold.ttf",
+        "assets/fonts/Exo2-ExtraBold.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2013 The Exo 2 Project Authors (https://github.com/googlefonts/Exo-2.0)"
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/Exo2-OFL.txt",
+          "to": "OFL-Exo2.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 400, 600, 700 and 800 instances of the variable font, subset to the letters Porpoise's menus use with fontTools (tools/make-theme-fonts.py). Upstream: https://github.com/google/fonts/tree/main/ofl/exo2."
+    },
+    {
+      "id": "lora",
+      "name": "Lora font, as Porpoise Serif (the Paper theme)",
+      "kind": "asset",
+      "always": true,
+      "artifacts": [
+        "assets/fonts/PorpoiseSerif-Regular.ttf",
+        "assets/fonts/PorpoiseSerif-SemiBold.ttf",
+        "assets/fonts/PorpoiseSerif-Bold.ttf",
+        "assets/fonts/PorpoiseSerif-ExtraBold.ttf"
+      ],
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Copyright 2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name \"Lora\"."
+      ],
+      "texts": [
+        {
+          "from": "assets/fonts/Lora-OFL.txt",
+          "to": "OFL-Lora.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise/tree/{rev}/assets/fonts"
+      },
+      "modifications": "Weight 400, 500, 600 and 700 instances of the variable font, subset to the letters Porpoise's menus use with fontTools (tools/make-theme-fonts.py), and renamed Porpoise Serif, since Lora is a Reserved Font Name. Upstream: https://github.com/google/fonts/tree/main/ofl/lora."
+    },
+    {
       "id": "zacksly-ps5-icons",
       "name": "PS5 Button Icons and Controls by Zacksly (controller art and button icons)",
       "kind": "asset",
