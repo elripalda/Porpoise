@@ -62,6 +62,7 @@ public:
         InstallUpdate,
         InstallVersion, /* the one picked in About > Choose a version (picked_version()) */
         Quit,        /* close Porpoise (after an update) */
+        Reinitialize, /* settings wiped: Porpoise starts again as at its first start */
     };
 
     void set_sound_hook(void (*play)(Sound)) { sound_ = play; }
@@ -197,6 +198,7 @@ private:
         States,       /* a game's save states, over its Details */
         WiiGuide,     /* how to hold the DualSense as each Wii controller */
         WiiSetup,     /* the Wii Remote setup: controller, hold, centre, the screen's corners */
+        Welcome,      /* the first start: choose a theme */
     };
     struct SettingRow
     {
@@ -230,6 +232,7 @@ private:
         CopyGame,
         DeleteWiiSave,
         Resume, /* quick resume: Resume (yes) or Start Over (the other button) */
+        Reinitialize,
     };
     struct Dialog
     {
@@ -353,6 +356,11 @@ public:
     void set_sandboxed(bool sandboxed) { sandboxed_ = sandboxed; }
     /* The setup check: a title and what Porpoise can see, with what to do. */
     void show_setup_check(bool first_start);
+    /* The first start (and after Reinitialize): a theme to begin with, then
+     * the welcome and setup check (ui_app_welcome.cpp). */
+    void start_welcome();
+    /* After Reinitialize: the menus as at the first start. */
+    void restart_fresh();
 private:
     bool sandboxed_ = false;
     std::vector<std::string> version_tags_, version_labels_;
@@ -544,6 +552,11 @@ private:
     std::vector<int> sc_recent_games() const;
     Action update_starcube(bool left, bool right, bool up, bool down, bool &handled);
     void draw_starcube(double time);
+    Action update_welcome(bool left, bool right, double dt);
+    void draw_welcome(double time);
+    void welcome_card(int which, float cx, float cy, float w, float h, float lift, float alpha, bool on, double time);
+    int welcome_pick_ = 0;
+    float welcome_time_ = 0, welcome_glide_ = 0;
     void draw_sc_home(double time, float zoom);
     void draw_sc_drift(double time, float alpha, float rush = 0);
     void draw_sc_header(const std::string &title, double time);

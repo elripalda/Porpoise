@@ -400,6 +400,8 @@ App::Action App::update(const Input &in, double dt)
     }
     if (dialog_.open)
         return update_dialog(left, right);
+    if (screen_ == Screen::Welcome)
+        return update_welcome(left, right, dt);
     if (screen_ == Screen::Browse)
         return update_browser(up, down);
     if (screen_ == Screen::GameSettings)
@@ -818,6 +820,27 @@ App::Action App::confirm_dialog(DialogKind kind)
         apply_language(settings_->ui_language, data_dir_ + "/lang");
         build_settings();
         return Action::SettingsChanged;
+    case DialogKind::Reinitialize:
+    {
+        /* Settings wiped (games' own too); games, folders, saves and states
+         * stay. Then Porpoise starts again as it did the first time. */
+        settings_->reset();
+        settings_->setup_checked = false;
+        if (DIR *d = opendir((data_dir_ + "/game-settings").c_str()))
+        {
+            while (dirent *e = readdir(d))
+            {
+                const std::string n = e->d_name;
+                if (n.size() > 4 && n.compare(n.size() - 4, 4, ".ini") == 0)
+                    std::remove((data_dir_ + "/game-settings/" + n).c_str());
+            }
+            closedir(d);
+        }
+        settings_->save(settings_path_);
+        settings_->write_core_options(options_path_);
+        apply_language(settings_->ui_language, data_dir_ + "/lang");
+        return Action::Reinitialize;
+    }
     case DialogKind::ResetGame:
         if (game_for_)
         {
@@ -2196,6 +2219,13 @@ void App::draw(double time)
 {
     Gfx &g = *g_;
     apply_look();
+    if (screen_ == Screen::Welcome)
+    {
+        draw_welcome(time);
+        draw_dialog();
+        draw_theme_overlay();
+        return;
+    }
     if (revolution())
     {
         draw_revolution(time);

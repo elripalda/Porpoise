@@ -774,6 +774,10 @@ void App::build_settings()
     }
     action("Reset all settings", "Every setting back to how Porpoise ships. Games, folders and saves stay.",
            "Reset\xE2\x80\xA6", kRowResetAll);
+    action("Reinitialize Porpoise",
+           "A fresh start: Porpoise opens as it did the first time and you choose a theme again. Games, folders, "
+           "memory cards, saves and save states stay.",
+           "Reinitialize\xE2\x80\xA6", kRowReinitialize);
 
     header("Accessibility");
     choice("text_size", "Text size", "Bigger labels across Porpoise.", &settings_->text_size,
@@ -1462,6 +1466,12 @@ App::Action App::activate_row(const SettingRow &row)
                     tr("Every setting goes back to how Porpoise ships. Your games, folders, covers and saves stay."),
                     tr("Reset"), true);
         return Action::None;
+    case kRowReinitialize:
+        open_dialog(DialogKind::Reinitialize, tr("Reinitialize Porpoise?"),
+                    tr("Every setting, and each game's own settings, go back to how Porpoise ships, and it starts again "
+                       "as it did the first time. Your games, folders, memory cards, saves and save states stay."),
+                    tr("Reinitialize"), true);
+        return Action::None;
     case kRowMapping:
         open_mapping();
         return Action::None;
@@ -1766,7 +1776,7 @@ void App::draw_settings()
             value = update_row_value();
         if (r.action)
         {
-            const bool danger = r.action == kRowResetAll || r.action == kRowResetGame;
+            const bool danger = r.action == kRowResetAll || r.action == kRowResetGame || r.action == kRowReinitialize;
             const float vw = g.measure(Font::Bold, ts(28), value);
             const float cw = std::max(250.0f, vw + 110), ch = 50, cx = right - cw;
             g.panel(cx, cy - ch * 0.5f, cw, ch, on ? (danger ? rgba(0xB0305A, 0.85f) : rgba(0x1F63F0, 0.85f))

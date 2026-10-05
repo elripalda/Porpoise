@@ -1230,10 +1230,9 @@ int main()
     g_app.set_sandboxed(g_sandboxed);
     if (!g_sandboxed && !g_settings.setup_checked)
     {
-        /* The first start: what Porpoise can see, once. */
-        g_app.show_setup_check(true);
-        g_settings.setup_checked = true;
-        g_settings.save(g_settings_path);
+        /* The first start: a look to begin with, then the welcome and what
+         * Porpoise can see (setup_checked is saved once a look is chosen). */
+        g_app.start_welcome();
     }
     if (g_sandboxed)
         g_app.show_message(porpoise::ui::tr("Porpoise can't reach /data"),
@@ -1323,6 +1322,37 @@ int main()
             }
             if (action == porpoise::ui::App::Action::Rescan)
                 rescan_library();
+            if (action == porpoise::ui::App::Action::Reinitialize)
+            {
+                /* A fresh start: the screen goes to Porpoise's mark, everything
+                 * is read again behind it, and the first start's welcome comes. */
+                ps5::debug::mark("main: reinitializing");
+                porpoise::sound::fade_music(0.0f, 0.4f);
+                const int frames = int(hz * 0.5);
+                for (int frame = 1; frame <= frames; ++frame)
+                {
+                    g_time += 1.0 / hz;
+                    begin_ui_frame(0.0f);
+                    g_app.draw(g_time);
+                    g_app.draw_curtain(float(frame) / float(frames));
+                    porpoise::vk::present_clear(0, 0, 0);
+                    porpoise::sound::pump();
+                    g_pacer.frame_done();
+                }
+                apply_settings();
+                {
+                    int language = 1;
+                    if (sceSystemServiceParamGetInt(1 /* language */, &language) == 0)
+                        porpoise::ui::set_system_language(language);
+                    porpoise::ui::apply_language(g_settings.ui_language, g_data + "/lang");
+                }
+                rescan_library();
+                g_app.restart_fresh();
+                if (!g_sandboxed)
+                    g_app.start_welcome();
+                start_entrance();
+                continue;
+            }
             if (action == porpoise::ui::App::Action::FetchCovers)
                 fetch_covers(true);
             if (action == porpoise::ui::App::Action::CheckUpdate)

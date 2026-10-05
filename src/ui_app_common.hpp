@@ -45,6 +45,7 @@ enum RowAction
     kRowSetupCheck,  /* Games > Check my setup: what Porpoise can see, and what to do about it */
     kRowImportSaves, /* Games > Saves from a USB drive (beta) */
     kRowDeveloperOff,
+    kRowReinitialize, /* Interface > Reinitialize Porpoise: settings wiped, the first start again */
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

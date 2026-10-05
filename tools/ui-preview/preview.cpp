@@ -409,6 +409,36 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    /* PREVIEW_WELCOME=1: the first start's theme picker on each look, the
+     * welcome after it and Settings > Interface's last rows; then stop. */
+    if (std::getenv("PREVIEW_WELCOME"))
+    {
+        settings.ui_theme = 0;
+        ui.language_changed();
+        settle();
+        ui.start_welcome();
+        settle();
+        render("welcome-0", [&] { ui.draw(12.0); });
+        press(kRight);
+        settle();
+        while (gfx.theme_fonts_busy())
+        {
+            settle();
+            usleep(10000);
+        }
+        settle();
+        render("welcome-1", [&] { ui.draw(12.0); });
+        press(kRight);
+        settle();
+        render("welcome-2", [&] { ui.draw(12.0); });
+        press(1u << 2); /* left */
+        press(1u << 2);
+        settle();
+        press(kCross);
+        settle();
+        render("welcome-done", [&] { ui.draw(12.0); });
+        return 0;
+    }
     /* PREVIEW_STARCUBE=palette: Star Cube's home turned to each edge, then
      * each page and a game's page; then stop. */
     if (const char *sc = std::getenv("PREVIEW_STARCUBE"))
