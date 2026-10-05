@@ -190,7 +190,7 @@ def readme(components, tag):
         "for it below, at the revision given. The release page this title was",
         "downloaded from also carries the release's source archive, including the",
         "Dolphin port patch and the scripts that build the title",
-        "(https://github.com/elripalda/Porpoise, tools/build-porpoise.sh).",
+        "(https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5, tools/build-porpoise.sh).",
         "",
         "Not included: no games, BIOS files or console firmware. The only keys are the",
         "two Wii disc keys (standard and Korean) Dolphin itself includes, used to read",

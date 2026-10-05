@@ -368,7 +368,7 @@
  "Dolphin's fix: {why}": "Dolphin的修正：{why}",
  "Dolphin's libretro core, maintained by the libretro team (GPL v2 or later).": "Dolphin的libretro核心，由libretro团队维护（GPL v2或更高版本）。",
  "Dolphin, by the Dolphin Team - dolphin-emu.org. Free software, GPL v2 or later.": "Dolphin，由Dolphin Team制作 - dolphin-emu.org。自由软件，GPL v2或更高版本。",
- "Download it from github.com/elripalda/Porpoise/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "请从github.com/elripalda/Porpoise/releases下载。先删除旧的PPSA99764文件夹，再将新文件夹复制到原位置；你的游戏、存档和设置都会保留。",
+ "Download it from github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "请从github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases下载。先删除旧的PPSA99764文件夹，再将新文件夹复制到原位置；你的游戏、存档和设置都会保留。",
  "EFB copies": "EFB复制",
  "Early XFB output": "提前输出XFB",
  "Empty": "空",

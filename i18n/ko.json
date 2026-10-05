@@ -368,7 +368,7 @@
  "Dolphin's fix: {why}": "Dolphin 수정 사항: {why}",
  "Dolphin's libretro core, maintained by the libretro team (GPL v2 or later).": "libretro 팀이 관리하는 Dolphin의 libretro 코어입니다 (GPL v2 이상).",
  "Dolphin, by the Dolphin Team - dolphin-emu.org. Free software, GPL v2 or later.": "Dolphin, Dolphin Team 제작 - dolphin-emu.org. 자유 소프트웨어, GPL v2 이상.",
- "Download it from github.com/elripalda/Porpoise/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "github.com/elripalda/Porpoise/releases에서 다운로드하세요. 기존 PPSA99764 폴더를 삭제한 다음 새 폴더를 그 자리에 복사하면 됩니다. 게임, 세이브 데이터, 설정은 그대로 남습니다.",
+ "Download it from github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases에서 다운로드하세요. 기존 PPSA99764 폴더를 삭제한 다음 새 폴더를 그 자리에 복사하면 됩니다. 게임, 세이브 데이터, 설정은 그대로 남습니다.",
  "EFB copies": "EFB 복사",
  "Early XFB output": "XFB 조기 출력",
  "Empty": "비어 있음",

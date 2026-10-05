@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/elripalda/Porpoise/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/elripalda/Porpoise?label=release&color=3b8cff"></a>
+  <a href="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/elripalda/Porpoise-Dolphin-Emulator-for-PS5?label=release&color=3b8cff"></a>
   <img alt="Platform: PS5 homebrew" src="https://img.shields.io/badge/platform-PS5%20homebrew-1f5fd6">
   <img alt="Powered by Dolphin" src="https://img.shields.io/badge/emulation-Dolphin-5cd3ff">
   <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-a9a6ff"></a>
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 2.0</b></a> ·
+  <a href="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases/latest"><b>Download Porpoise 2.0</b></a> ·
   <a href="#install">Install</a> ·
   <a href="#controls">Controls</a> ·
   <a href="BUILDING.md">Build from source</a> ·
@@ -262,7 +262,7 @@ Settings → Audio, for every game or one:
 ## Install
 
 1. Download **`Porpoise-2.0.zip`** from the
-   [latest release](https://github.com/elripalda/Porpoise/releases/latest) and
+   [latest release](https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases/latest) and
    unzip it on your computer. You get a folder named **`PPSA99764`**.
 2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
    like FileZilla) or with PS5 Upload.

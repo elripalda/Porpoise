@@ -366,7 +366,7 @@
  "Dolphin's fix: {why}": "Dolphinの修正：{why}",
  "Dolphin's libretro core, maintained by the libretro team (GPL v2 or later).": "libretroチームが管理する、Dolphinのlibretroコアです（GPL v2以降）。",
  "Dolphin, by the Dolphin Team - dolphin-emu.org. Free software, GPL v2 or later.": "Dolphin：Dolphin Team制作 - dolphin-emu.org。フリーソフトウェア（GPL v2以降）。",
- "Download it from github.com/elripalda/Porpoise/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "github.com/elripalda/Porpoise/releasesからダウンロードしてください。古いPPSA99764フォルダーを削除してから、新しいフォルダーを同じ場所にコピーします。ゲーム、セーブデータ、設定はそのまま残ります。",
+ "Download it from github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releasesからダウンロードしてください。古いPPSA99764フォルダーを削除してから、新しいフォルダーを同じ場所にコピーします。ゲーム、セーブデータ、設定はそのまま残ります。",
  "EFB copies": "EFBコピー",
  "Early XFB output": "XFBの早期出力",
  "Empty": "空き",

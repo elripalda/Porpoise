@@ -1,18 +1,8 @@
-<p align="center"><img src="https://github.com/elripalda/Porpoise/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
+<p align="center"><img src="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/raw/main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
 **Porpoise 2.0** is the biggest update yet. Games run faster and smoother on a newer Dolphin and a newer PS5 graphics driver. There are fifteen themes, with colors, fonts and layouts to mix. WiiWare, Virtual Console and channels now play, along with homebrew apps. There are new sound and system options, the DualSense's microphone and speaker work in games, and sixteen languages are included.
 
 ## Performance
-
-Measured on the same PS5 with Porpoise's own logs (`core.log` and `trace.txt`):
-
-| | 1.5.1 | 2.0 |
-|---|---|---|
-| **WWE Day of Reckoning 2**, in a match | 24 fps (40% of full speed) | **[TBD]** |
-| Time each frame waits on the speakers | about 6 ms | **[TBD]** |
-| Menus ready when Porpoise opens | 5.7 s, at every start | **[TBD]** after the first start |
-| Frames timed to the TV's refresh | never (0 of 120) | **[TBD]** |
-| Picture drawn for the TV | 3840×2160 | 1920×1080 (1440p or 4K if you choose) |
 
 - **Much faster in 3D-heavy games.** Recent Dolphin rounds every single-precision multiply-add exactly as the GameCube does, and on the PS5 that correction costs a lot in games full of 3D math. It's now off, as it was in Dolphin before 2025. **Settings → System → Exact multiply-add** turns it back on for any game that needs it.
 - **The emulator gets cores of its own.** The emulated CPU and its graphics each run on a PS5 core that nothing else busy shares (Settings → System → *Emulator on its own cores*).
@@ -56,7 +46,7 @@ Measured on the same PS5 with Porpoise's own logs (`core.log` and `trace.txt`):
   - **GameCube boot animation**, from your own GameCube's BIOS.
   - **Start Wii discs in the Wii Menu**, from your own Wii Menu.
 
-Porpoise includes no Nintendo files. The [README](https://github.com/elripalda/Porpoise#channels-wiiware-and-homebrew) shows where to put your own.
+Porpoise includes no Nintendo files. The [README](https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5#channels-wiiware-and-homebrew) shows where to put your own.
 
 ## Everything else
 

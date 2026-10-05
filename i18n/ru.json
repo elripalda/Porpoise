@@ -366,7 +366,7 @@
  "Dolphin's fix: {why}": "Исправление Dolphin: {why}",
  "Dolphin's libretro core, maintained by the libretro team (GPL v2 or later).": "Ядро libretro для Dolphin, которое поддерживает команда libretro (GPL v2 или новее).",
  "Dolphin, by the Dolphin Team - dolphin-emu.org. Free software, GPL v2 or later.": "Dolphin от команды Dolphin — dolphin-emu.org. Свободное ПО, GPL v2 или новее.",
- "Download it from github.com/elripalda/Porpoise/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "Скачайте новую версию с github.com/elripalda/Porpoise/releases. Удалите старую папку PPSA99764 и скопируйте на её место новую; ваши игры, сохранения и настройки останутся.",
+ "Download it from github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases. Delete the old PPSA99764 folder, then copy the new one in its place; your games, saves and settings stay.": "Скачайте новую версию с github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases. Удалите старую папку PPSA99764 и скопируйте на её место новую; ваши игры, сохранения и настройки останутся.",
  "EFB copies": "Копии EFB",
  "Early XFB output": "Ранний вывод XFB",
  "Empty": "Пусто",
