@@ -247,6 +247,8 @@ struct State
     std::int16_t l2 = 0, r2 = 0; /* the GameCube L and R analog, 0..0x7fff */
     /* Raw buttons this poll, for Porpoise's own shortcuts and screens. */
     bool ps_menu_combo = false; /* Options + touch pad: open the Porpoise menu */
+    bool ff_step = false;       /* touch pad + R1 pressed: fast forward's next speed */
+    bool ff_hold = false;       /* touch pad + R2 held: fast forward while held */
     std::uint32_t buttons = 0;  /* Button bits */
 };
 
@@ -254,6 +256,9 @@ bool open();
 void close();
 void set_mapping(const Mapping &mapping);
 void set_rumble_enabled(bool enabled);
+/* Touch pad + R1 / R2 for fast forward in games (Settings > Controls). Off:
+ * the touch pad, R1 and R2 go to the game as they are. */
+void set_fast_forward_buttons(bool enabled);
 /* Read every controller. Call once a frame; returns player 1. */
 const State &poll();
 const State &state(int player = 0);

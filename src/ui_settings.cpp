@@ -73,6 +73,18 @@ const Field kFields[] = {
     {"sounds_volume", &Settings::sounds_volume, nullptr, 0, 10},
     {"button_layout", &Settings::button_layout, nullptr, 0, 5},
     {"rumble", nullptr, &Settings::rumble, 0, 1},
+    {"ff_buttons", nullptr, &Settings::ff_buttons, 0, 1},
+    {"console", &Settings::console, nullptr, 0, 2},
+    {"dsp_accurate", nullptr, &Settings::dsp_accurate, 0, 1},
+    {"wiimote_speaker", nullptr, &Settings::wiimote_speaker, 0, 1},
+    {"audio_buffer", &Settings::audio_buffer, nullptr, 0, 2},
+    {"audio_stretch", nullptr, &Settings::audio_stretch, 0, 1},
+    {"microphone", nullptr, &Settings::microphone, 0, 1},
+    {"wii_widescreen", nullptr, &Settings::wii_widescreen, 0, 1},
+    {"pal60", nullptr, &Settings::pal60, 0, 1},
+    {"sensor_bar", &Settings::sensor_bar, nullptr, 0, 1},
+    {"wii_menu_boot", nullptr, &Settings::wii_menu_boot, 0, 1},
+    {"gc_bios", nullptr, &Settings::gc_bios, 0, 1},
     {"wii_controller", &Settings::wii_controller, nullptr, 0, 4},
     {"wii_pointer", &Settings::wii_pointer, nullptr, 0, 2},
     {"wii_speed", &Settings::wii_speed, nullptr, 0, 10},
@@ -170,7 +182,9 @@ const char *const kManaged[] = {
     "dolphin_disable_fog", "dolphin_crop_overscan", "dolphin_load_custom_textures",
     "dolphin_cache_custom_textures", "dolphin_skip_dupe_frames", "dolphin_enable_rumble", "dolphin_cpu_clock_rate",
     "dolphin_main_cpu_thread", "dolphin_accurate_fmadds", "dolphin_osd_enabled", "dolphin_fast_disc_speed", "dolphin_cheats_enabled", "dolphin_language",
-    "dolphin_progressive_scan",
+    "dolphin_progressive_scan", "dolphin_dsp_hle", "dolphin_dsp_jit", "dolphin_enable_gamecube_mic",
+    "dolphin_hotkey_activate_microphone", "dolphin_wiispeak_enable", "dolphin_wiispeak_muted", "dolphin_widescreen",
+    "dolphin_pal60", "dolphin_sensor_bar_position", "dolphin_disc_based_games_boot_to_wii_menu", "dolphin_skip_gc_bios",
     /* Set per game from its Dolphin settings (porpoise_main.cpp, kGameOptions). */
     "dolphin_efb_to_texture", "dolphin_xfb_to_texture_enable", "dolphin_efb_access_enable",
     "dolphin_efb_access_defer_invalidation", "dolphin_bbox_enabled", "dolphin_efb_to_vram", "dolphin_defer_efb_copies",
@@ -715,6 +729,21 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
         {"dolphin_cheats_enabled", on_off(cheats)},
         {"dolphin_language", std::to_string(kLanguages[std::clamp(language, 0, 9)])},
         {"dolphin_progressive_scan", on_off(progressive)},
+        /* Sound: HLE unless the game asks for the exact DSP. */
+        {"dolphin_dsp_hle", on_off(!dsp_accurate)},
+        {"dolphin_dsp_jit", "enabled"},
+        /* The microphone; the GameCube Microphone's button is R3 (no
+         * GameCube game uses the stick's click). */
+        {"dolphin_enable_gamecube_mic", on_off(microphone)},
+        {"dolphin_hotkey_activate_microphone", microphone ? "R3" : "Disabled"},
+        {"dolphin_wiispeak_enable", on_off(microphone)},
+        {"dolphin_wiispeak_muted", on_off(!microphone)},
+        /* The console's own settings. */
+        {"dolphin_widescreen", on_off(wii_widescreen)},
+        {"dolphin_pal60", on_off(pal60)},
+        {"dolphin_sensor_bar_position", sensor_bar == 1 ? "1" : "0"},
+        {"dolphin_disc_based_games_boot_to_wii_menu", on_off(wii_menu_boot)},
+        {"dolphin_skip_gc_bios", on_off(!gc_bios)},
         {"dolphin_ir_mode", wii_pointer == 2 ? "1" : "2"},
         /* Gyro and touch pad: Porpoise works out what the remote's camera sees
          * (porpoise_core.cpp), so the game's cursor is exactly Porpoise's. */

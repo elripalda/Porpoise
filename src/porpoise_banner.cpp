@@ -1495,10 +1495,14 @@ namespace
 std::vector<std::int16_t> to_48k_stereo(const std::vector<std::int16_t> &in, int channels, int rate)
 {
     std::vector<std::int16_t> out;
-    if (channels < 1 || rate <= 0 || in.empty())
+    /* The rate comes from the file: a damaged one (1 Hz) would ask for a
+     * buffer tens of thousands of times the jingle. Real ones are 8..48 kHz. */
+    if (channels < 1 || rate < 4000 || rate > 96000 || in.empty())
         return out;
     const std::size_t frames = in.size() / std::size_t(channels);
-    const std::size_t n = std::size_t(double(frames) * 48000.0 / double(rate));
+    if (frames == 0)
+        return out;
+    const std::size_t n = std::min<std::size_t>(std::size_t(double(frames) * 48000.0 / double(rate)), 48000u * 120);
     out.resize(n * 2);
     for (std::size_t i = 0; i < n; ++i)
     {

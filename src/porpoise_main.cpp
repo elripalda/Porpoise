@@ -152,6 +152,7 @@ void choose_data_dir()
     mkdir((g_data + "/covers").c_str(), 0777);
     mkdir((g_data + "/games").c_str(), 0777);
     mkdir((g_data + "/saves").c_str(), 0777);
+    mkdir((g_data + "/bios").c_str(), 0777); /* the player's own GameCube BIOS, if they have one */
     g_settings_path = g_data + "/settings.ini";
     g_options_path = g_data + "/options.ini";
     g_saves_path = g_data + "/saves";
@@ -611,6 +612,45 @@ void fetch_covers(bool force = false)
         g_covers_force = false;
 }
 
+/* The player's own GameCube BIOS for a game's region, from <data>/bios/<USA|EUR|JAP>/IPL.bin
+ * (or <data>/bios/IPL.bin), copied to where Dolphin looks for it. Porpoise
+ * ships none. */
+bool install_ipl(const porpoise::ui::Game &game)
+{
+    const std::string region = game.region == "USA"                               ? "USA"
+                               : game.region == "Japan" || game.region == "Korea" ? "JAP"
+                                                                                  : "EUR";
+    const std::string to_dir = g_saves_path + "/User/GC/" + region, to = to_dir + "/IPL.bin";
+    struct stat src_st, dst_st;
+    std::string from = g_data + "/bios/" + region + "/IPL.bin";
+    if (stat(from.c_str(), &src_st) != 0)
+    {
+        from = g_data + "/bios/IPL.bin";
+        if (stat(from.c_str(), &src_st) != 0)
+            return stat(to.c_str(), &dst_st) == 0; /* one already in place */
+    }
+    if (src_st.st_size < (1 << 20) || src_st.st_size > (4 << 20))
+        return false; /* a GameCube BIOS is 2 MiB */
+    if (stat(to.c_str(), &dst_st) == 0 && dst_st.st_size == src_st.st_size)
+        return true;
+    mkdir((g_saves_path + "/User").c_str(), 0777);
+    mkdir((g_saves_path + "/User/GC").c_str(), 0777);
+    mkdir(to_dir.c_str(), 0777);
+    std::FILE *in = std::fopen(from.c_str(), "rb");
+    std::FILE *out = in ? std::fopen(to.c_str(), "wb") : nullptr;
+    bool ok = in && out;
+    char buf[65536];
+    std::size_t n;
+    while (ok && (n = std::fread(buf, 1, sizeof buf, in)) > 0)
+        ok = std::fwrite(buf, 1, n, out) == n;
+    if (in)
+        std::fclose(in);
+    if (out)
+        ok = std::fclose(out) == 0 && ok;
+    ps5::debug::mark(ok ? ("main: GameCube BIOS in place for " + region).c_str() : "main: couldn't copy the BIOS");
+    return ok;
+}
+
 void rescan_library()
 {
     g_app.release_covers();
@@ -626,6 +666,7 @@ void apply_settings()
     porpoise::sound::set_effects(g_settings.menu_sounds, g_settings.sounds_volume / 10.0f);
     porpoise::pad::set_mapping(g_settings.mapping());
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
+    porpoise::pad::set_fast_forward_buttons(g_settings.ff_buttons);
     porpoise::pacer::set_vsync(g_settings.vsync);
     {
         /* Settings > Video > Output resolution: porpoise_vk reads it when the
@@ -786,6 +827,7 @@ int menu_paused(void *)
             porpoise::core::set_option(k.c_str(), v.c_str());
         if (key == "rumble")
             porpoise::pad::set_rumble_enabled(g_play.rumble);
+        porpoise::pad::set_fast_forward_buttons(g_play.ff_buttons);
     }
     /* Save states, asked for in the menu, done here on the core's thread. */
     const porpoise::ui::App::MenuRequest request = g_app.take_menu_request();
@@ -934,11 +976,28 @@ void launch_frame(bool core_frame, double fps, void *)
         g_app.draw_launch(g_time);
         return;
     }
+    if (!g_menu_open)
+    {
+        /* Touch pad + R1: the next speed (off, 2x, 4x); touch pad + R2:
+         * 4x while held, back to the chosen speed after. */
+        const porpoise::pad::State &pad = porpoise::pad::state();
+        static bool holding = false;
+        if (pad.ff_step)
+        {
+            g_app.step_fast_forward();
+            porpoise::core::set_fast_forward(g_app.menu_fast_forward());
+        }
+        if (pad.ff_hold != holding)
+        {
+            holding = pad.ff_hold;
+            porpoise::core::set_fast_forward(holding ? 4 : g_app.menu_fast_forward());
+        }
+    }
     draw_border();
-    if (g_app.menu_fast_forward() > 1 && !g_menu_open)
+    if ((g_app.menu_fast_forward() > 1 || porpoise::core::fast_forward() > 1) && !g_menu_open)
     {
         /* Fast forward is on: say so, top right. */
-        const char *text = g_app.menu_fast_forward() >= 4 ? "4x" : "2x";
+        const char *text = porpoise::core::fast_forward() >= 4 ? "4x" : "2x";
         g_gfx.panel(1884 - 150, 30, 150, 50, porpoise::ui::rgba(0x0A1236, 0.72f), 0.9f, 14,
                     porpoise::ui::rgba(0xFFC85C, 0.9f), 1.6f);
         const float kHalfPi = 1.5707963f;
@@ -1426,6 +1485,19 @@ int main()
          * game spends less time on the slow ubershaders and stutters less the
          * first time it shows something. */
         set_ini_value(g_saves_path + "/User/Config/GFX.ini", "Settings", "ShaderCompilerThreads", "4");
+        /* The Wii Remote's own speaker (Dolphin leaves it off by default). */
+        set_ini_value(g_saves_path + "/User/Config/Dolphin.ini", "Core", "WiimoteEnableSpeaker",
+                      g_play.wiimote_speaker ? "True" : "False");
+        porpoise::audio::set_buffer(g_play.audio_buffer);
+        porpoise::audio::set_stretching(g_play.audio_stretch);
+        /* The GameCube's start-up: only from the player's own BIOS, put where
+         * Dolphin looks for the game's region; without one, straight in. */
+        if (g_play.gc_bios && launch->platform != "Wii" && !install_ipl(*launch))
+        {
+            g_play.gc_bios = false;
+            g_play.write_core_options(g_options_path); /* straight into the game after all */
+            ps5::debug::mark("main: GameCube boot animation on, but no IPL.bin for this region in bios/");
+        }
         if (launch->id.size() == 6)
         {
             /* The game's Dolphin settings (recommended ones turned on or off),
@@ -1485,7 +1557,9 @@ int main()
         playback.filter = g_play.screen_filter;
         playback.strength = g_play.filter_strength / 10.0f;
         /* A Wii game: the DualSense as a Wii Remote; a test build logs it. */
-        playback.wii = g_play.wii_config(launch->platform == "Wii");
+        /* The game's console: as detected, or as its own settings say. */
+        const bool is_wii = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
+        playback.wii = g_play.wii_config(is_wii);
         g_wii_hint_from = g_time + 2.0; /* once the game is up */
         g_wii_centrings = 0;
         const std::string debug_dir = g_data + "/debug";
@@ -1553,6 +1627,8 @@ int main()
         porpoise::vk::set_overlay(overlay, nullptr);
         porpoise::audio::flush();
         porpoise::audio::set_volume(1.0f);
+        porpoise::audio::set_buffer(1); /* the menus: the usual depth, no stretching */
+        porpoise::audio::set_stretching(false);
         porpoise::audio::set_muted(false);
         g_settings.write_core_options(g_options_path);
         apply_settings();

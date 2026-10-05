@@ -170,6 +170,12 @@ struct Slot
     bool centre_request = false; /* centre_now */
     aim::Smoother smoother;
     unsigned centrings = 0;  /* for the "centered" note on screen */
+    /* Fast forward on the touch pad (touch pad + R1, touch pad + R2): the
+     * buttons last frame, whether this touch pad press was a combo, and the
+     * touch pad's own press (Minus on a Wii Remote) still to be sent. */
+    std::uint32_t raw_prev = 0;
+    bool touch_combo = false;
+    int touch_pulse = 0;
 };
 
 /* ---- the Wii Remote ---- */
@@ -635,11 +641,16 @@ Motion read_motion(Slot &slot, std::int32_t count)
     return m;
 }
 
+bool g_ff_buttons = true; /* set_fast_forward_buttons */
+
 State read_slot(Slot &slot)
 {
     const std::int32_t count = scePadRead(slot.handle, g_samples, sample_capacity);
     if (count == 0)
+    {
+        slot.state.ff_step = false; /* a press counts once, not again on every repeat of the state */
         return slot.state; /* nothing new: keep the last state */
+    }
     if (count < 0 || count > sample_capacity)
         return State{}; /* refused, or the pad went away: nothing rather than a stuck button */
     const PadSample *newest = nullptr;
@@ -650,8 +661,42 @@ State read_slot(Slot &slot)
         return State{}; /* off, or the system menu has the pad: release everything */
     const Motion motion = read_motion(slot, count);
 
-    const std::uint32_t b = newest->buttons;
+    /* The touch pad is the fast-forward modifier: touch pad + R1 steps fast
+     * forward, touch pad + R2 holds it. R1 and R2 don't reach the game while
+     * the touch pad is down, and the touch pad's own press (Minus on a Wii
+     * Remote) goes on its release, unless it was a combo. */
+    std::uint32_t b = newest->buttons;
+    std::uint8_t right_trigger = newest->right_trigger;
     State next;
+    if (g_ff_buttons && !(b & pad_options))
+    {
+        const bool touch = (b & pad_touch_pad) != 0, was = (slot.raw_prev & pad_touch_pad) != 0;
+        if (touch)
+        {
+            if (!was)
+                slot.touch_combo = false;
+            if ((b & pad_r1) && !(slot.raw_prev & pad_r1))
+            {
+                next.ff_step = true;
+                slot.touch_combo = true;
+            }
+            if (b & pad_r2)
+            {
+                next.ff_hold = true;
+                slot.touch_combo = true;
+            }
+            b &= ~(pad_r1 | pad_r2 | pad_touch_pad);
+            right_trigger = 0;
+        }
+        else if (was && !slot.touch_combo)
+            slot.touch_pulse = 4; /* a plain press: the touch pad's own button now, for a few frames */
+        if (slot.touch_pulse > 0)
+        {
+            --slot.touch_pulse;
+            b |= pad_touch_pad;
+        }
+    }
+    slot.raw_prev = newest->buttons;
     next.connected = true;
     for (int c = 0; c < CtlCount; ++c)
         if (b & kControlPadBit[c])
@@ -692,12 +737,12 @@ State read_slot(Slot &slot)
         if (c == CtlL2)
             return static_cast<std::int16_t>(newest->left_trigger * 0x7fff / 255);
         if (c == CtlR2)
-            return static_cast<std::int16_t>(newest->right_trigger * 0x7fff / 255);
+            return static_cast<std::int16_t>(right_trigger * 0x7fff / 255);
         return (c >= 0 && c < CtlCount && (b & kControlPadBit[c])) ? 0x7fff : 0;
     };
     next.l2 = analog(GcL);
     next.r2 = analog(GcR);
-    next.ps_menu_combo = (b & (pad_options | pad_touch_pad)) == (pad_options | pad_touch_pad);
+    next.ps_menu_combo = (newest->buttons & (pad_options | pad_touch_pad)) == (pad_options | pad_touch_pad);
     next.motion = motion;
     if (g_wii.active)
     {
@@ -727,7 +772,7 @@ State read_slot(Slot &slot)
         if (g_wii.controller == WiiClassic)
         {
             next.l2 = static_cast<std::int16_t>(newest->left_trigger * 0x7fff / 255);
-            next.r2 = static_cast<std::int16_t>(newest->right_trigger * 0x7fff / 255);
+            next.r2 = static_cast<std::int16_t>(right_trigger * 0x7fff / 255);
         }
         if (g_wii.controller == WiiTwoControllers)
         {
@@ -812,6 +857,11 @@ void set_mapping(const Mapping &mapping)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     g_mapping = mapping;
+}
+
+void set_fast_forward_buttons(bool enabled)
+{
+    g_ff_buttons = enabled;
 }
 
 void set_rumble_enabled(bool enabled)

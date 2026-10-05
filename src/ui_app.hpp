@@ -146,6 +146,7 @@ public:
     void menu_state_done(MenuRequest::Kind kind, int slot, bool ok);
     /* Fast forward chosen in the menu: 1 (off), 2 or 4. Not saved. */
     int menu_fast_forward() const { return menu_ff_ == 2 ? 4 : menu_ff_ == 1 ? 2 : 1; }
+    void step_fast_forward() { menu_ff_ = (menu_ff_ + 1) % 3; }
     /* The newest release on GitHub ("v1.2" and its page), for the update notice. */
     /* Every release GitHub lists (newest first), for About > Choose a version. */
     void set_versions(const std::vector<std::string> &tags, const std::vector<int> &builds,

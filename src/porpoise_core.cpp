@@ -10,6 +10,7 @@
  * because this console refuses a title's dlopen, and its imports are bound to
  * the title's symbols (build/core_imports.inc). */
 #include "porpoise_core.hpp"
+#include "porpoise_mic.hpp"
 #include "porpoise_states.hpp"
 
 #include <ps5platform/libc.h>
@@ -436,6 +437,16 @@ bool environment(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE:
         static_cast<retro_rumble_interface *>(data)->set_rumble_state = set_rumble;
         return true;
+    case RETRO_ENVIRONMENT_GET_MICROPHONE_INTERFACE:
+    {
+        /* The DualSense's microphone (porpoise_mic): the GameCube Microphone
+         * and the Wii Speak, when the core's options turn them on. */
+        auto *mic = static_cast<retro_microphone_interface *>(data);
+        if (!mic || mic->interface_version != RETRO_MICROPHONE_INTERFACE_VERSION)
+            return false;
+        porpoise::mic::fill(*mic);
+        return true;
+    }
     case RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE:
     {
         /* The DualSense's gyroscope and accelerometer, as the Wii Remote's. */
@@ -1003,6 +1014,11 @@ void set_wii(const porpoise::pad::WiiConfig &config)
                      "smoothing %d, reach %d%%\n",
                      h.wii.controller, h.wii.pointer, h.wii.grip, h.wii.speed, h.wii.half_x * 57.29578f,
                      h.wii.half_y * 57.29578f, h.wii.smooth, h.wii.reach);
+}
+
+int fast_forward()
+{
+    return h.fast_forward;
 }
 
 void set_fast_forward(int factor)
@@ -1578,6 +1594,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
 
     h.running = false;
     h.fast_forward = 1;
+    porpoise::mic::close_all(); /* no game listening any more */
     porpoise::audio::flush();
     porpoise::vk::close();
     /* Everything Porpoise made on the core's device goes before the core

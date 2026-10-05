@@ -66,6 +66,8 @@ void set_option(const char *key, const char *value);
 void set_picture(int filter, float strength);
 /* Fast forward: 1 is normal speed, 2 or 4 run that many frames for each shown. */
 void set_fast_forward(int factor);
+/* The fast forward in effect now (1: none). */
+int fast_forward();
 /* Save states, while a game is paused in the in-game menu. serialize() only
  * takes the state (on the game's thread); writing it can happen elsewhere. */
 bool serialize(std::vector<unsigned char> &data);

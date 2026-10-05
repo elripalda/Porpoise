@@ -37,7 +37,8 @@ namespace
 constexpr unsigned out_rate = 48000;
 constexpr std::size_t grain = 256;                 /* frames per AudioOut write */
 constexpr std::size_t ring_frames = 16384;         /* ~340 ms */
-constexpr std::size_t target_frames = 2304;        /* ~48 ms queued */
+std::size_t target_frames = 2304;                  /* ~48 ms queued (Settings > Audio > Audio buffer) */
+bool stretching = false;                           /* Settings > Audio > Audio stretching */
 constexpr std::uint32_t already_initialized = 0x8026000e;
 
 struct Audio
@@ -168,7 +169,11 @@ void push(const std::int16_t *frames, std::size_t count)
      * slower input (fewer output frames), an emptier one slightly more. */
     const double fill_error = (static_cast<double>(target_frames) - static_cast<double>(a.count)) /
                               static_cast<double>(target_frames);
-    const double nudge = std::clamp(fill_error * 0.005, -0.005, 0.005);
+    /* Stretching: when the queue runs low (the game is running slow), the
+     * sound is drawn out by up to 8% (a little lower) instead of running dry
+     * and crackling; otherwise at most 0.5%, which no one hears. */
+    const double reach = stretching && fill_error > 0.5 ? 0.08 : 0.005;
+    const double nudge = std::clamp(fill_error * (stretching ? 0.08 : 0.005), -0.005, reach);
     const double step = a.source_rate / out_rate * (1.0 - nudge);
 
     for (std::size_t i = 0; i < count; ++i)
@@ -186,6 +191,16 @@ void push(const std::int16_t *frames, std::size_t count)
         a.prev[1] = nr;
     }
     pthread_mutex_unlock(&a.mutex);
+}
+
+void set_buffer(int level)
+{
+    target_frames = level <= 0 ? 1152 : level >= 2 ? 4608 : 2304; /* ~24, 48 or 96 ms */
+}
+
+void set_stretching(bool on)
+{
+    stretching = on;
 }
 
 void set_volume(float volume)

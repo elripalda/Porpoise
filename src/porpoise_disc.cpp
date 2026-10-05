@@ -323,6 +323,8 @@ public:
         const u64 end = b + 1 < pointers.size() ? pointers[b + 1] & ~kRaw : compressed;
         if (b >= pointers.size() || end < start || end - start > block + 0x10000 || end - start > kMaxBuffer)
             return false;
+        if (end == start)
+            return false; /* an empty block: nothing to decode */
         std::vector<u8> in(end - start);
         if (!file.read(data_offset + start, in.data(), in.size()))
             return false;
@@ -948,7 +950,7 @@ bool read_wad(const std::string &path, WadInfo &info, std::vector<std::uint8_t> 
         }
         off += align64(csize);
     }
-    if (!found || size < 0x600 || off + 0x600 > file_size)
+    if (!found || size < 0x600 || size > kMaxBuffer || off + 0x600 > file_size)
     {
         error = "no banner in the WAD";
         return false;

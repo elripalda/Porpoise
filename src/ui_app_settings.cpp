@@ -445,6 +445,23 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("volume", "Game volume", "Volume of the game's sound.", &t.volume, 0,
            {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
     toggle("muted", "Mute game", "Silences the game.", &t.muted);
+    toggle("dsp_accurate", "Accurate audio (beta)",
+           "Dolphin's exact sound chip (LLE) instead of its fast one: fixes missing or wrong sound in a few games, but "
+           "needs much more of the processor. Best turned on for one game.",
+           &t.dsp_accurate);
+    toggle("wiimote_speaker", "Wii Remote speaker (beta)",
+           "Sounds Wii games play from the Remote's own speaker (a bow, an item box), in the TV's sound.",
+           &t.wiimote_speaker);
+    choice("audio_buffer", "Audio buffer (beta)",
+           "How much sound is kept ready. Safe holds more, against crackling in demanding games, for a little delay.",
+           &t.audio_buffer, 0, {"Low", "Normal", "Safe"});
+    toggle("audio_stretch", "Audio stretching (beta)",
+           "When a game slows down, its sound slows with it, slightly lower, instead of crackling.",
+           &t.audio_stretch);
+    toggle("microphone", "Microphone (beta)",
+           "The DualSense's microphone as the GameCube Microphone (Mario Party 6 and 7; R3 is its button) and the "
+           "Wii Speak.",
+           &t.microphone);
     if (!per_game)
     {
         /* Porpoise's own sound: the menus, not the games. */
@@ -476,6 +493,15 @@ void App::add_game_rows(Settings &t, bool per_game)
         rows_.push_back(r);
     }
     toggle("rumble", "Vibration", "Controller rumble.", &t.rumble);
+    if (per_game)
+        choice("console", "Console",
+               "Which console's controls the game gets: as Porpoise detected it, or GameCube or Wii, for a game it "
+               "got wrong.",
+               &t.console, 0, {"Auto", "GameCube", "Wii"});
+    toggle("ff_buttons", "Fast forward buttons",
+           "In a game, touch pad + R1 steps fast forward (off, 2x, 4x) and touch pad + R2 fast-forwards while held. "
+           "On a Wii Remote, the touch pad's Minus then goes when you let go of it.",
+           &t.ff_buttons);
     if (!per_game)
     {
         SettingRow r;
@@ -568,6 +594,20 @@ void App::add_game_rows(Settings &t, bool per_game)
            {"English", "Japanese", "German", "French", "Spanish", "Italian", "Dutch", "Chinese (simplified)",
             "Chinese (traditional)", "Korean"});
     toggle("progressive", "Progressive scan", "480p output, as on a component cable.", &t.progressive);
+    toggle("wii_widescreen", "Wii widescreen (beta)",
+           "The Wii's own 16:9 setting, which Wii games follow. Off: 4:3.", &t.wii_widescreen);
+    toggle("pal60", "PAL games at 60 Hz (beta)",
+           "European Wii games run at 60 Hz, as a Wii set to EURGB60 does. Off: 50 Hz.", &t.pal60);
+    choice("sensor_bar", "Sensor bar (beta)", "Where the Wii is told its sensor bar sits.", &t.sensor_bar, 0,
+           {"Below the TV", "Above the TV"});
+    toggle("wii_menu_boot", "Start Wii discs in the Wii Menu (beta)",
+           "Wii discs start from the Wii Menu, as on a Wii. Needs your own Wii Menu, installed from your own console "
+           "(its WAD in your games). Porpoise includes none.",
+           &t.wii_menu_boot);
+    toggle("gc_bios", "GameCube boot animation (beta)",
+           "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in "
+           "/data/porpoise/bios/USA, EUR or JAP. Porpoise includes none.",
+           &t.gc_bios);
     if (!per_game)
         toggle("debug_logs", "Debug logs",
                "For testing: Porpoise keeps notes on what it did in /data/porpoise/debug, for bug reports.",
