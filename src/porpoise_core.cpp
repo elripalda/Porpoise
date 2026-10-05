@@ -10,6 +10,7 @@
  * because this console refuses a title's dlopen, and its imports are bound to
  * the title's symbols (build/core_imports.inc). */
 #include "porpoise_core.hpp"
+#include "porpoise_states.hpp"
 
 #include <ps5platform/libc.h>
 
@@ -1442,10 +1443,31 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 if (playback.resume_path && h.have_frame)
                 {
                     const bool kept = save_state(playback.resume_path);
+                    if (kept)
+                        porpoise::states::write_resume_picture(playback.resume_path);
                     ps5::debug::mark(kept ? "core: quick resume kept" : "core: quick resume could not be kept");
                 }
                 exit = answer == kMenuLibrary ? Exit::Library : Exit::Home;
                 ps5::debug::mark(answer == kMenuLibrary ? "core: back to the library" : "core: closing Porpoise");
+                /* The picture fades to black, Porpoise's mark appears, and the
+                 * core closes behind it: nothing on screen stops half-way. */
+                if (hooks.leaving)
+                {
+                    porpoise::audio::flush();
+                    constexpr int kFadeFrames = 16;
+                    for (int frame = 1; frame <= kFadeFrames; ++frame)
+                    {
+                        hooks.leaving(float(frame) / kFadeFrames, hooks.user);
+                        if (hooks.frame)
+                            hooks.frame(h.have_frame, measured_fps, hooks.user);
+                        if (h.have_frame)
+                            porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.filter,
+                                                             h.strength);
+                        else
+                            porpoise::vk::present_clear(0, 0, 0);
+                        pacer.frame_done();
+                    }
+                }
                 break;
             }
             if (answer == kMenuResume)

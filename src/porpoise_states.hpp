@@ -39,4 +39,7 @@ bool load(const std::string &game_key, int index);
 bool remove(const std::string &game_key, int index);
 /* Quick resume: the state the game was left in (<data>/states/<key>/resume.state). */
 std::string resume_path(const std::string &game_key);
+/* Quick resume's picture (resume.png beside the state), taken now while the
+ * game is paused; for the Resume / Start Over question. */
+bool write_resume_picture(const std::string &state_path);
 } // namespace porpoise::states

@@ -677,6 +677,45 @@ int main(int argc, char **argv)
         ui.preview_pointer(-1, -1);
         settings.ui_theme = 0;
         settle();
+        /* Check my setup, as at the first start. */
+        ui.show_setup_check(true);
+        settle();
+        render("setup-check", [&] { ui.draw(12.0); });
+        press(kCircle);
+        settle();
+        /* Quick resume: a saved spot for every game, then Play asks first. */
+        settings.quick_resume = true;
+        for (const Game &gm : lib.games())
+        {
+            const std::string resume = porpoise::states::resume_path(Library::key_of(gm));
+            const std::string dir = resume.substr(0, resume.rfind('/'));
+            mkdir((out + "/states").c_str(), 0777);
+            mkdir(dir.c_str(), 0777);
+            if (std::FILE *f = std::fopen(resume.c_str(), "wb"))
+            {
+                std::fputs("state", f);
+                std::fclose(f);
+            }
+            std::FILE *in = std::fopen((covers + "/PRVW07.png").c_str(), "rb");
+            std::FILE *png = std::fopen((resume.substr(0, resume.size() - 6) + ".png").c_str(), "wb");
+            if (in && png)
+            {
+                char buf[4096];
+                std::size_t n;
+                while ((n = std::fread(buf, 1, sizeof buf, in)) > 0)
+                    std::fwrite(buf, 1, n, png);
+            }
+            if (in)
+                std::fclose(in);
+            if (png)
+                std::fclose(png);
+        }
+        press(kCross);
+        settle();
+        render("resume-ask", [&] { ui.draw(12.0); });
+        press(kCircle);
+        settle();
+        settings.quick_resume = false;
         /* Developer options (Cross three times on the creator's name, in About). */
         settings.developer = true;
         ui.language_changed();

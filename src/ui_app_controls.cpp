@@ -20,6 +20,9 @@
 
 #include "porpoise_pad.hpp"
 #include "ui_app.hpp"
+#include "porpoise_states.hpp"
+#include <ctime>
+#include <unistd.h>
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
 
@@ -1171,12 +1174,31 @@ bool points(int controller)
 }
 } // namespace
 
-App::Action App::start_game(Game *g, const std::string &state)
+App::Action App::start_game(Game *g, const std::string &state, bool resume_asked)
 {
     /* The game's own choice, else the global one. */
     Settings eff = *settings_;
     if (g)
         eff.load(game_settings_path(*g), true);
+    /* Quick resume (beta): where the game was left, if it was; ask first. */
+    if (g && state.empty() && eff.quick_resume && !resume_asked)
+    {
+        const std::string resume = porpoise::states::resume_path(Library::key_of(*g));
+        struct stat st;
+        if (stat(resume.c_str(), &st) == 0 && st.st_size > 0)
+        {
+            resume_game_ = g;
+            open_dialog(DialogKind::Resume, tr("Pick up where you left off?"),
+                        relative_time(static_cast<long long>(st.st_mtime), static_cast<long long>(std::time(nullptr))),
+                        tr("Resume"));
+            dialog_.no = tr("Start Over");
+            dialog_.choice = 1; /* Resume first */
+            const std::string picture = resume.substr(0, resume.size() - 6) + ".png"; /* resume.state -> resume.png */
+            if (access(picture.c_str(), R_OK) == 0)
+                dialog_.picture = g_->texture_file(picture);
+            return Action::None;
+        }
+    }
     if (g && g->platform == "Wii" && eff.wii_setup_ask)
     {
         open_wii_setup(g, true, state);

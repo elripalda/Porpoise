@@ -179,6 +179,21 @@ void *writer(void *)
 }
 } // namespace
 
+bool write_resume_picture(const std::string &state_path)
+{
+    if (state_path.size() < 6)
+        return false;
+    Job job;
+    job.picture_path = state_path.substr(0, state_path.size() - 6) + ".png";
+    job.aspect = porpoise::core::picture_aspect() > 0.1f ? porpoise::core::picture_aspect() : 4.0f / 3.0f;
+    if (!porpoise::core::capture_picture(job.rgba, job.width, job.height) || !write_thumbnail(job))
+    {
+        std::remove(job.picture_path.c_str());
+        return false;
+    }
+    return true;
+}
+
 void set_data_dir(const std::string &data_dir)
 {
     g_data_dir = data_dir;

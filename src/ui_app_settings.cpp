@@ -45,7 +45,7 @@ std::string App::version_label(const std::string &tag, int build)
     if (patch)
         shown += "." + std::to_string(patch);
     if (beta)
-        shown += " beta " + std::to_string(beta);
+        shown += " Beta " + std::to_string(beta);
     if (build > 0)
         shown += " (build " + std::to_string(build) + ")";
     return shown;
@@ -53,6 +53,18 @@ std::string App::version_label(const std::string &tag, int build)
 
 namespace
 {
+/* "Quick resume (beta)": the label without its marker, which is drawn as a
+ * BETA badge beside it instead. */
+std::string beta_label(const char *label, bool &beta)
+{
+    std::string text = label;
+    const std::string mark = " (beta)";
+    beta = text.size() > mark.size() && text.compare(text.size() - mark.size(), mark.size(), mark) == 0;
+    if (beta)
+        text.resize(text.size() - mark.size());
+    return tr(text);
+}
+
 bool copy_file(const std::string &from, const std::string &to, std::size_t keep_tail = 0)
 {
     std::FILE *in = std::fopen(from.c_str(), "rb");
@@ -79,10 +91,8 @@ bool copy_file(const std::string &from, const std::string &to, std::size_t keep_
 
 void App::show_setup_check(bool first_start)
 {
-    std::string text;
-    auto line = [&](bool ok, const std::string &what) {
-        text += (ok ? "\xE2\x9C\x93  " : "\xE2\x9C\x97  ") + what + "\n";
-    };
+    std::vector<std::pair<bool, std::string>> checks;
+    auto line = [&](bool ok, const std::string &what) { checks.emplace_back(ok, what); };
     if (sandboxed_)
         line(false, tr("Porpoise is inside the app sandbox: it can't see /data or USB drives. Turn on Legacy Command "
                        "Server in etaHEN, add PPSA99764 to OnionHEN's exact_title_ids, or run a Lapy daemon, then "
@@ -119,7 +129,8 @@ void App::show_setup_check(bool first_start)
                        "Settings > Games."));
     line(settings_->download_covers, settings_->download_covers ? tr("Covers download while the console is online.")
                                                                  : tr("Cover downloads are off (Settings > Games)."));
-    open_dialog(DialogKind::Info, first_start ? tr("Welcome to Porpoise") : tr("Your setup"), text, "");
+    open_dialog(DialogKind::Info, first_start ? tr("Welcome to Porpoise") : tr("Your setup"), "", "");
+    dialog_.checks = std::move(checks);
 }
 
 std::string App::save_report(std::string &usb)
@@ -334,7 +345,7 @@ void App::add_game_rows(Settings &t, bool per_game)
         SettingRow r;
         r.section = section;
         r.key = key;
-        r.label = tr(label);
+        r.label = beta_label(label, r.beta);
         r.help = tr(help);
         r.bool_value = value;
         r.values = {tr(off), tr(on)};
@@ -597,7 +608,7 @@ void App::build_settings()
         SettingRow r;
         r.section = section;
         r.key = key;
-        r.label = tr(label);
+        r.label = beta_label(label, r.beta);
         r.help = tr(help);
         r.bool_value = value;
         r.values = {tr("Off"), tr("On")};
@@ -606,7 +617,7 @@ void App::build_settings()
     auto action = [&](const char *label, const char *help, const std::string &value, int act, int folder = -1) {
         SettingRow r;
         r.section = section;
-        r.label = tr(label);
+        r.label = beta_label(label, r.beta);
         r.help = tr(help);
         r.values = {tr(value)};
         r.action = act;
@@ -1606,8 +1617,19 @@ void App::draw_settings()
             g.panel(row_x, y + 4, row_w, row_h - 8, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
         else if (k + 1 < section_rows.size() && k + 1 < first + kVisible && (on_rail_ || section_rows[k + 1] != settings_row_))
             g.panel(row_x + 24, y + row_h - 1, row_w - 48, 1.5f, rgba(0x3D4F9E, 0.55f), 1, 0);
-        g.text_mid(Font::SemiBold, ts(30), row_x + 28, cy, on ? kWhite : (on_rail_ ? with_alpha(kSoft, 0.8f) : kSoft),
-                   Align::Left, fit(g, Font::SemiBold, ts(30), r.label, row_w - 420));
+        {
+            const std::string shown = fit(g, Font::SemiBold, ts(30), r.label, row_w - (r.beta ? 540 : 420));
+            g.text_mid(Font::SemiBold, ts(30), row_x + 28, cy, on ? kWhite : (on_rail_ ? with_alpha(kSoft, 0.8f) : kSoft),
+                       Align::Left, shown);
+            if (r.beta)
+            {
+                /* The BETA badge: new, and still being tuned. */
+                const float bx = row_x + 28 + g.measure(Font::SemiBold, ts(30), shown) + 14;
+                const float bw = g.measure(Font::Bold, ts(18), "BETA") + 22, bh = 30;
+                g.panel(bx, cy - bh * 0.5f, bw, bh, rgba(0xFFB347, on ? 0.95f : 0.8f), 1.0f, bh * 0.5f);
+                g.text_mid(Font::Bold, ts(18), bx + bw * 0.5f, cy, rgba(0x2A1600), Align::Center, "BETA");
+            }
+        }
 
         std::string value;
         int vi = 0;

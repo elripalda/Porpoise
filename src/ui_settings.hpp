@@ -46,7 +46,7 @@ struct Settings
     bool custom_textures = false; /* dolphin_load_custom_textures (+ prefetch) */
     bool skip_dupes = true;       /* dolphin_skip_dupe_frames */
     bool fast_states = true;      /* save states leave out Dolphin's GPU texture cache (GFX.ini) */
-    bool quick_resume = true;     /* leaving a game keeps where it was; it picks up there next time (beta) */
+    bool quick_resume = false;     /* leaving a game keeps where it was; it picks up there next time (beta) */
     /* Audio */
     int volume = 10; /* 0..10 */
     bool muted = false;

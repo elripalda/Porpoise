@@ -37,6 +37,9 @@ struct Hooks
      * returns what to do next. */
     void (*opened)(void *user) = nullptr;
     int (*paused)(void *user) = nullptr;
+    /* Leaving the game: called each frame of the fade to black (amount 0..1),
+     * before the frame hook, so the closing work happens behind it. */
+    void (*leaving)(float amount, void *user) = nullptr;
 };
 
 /* What the paused hook can answer. */

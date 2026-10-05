@@ -156,6 +156,9 @@ public:
     bool updating() const { return update_phase_ == 2 || update_phase_ == 3 || update_phase_ == 4 || update_phase_ == 7; }
     /* Back from a game to the library. */
     void return_from_game();
+    /* Black over everything at amount (0..1), with Porpoise's mark in the
+     * middle: leaving a game, coming back, and the start. */
+    void draw_curtain(float amount);
     /* The menu language changed (rebuilds Settings' rows). */
     void language_changed() { build_settings(); }
     /* A message with an OK button. */
@@ -200,6 +203,7 @@ private:
         int action = 0;      /* look::RowAction */
         int folder = -1;     /* the folder a Remove row is for */
         bool rescan = false; /* changing it searches the library again */
+        bool beta = false;   /* a BETA badge after the label */
     };
     enum class DialogKind
     {
@@ -213,12 +217,18 @@ private:
         InstallVersion,
         CopyGame,
         DeleteWiiSave,
+        Resume, /* quick resume: Resume (yes) or Start Over (the other button) */
     };
     struct Dialog
     {
         bool open = false;
         DialogKind kind = DialogKind::Info;
         std::string title, message, yes; /* yes empty: just OK */
+        std::string no;                  /* the other button, when it isn't Cancel */
+        Texture *picture = nullptr;      /* shown above the message (quick resume) */
+        /* A checklist instead of a message (Check my setup): each line with a
+         * tick, or a mark that something needs doing. */
+        std::vector<std::pair<bool, std::string>> checks;
         bool danger = false;
         int choice = 0; /* 0 = cancel, 1 = yes */
         float anim = 0;
@@ -544,7 +554,10 @@ private:
     void draw_wii_guide(double time);
     /* The Wii Remote setup (before a Wii game, from Settings, or from the
      * pause menu). */
-    Action start_game(Game *g, const std::string &state);
+    Action start_game(Game *g, const std::string &state, bool resume_asked = false);
+    Game *resume_game_ = nullptr; /* the game the quick-resume question is about */
+    void close_dialog();
+    void draw_check_mark(float cx, float cy, float size, bool ok);
     void open_wii_setup(Game *g, bool launch, const std::string &state);
     Action update_wii_setup(bool up, bool down, bool left, bool right);
     void draw_wii_setup(double time);

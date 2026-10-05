@@ -11,6 +11,7 @@
 #include <pthread.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <ctime>
@@ -673,8 +674,11 @@ void App::open_screen(Screen s)
 void App::open_dialog(DialogKind kind, const std::string &title, const std::string &message, const std::string &yes,
                       bool danger)
 {
+    close_dialog(); /* a picture left by the last one */
     dialog_.open = true;
     dialog_.kind = kind;
+    dialog_.no.clear();
+    dialog_.checks.clear();
     dialog_.title = title;
     dialog_.message = message;
     dialog_.yes = yes;
@@ -682,6 +686,38 @@ void App::open_dialog(DialogKind kind, const std::string &title, const std::stri
     dialog_.choice = 0; /* Cancel first: nothing happens by accident */
     dialog_.anim = 0;
     sfx(Sound::DetailsFlip);
+}
+
+/* A round mark: a tick on green, or "!" on amber for something to do. The
+ * tick is two bars, since the fonts have no tick character. */
+void App::draw_check_mark(float cx, float cy, float size, bool ok)
+{
+    Gfx &g = *g_;
+    const float r = size * 0.5f;
+    g.panel(cx - r, cy - r, size, size, ok ? rgba(0x2FBF71) : rgba(0xF2A93B), 1.0f, r);
+    if (!ok)
+    {
+        g.text_mid(Font::ExtraBold, size * 0.72f, cx, cy + size * 0.02f, rgba(0x2A1600), Align::Center, "!");
+        return;
+    }
+    auto bar = [&](float x0, float y0, float x1, float y1) {
+        const float dx = x1 - x0, dy = y1 - y0, len = std::sqrt(dx * dx + dy * dy);
+        const float t = size * 0.075f, nx = -dy / len * t, ny = dx / len * t;
+        const Corner c[4] = {{x0 + nx, y0 + ny, 1}, {x1 + nx, y1 + ny, 1}, {x1 - nx, y1 - ny, 1}, {x0 - nx, y0 - ny, 1}};
+        g.quad3d(nullptr, c, len, t * 2, kWhite, t, false, false);
+    };
+    bar(cx - size * 0.22f, cy + size * 0.01f, cx - size * 0.06f, cy + size * 0.17f);
+    bar(cx - size * 0.06f, cy + size * 0.17f, cx + size * 0.23f, cy - size * 0.15f);
+}
+
+void App::close_dialog()
+{
+    dialog_.open = false;
+    if (dialog_.picture)
+    {
+        g_->free_texture(dialog_.picture);
+        dialog_.picture = nullptr;
+    }
 }
 
 App::Action App::update_dialog(bool left, bool right)
@@ -701,14 +737,29 @@ App::Action App::update_dialog(bool left, bool right)
     }
     if (pressed(BtnCircle))
     {
-        dialog_.open = false;
+        close_dialog();
         return Action::None;
     }
     if (pressed(BtnCross))
     {
-        dialog_.open = false;
-        if (!dialog_.yes.empty() && dialog_.choice == 1)
-            return confirm_dialog(dialog_.kind);
+        const DialogKind kind = dialog_.kind;
+        const int choice = dialog_.choice;
+        close_dialog();
+        if (kind == DialogKind::Resume && resume_game_)
+        {
+            /* Resume, or Start Over: the saved spot goes and the game boots afresh. */
+            Game *g = resume_game_;
+            resume_game_ = nullptr;
+            if (choice != 1)
+            {
+                const std::string resume = porpoise::states::resume_path(Library::key_of(*g));
+                std::remove(resume.c_str());
+                std::remove((resume.substr(0, resume.size() - 6) + ".png").c_str());
+            }
+            return start_game(g, "", true);
+        }
+        if (!dialog_.yes.empty() && choice == 1)
+            return confirm_dialog(kind);
     }
     return Action::None;
 }
@@ -831,8 +882,22 @@ void App::draw_dialog()
     const float w = 820;
     /* Most dialogs are a line or two; a few (the sandbox help) run longer. The
      * box grows with the text, so allow enough lines for those and still fit. */
-    const auto lines = wrap(g, Font::Regular, ts(28), dialog_.message, w - 112, 12);
-    const float h = 248 + float(lines.size()) * 38;
+    const auto lines = dialog_.message.empty() ? std::vector<std::string>{}
+                                               : wrap(g, Font::Regular, ts(28), dialog_.message, w - 112, 12);
+    /* A checklist: each item's lines, beside its mark. */
+    std::vector<std::vector<std::string>> items;
+    float checks_h = 0;
+    for (const auto &c : dialog_.checks)
+    {
+        items.push_back(wrap(g, Font::Regular, ts(27), c.second, w - 112 - 62, 4));
+        checks_h += float(items.back().size()) * 36 + 22;
+    }
+    const float pic_h = dialog_.picture && dialog_.picture->width > 0
+                            ? std::min(300.0f, 420.0f * float(dialog_.picture->height) / float(dialog_.picture->width))
+                            : 0.0f;
+    const float pic_w = pic_h > 0 ? pic_h * float(dialog_.picture->width) / float(dialog_.picture->height) : 0.0f;
+    const float h = 248 + float(lines.size()) * 38 + (pic_h > 0 ? pic_h + 24 : 0.0f) + checks_h -
+                    (lines.empty() && checks_h > 0 ? 20.0f : 0.0f);
     const float x = 960 - w * 0.5f, y = 540 - h * 0.5f - 20;
     Glass face;
     face.tint = rgba(0x16348F, 0.92f);
@@ -844,10 +909,33 @@ void App::draw_dialog()
     glass_block(g, 960, y + h * 0.5f, w, h, 18, 0, 0, 42, face);
     g.text_mid(Font::Bold, ts(38), x + 56, y + 64, kWhite, Align::Left, fit(g, Font::Bold, ts(38), dialog_.title, w - 112));
     float ly = y + 118;
+    if (pic_h > 0)
+    {
+        /* Where the game was left. */
+        g.panel(960 - pic_w * 0.5f - 4, ly - 14, pic_w + 8, pic_h + 8, rgba(0x07102E, 0.6f), 1, 12,
+                rgba(0x8BD9FF, 0.7f), 1.6f);
+        g.image(dialog_.picture, 960 - pic_w * 0.5f, ly - 10, pic_w, pic_h, {}, 10);
+        ly += pic_h + 24;
+    }
     for (const std::string &l : lines)
     {
-        g.text_mid(Font::Regular, ts(28), x + 56, ly, kSoft, Align::Left, l);
+        /* Under a picture, centred beneath it. */
+        if (pic_h > 0)
+            g.text_mid(Font::Regular, ts(28), 960, ly, kSoft, Align::Center, l);
+        else
+            g.text_mid(Font::Regular, ts(28), x + 56, ly, kSoft, Align::Left, l);
         ly += 38;
+    }
+    for (std::size_t i = 0; i < items.size(); ++i)
+    {
+        draw_check_mark(x + 56 + 20, ly, 40, dialog_.checks[i].first);
+        for (const std::string &l : items[i])
+        {
+            g.text_mid(Font::Regular, ts(27), x + 56 + 62, ly, dialog_.checks[i].first ? kSoft : kWhite, Align::Left,
+                       l);
+            ly += 36;
+        }
+        ly += 22;
     }
     /* Buttons: Cancel and the action, or just OK. */
     const float bh = 60, by = y + h - 56 - bh * 0.5f;
@@ -863,7 +951,8 @@ void App::draw_dialog()
     else
     {
         button(x + w - 56 - 220, 220, dialog_.yes, dialog_.choice == 1, dialog_.danger);
-        button(x + w - 56 - 220 - 24 - 220, 220, tr("Cancel"), dialog_.choice == 0, false);
+        button(x + w - 56 - 220 - 24 - 220, 220, dialog_.no.empty() ? tr("Cancel") : dialog_.no,
+               dialog_.choice == 0, false);
     }
     g.set_layer();
     drawing_dialog_ = true;
@@ -1031,6 +1120,23 @@ void App::draw_brand(float cy)
         x += 82;
     }
     g.text_mid(Font::SemiBold, 30, x, cy, rgba(0xBFE9FF), Align::Left, "PORPOISE", 7.0f);
+}
+
+void App::draw_curtain(float amount)
+{
+    if (amount <= 0.0f)
+        return;
+    Gfx &g = *g_;
+    if (!logo_tried_)
+    {
+        logo_tried_ = true;
+        const std::string path = g.asset_dir() + "/brand/logo.png";
+        if (access(path.c_str(), R_OK) == 0)
+            logo_ = g.texture_file(path);
+    }
+    const float a = std::min(1.0f, amount);
+    g.panel(-20, -20, 1960, 1120, rgba(0x02040C, a), 1.0f, 0);
+    draw_mark(960, 540, 220, with_alpha(kWhite, a * a));
 }
 
 bool App::draw_mark(float cx, float cy, float width, Color tint)

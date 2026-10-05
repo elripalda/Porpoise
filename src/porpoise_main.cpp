@@ -173,6 +173,9 @@ porpoise::Settings g_settings;
 porpoise::Settings g_play; /* what the game being played uses: g_settings + its own */
 porpoise::ui::Game *g_playing = nullptr;
 bool g_menu_open = false;
+/* Black over the screen with Porpoise's mark (App::draw_curtain): leaving a
+ * game, coming back to the library, and the start. */
+float g_curtain = 0.0f;
 porpoise::ui::App g_app;
 double g_time = 0;
 
@@ -951,6 +954,39 @@ void launch_frame(bool core_frame, double fps, void *)
         draw_wii_hint();
     if (g_menu_open)
         g_app.draw_game_menu(g_time);
+    g_app.draw_curtain(g_curtain);
+}
+
+/* The start: Porpoise's mark fades in on black, and stays while the library
+ * is read; the launcher's first frames lift the curtain off it. */
+void show_boot_mark()
+{
+    porpoise::ui::Texture *mark = g_gfx.texture_file("/app0/assets/brand/logo.png");
+    g_pacer.start(porpoise::vk::refresh_hz(), "boot");
+    const float hz = float(porpoise::vk::refresh_hz() > 10 ? porpoise::vk::refresh_hz() : 60.0);
+    const int frames = int(hz * 0.3f);
+    for (int frame = 1; frame <= frames; ++frame)
+    {
+        const float a = float(frame) / float(frames);
+        begin_ui_frame(0.0f);
+        g_gfx.panel(-20, -20, 1960, 1120, porpoise::ui::rgba(0x02040C), 1.0f, 0);
+        if (mark && mark->width > 0)
+        {
+            const float w = 220, h = w * float(mark->height) / float(mark->width);
+            g_gfx.image(mark, 960 - w * 0.5f, 540 - h * 0.5f, w, h, porpoise::ui::rgba(0xFFFFFF, a * a));
+        }
+        porpoise::vk::present_clear(0.008f, 0.016f, 0.047f);
+        g_pacer.frame_done();
+    }
+    if (mark)
+        g_gfx.free_texture(mark);
+    g_curtain = 1.0f; /* lifted by the launcher's first frames */
+}
+
+void leaving_game(float amount, void *)
+{
+    g_menu_open = false;
+    g_curtain = amount;
 }
 } // namespace
 
@@ -1035,7 +1071,8 @@ int main()
     mkdir("/app0/porpoise", 0777);
     mkdir("/app0/porpoise/covers", 0777);
 
-    ps5::debug::mark_value("main: splash hidden", sceSystemServiceHideSplashScreen());
+    /* The console's own splash stays up until Porpoise's mark is on screen
+     * (show_boot_mark, below): no black gap at the start. */
 
     if (!porpoise::vk::open_display())
     {
@@ -1077,15 +1114,21 @@ int main()
         porpoise::ui::apply_language(g_settings.ui_language, g_data + "/lang");
     }
 
+    /* The launcher runs on Porpoise's own device. */
+    if (!porpoise::vk::open_device(nullptr) || !start_gfx())
+    {
+        sceSystemServiceHideSplashScreen();
+        leave(1);
+    }
+    porpoise::vk::set_overlay(overlay, nullptr);
+    porpoise::vk::set_prepass(prepass, nullptr);
+    show_boot_mark();
+    ps5::debug::mark_value("main: splash hidden", sceSystemServiceHideSplashScreen());
+    mark_start("start: Porpoise's mark on screen, ms");
+
     g_library.scan(library_paths());
     ps5::debug::mark_value("main: games in the library", static_cast<long long>(g_library.games().size()));
     mark_start("start: library read, ms");
-
-    /* The launcher runs on Porpoise's own device. */
-    if (!porpoise::vk::open_device(nullptr) || !start_gfx())
-        leave(1);
-    porpoise::vk::set_overlay(overlay, nullptr);
-    porpoise::vk::set_prepass(prepass, nullptr);
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
     g_app.set_sys_dir("/app0/system/dolphin-emu/Sys");
     g_app.set_sound_hook(play_sound);
@@ -1226,6 +1269,12 @@ int main()
             }
             begin_ui_frame(0.0f);
             g_app.draw(g_time);
+            if (g_curtain > 0.0f)
+            {
+                /* Coming back (or starting): the curtain lifts off the library. */
+                g_app.draw_curtain(g_curtain);
+                g_curtain = std::max(0.0f, g_curtain - float(dt) * 3.0f);
+            }
             porpoise::vk::present_clear(0, 0, 0);
             static bool first_menu_frame = true;
             if (first_menu_frame)
@@ -1311,6 +1360,8 @@ int main()
         hooks.device_closing = launch_device_closing;
         hooks.device_ready = launch_device_ready;
         hooks.frame = launch_frame;
+        hooks.leaving = leaving_game;
+        g_curtain = 0.0f;
         hooks.opened = menu_opened;
         hooks.paused = menu_paused;
         porpoise::core::Playback playback;
@@ -1397,6 +1448,7 @@ int main()
                                porpoise::ui::tr("Dolphin could not start it. The file may be damaged or in a format "
                                                 "Porpoise can't read yet. Details are in porpoise/core.log."));
         ps5::debug::mark("main: back in the library");
+        g_curtain = 1.0f;
         fetch_covers();
         porpoise::pacer::set_vsync(g_settings.vsync);
         g_pacer.start(hz, "launcher");
