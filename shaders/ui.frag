@@ -486,7 +486,9 @@ vec3 crystal(vec2 uv)
     float t = now();
     float aspect = res.x / res.y;
     vec2 p = vec2(uv.x * aspect, uv.y);
-    vec3 col = vec3(0.012, 0.016, 0.030);
+    /* A cool, bright room: light from above, prisms of colour across it. */
+    vec3 col = mix(vec3(0.10, 0.13, 0.20), vec3(0.03, 0.04, 0.08), smoothstep(0.0, 1.0, uv.y));
+    col += mix(pc.look0.rgb, pc.look1.rgb, uv.x) * exp(-dot(uv - vec2(0.5, -0.1), uv - vec2(0.5, -0.1)) / 0.35) * 0.16;
     for (int i = 0; i < 3; ++i)
     {
         float fi = float(i);
@@ -495,9 +497,9 @@ vec3 crystal(vec2 uv)
         float s = dot(p, d) + fi * 0.37 + t * 0.012 * (fi + 1.0);
         float band = exp(-pow((fract(s * 0.7) - 0.5) / 0.09, 2.0));
         vec3 split = spectrum(fract(s * 0.7) * 2.0 + fi * 0.3);
-        col += split * band * 0.10 * (0.6 + 0.4 * noise(p * 3.0 + fi));
+        col += split * band * 0.22 * (0.6 + 0.4 * noise(p * 3.0 + fi));
     }
-    col += mix(pc.look0.rgb, pc.look1.rgb, uv.x) * exp(-dot(uv - vec2(0.5, 1.1), uv - vec2(0.5, 1.1)) / 0.2) * 0.12;
+    col += mix(pc.look0.rgb, pc.look1.rgb, uv.x) * exp(-dot(uv - vec2(0.5, 1.1), uv - vec2(0.5, 1.1)) / 0.2) * 0.18;
     return col;
 }
 
