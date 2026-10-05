@@ -432,6 +432,13 @@ int main(int argc, char **argv)
             settle();
             while (gfx.cjk_busy()) /* the language's CJK atlas, made on a worker */
                 settle();
+            if (const char *intro = std::getenv("PREVIEW_INTRO")) /* the menus' entrance, part way */
+            {
+                const float a = float(std::atof(intro));
+                ui.set_intro(a, 28.0f * (1.0f - a));
+                render((tag + "entrance").c_str(), [&] { ui.draw(12.0); });
+                ui.set_intro(1, 0);
+            }
             render((tag + "library").c_str(), [&] { ui.draw(12.0); });
             ui.show_message(
                 porpoise::ui::tr("Porpoise can't reach /data"),

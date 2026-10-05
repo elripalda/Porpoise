@@ -159,6 +159,15 @@ public:
     /* Black over everything at amount (0..1), with Porpoise's mark in the
      * middle: leaving a game, coming back, and the start. */
     void draw_curtain(float amount);
+    /* The menus' entrance: everything but the background faded by `fade` and
+     * lowered by `dy` design pixels (Porpoise starting, or back from a game). */
+    void set_intro(float fade, float dy)
+    {
+        intro_fade_ = fade;
+        intro_dy_ = dy;
+    }
+    /* Buttons already down count only once they've been let go. */
+    void swallow_held() { held_ = prev_ = 0xFFFFFFFFu; }
     /* The menu language changed (rebuilds Settings' rows). */
     void language_changed() { build_settings(); }
     /* A message with an OK button. */
@@ -442,6 +451,7 @@ private:
     void opened_tile(const Game &game); /* the banner starts, its jingle plays */
     BannerTex *banner_texture(const Game &game, bool big);
     void draw_frames(const BannerTex &b, float x, float y, float w, float h, float fade, float radius, bool fill);
+    float intro_fade_ = 1, intro_dy_ = 0;
     Gfx *g_ = nullptr;
     Library *lib_ = nullptr;
     Settings *settings_ = nullptr;

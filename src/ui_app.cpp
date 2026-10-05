@@ -2109,6 +2109,7 @@ void App::draw(double time)
         return;
     }
     g.background();
+    g.set_intro(intro_fade_, intro_dy_);
     draw_top_bar();
 
     /* Motion: a new tab slides in from the side it came from; a screen that
@@ -2165,6 +2166,7 @@ void App::draw(double time)
     g.set_layer();
     draw_dialog();
     draw_update_overlay(time);
+    g.set_intro(1, 0);
 }
 
 /* The Revolution look: its own home and opened tile, and the other screens
@@ -2175,6 +2177,7 @@ void App::draw_revolution(double time)
     g.set_layer();
     g.set_tone(false);
     draw_room();
+    g.set_intro(intro_fade_, intro_dy_);
     const bool home = home_showing();
     const bool opened = tab_ == Tab::Library && (screen_ == Screen::Details || screen_ == Screen::States);
     /* While a tile opens or closes, the zoom decides which side shows. */
@@ -2241,6 +2244,7 @@ void App::draw_revolution(double time)
     draw_update_overlay(time);
     g.set_tone(false);
     draw_rev_pointer();
+    g.set_intro(1, 0);
 }
 
 /* Downloading, installing, then done: a box over everything. */

@@ -16,8 +16,9 @@
 - **Newer PS5 graphics driver** (Mihawk's PS5_Vulkan / PS5 Mesa). Porpoise now sends the TV a 1080p picture instead of drawing every frame at 4K. Want it sharper on a 4K TV? **Settings → Video → Output resolution** offers 1440p and 4K.
 - **Smoother menus:** covers load in the background and fade in, and Memory Cards opens without a hitch.
 - **Threaded GPU recording** *(beta, off)*: Settings → Graphics. Worth trying on a demanding game.
-- **No more freeze when you quit to the library:** the game fades to black while Porpoise saves your spot, and the library fades back in.
-- **A boot screen:** the Porpoise dolphin shows as soon as the app opens.
+- **No more freeze when you quit to the library:** the game fades to black while Porpoise saves your spot, and the menus fade back in once everything has loaded.
+- **A cleaner start:** the dolphin fades in on black, then the menus fade in with the music.
+- **No more Dolphin messages over your game:** the yellow "Saved to memory card"-style notes are gone.
 
 ## New
 

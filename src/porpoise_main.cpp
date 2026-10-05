@@ -966,7 +966,7 @@ void show_boot_mark()
     porpoise::ui::Texture *mark = g_gfx.texture_file("/app0/assets/brand/logo.png");
     g_pacer.start(porpoise::vk::refresh_hz(), "boot");
     const float hz = float(porpoise::vk::refresh_hz() > 10 ? porpoise::vk::refresh_hz() : 60.0);
-    const int frames = int(hz * 0.3f);
+    const int frames = int(hz * 0.5f);
     for (int frame = 1; frame <= frames; ++frame)
     {
         const float a = float(frame) / float(frames);
@@ -989,6 +989,71 @@ void leaving_game(float amount, void *)
 {
     g_menu_open = false;
     g_curtain = amount;
+}
+
+/* The menus' entrance, at the start and back from a game. The curtain (black,
+ * the dolphin in the middle) stays while the library's pictures come in, so
+ * nothing hitches on screen; then the dolphin and the black fade off the
+ * background, and the menus fade and rise in as the music comes up. */
+struct Entrance
+{
+    bool on = false, lifting = false;
+    double held = 0, lifted = 0;
+    int quiet = 0; /* frames in a row with no picture loading */
+};
+Entrance g_entrance;
+constexpr double kEntranceMinHold = 0.35, kEntranceMaxHold = 2.5;
+constexpr double kEntranceLift = 0.4, kEntranceUiFrom = 0.2, kEntranceUi = 0.6;
+constexpr float kEntranceRise = 28.0f;
+
+void start_entrance()
+{
+    g_entrance = Entrance{};
+    g_entrance.on = true;
+    g_curtain = 1.0f;
+    g_app.set_intro(0.0f, kEntranceRise);
+    porpoise::sound::fade_music(0.0f, 0.0f);
+}
+
+/* Once a launcher frame, before the menus update: true while the entrance
+ * keeps the player's buttons from the menus. */
+bool entrance_frame(double dt)
+{
+    Entrance &e = g_entrance;
+    if (!e.on)
+        return false;
+    if (!e.lifting)
+    {
+        e.held += dt;
+        e.quiet = g_gfx.loading() ? 0 : e.quiet + 1;
+        if ((e.quiet >= 8 && e.held >= kEntranceMinHold) || e.held >= kEntranceMaxHold)
+        {
+            e.lifting = true;
+            porpoise::sound::fade_music(1.0f, 2.0f);
+            char line[80];
+            std::snprintf(line, sizeof line, "main: menus in after %.0f ms behind the curtain", e.held * 1000.0);
+            ps5::debug::mark(line);
+        }
+        g_curtain = 1.0f;
+        return true;
+    }
+    e.lifted += dt;
+    auto smooth = [](double x) {
+        x = std::clamp(x, 0.0, 1.0);
+        return float(x * x * (3.0 - 2.0 * x));
+    };
+    g_curtain = 1.0f - smooth(e.lifted / kEntranceLift);
+    const float ui = smooth((e.lifted - kEntranceUiFrom) / kEntranceUi);
+    g_app.set_intro(ui, kEntranceRise * (1.0f - ui));
+    if (e.lifted >= kEntranceUiFrom + kEntranceUi)
+    {
+        e.on = false;
+        g_curtain = 0.0f;
+        g_app.set_intro(1.0f, 0.0f);
+        g_app.swallow_held(); /* a button held through it doesn't press anything */
+        return false;
+    }
+    return true;
 }
 } // namespace
 
@@ -1073,15 +1138,15 @@ int main()
     mkdir("/app0/porpoise", 0777);
     mkdir("/app0/porpoise/covers", 0777);
 
-    /* The console's own splash stays up until Porpoise's mark is on screen
-     * (show_boot_mark, below): no black gap at the start. */
-
     if (!porpoise::vk::open_display())
     {
         ps5::debug::mark("main: no display; nothing can be shown");
         leave(1);
     }
     mark_start("start: display open, ms");
+    /* Not the console's splash (the backdrop) while Porpoise gets ready: a
+     * black screen, then the dolphin fades in on it (show_boot_mark). */
+    ps5::debug::mark_value("main: splash hidden", sceSystemServiceHideSplashScreen());
     porpoise::pad::open();
     porpoise::audio::open();
 
@@ -1125,7 +1190,6 @@ int main()
     porpoise::vk::set_overlay(overlay, nullptr);
     porpoise::vk::set_prepass(prepass, nullptr);
     show_boot_mark();
-    ps5::debug::mark_value("main: splash hidden", sceSystemServiceHideSplashScreen());
     mark_start("start: Porpoise's mark on screen, ms");
 
     g_library.scan(library_paths());
@@ -1166,7 +1230,7 @@ int main()
                                             "\xE2\x80\xA2 Or run a standalone daemon such as Lapy.\n"
                                             "Then open Porpoise again; if a launch still lands here, try once more. "
                                             "Until then, games go in /app0/porpoise/games."));
-    porpoise::sound::fade_music(1.0f, 2.5f);
+    start_entrance(); /* the music comes up with the menus */
     fetch_covers();
 
     const double hz = porpoise::vk::refresh_hz();
@@ -1221,6 +1285,8 @@ int main()
             }
             if (g_covers_again && !porpoise::covers::busy())
                 fetch_covers();
+            if (entrance_frame(dt))
+                in = porpoise::ui::Input{}; /* the menus aren't on screen yet */
             const auto action = g_app.update(in, dt);
             if (action == porpoise::ui::App::Action::SettingsChanged)
             {
@@ -1272,11 +1338,7 @@ int main()
             begin_ui_frame(0.0f);
             g_app.draw(g_time);
             if (g_curtain > 0.0f)
-            {
-                /* Coming back (or starting): the curtain lifts off the library. */
-                g_app.draw_curtain(g_curtain);
-                g_curtain = std::max(0.0f, g_curtain - float(dt) * 3.0f);
-            }
+                g_app.draw_curtain(g_curtain); /* the entrance (entrance_frame) */
             porpoise::vk::present_clear(0, 0, 0);
             static bool first_menu_frame = true;
             if (first_menu_frame)
@@ -1444,13 +1506,12 @@ int main()
         apply_settings();
         porpoise::banner::pause(false);
         g_app.return_from_game();
-        porpoise::sound::fade_music(1.0f, 2.5f);
         if (exit == porpoise::core::Exit::Failed)
             g_app.show_message(porpoise::ui::tr("This game didn't start"),
                                porpoise::ui::tr("Dolphin could not start it. The file may be damaged or in a format "
                                                 "Porpoise can't read yet. Details are in porpoise/core.log."));
         ps5::debug::mark("main: back in the library");
-        g_curtain = 1.0f;
+        start_entrance();
         fetch_covers();
         porpoise::pacer::set_vsync(g_settings.vsync);
         g_pacer.start(hz, "launcher");

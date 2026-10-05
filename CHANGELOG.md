@@ -51,9 +51,14 @@ and still being tuned; everything else is meant to be as solid as 1.5.1.
   records Dolphin's drawing on a thread of its own. Worth trying on a
   demanding game.
 - **Quitting to the library no longer freezes halfway:** the game fades to
-  black while Porpoise saves where you were, and the library fades back in.
-- **A boot screen:** the Porpoise dolphin shows from the moment the app
-  opens, instead of a blank screen while the library is read.
+  black while Porpoise saves where you were, the library's pictures load
+  behind the dolphin, and the menus fade back in once they're ready. Pictures
+  the menus load no longer make the graphics chip wait.
+- **A cleaner start:** no console splash; the dolphin fades in on black while
+  Porpoise gets ready, then the background shows and the menus fade and rise
+  in as the music comes up.
+- **No more Dolphin messages over the game:** the yellow notes Dolphin shows
+  ("Saved to memory card", changed video settings and the like) are gone.
 
 ### New
 - **Quick resume** (beta, Settings → Graphics, off): leaving a game from the

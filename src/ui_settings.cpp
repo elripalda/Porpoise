@@ -158,7 +158,7 @@ const char *const kManaged[] = {
     "dolphin_shader_compilation_mode", "dolphin_texture_cache_accuracy", "dolphin_pixel_lighting",
     "dolphin_disable_fog", "dolphin_crop_overscan", "dolphin_load_custom_textures",
     "dolphin_cache_custom_textures", "dolphin_skip_dupe_frames", "dolphin_enable_rumble", "dolphin_cpu_clock_rate",
-    "dolphin_main_cpu_thread", "dolphin_accurate_fmadds", "dolphin_fast_disc_speed", "dolphin_cheats_enabled", "dolphin_language",
+    "dolphin_main_cpu_thread", "dolphin_accurate_fmadds", "dolphin_osd_enabled", "dolphin_fast_disc_speed", "dolphin_cheats_enabled", "dolphin_language",
     "dolphin_progressive_scan",
     /* Set per game from its Dolphin settings (porpoise_main.cpp, kGameOptions). */
     "dolphin_efb_to_texture", "dolphin_xfb_to_texture_enable", "dolphin_efb_access_enable",
@@ -702,6 +702,9 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
          * (porpoise_core.cpp), so the game's cursor is exactly Porpoise's. */
         {"dolphin_ir_passthrough", on_off(wii_pointer != 2)},
         {"dolphin_save_load_settings", "disabled"},
+        /* Dolphin's own yellow notes over the game ("Saved to memory card"
+         * and the like): Porpoise shows what matters in its own menus. */
+        {"dolphin_osd_enabled", "disabled"},
     };
 }
 

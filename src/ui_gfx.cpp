@@ -545,7 +545,19 @@ Texture *Gfx::texture_file(const std::string &path, int max_side)
     std::vector<unsigned char> fitted;
     fit_side(pixels, w, h, max_side, fitted);
     stbi_image_free(pixels);
-    return upload(fitted.data(), w, h);
+    /* Copied in with the frame's commands: a picture loaded while the menus
+     * move (the logo coming back from a game) doesn't stall the GPU. */
+    return upload_later(fitted.data(), w, h);
+}
+
+bool Gfx::loading() const
+{
+    Loader &L = loader();
+    std::lock_guard<std::mutex> g(L.lock);
+    for (const auto &[path, load] : L.loads)
+        if (load.state != Load::Failed && frame_no_ - load.wanted <= 2)
+            return true;
+    return false;
 }
 
 Texture *Gfx::texture_file_async(const std::string &path, bool *pending, int max_side)
@@ -1369,6 +1381,8 @@ void Gfx::begin(unsigned slot, float target_w, float target_h, float time, float
     reduced_motion_ = reduced_motion;
     layer_dx_ = layer_dy_ = 0;
     layer_fade_ = 1;
+    intro_fade_ = 1;
+    intro_dy_ = 0;
     ++frame_no_;
     uploads_left_ = 2;
     if (async_loads_)
@@ -1427,7 +1441,8 @@ void Gfx::push(Texture *t, const Vertex v[4])
     if (batches_.empty() || batches_.back().set != set)
         batches_.push_back({set, std::uint32_t(vertices_.size()), 0});
     static const int order[6] = {0, 1, 2, 0, 2, 3};
-    const bool layered = layer_dx_ != 0 || layer_dy_ != 0 || layer_fade_ < 1;
+    const float fade = layer_fade_ * intro_fade_, dy = layer_dy_ + intro_dy_;
+    const bool layered = layer_dx_ != 0 || dy != 0 || fade < 1;
     for (int i : order)
     {
         vertices_.push_back(v[i]);
@@ -1435,13 +1450,13 @@ void Gfx::push(Texture *t, const Vertex v[4])
             continue;
         Vertex &o = vertices_.back();
         o.pos[0] += layer_dx_ * 2.0f / kDesignW * o.pos[3];
-        o.pos[1] += layer_dy_ * 2.0f / kDesignH * o.pos[3];
+        o.pos[1] += dy * 2.0f / kDesignH * o.pos[3];
         if (int(o.p0[0] + 0.5f) == K_GLASS)
-            o.p2[3] *= layer_fade_;
+            o.p2[3] *= fade;
         else
         {
-            o.color[3] *= layer_fade_;
-            o.bcolor[3] *= layer_fade_;
+            o.color[3] *= fade;
+            o.bcolor[3] *= fade;
         }
     }
     batches_.back().count += 6;

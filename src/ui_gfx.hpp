@@ -191,6 +191,15 @@ public:
      * alone. begin() turns it off; screens drawn for the light look keep it
      * off. */
     void set_tone(bool light) { tone_ = light; }
+    /* On top of set_layer, for the whole frame: the menus' entrance. Not the
+     * background. begin() resets it. */
+    void set_intro(float fade, float dy)
+    {
+        intro_fade_ = fade;
+        intro_dy_ = dy;
+    }
+    /* Pictures asked for in the last frames still being read or copied in. */
+    bool loading() const;
     bool toned() const { return tone_; }
     Color tone(Color c) const;
 
@@ -339,6 +348,7 @@ private:
     float target_w_ = 1920, target_h_ = 1080;
     float time_ = 0, dim_ = 0;
     float layer_dx_ = 0, layer_dy_ = 0, layer_fade_ = 1;
+    float intro_fade_ = 1, intro_dy_ = 0;
     bool reduced_motion_ = false;
     std::vector<Vertex> vertices_;
     std::vector<Batch> batches_;
