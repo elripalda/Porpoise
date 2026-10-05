@@ -368,7 +368,9 @@ void App::draw_home(double time)
         g.panel(560, 380, 800, 190, rgba(0xFFFFFF, 0.95f), 0.96f, 28, kRim, 3);
         g.text_mid(Font::Bold, ts(34), 960, 440, kInk, Align::Center,
                    none ? tr("No games yet")
-                        : lib_->show() == Library::Show::Wii ? tr("No Wii games here") : tr("No GameCube games here"));
+                        : lib_->show() == Library::Show::Wii        ? tr("No Wii games here")
+                        : lib_->show() == Library::Show::Channels ? tr("No channels here")
+                                                                  : tr("No GameCube games here"));
         for (const std::string &l :
              wrap(g, Font::Regular, ts(23),
                   none ? tr("Put them in /data/porpoise/games, or add a folder in Settings, under Games.")

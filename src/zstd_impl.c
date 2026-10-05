@@ -9,14 +9,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-static jmp_buf *porpoise_zstd_jump;
+/* Per thread: the two banner workers can decode at once, and a failure in
+ * one must jump back to its own call, never to the other thread's. */
+static _Thread_local jmp_buf *porpoise_zstd_jump;
 #define ZDEC_NO_MESSAGE
 #define exit(code) longjmp(*porpoise_zstd_jump, 1)
 #include "../third_party/zstd-educational/zstd_decompress.c"
 #undef exit
 
 /* Decompresses whole frames; (size_t)-1 on corrupt data or a short buffer.
- * Not reentrant: called from one worker at a time. */
+ * Safe from several threads at once (each has its own jump point). */
 size_t porpoise_zstd_decompress(void *dst, size_t dst_len, const void *src, size_t src_len)
 {
     jmp_buf jump;

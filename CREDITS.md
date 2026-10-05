@@ -4,7 +4,7 @@ Porpoise would not exist without the people and projects below. Thank you.
 
 ## Porpoise
 
-**Ruben ([@elripalda](https://www.elripalda.com))**: creator. The idea, the
+**Ruben ([@elripalda](https://ripalda.dev))**: creator. The idea, the
 design direction, the logo and artwork, the menu music and every sound effect,
 and all of the testing on real hardware.
 
@@ -76,5 +76,5 @@ Every component that ships inside the app, with its licence text and the exact
 source revision it was built from, is listed in `licenses/README.txt` and
 `licenses/components.json` in the release folder.
 
-If you think someone is missing from this page, please
-[open an issue](https://github.com/elripalda/Porpoise/issues).
+If you think someone is missing from this page, please say so on the
+[RIPALDA Discord](https://discord.gg/GgDE5Vynyu).

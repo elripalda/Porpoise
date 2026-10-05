@@ -20,6 +20,8 @@ struct Game
     std::string title;     /* from the disc header, else the file name */
     std::string format;    /* ISO, RVZ, CISO, ... */
     std::string platform;  /* GameCube or Wii */
+    std::string app_dir;   /* a homebrew app's folder (its icon.png) */
+    std::string kind;      /* not a disc: WiiWare, Virtual Console, Channel or Homebrew (a WAD, an app) */
     std::string region;    /* USA, Europe, Japan, ... */
     std::uint64_t bytes = 0;
     long long last_played = 0; /* unix time, 0 = never */
@@ -81,12 +83,15 @@ public:
         All,
         GameCube,
         Wii,
+        Channels, /* WADs and homebrew apps */
     };
     void set_show(Show what) { show_ = what; sort(sort_); }
     Show show() const { return show_; }
     int shown() const { return shown_; }
     bool shows(const Game &g) const
     {
+        if (show_ == Show::Channels)
+            return !g.kind.empty();
         return show_ == Show::All || (show_ == Show::Wii) == (g.platform == "Wii");
     }
 
@@ -105,7 +110,15 @@ public:
     {
         return settings_key_of(g) + (g.disc_number > 0 ? "-disc" + std::to_string(g.disc_number + 1) : "");
     }
-    static std::string settings_key_of(const Game &g) { return g.id.empty() ? g.file : g.id; }
+    static std::string settings_key_of(const Game &g)
+    {
+        if (!g.id.empty())
+            return g.id;
+        /* Homebrew apps are all boot.dol: each is known by its folder. */
+        if (!g.app_dir.empty())
+            return "app-" + g.app_dir.substr(g.app_dir.rfind('/') + 1);
+        return g.file;
+    }
     std::string cover_path(const Game &g) const;
     std::string disc_path(const Game &g) const; /* <covers>/<ID>.disc.png, or "" */
     std::string back_path(const Game &g) const; /* <covers>/<ID>.back.png, or "" */

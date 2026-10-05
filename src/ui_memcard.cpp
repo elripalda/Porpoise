@@ -466,8 +466,9 @@ bool parse_wii_banner(const std::string &path, WiiSave &out)
 void load_wii_saves(const std::string &saves_dir, std::vector<WiiSave> &out)
 {
     out.clear();
-    /* Disc games (00010000) and their channels' kin (00010004: some discs). */
-    for (const char *kind : {"00010000", "00010004"})
+    /* Disc games (00010000), their channels' kin (00010004: some discs) and
+     * downloaded titles: WiiWare and Virtual Console (00010001). */
+    for (const char *kind : {"00010000", "00010004", "00010001"})
     {
         const std::string root = saves_dir + "/User/Wii/title/" + kind;
         DIR *d = opendir(root.c_str());

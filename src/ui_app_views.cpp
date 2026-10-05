@@ -27,7 +27,9 @@ float ease_inout(float t)
 
 std::string App::game_meta(const Game &g) const
 {
-    std::string meta = g.platform + "   \xE2\x80\xA2   " + relative_time(g.last_played, (long long)std::time(nullptr));
+    /* A WAD or an app says what it is (WiiWare, Virtual Console, ...). */
+    std::string meta = (g.kind.empty() ? g.platform : tr(g.kind)) + "   \xE2\x80\xA2   " +
+                       relative_time(g.last_played, (long long)std::time(nullptr));
     if (g.play_seconds >= 60)
         meta += "   \xE2\x80\xA2   " + play_time_text(g.play_seconds);
     return meta;
@@ -571,7 +573,7 @@ void App::draw_list_view(double time)
         if (game.favourite)
             g.glyph(Glyph::Star, lx + lw - 250, y + (row_h - 8) * 0.5f, 26, rgba(0xFFD45C, edge));
         g.text_mid(Font::Regular, ts(22), lx + lw - 36, y + (row_h - 8) * 0.5f, with_alpha(on ? kWhite : kLavender, edge),
-                   Align::Right, game.platform);
+                   Align::Right, game.kind.empty() ? game.platform : tr(game.kind));
     }
 }
 

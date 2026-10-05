@@ -81,6 +81,8 @@ void App::forget_textures()
     lines_art_tried_ = false;
     qr_ = nullptr;
     qr_tried_ = false;
+    ripalda_ = nullptr;
+    mark_tried_ = false;
     flags_ = nullptr;
     flags_tried_ = false;
     for (Texture *&t : menu_slot_tex_)
@@ -430,7 +432,7 @@ App::Action App::update(const Input &in, double dt)
             if (sort_row_ == 0)
                 lib_->sort(Library::Sort((int(lib_->sort_order()) + 4 + step) % 4));
             else
-                lib_->set_show(Library::Show((int(lib_->show()) + 3 + step) % 3));
+                lib_->set_show(Library::Show((int(lib_->show()) + 4 + step) % 4));
             keep_selection(key);
             lib_->save();
             sfx(Sound::MenuScroll);
@@ -448,7 +450,7 @@ App::Action App::update(const Input &in, double dt)
             if (sort_row_ == 0)
                 lib_->sort(Library::Sort((int(lib_->sort_order()) + 1) % 4));
             else
-                lib_->set_show(Library::Show((int(lib_->show()) + 1) % 3));
+                lib_->set_show(Library::Show((int(lib_->show()) + 1) % 4));
             keep_selection(key);
             lib_->save();
             sfx(Sound::MenuScroll);
@@ -1624,7 +1626,9 @@ void App::draw_library(double time)
     {
         /* Sort & filter shows none: say so, and how to see them again. */
         g.text(Font::Bold, ts(40), 960, 520, kWhite, Align::Center,
-               lib_->show() == Library::Show::Wii ? tr("No Wii games here") : tr("No GameCube games here"));
+               lib_->show() == Library::Show::Wii        ? tr("No Wii games here")
+               : lib_->show() == Library::Show::Channels ? tr("No channels here")
+                                                         : tr("No GameCube games here"));
         g.text(Font::Regular, ts(28), 960, 580, kSoft, Align::Center,
                tr("Sort & filter (Triangle) can show all of your games."));
         draw_prompts({}, {{Glyph::Triangle, "Sort & filter"}}, "");
@@ -1660,6 +1664,7 @@ std::string App::library_count() const
     {
     case Library::Show::Wii: return plural((long long)shown, "1 Wii game", "{n} Wii games");
     case Library::Show::GameCube: return plural((long long)shown, "1 GameCube game", "{n} GameCube games");
+    case Library::Show::Channels: return plural((long long)shown, "1 channel", "{n} channels");
     default: return plural((long long)shown, "1 game", "{n} games");
     }
 }
@@ -1679,7 +1684,7 @@ void App::draw_sort()
     g.panel(x, y, w, h, rgba(0x13256F, 0.92f), 0.65f, kR, rgba(0x6FAEFF), 2.0f, 10, 0.25f);
     g.text_mid(Font::Bold, ts(36), x + 40, y + 62, kWhite, Align::Left, tr("Sort & filter"));
     const std::string orders[4] = {tr("Title A-Z"), tr("Recently played"), tr("Most played"), tr("Favorites first")};
-    const std::string shows[3] = {tr("All games"), tr("GameCube"), tr("Wii")};
+    const std::string shows[4] = {tr("All games"), tr("GameCube"), tr("Wii"), tr("Channels")};
     const std::string names[3] = {tr("Sort by"), tr("Show"), tr("Get covers and info now")};
     const std::string values[3] = {orders[int(lib_->sort_order())], shows[int(lib_->show())], ""};
     for (int i = 0; i < 3; ++i)
@@ -1778,7 +1783,7 @@ void App::draw_details(double time)
         g.text_mid(Font::Bold, ts(48), px + 52, ty, kWhite, Align::Left, l);
         ty += 56;
     }
-    std::string sub = game.platform;
+    std::string sub = game.kind.empty() ? game.platform : tr(game.kind);
     if (!game.region.empty())
         sub += "   \xE2\x80\xA2   " + tr(game.region);
     if (!game.id.empty())

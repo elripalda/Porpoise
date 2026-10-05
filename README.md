@@ -416,8 +416,16 @@ becomes the next player, up to four, and can join in the middle of a game.
   - `/data/homebrew/PPSA99764/porpoise/core.log` (records the game's real speed
     every 10 seconds)
 
-Please [open an issue](https://github.com/elripalda/Porpoise/issues) with your
-console firmware, the game's disc ID and those logs.
+Share them in the bug reports on the **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**
+with your console firmware, your HEN and its version, the game's disc ID and
+what happened. **Settings → About → Report a bug** gathers the logs for you,
+and the code beside it opens the Discord on your phone.
+
+## Help and community
+
+- **Discord:** [discord.gg/GgDE5Vynyu](https://discord.gg/GgDE5Vynyu): help, bug
+  reports, news and test builds.
+- **Website:** [ripalda.dev](https://ripalda.dev): Ruben's projects and downloads.
 
 ## Known limitations
 
@@ -438,8 +446,9 @@ the PS5 payload SDK. See **[BUILDING.md](BUILDING.md)**.
 
 ## Credits
 
-Porpoise was created by **Ruben ([@elripalda](https://www.elripalda.com))**:
-the design, the launcher, the logo, the menu music and the sound effects.
+Porpoise was created by **Ruben ([@elripalda](https://ripalda.dev))**: the
+design, the launcher, the logo, the menu music and the sound effects.
+[ripalda.dev](https://ripalda.dev) · [Discord](https://discord.gg/GgDE5Vynyu)
 
 It stands on the work of many people. The full list, with licences, is in
 **[CREDITS.md](CREDITS.md)**:
@@ -507,4 +516,4 @@ from other projects keep their own notices. Every component that ships in the
 app, with its licence and exact source revision, is listed in
 `licenses/README.txt` inside the release and in [CREDITS.md](CREDITS.md).
 
-<p align="center"><sub>Made with care by <a href="https://www.elripalda.com">@elripalda</a>.</sub></p>
+<p align="center"><sub>Made with care by <a href="https://ripalda.dev">@elripalda</a> · <a href="https://discord.gg/GgDE5Vynyu">Discord</a></sub></p>

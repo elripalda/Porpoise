@@ -6,6 +6,7 @@
 #include "porpoise_disc.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -140,6 +141,13 @@ const u8 kCommonKeys[2][16] = {
     {0xeb, 0xe4, 0x2a, 0x22, 0x5e, 0x85, 0x93, 0xe4, 0x48, 0xd9, 0xc5, 0x45, 0x73, 0x81, 0xaa, 0xf7},
     {0x63, 0xb8, 0x2b, 0xb4, 0xf4, 0x61, 0x4e, 0x2e, 0x13, 0xf2, 0xfe, 0xfb, 0xba, 0x4c, 0x9b, 0x7e}};
 
+/* Porpoise is built without exceptions: an allocation too big for the
+ * console doesn't throw, it ends the app. Every buffer sized by a field in a
+ * file is checked against this first, so a damaged or unusual image is
+ * refused instead (a freed Porpoise reads every game on /data and USB drives
+ * at its start, for their banners). */
+constexpr u64 kMaxBuffer = u64(64) << 20;
+
 /* ---- the containers ------------------------------------------------------------------------- */
 
 struct File
@@ -203,6 +211,8 @@ public:
         u8 h[12];
         if (!file.read(0, h, sizeof h) || std::memcmp(h, "WBFS", 4) != 0)
             return false;
+        if (h[8] < 9 || h[8] > 16 || h[9] < 15 || h[9] > 31)
+            return false; /* 512 B..64 KiB disk sectors, 32 KiB..2 GiB WBFS sectors */
         const u64 hd_sector = u64(1) << h[8];
         wbfs_sector = u64(1) << h[9];
         if (wbfs_sector < kWiiSector)
@@ -247,7 +257,7 @@ public:
         if (!file.read(0, h.data(), h.size()) || std::memcmp(h.data(), "CISO", 4) != 0)
             return false;
         block = le32(&h[4]);
-        if (block == 0)
+        if (block == 0 || block > kMaxBuffer)
             return false;
         u64 next = 0x8000;
         for (std::size_t i = 8; i < h.size(); ++i)
@@ -293,7 +303,7 @@ public:
         compressed = le64(h + 8);
         block = le32(h + 24);
         const u32 blocks = le32(h + 28);
-        if (block == 0 || blocks == 0)
+        if (block == 0 || blocks == 0 || block > kMaxBuffer || u64(blocks) * 12 > file.size || compressed > file.size)
             return false;
         std::vector<u8> raw(std::size_t(blocks) * 8);
         if (!file.read(32, raw.data(), raw.size()))
@@ -311,7 +321,7 @@ public:
         constexpr u64 kRaw = u64(1) << 63;
         const u64 start = pointers[b] & ~kRaw;
         const u64 end = b + 1 < pointers.size() ? pointers[b + 1] & ~kRaw : compressed;
-        if (end < start)
+        if (b >= pointers.size() || end < start || end - start > block + 0x10000 || end - start > kMaxBuffer)
             return false;
         std::vector<u8> in(end - start);
         if (!file.read(data_offset + start, in.data(), in.size()))
@@ -386,6 +396,8 @@ public:
         }
         if (compression != 5)
             return false; /* bzip2 / LZMA: not read here */
+        if (max_out > kMaxBuffer)
+            return false;
         out.resize(max_out);
         const std::size_t n = porpoise_zstd_decompress(out.data(), out.size(), in.data(), in.size());
         if (n == std::size_t(-1))
@@ -418,7 +430,9 @@ public:
         const u32 n_groups = be32(&h2[0xC4]);
         const u64 groups_off = be64(&h2[0xC8]);
         const u32 groups_size = be32(&h2[0xD0]);
-        if (chunk == 0 || part_size < 0x30 || n_parts > 64)
+        if (chunk == 0 || chunk > kMaxBuffer || part_size < 0x30 || part_size > 0x1000 || n_parts > 64 ||
+            raw_size > kMaxBuffer || groups_size > kMaxBuffer || u64(n_raw) * 0x18 > kMaxBuffer ||
+            u64(n_groups) * 12 > kMaxBuffer)
             return false;
         std::vector<u8> pe(std::size_t(n_parts) * part_size);
         if (!file.read(parts_off, pe.data(), pe.size()))
@@ -469,6 +483,8 @@ public:
             data = cached;
             return true;
         }
+        if (data_size > kMaxBuffer || g.size > kMaxBuffer)
+            return false;
         if (g.size == 0)
         {
             data.assign(data_size, 0);
@@ -794,8 +810,192 @@ void aes_cbc_decrypt(const std::uint8_t key[16], std::uint8_t iv[16], std::uint8
     }
 }
 
+namespace
+{
+u64 align64(u64 v)
+{
+    return (v + 63) & ~u64(63);
+}
+
+/* UTF-16BE (up to a NUL or a line break) to UTF-8. */
+std::string utf16be(const u8 *p, std::size_t chars)
+{
+    std::string out;
+    for (std::size_t i = 0; i < chars; ++i)
+    {
+        u32 c = (u32(p[i * 2]) << 8) | p[i * 2 + 1];
+        if (c == 0 || c == '\n')
+            break;
+        if (c >= 0xD800 && c <= 0xDFFF)
+            c = 0xFFFD;
+        if (c < 0x80)
+            out += char(c);
+        else if (c < 0x800)
+        {
+            out += char(0xC0 | (c >> 6));
+            out += char(0x80 | (c & 0x3F));
+        }
+        else
+        {
+            out += char(0xE0 | (c >> 12));
+            out += char(0x80 | ((c >> 6) & 0x3F));
+            out += char(0x80 | (c & 0x3F));
+        }
+    }
+    while (!out.empty() && out.back() == ' ')
+        out.pop_back();
+    return out;
+}
+} // namespace
+
+bool read_header(const std::string &path, std::uint8_t out[0x100], std::string &error)
+{
+    std::unique_ptr<Image> image = open_image(path, error);
+    if (!image)
+        return false;
+    if (!image->read(0, 0x100, out))
+    {
+        error = "can't read the disc header";
+        return false;
+    }
+    return true;
+}
+
+bool read_wad(const std::string &path, WadInfo &info, std::vector<std::uint8_t> *banner, std::string &error)
+{
+    File file;
+    file.f = std::fopen(path.c_str(), "rb");
+    if (!file.f)
+    {
+        error = "can't open the file";
+        return false;
+    }
+    std::fseek(file.f, 0, SEEK_END);
+    const u64 file_size = u64(std::ftell(file.f));
+    std::fseek(file.f, 0, SEEK_SET);
+    auto read_at = [&](u64 off, u64 n, u8 *dst) {
+        if (off + n > file_size || std::fseek(file.f, long(off), SEEK_SET) != 0)
+            return false;
+        return std::fread(dst, 1, std::size_t(n), file.f) == n;
+    };
+    u8 head[0x20];
+    if (!read_at(0, sizeof head, head) || be32(head) != 0x20)
+    {
+        error = "not a WAD";
+        return false;
+    }
+    const u16 type = u16((head[4] << 8) | head[5]);
+    if (type != 0x4973 /* Is */ && type != 0x6962 /* ib */ && type != 0x426B /* Bk */)
+    {
+        error = "not an installable WAD";
+        return false;
+    }
+    const u64 cert_size = be32(head + 8), tik_size = be32(head + 0x10), tmd_size = be32(head + 0x14);
+    const u64 tik_off = align64(0x20) + align64(cert_size);
+    const u64 tmd_off = tik_off + align64(tik_size);
+    const u64 data_off = tmd_off + align64(tmd_size);
+    if (tik_size < 0x2A4 || tik_size > 0x10000 || tmd_size < 0x1E4 || tmd_size > (1u << 20) ||
+        cert_size > (1u << 20) || data_off > file_size)
+    {
+        error = "a damaged WAD";
+        return false;
+    }
+    std::vector<u8> tik(tik_size), tmd(tmd_size);
+    if (!read_at(tik_off, tik_size, tik.data()) || !read_at(tmd_off, tmd_size, tmd.data()))
+    {
+        error = "can't read the WAD's ticket";
+        return false;
+    }
+    info.title_id = (u64(be32(&tmd[0x18C])) << 32) | be32(&tmd[0x190]);
+    /* The four letters of the title ID and, as Dolphin does, the maker. */
+    std::string id;
+    for (int i = 0; i < 4; ++i)
+    {
+        const u8 c = tmd[0x190 + i];
+        id += std::isalnum(c) ? char(c) : '_';
+    }
+    const u8 m0 = tmd[0x198], m1 = tmd[0x199];
+    if (std::isalnum(m0) && std::isalnum(m1))
+    {
+        id += char(m0);
+        id += char(m1);
+    }
+    info.id = id;
+
+    /* The title key: encrypted with the common key the ticket names, the
+     * title ID its IV. */
+    u8 key[16];
+    std::memcpy(key, &tik[0x1BF], 16);
+    {
+        u8 iv[16] = {};
+        std::memcpy(iv, &tik[0x1DC], 8);
+        aes_cbc_decrypt(kCommonKeys[tik[0x1F1] == 1 ? 1 : 0], iv, key, 16);
+    }
+    /* The first content (index 0) is the banner, each content 64-aligned in turn. */
+    const u32 count = u32((tmd[0x1DE] << 8) | tmd[0x1DF]);
+    u64 off = data_off, size = 0;
+    bool found = false;
+    for (u32 i = 0; i < count && 0x1E4 + (i + 1) * 0x24 <= tmd_size; ++i)
+    {
+        const u8 *rec = &tmd[0x1E4 + i * 0x24];
+        const u16 index = u16((rec[4] << 8) | rec[5]);
+        const u64 csize = (u64(be32(rec + 8)) << 32) | be32(rec + 12);
+        if (index == 0)
+        {
+            size = csize;
+            found = true;
+            break;
+        }
+        off += align64(csize);
+    }
+    if (!found || size < 0x600 || off + 0x600 > file_size)
+    {
+        error = "no banner in the WAD";
+        return false;
+    }
+    const u64 want = banner ? std::min<u64>((size + 15) & ~u64(15), 64u << 20) : 0x600;
+    std::vector<u8> data(want);
+    if (!read_at(off, std::min(want, file_size - off), data.data()))
+    {
+        error = "can't read the WAD's banner";
+        return false;
+    }
+    u8 iv[16] = {}; /* the content's index, 0 */
+    aes_cbc_decrypt(key, iv, data.data(), data.size());
+    if (std::memcmp(&data[0x40], "IMET", 4) != 0)
+    {
+        error = "the WAD's banner isn't readable (wrong key?)";
+        return false;
+    }
+    for (int l = 0; l < 10; ++l)
+        info.names[l] = utf16be(&data[0x5C + l * 84], 42);
+    if (banner)
+    {
+        data.resize(std::size_t(size));
+        *banner = std::move(data);
+    }
+    return true;
+}
+
 bool read_file(const std::string &path, const std::string &name, std::vector<std::uint8_t> &out, std::string &error)
 {
+    {
+        /* A WAD's banner is its first content. */
+        const auto dot = path.rfind('.');
+        std::string ext = dot == std::string::npos ? "" : path.substr(dot + 1);
+        for (char &c : ext)
+            c = char(std::tolower(static_cast<unsigned char>(c)));
+        if (ext == "wad")
+        {
+            if (name != "opening.bnr")
+            {
+                error = name + " is not in a WAD";
+                return false;
+            }
+            WadInfo info;
+            return read_wad(path, info, &out, error);
+        }
+    }
     std::unique_ptr<Image> image = open_image(path, error);
     if (!image)
         return false;
@@ -826,6 +1026,11 @@ bool read_file(const std::string &path, const std::string &name, std::vector<std
         if (!image->read(fst_off, fst_size, fst.data()) || !find_in_fst(fst, name, false, off, size))
         {
             error = name + " is not on the disc";
+            return false;
+        }
+        if (size > kMaxBuffer)
+        {
+            error = name + " is too big";
             return false;
         }
         out.resize(size);

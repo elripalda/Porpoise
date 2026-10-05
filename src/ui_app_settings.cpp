@@ -831,19 +831,17 @@ void App::build_settings()
         r.action = kRowPickVersion;
         rows_.push_back(r);
     }
-    info("Created by", "@elripalda", "Ruben - www.elripalda.com");
-    rows_.back().key = "creator"; /* three presses: developer options (not advertised) */
-    info("Dolphin on PS5", "Mihawk (mihawk-99)",
-         "Mihawk (mihawk-99) brought the Dolphin core to the PS5. Porpoise is built on his port of Dolphin and "
-         "RetroArch.");
-    info("Website", "www.elripalda.com", "Updates, news and more from the creator of Porpoise.");
+    /* Help and the community: the RIPALDA Discord (bug reports go there now),
+     * with a code to scan beside it. */
+    info("Discord", "discord.gg/GgDE5Vynyu",
+         "Help, bug reports, news and the community, on the RIPALDA Discord. Scan the code with your phone to join.");
+    rows_.back().key = "discord";
     {
         SettingRow r;
         r.section = section;
         r.label = tr("Report a bug");
         r.help = tr("Cross gathers Porpoise's logs into /data/porpoise/reports (and onto a USB drive, when one is "
-                    "in). Scan the code with your phone to open an issue on GitHub, and attach them with the game "
-                    "and what happened.");
+                    "in). Share them in the Discord's bug reports with the game and what happened.");
         r.values = {tr("Save a report\xE2\x80\xA6")};
         r.action = kRowSendReport;
         rows_.push_back(r);
@@ -852,7 +850,15 @@ void App::build_settings()
            "For a game that runs slowly: from the next time Porpoise starts, it records where the emulator spends "
            "its time, for a bug report. Slows games a little; turn it off again afterwards.",
            &settings_->perf_profile);
+
+    /* Credits: Ruben first, his mark beside his name. */
+    info("Created by", "Ruben (@elripalda)", "Porpoise, its menus, music and sounds: Ruben. @elripalda - ripalda.dev");
+    rows_.back().key = "creator"; /* three presses: developer options (not advertised) */
+    info("Website", "ripalda.dev", "Ruben's projects, news and downloads, with links to the Discord and more.");
     info("Music and sounds", "@elripalda", "The menu music and sound effects, made for Porpoise by Ruben.");
+    info("Dolphin on PS5", "Mihawk (mihawk-99)",
+         "Mihawk (mihawk-99) brought the Dolphin core to the PS5. Porpoise is built on his port of Dolphin and "
+         "RetroArch.");
     info("Controller art", "Zacksly",
          "PS5 Button Icons and Controls by Zacksly - zacksly.itch.io, @_Zacksly on Twitter. CC BY 3.0, adapted for "
          "Porpoise.");
@@ -863,8 +869,9 @@ void App::build_settings()
     info("PS5 toolchain", "ps5-payload-sdk", "John T\xC3\xB6rnblom's ps5-payload-sdk (GPL v3) and its PS5 ports.");
     info("Inspired by", "PS5SX2, ProsperoEden", "PS5 homebrew front ends that showed the way.");
     info("Box art and info", "GameTDB.com", "Covers, disc art and game details from GameTDB.com and its contributors.");
-    info("Font", "Nunito", "Nunito by Vernon Adams and contributors, SIL Open Font License.");
-    info("Japanese font", "Noto Sans JP", "Noto Sans JP by Google, SIL Open Font License.");
+    info("Fonts", "Nunito, Noto Sans",
+         "Nunito; Noto Sans JP, SC, TC and KR; M PLUS 1; JetBrains Mono; VT323; Doto; Exo 2; and Lora (as Porpoise "
+         "Serif). All under the SIL Open Font License.");
     info("Images and audio", "stb", "stb_image, stb_truetype and stb_vorbis by Sean Barrett (public domain / MIT).");
     info("Wii banners", "Wii Banner Player",
          "How a Wii disc's own tile and banner play: after the Wii Banner Player Project (zlib license), rewritten "
@@ -1392,11 +1399,11 @@ App::Action App::activate_row(const SettingRow &row)
                         "");
         else
             open_dialog(DialogKind::Info, tr("Report saved"),
-                        usb.empty() ? trf("It's in {path}. Scan the code beside Report a bug to open an issue on "
-                                          "GitHub and attach its files.",
+                        usb.empty() ? trf("It's in {path}. Scan the code beside Report a bug to join the Discord, "
+                                          "and share its files in the bug reports.",
                                           {{"path", where}})
                                     : trf("It's in {path}, and on your USB drive as {usb}. Scan the code beside "
-                                          "Report a bug to open an issue on GitHub and attach its files.",
+                                          "Report a bug to join the Discord, and share its files in the bug reports.",
                                           {{"path", where}, {"usb", usb}}),
                         "");
         return Action::None;
@@ -1690,7 +1697,7 @@ void App::draw_settings()
     }
     std::string subtitle = tr("Changes apply the next time a game starts");
     if (current == "About")
-        subtitle = tr("Porpoise for PS5") + " \xE2\x80\xA2 " + tr("created by @elripalda") + " \xE2\x80\xA2 www.elripalda.com";
+        subtitle = tr("Porpoise for PS5") + " \xE2\x80\xA2 " + tr("created by @elripalda") + " \xE2\x80\xA2 ripalda.dev";
     else if (current == "Games")
         subtitle = tr("Where Porpoise looks for games, and what it downloads for them");
     else if (current == "This game")
@@ -1818,7 +1825,20 @@ void App::draw_settings()
             }
         }
         else if (!r.bool_value && !r.int_value)
-            g.text_mid(Font::SemiBold, ts(28), right, cy, on ? kWhite : kSoft, Align::Right, value);
+        {
+            const float vw = g.text_mid(Font::SemiBold, ts(28), right, cy, on ? kWhite : kSoft, Align::Right, value);
+            if (r.key == "creator")
+            {
+                /* Ruben's mark beside his name. */
+                if (!mark_tried_)
+                {
+                    mark_tried_ = true;
+                    ripalda_ = g.texture_file(g.asset_dir() + "/brand/ripalda.png");
+                }
+                if (ripalda_)
+                    g.image(ripalda_, right - vw - 58, cy - 22, 44, 44, on ? kWhite : kSoft);
+            }
+        }
         else
         {
             const float vw = g.measure(Font::Bold, ts(28), value);
@@ -1887,9 +1907,10 @@ void App::draw_settings()
                            two[i]);
         }
     }
-    /* About > Report a bug: a QR code to the issues, for a phone. */
+    /* About > Discord and Report a bug: a code to the Discord, for a phone. */
     if (!on_rail_ && settings_row_ >= 0 && settings_row_ < int(rows_.size()) &&
-        rows_[std::size_t(settings_row_)].label == tr("Report a bug"))
+        (rows_[std::size_t(settings_row_)].label == tr("Report a bug") ||
+         rows_[std::size_t(settings_row_)].key == "discord"))
     {
         if (!qr_tried_)
         {
@@ -1902,6 +1923,14 @@ void App::draw_settings()
             g.panel(qx - 8, qy - 8, qs + 16, qs + 16, rgba(0x07102E, 0.5f), 1, kR, with_alpha(kCyan, 0.9f), 1.6f, 8);
             g.image(qr_, qx, qy, qs, qs, kWhite, 10);
         }
+    }
+    /* About > Created by: Ruben's mark, large, where the code shows. */
+    if (!on_rail_ && settings_row_ >= 0 && settings_row_ < int(rows_.size()) &&
+        rows_[std::size_t(settings_row_)].key == "creator" && ripalda_)
+    {
+        const float qs = 118, qx = px + pw - qs - 70, qy = py + 22;
+        g.panel(qx - 8, qy - 8, qs + 16, qs + 16, rgba(0x07102E, 0.7f), 1, kR, with_alpha(kCyan, 0.9f), 1.6f, 8);
+        g.image(ripalda_, qx + 12, qy + 12, qs - 24, qs - 24, kWhite);
     }
 
     if (on_rail_)

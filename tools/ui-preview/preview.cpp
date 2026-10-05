@@ -409,6 +409,23 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    /* PREVIEW_ABOUT=1: Settings > About on the Discord row and on the
+     * creator's row; then stop. */
+    if (std::getenv("PREVIEW_ABOUT"))
+    {
+        settle();
+        press(kR1, 2);
+        settle();
+        press(kDown, 9); /* About, the last section */
+        press(kRight);
+        press(kDown, 3); /* Discord */
+        settle();
+        render("about-discord", [&] { ui.draw(12.0); });
+        press(kDown, 3); /* Created by */
+        settle();
+        render("about-creator", [&] { ui.draw(12.0); });
+        return 0;
+    }
     /* PREVIEW_WELCOME=1: the first start's theme picker on each look, the
      * welcome after it and Settings > Interface's last rows; then stop. */
     if (std::getenv("PREVIEW_WELCOME"))

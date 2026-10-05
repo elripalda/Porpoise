@@ -1089,6 +1089,8 @@ void sample(const Tex &t, float u, float v, u8 ws, u8 wt, float *out)
                 p += float(n * 2);
             c = p < float(n) ? p : float(n * 2) - p - 0.001f;
         }
+        if (!std::isfinite(c))
+            c = 0; /* NaN slips through std::clamp; as an index it read far outside the texture */
         return std::clamp(c, 0.0f, float(n) - 1.0f);
     };
     const float x = wrap(u * float(t.w) - 0.5f, t.w, ws), y = wrap(v * float(t.h) - 0.5f, t.h, wt);
@@ -1286,8 +1288,11 @@ void draw_quad(Canvas &cv, const Layout &lay, const Pane &p, const M &mx, float 
     }
     auto triangle = [&](int a, int b, int c) {
         const float area = (sx[b] - sx[a]) * (sy[c] - sy[a]) - (sx[c] - sx[a]) * (sy[b] - sy[a]);
-        if (std::fabs(area) < 1e-6f)
-            return;
+        if (!std::isfinite(area) || std::fabs(area) < 1e-6f)
+            return; /* a corner off at infinity (a damaged animation): nothing to draw */
+        for (int k : {a, b, c})
+            if (!std::isfinite(sx[k]) || !std::isfinite(sy[k]) || std::fabs(sx[k]) > 1e6f || std::fabs(sy[k]) > 1e6f)
+                return;
         const int x0 = std::max(0, int(std::floor(std::min({sx[a], sx[b], sx[c]}))));
         const int x1 = std::min(cv.w - 1, int(std::ceil(std::max({sx[a], sx[b], sx[c]}))));
         const int y0 = std::max(0, int(std::floor(std::min({sy[a], sy[b], sy[c]}))));

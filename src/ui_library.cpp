@@ -8,6 +8,7 @@
  * of the first 0x80 bytes uncompressed at 0x58. GCZ and WBFS do not, so those
  * fall back to the file name. */
 #include "ui_library.hpp"
+#include "porpoise_disc.hpp"
 #include "ui_i18n.hpp"
 
 #include <algorithm>
@@ -43,7 +44,10 @@ std::string extension(const std::string &name)
 
 bool is_game_file(const std::string &name)
 {
-    static const char *const known[] = {"iso", "gcm", "rvz", "ciso", "gcz", "wbfs", "wia"};
+    /* Discs, WADs (WiiWare, Virtual Console, channels) and GameCube demo
+     * discs (.tgc). Homebrew (.dol, .elf) is found only beside its meta.xml
+     * (find_games): an .elf alone could be anything, a PS5 payload too. */
+    static const char *const known[] = {"iso", "gcm", "rvz", "ciso", "gcz", "wbfs", "wia", "wad", "tgc"};
     const std::string ext = extension(name);
     for (const char *k : known)
         if (ext == k)
@@ -118,6 +122,13 @@ void find_games(const std::string &dir, int depth, std::vector<std::string> &out
         }
         else if (is_game_file(name))
             out.push_back(path);
+        else if (extension(name) == "dol" || extension(name) == "elf")
+        {
+            /* A Homebrew Channel app: boot.dol (or .elf) beside its meta.xml. */
+            struct stat meta;
+            if (stat((dir + "/meta.xml").c_str(), &meta) == 0)
+                out.push_back(path);
+        }
     }
     closedir(d);
     if (depth > 0)
@@ -160,13 +171,18 @@ bool read_disc_header(const std::string &path, Game &g)
         header_len = 0x80;
         data = -2; /* already in hand */
     }
-    else if (got >= 4 && be32(head) == 0xB10BC001)
+    else if (got >= 4 && head[0] == 0x01 && head[1] == 0xC0 && head[2] == 0x0B && head[3] == 0xB1)
     {
+        /* GCZ (its magic is little-endian) and WBFS keep the header inside:
+         * the disc reader opens them. Without this they showed as GameCube
+         * games named after the file, Wii games without their controls. */
         g.format = "GCZ";
+        data = -2;
     }
     else if (got >= 4 && std::memcmp(head, "WBFS", 4) == 0)
     {
         g.format = "WBFS";
+        data = -2;
     }
     else
     {
@@ -180,6 +196,15 @@ bool read_disc_header(const std::string &path, Game &g)
         got = std::fread(head, 1, sizeof head, f);
     }
     std::fclose(f);
+    if (g.format == "GCZ" || g.format == "WBFS")
+    {
+        std::string error;
+        std::memset(head, 0, sizeof head);
+        if (!porpoise::disc::read_header(path, head, error))
+            return false;
+        got = 0x100;
+        header_len = 0x100;
+    }
     if (data == -1 || got < 0x60)
         return false;
 
@@ -207,6 +232,64 @@ bool read_disc_header(const std::string &path, Game &g)
         title.pop_back();
     if (ascii && !title.empty())
         g.title = title;
+    return true;
+}
+
+/* What a WAD is, by its title ID: a system channel, Virtual Console (by the
+ * console it brings back), WiiWare, or another channel. */
+std::string wad_kind(std::uint64_t title_id)
+{
+    const std::uint32_t high = std::uint32_t(title_id >> 32);
+    const char first = char((title_id >> 24) & 0xFF);
+    if (high == 0x00010002 || high == 0x00010008 || first == 'H')
+        return "Channel";
+    switch (first)
+    {
+    case 'F': case 'J': case 'N': case 'L': case 'M': case 'P': case 'Q': case 'E': case 'C': case 'X':
+        return "Virtual Console";
+    case 'W':
+        return "WiiWare";
+    default:
+        return "Channel";
+    }
+}
+
+bool read_wad_header(const std::string &path, Game &g)
+{
+    porpoise::disc::WadInfo info;
+    std::string error;
+    g.format = "WAD";
+    g.platform = "Wii";
+    g.kind = "Channel";
+    if (!porpoise::disc::read_wad(path, info, nullptr, error))
+        return false;
+    g.id = info.id;
+    g.kind = wad_kind(info.title_id);
+    if (info.id.size() >= 4)
+        g.region = region_of(info.id[3]);
+    /* Its English name, else its Japanese one; the WAD's own languages. */
+    g.title = !info.names[1].empty() ? info.names[1] : info.names[0];
+    return true;
+}
+
+/* A Homebrew Channel app: its name from meta.xml, its icon.png as its cover. */
+bool read_app_meta(const std::string &path, Game &g)
+{
+    g.kind = "Homebrew";
+    g.platform = "Wii";
+    g.format = extension(g.file) == "elf" ? "ELF" : "DOL";
+    const std::string dir = path.substr(0, path.rfind('/'));
+    std::FILE *f = std::fopen((dir + "/meta.xml").c_str(), "rb");
+    if (!f)
+        return false;
+    std::string xml(8192, '\0');
+    xml.resize(std::fread(&xml[0], 1, xml.size(), f));
+    std::fclose(f);
+    const auto a = xml.find("<name>"), b = xml.find("</name>");
+    if (a != std::string::npos && b != std::string::npos && b > a + 6 && b - a < 200)
+        g.title = xml.substr(a + 6, b - a - 6);
+    /* Without an ID, the app is known by its folder's name. */
+    g.app_dir = dir;
     return true;
 }
 
@@ -260,7 +343,15 @@ void Library::scan(const LibraryPaths &paths)
         struct stat st;
         if (stat(path.c_str(), &st) == 0)
             g.bytes = std::uint64_t(st.st_size);
-        read_disc_header(path, g);
+        const std::string ext = extension(g.file);
+        if (ext == "wad")
+            read_wad_header(path, g);
+        else if (ext == "dol" || ext == "elf")
+            read_app_meta(path, g);
+        else
+            read_disc_header(path, g);
+        if (ext == "tgc")
+            g.format = "TGC";
         if (g.title.empty())
             g.title = title_from_file(g.file);
         if (g.platform.empty())
@@ -386,6 +477,14 @@ void Library::sort(Sort how)
 
 std::string Library::cover_path(const Game &g) const
 {
+    if (!g.app_dir.empty())
+    {
+        /* A homebrew app's own icon. */
+        const std::string p = g.app_dir + "/icon.png";
+        struct stat st;
+        if (stat(p.c_str(), &st) == 0)
+            return p;
+    }
     const std::string stem = g.file.substr(0, g.file.rfind('.'));
     for (const std::string &name : {g.id, stem})
     {
@@ -467,7 +566,10 @@ void Library::load_state()
                                                : v == "favourites" ? Sort::Favourites : Sort::Title;
         }
         else if (s.rfind("show=", 0) == 0)
-            show_ = s == "show=wii" ? Show::Wii : s == "show=gamecube" ? Show::GameCube : Show::All;
+            show_ = s == "show=wii"        ? Show::Wii
+                    : s == "show=gamecube" ? Show::GameCube
+                    : s == "show=channels" ? Show::Channels
+                                           : Show::All;
         else if (s.rfind("played=", 0) == 0 || s.rfind("time=", 0) == 0 || s.rfind("fav=", 0) == 0)
         {
             /* played=<key> <unix time>, time=<key> <seconds>, fav=<key> */
@@ -504,7 +606,7 @@ void Library::save() const
         return;
     std::fprintf(f, "selected=%s\nsort=%s\n", selected_.c_str(), sort_name(sort_));
     if (show_ != Show::All)
-        std::fprintf(f, "show=%s\n", show_ == Show::Wii ? "wii" : "gamecube");
+        std::fprintf(f, "show=%s\n", show_ == Show::Wii ? "wii" : show_ == Show::Channels ? "channels" : "gamecube");
     /* One line of each kind per key, however many copies of a game there are. */
     std::vector<std::string> done;
     for (const Game &g : games_)

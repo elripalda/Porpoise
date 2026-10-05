@@ -731,7 +731,9 @@ private:
     bool update_available() const { return !latest_version_.empty(); }
     Texture *flags_ = nullptr; /* Settings > Interface > Language */
     bool flags_tried_ = false;
-    Texture *qr_ = nullptr; /* Settings > About: Report a bug */
+    Texture *qr_ = nullptr; /* Settings > About: the Discord */
+    Texture *ripalda_ = nullptr; /* Ruben's mark, beside his name in About */
+    bool mark_tried_ = false;
     bool qr_tried_ = false;
     std::vector<std::string> border_names_; /* the Border row's choices */
     int border_choice_ = 0;

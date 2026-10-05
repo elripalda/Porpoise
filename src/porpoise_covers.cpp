@@ -217,12 +217,18 @@ int fetch_art(Http &http, const Job &job)
     if (job.kind == Job::Cover)
     {
         const std::string png = g.dir + "/" + job.id + ".png";
+        /* WiiWare and Virtual Console art is filed under the title's four
+         * letters on GameTDB: those are tried after the six. */
+        std::vector<std::string> names = {job.id};
+        if (job.id.size() == 6 && std::string("GRSD").find(job.id[0]) == std::string::npos)
+            names.push_back(job.id.substr(0, 4));
+        for (const std::string &name : names)
         for (const std::string &region : regions_for(job.id))
         {
             if (g.stopping.load())
                 return -1;
             const int status =
-                http.get("https://art.gametdb.com/wii/coverfullHQ/" + region + "/" + job.id + ".png", data);
+                http.get("https://art.gametdb.com/wii/coverfullHQ/" + region + "/" + name + ".png", data);
             if (status < 0)
                 return -1;
             if (status == 200 && is_image(data) && save_box(data, png, ""))
@@ -232,11 +238,12 @@ int fetch_art(Http &http, const Job &job)
                 return 1;
             }
         }
+        for (const std::string &name : names)
         for (const std::string &region : regions_for(job.id))
         {
             if (g.stopping.load())
                 return -1;
-            const int status = http.get("https://art.gametdb.com/wii/cover/" + region + "/" + job.id + ".png", data);
+            const int status = http.get("https://art.gametdb.com/wii/cover/" + region + "/" + name + ".png", data);
             if (status < 0)
                 return -1;
             if (status == 200 && is_image(data) && save_raw(data, png))
@@ -428,7 +435,7 @@ bool start(const Request &request)
         g.jobs.push_back({Job::Release, ""});
     std::vector<std::string> ids;
     for (const std::string &id : request.ids)
-        if (id.size() == 6 && std::find(ids.begin(), ids.end(), id) == ids.end())
+        if ((id.size() == 6 || id.size() == 4) && std::find(ids.begin(), ids.end(), id) == ids.end())
             ids.push_back(id);
     if (request.covers)
         for (const std::string &id : ids)
