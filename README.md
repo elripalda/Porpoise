@@ -273,13 +273,41 @@ With **Find games automatically** on (the default), Porpoise looks in:
 
 - `/data/porpoise/games`
 - `/data/games`, `/data/GameCube`, `/data/Wii`, `/data/roms`, `/data/iso`
-- the root of every USB drive (`/mnt/usb0`–`/mnt/usb7`) and extended storage
+- every USB drive (`/mnt/usb0`–`/mnt/usb7`) and extended storage
   (`/mnt/ext0`, `/mnt/ext1`)
+
+Each of these is searched four folders deep, so games sorted into subfolders
+are found too.
 
 To use any other folder, go to **Settings → Games → Add a game folder**, browse
 to it, and press **Square**. The browser shows the game files in each folder,
 so you can see where they are. Porpoise searches that folder and four levels
 below it. After copying new games, use **Search for games now**.
+
+### Playing from a USB or external drive
+
+1. **Format the drive as exFAT** on your computer. FAT32 also works but can't
+   hold files over 4 GB (most Wii `.iso` files are bigger); the PS5 doesn't
+   read NTFS.
+2. **Copy your games onto it**, anywhere up to four folders deep, for example
+   `games/Wii/Super Mario Galaxy.rvz` or `GameCube/Melee.iso`. `.rvz` files
+   are much smaller than `.iso` and load just as well.
+3. **Plug it into the PS5** and make sure a jailbreak daemon is running (see
+   [Troubleshooting](#troubleshooting)). Porpoise has to be out of the app
+   sandbox to see any drive: if it says it can't reach `/data`, it can't see
+   your drive either.
+4. **Open Porpoise.** The games appear in the library. If you plugged the
+   drive in after opening Porpoise, use **Settings → Games → Search for games
+   now**.
+5. Games deeper than four folders? Add their folder with **Add a game folder**
+   (Triangle in the browser jumps to your drives).
+
+You can also copy a game from the drive to the console: in **Add a game
+folder**, browse to it on the drive and press **Cross** on the game.
+
+**PS5 extended storage** (a drive the PS5 formatted for its own games) shows
+up as `/mnt/ext0`. A computer can't read that format, so copy games to it over
+FTP instead (for example into `/mnt/ext0/games/`).
 
 ## Controls
 

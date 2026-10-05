@@ -18,6 +18,13 @@
   can't take Porpoise); in OnionHEN, add `PPSA99764` to `exact_title_ids` in its
   `config.ini`; or run a Lapy daemon.
 
+### External drives
+- USB drives, extended storage and the usual game folders are now searched
+  **four folders deep** (two before), so games sorted into subfolders on a
+  drive are found without adding the folder by hand.
+- The README has step-by-step instructions for playing from a USB or external
+  drive.
+
 ## 1.5 — 2026-10-04
 
 ### Revolution theme (Settings → Interface → Theme)

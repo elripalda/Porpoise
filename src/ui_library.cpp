@@ -243,8 +243,11 @@ void Library::scan(const LibraryPaths &paths)
     paths_ = paths;
     games_.clear();
     std::vector<std::string> files;
+    /* Every place searched goes four folders deep, the usual ones and the
+     * drives as much as the folders the player adds, so games sorted into
+     * subfolders on a USB drive (games/Wii/Series/...) are found by themselves. */
     for (const std::string &root : paths.roots)
-        find_games(root, 2, files);
+        find_games(root, 4, files);
     for (const std::string &root : paths.deep)
         find_games(root, 4, files);
     std::sort(files.begin(), files.end());
