@@ -313,6 +313,8 @@ void App::draw_home(double time)
                     cw = std::min(ch * float(cover->width) / float(cover->height), w * 0.42f);
                 if (cover)
                     g.image(cover, x + pad, y + pad, cw, ch, {}, 14);
+                else if (cover_loading(game))
+                    g.panel(x + pad, y + pad, cw, ch, with_alpha(wii ? kWii : kGameCube, 0.10f), 1, 14);
                 else
                 {
                     g.panel(x + pad, y + pad, cw, ch, with_alpha(wii ? kWii : kGameCube, 0.16f), 1, 14,
@@ -591,7 +593,7 @@ void App::draw_zoom(double time)
             const float h = ch * 0.8f, w = h * float(cover->width) / float(cover->height);
             g.image(cover, r[0] + r[2] * 0.5f - w * 0.5f, cy + ch * 0.1f, w, h, rgba(0xFFFFFF, k), 14 + 10 * u);
         }
-        else
+        else if (!cover_loading(game))
             g.text_mid(Font::Bold, ts(30 + 30 * u), r[0] + r[2] * 0.5f, r[1] + r[3] * 0.5f, with_alpha(rev::kInk, k),
                        Align::Center, game.title);
     }

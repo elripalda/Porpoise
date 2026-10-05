@@ -27,6 +27,9 @@ struct Game
     bool favourite = false;
     Texture *cover = nullptr;
     bool cover_tried = false;
+    /* A picture still decoding (Gfx::texture_file_async): its file. */
+    std::string cover_wait, disc_wait, back_wait;
+    double cover_at = -1; /* when the cover arrived, for its fade-in */
     /* From GameTDB, when downloaded (Settings > Games > Download game info). */
     std::string synopsis, developer, publisher, released, genre, rating;
     std::string db_title; /* GameTDB's name for it */

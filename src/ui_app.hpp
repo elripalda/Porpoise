@@ -230,6 +230,9 @@ private:
     }
     bool nav(std::uint32_t bit, float &timer, double dt);
     Texture *cover_of(Game &g);
+    Texture *picture(Texture *&tex, bool &tried, std::string &wait,
+                     std::string (Library::*where)(const Game &) const, const Game &g);
+    static bool cover_loading(const Game &g) { return !g.cover && !g.cover_wait.empty(); }
     Texture *disc_of(Game &g);
     Texture *back_of(Game &g);
     void set_tab(int tab, int dir);

@@ -40,6 +40,9 @@ struct Texture
     VkDeviceMemory staging_memory[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     void *staging_mapped[2] = {nullptr, nullptr};
     int pending = -1;
+    /* Made by texture_file_async: its first copy goes in from staging[0]
+     * (from no layout), and the staging buffer is let go after it. */
+    bool fresh = false;
 };
 
 enum class Font
@@ -142,6 +145,12 @@ public:
     Texture *texture_rgba(const std::uint8_t *pixels, int width, int height);
     /* PNG / JPG, halved until its longer side fits max_side. */
     Texture *texture_file(const std::string &path, int max_side = 1024);
+    /* The same, read and decoded on a worker thread so a screen of new covers
+     * doesn't hold a frame up: nullptr with *pending true while it decodes,
+     * then the texture (the caller's, as from texture_file). A couple become
+     * textures each frame; their pixels go in with the frame's own commands. */
+    Texture *texture_file_async(const std::string &path, bool *pending, int max_side = 1024);
+    void set_async_loads(bool on) { async_loads_ = on; } /* off: texture_file (the preview tool) */
     void free_texture(Texture *texture);
     /* A texture whose pixels change often (a banner playing): stream_update()
      * hands it this frame's pixels, and record_uploads() - called before the
@@ -261,6 +270,7 @@ private:
     bool make_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer &buffer, VkDeviceMemory &memory,
                      void **mapped);
     Texture *upload(const std::uint8_t *pixels, int width, int height);
+    Texture *upload_later(const std::uint8_t *pixels, int width, int height);
     void destroy_texture(Texture *t);
 
     GfxInit init_{};
@@ -284,6 +294,8 @@ private:
     std::vector<Texture *> textures_;
     std::vector<std::pair<Texture *, std::uint64_t>> graveyard_; /* freed, waiting for the GPU */
     std::uint64_t frame_no_ = 0;
+    bool async_loads_ = true;
+    int uploads_left_ = 0; /* texture_file_async's this frame */
     FontData fonts_[4];
     std::vector<std::uint8_t> atlas_pixels_; /* kept across device changes */
     /* Japanese: one weight of Noto Sans JP, subset to the characters the menus

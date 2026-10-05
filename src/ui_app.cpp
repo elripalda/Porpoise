@@ -96,40 +96,44 @@ void App::free_card_textures()
         }
 }
 
+/* A game's picture, decoded off the render thread: nullptr while it decodes
+ * (picture_loading() says so) or when there is none. */
+Texture *App::picture(Texture *&tex, bool &tried, std::string &wait, std::string (Library::*where)(const Game &) const,
+                      const Game &g)
+{
+    if (tex)
+        return tex;
+    if (!tried)
+    {
+        tried = true;
+        wait = (lib_->*where)(g);
+    }
+    if (wait.empty())
+        return nullptr;
+    bool pending = false;
+    tex = g_->texture_file_async(wait, &pending);
+    if (!pending)
+        wait.clear();
+    return tex;
+}
+
 Texture *App::cover_of(Game &g)
 {
-    if (!g.cover_tried)
-    {
-        g.cover_tried = true;
-        const std::string path = lib_->cover_path(g);
-        if (!path.empty())
-            g.cover = g_->texture_file(path);
-    }
-    return g.cover;
+    const bool had = g.cover != nullptr;
+    Texture *t = picture(g.cover, g.cover_tried, g.cover_wait, &Library::cover_path, g);
+    if (t && !had)
+        g.cover_at = time_; /* it fades in */
+    return t;
 }
 
 Texture *App::disc_of(Game &g)
 {
-    if (!g.disc_tried)
-    {
-        g.disc_tried = true;
-        const std::string path = lib_->disc_path(g);
-        if (!path.empty())
-            g.disc = g_->texture_file(path);
-    }
-    return g.disc;
+    return picture(g.disc, g.disc_tried, g.disc_wait, &Library::disc_path, g);
 }
 
 Texture *App::back_of(Game &g)
 {
-    if (!g.back_tried)
-    {
-        g.back_tried = true;
-        const std::string path = lib_->back_path(g);
-        if (!path.empty())
-            g.back = g_->texture_file(path);
-    }
-    return g.back;
+    return picture(g.back, g.back_tried, g.back_wait, &Library::back_path, g);
 }
 
 Texture *App::save_icon(Save &s)
@@ -1199,13 +1203,18 @@ void App::draw_tile(Game *game, float cx, float cy, float w, float h, float yaw,
             uv[1] = 0.5f - k * 0.5f;
             uv[3] = 0.5f + k * 0.5f;
         }
-        g.quad3d(cover, c, w, h, with_alpha(kWhite, alpha), inner_r, false, false, uv);
+        /* A cover that has just arrived fades in over the tile's own blue. */
+        const float in = game ? std::clamp(float(time_ - game->cover_at) / 0.18f, 0.0f, 1.0f) : 1.0f;
+        if (in < 1.0f)
+            g.quad3d(nullptr, c, w, h, with_alpha(rgba(0x16328F), alpha), inner_r, false, false);
+        g.quad3d(cover, c, w, h, with_alpha(kWhite, alpha * in), inner_r, false, false, uv);
     }
     else
     {
-        /* No cover yet: a Porpoise tile with the game's title. */
+        /* No cover yet: a Porpoise tile with the game's title (or, while the
+         * cover is still being read, just the blue). */
         g.quad3d(nullptr, c, w, h, with_alpha(rgba(0x16328F), alpha), inner_r, false, false);
-        if (std::fabs(yaw) < 0.08f && game)
+        if (std::fabs(yaw) < 0.08f && game && !cover_loading(*game))
         {
             const float s = w / kTileW;
             draw_mark(cx, cy - h * 0.30f + 70 * s, 150 * s, with_alpha(rgba(0x6FD8FF), 0.9f * alpha));

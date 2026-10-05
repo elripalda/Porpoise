@@ -8,9 +8,13 @@
 #include "ui_gfx.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <condition_variable>
 #include <cstdio>
 #include <cstring>
+#include <pthread.h>
+#include <unordered_map>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
@@ -74,6 +78,133 @@ bool read_file(const std::string &path, std::vector<unsigned char> &out)
     bool ok = std::fread(out.data(), 1, out.size(), f) == out.size();
     std::fclose(f);
     return ok;
+}
+
+/* Halves an RGBA picture until its longer side fits max_side (a player's own
+ * 4K cover): memory stays small. The result is in out. */
+void fit_side(const unsigned char *pixels, int &w, int &h, int max_side, std::vector<unsigned char> &out)
+{
+    std::vector<unsigned char> small;
+    const unsigned char *src = pixels;
+    while (std::max(w, h) > max_side && w >= 2 && h >= 2)
+    {
+        const int nw = w / 2, nh = h / 2;
+        std::vector<unsigned char> half(std::size_t(nw) * std::size_t(nh) * 4);
+        for (int y = 0; y < nh; ++y)
+            for (int x = 0; x < nw; ++x)
+                for (int c = 0; c < 4; ++c)
+                {
+                    const std::size_t a = (std::size_t(y * 2) * std::size_t(w) + std::size_t(x * 2)) * 4 + c;
+                    const std::size_t b = a + std::size_t(w) * 4;
+                    half[(std::size_t(y) * std::size_t(nw) + std::size_t(x)) * 4 + c] =
+                        static_cast<unsigned char>((src[a] + src[a + 4] + src[b] + src[b + 4] + 2) / 4);
+                }
+        small.swap(half);
+        src = small.data();
+        w = nw;
+        h = nh;
+    }
+    if (src == pixels)
+        out.assign(pixels, pixels + std::size_t(w) * std::size_t(h) * 4);
+    else
+        out.swap(small);
+}
+
+/* ---- pictures decoded off the render thread (Gfx::texture_file_async) ----
+ *
+ * One worker reads and decodes; the newest request goes first, so the covers
+ * coming into view while the library scrolls are the ones that arrive. A
+ * request nobody has asked for again in a second is dropped, decoded or not. */
+struct Load
+{
+    enum State
+    {
+        Queued,
+        Busy,
+        Done,
+        Failed,
+    } state = Queued;
+    int max_side = 1024;
+    std::vector<unsigned char> rgba;
+    int w = 0, h = 0;
+    std::uint64_t wanted = 0; /* the frame it was last asked for */
+};
+
+struct Loader
+{
+    std::mutex lock;
+    std::condition_variable wake;
+    std::unordered_map<std::string, Load> loads;
+    std::vector<std::string> queue; /* the newest last, taken first */
+    std::atomic<std::uint64_t> frame{0};
+    bool started = false;
+};
+
+Loader &loader()
+{
+    static Loader *l = new Loader(); /* the worker outlives everything: never freed */
+    return *l;
+}
+
+constexpr std::uint64_t kLoadForgotten = 60; /* frames without a request: dropped */
+
+void *load_work(void *)
+{
+    Loader &L = loader();
+    for (;;)
+    {
+        std::string path;
+        int max_side = 1024;
+        {
+            std::unique_lock<std::mutex> g(L.lock);
+            L.wake.wait(g, [&] { return !L.queue.empty(); });
+            path = std::move(L.queue.back());
+            L.queue.pop_back();
+            auto it = L.loads.find(path);
+            if (it == L.loads.end() || it->second.state != Load::Queued)
+                continue;
+            if (L.frame.load() - it->second.wanted > kLoadForgotten)
+            {
+                L.loads.erase(it); /* scrolled past before its turn */
+                continue;
+            }
+            it->second.state = Load::Busy;
+            max_side = it->second.max_side;
+        }
+        std::vector<unsigned char> bytes, rgba;
+        int w = 0, h = 0, n = 0;
+        bool ok = false;
+        if (read_file(path, bytes))
+            if (unsigned char *pixels = stbi_load_from_memory(bytes.data(), int(bytes.size()), &w, &h, &n, 4))
+            {
+                fit_side(pixels, w, h, max_side, rgba);
+                stbi_image_free(pixels);
+                ok = w > 0 && h > 0;
+            }
+        std::lock_guard<std::mutex> g(L.lock);
+        auto it = L.loads.find(path);
+        if (it == L.loads.end())
+            continue;
+        it->second.state = ok ? Load::Done : Load::Failed;
+        it->second.rgba.swap(rgba);
+        it->second.w = w;
+        it->second.h = h;
+    }
+    return nullptr;
+}
+
+void start_loader_locked(Loader &L)
+{
+    if (L.started)
+        return;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 1u << 20);
+    pthread_t t;
+    L.started = pthread_create(&t, &attr, load_work, nullptr) == 0;
+    pthread_attr_destroy(&attr);
+    if (L.started)
+        pthread_detach(t);
 }
 
 std::uint32_t next_codepoint(const std::string &s, std::size_t &i)
@@ -408,28 +539,136 @@ Texture *Gfx::texture_file(const std::string &path, int max_side)
         return nullptr;
     /* Big pictures (a player's own 4K cover) are halved until they fit
      * max_side (1024 unless the picture fills the screen): memory stays small. */
-    std::vector<unsigned char> small;
-    const unsigned char *src = pixels;
-    while (std::max(w, h) > max_side && w >= 2 && h >= 2)
-    {
-        const int nw = w / 2, nh = h / 2;
-        std::vector<unsigned char> half(std::size_t(nw) * std::size_t(nh) * 4);
-        for (int y = 0; y < nh; ++y)
-            for (int x = 0; x < nw; ++x)
-                for (int c = 0; c < 4; ++c)
-                {
-                    const std::size_t a = (std::size_t(y * 2) * std::size_t(w) + std::size_t(x * 2)) * 4 + c;
-                    const std::size_t b = a + std::size_t(w) * 4;
-                    half[(std::size_t(y) * std::size_t(nw) + std::size_t(x)) * 4 + c] =
-                        static_cast<unsigned char>((src[a] + src[a + 4] + src[b] + src[b + 4] + 2) / 4);
-                }
-        small.swap(half);
-        src = small.data();
-        w = nw;
-        h = nh;
-    }
-    Texture *t = upload(src, w, h);
+    std::vector<unsigned char> fitted;
+    fit_side(pixels, w, h, max_side, fitted);
     stbi_image_free(pixels);
+    return upload(fitted.data(), w, h);
+}
+
+Texture *Gfx::texture_file_async(const std::string &path, bool *pending, int max_side)
+{
+    *pending = false;
+    if (!async_loads_)
+        return texture_file(path, max_side);
+    if (!device_ || path.empty())
+        return nullptr;
+    Loader &L = loader();
+    std::vector<unsigned char> rgba;
+    int w = 0, h = 0;
+    {
+        std::lock_guard<std::mutex> g(L.lock);
+        auto it = L.loads.find(path);
+        if (it == L.loads.end())
+        {
+            Load &load = L.loads[path];
+            load.max_side = max_side;
+            load.wanted = frame_no_;
+            L.queue.push_back(path);
+            start_loader_locked(L);
+            L.wake.notify_one();
+            *pending = true;
+            return nullptr;
+        }
+        Load &load = it->second;
+        load.wanted = frame_no_;
+        if (load.state == Load::Failed)
+        {
+            L.loads.erase(it);
+            return nullptr;
+        }
+        if (load.state != Load::Done || uploads_left_ <= 0)
+        {
+            *pending = true;
+            return nullptr;
+        }
+        rgba.swap(load.rgba);
+        w = load.w;
+        h = load.h;
+        L.loads.erase(it);
+    }
+    --uploads_left_;
+    Texture *t = upload_later(rgba.data(), w, h);
+    if (!t)
+        return nullptr;
+    return t;
+}
+
+/* Like upload(), but the copy is recorded into this frame's own command
+ * buffer (record_uploads, before the render pass) instead of being submitted
+ * and waited on: no stall. */
+Texture *Gfx::upload_later(const std::uint8_t *pixels, int width, int height)
+{
+    if (!device_ || width <= 0 || height <= 0)
+        return nullptr;
+    auto *t = new Texture();
+    t->width = width;
+    t->height = height;
+    VkImageCreateInfo info{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    info.imageType = VK_IMAGE_TYPE_2D;
+    info.format = VK_FORMAT_R8G8B8A8_UNORM;
+    info.extent = {std::uint32_t(width), std::uint32_t(height), 1};
+    info.mipLevels = 1;
+    info.arrayLayers = 1;
+    info.samples = VK_SAMPLE_COUNT_1_BIT;
+    info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    if (vkCreateImage_(device_, &info, nullptr, &t->image) != VK_SUCCESS)
+    {
+        delete t;
+        return nullptr;
+    }
+    VkMemoryRequirements req{};
+    vkGetImageMemoryRequirements_(device_, t->image, &req);
+    VkMemoryAllocateInfo alloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    alloc.allocationSize = req.size;
+    alloc.memoryTypeIndex = memory_type(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (alloc.memoryTypeIndex == UINT32_MAX)
+        alloc.memoryTypeIndex = memory_type(req.memoryTypeBits, 0);
+    if (vkAllocateMemory_(device_, &alloc, nullptr, &t->memory) != VK_SUCCESS)
+    {
+        destroy_texture(t);
+        return nullptr;
+    }
+    vkBindImageMemory_(device_, t->image, t->memory, 0);
+    const VkDeviceSize bytes = VkDeviceSize(width) * height * 4;
+    if (!make_buffer(bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, t->staging[0], t->staging_memory[0],
+                     &t->staging_mapped[0]))
+    {
+        destroy_texture(t);
+        return nullptr;
+    }
+    std::memcpy(t->staging_mapped[0], pixels, std::size_t(bytes));
+    VkImageViewCreateInfo view{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    view.image = t->image;
+    view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    view.format = VK_FORMAT_R8G8B8A8_UNORM;
+    view.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    if (vkCreateImageView_(device_, &view, nullptr, &t->view) != VK_SUCCESS)
+    {
+        destroy_texture(t);
+        return nullptr;
+    }
+    VkDescriptorSetAllocateInfo ds{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    ds.descriptorPool = pool_;
+    ds.descriptorSetCount = 1;
+    ds.pSetLayouts = &set_layout_;
+    if (vkAllocateDescriptorSets_(device_, &ds, &t->set) != VK_SUCCESS)
+    {
+        t->set = VK_NULL_HANDLE;
+        destroy_texture(t);
+        return nullptr;
+    }
+    VkDescriptorImageInfo image_info{sampler_, t->view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet = t->set;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.pImageInfo = &image_info;
+    vkUpdateDescriptorSets_(device_, 1, &write, 0, nullptr);
+    t->fresh = true;
+    t->pending = 0;
+    textures_.push_back(t);
     return t;
 }
 
@@ -479,12 +718,12 @@ void Gfx::record_uploads(VkCommandBuffer cmd)
         barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image = t->image;
         barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.oldLayout = t->fresh ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.srcAccessMask = t->fresh ? 0 : VK_ACCESS_SHADER_READ_BIT;
         barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vkCmdPipelineBarrier_(cmd, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
-                              nullptr, 0, nullptr, 1, &barrier);
+        vkCmdPipelineBarrier_(cmd, t->fresh ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                              VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
         VkBufferImageCopy copy{};
         copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
         copy.imageExtent = {std::uint32_t(t->width), std::uint32_t(t->height), 1};
@@ -496,6 +735,20 @@ void Gfx::record_uploads(VkCommandBuffer cmd)
         vkCmdPipelineBarrier_(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
                               nullptr, 0, nullptr, 1, &barrier);
         t->pending = -1;
+        if (t->fresh)
+        {
+            /* Its one copy is recorded: the staging buffer goes once this
+             * frame is done with it. */
+            auto *spent = new Texture();
+            spent->staging[0] = t->staging[0];
+            spent->staging_memory[0] = t->staging_memory[0];
+            spent->staging_mapped[0] = t->staging_mapped[0];
+            t->staging[0] = VK_NULL_HANDLE;
+            t->staging_memory[0] = VK_NULL_HANDLE;
+            t->staging_mapped[0] = nullptr;
+            t->fresh = false;
+            graveyard_.push_back({spent, frame_no_});
+        }
     }
 }
 
@@ -755,6 +1008,22 @@ void Gfx::begin(unsigned slot, float target_w, float target_h, float time, float
     layer_dx_ = layer_dy_ = 0;
     layer_fade_ = 1;
     ++frame_no_;
+    uploads_left_ = 2;
+    if (async_loads_)
+    {
+        Loader &L = loader();
+        L.frame.store(frame_no_);
+        if (frame_no_ % 30 == 0)
+        {
+            /* Decoded pictures nobody came back for give their memory back. */
+            std::lock_guard<std::mutex> g(L.lock);
+            for (auto it = L.loads.begin(); it != L.loads.end();)
+                if (it->second.state != Load::Busy && frame_no_ - it->second.wanted > kLoadForgotten)
+                    it = L.loads.erase(it);
+                else
+                    ++it;
+        }
+    }
     const std::uint64_t safe = std::uint64_t(std::max<unsigned>(init_.slots, 1)) + 1;
     for (std::size_t i = 0; i < graveyard_.size();)
         if (frame_no_ - graveyard_[i].second > safe)

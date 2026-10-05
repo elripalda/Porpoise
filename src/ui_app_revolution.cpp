@@ -575,7 +575,8 @@ void App::draw_rev_picture(Game &game, float x, float y, float w, float h, float
     {
         g.panel(cx, cy, cw, ch, with_alpha(wii ? rev::kWii : rev::kGameCube, 0.16f * fade), 1, 18,
                 with_alpha(wii ? rev::kWii : rev::kGameCube, 0.5f * fade), 2);
-        draw_mark(cx + cw * 0.5f, cy + ch * 0.5f, cw * 0.5f, with_alpha(kWhite, fade));
+        if (!cover_loading(game))
+            draw_mark(cx + cw * 0.5f, cy + ch * 0.5f, cw * 0.5f, with_alpha(kWhite, fade));
     }
     const float tx = cx + cw + 64, tw = x + w - 56 - tx;
     float ty = cy + 6;

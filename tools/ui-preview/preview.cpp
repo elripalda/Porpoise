@@ -11,6 +11,7 @@
 #include <chrono>
 #include <thread>
 #include <vector>
+#include <unistd.h>
 
 #include <sys/stat.h>
 
@@ -198,6 +199,10 @@ int main(int argc, char **argv)
     gi.get_device_proc = gdpa;
     gi.asset_dir = assets;
     Gfx gfx;
+    /* Covers decode on a worker thread in Porpoise; here, in place, so every
+     * scene shows them (PREVIEW_ASYNC=1 to see the worker's way). */
+    const bool async = std::getenv("PREVIEW_ASYNC") != nullptr;
+    gfx.set_async_loads(async);
     if (!gfx.init(gi))
     {
         std::fprintf(stderr, "gfx init failed\n");
@@ -401,6 +406,16 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    if (async)
+    {
+        render("async-first", [&] { ui.draw(12.0); });
+        for (int i = 0; i < 40; ++i)
+        {
+            usleep(15000);
+            render("async-later", [&] { ui.draw(12.0); });
+            ui.update(none, 0.016);
+        }
+    }
     press(kSquare);
     for (int i = 0; i < 9; ++i)
         ui.update(none, 0.016);
