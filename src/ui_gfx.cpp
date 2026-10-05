@@ -525,7 +525,9 @@ Texture *Gfx::upload(const std::uint8_t *pixels, int width, int height)
 
 Texture *Gfx::texture_rgba(const std::uint8_t *pixels, int width, int height)
 {
-    return upload(pixels, width, height);
+    /* Save icons and the like, often dozens at once (a memory card opening):
+     * copied in with the frame's commands, not one GPU wait each. */
+    return upload_later(pixels, width, height);
 }
 
 Texture *Gfx::texture_file(const std::string &path, int max_side)
