@@ -792,6 +792,7 @@ void App::draw_starcube(double time)
     draw_theme_overlay();
 }
 
+#ifdef PORPOISE_HOST_PREVIEW
 /* For the preview: a face of the cube, or its page. */
 void App::preview_starcube(int face, bool page)
 {
@@ -803,5 +804,7 @@ void App::preview_starcube(int face, bool page)
         sc_face_ = face;
     }
 }
+
+#endif
 
 } // namespace porpoise::ui
