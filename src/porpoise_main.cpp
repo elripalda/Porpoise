@@ -982,9 +982,11 @@ int main()
     if (g_sandboxed)
         g_app.show_message(porpoise::ui::tr("Porpoise can't reach /data"),
                            porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
-                                            "/data or USB drives, and asking the HEN didn't free it. Add PPSA99764 "
-                                            "to your HEN's list of apps to jailbreak (etaHEN or OnionHEN), then "
-                                            "open Porpoise again. Until then, games go in /app0/porpoise/games."));
+                                            "/data or USB drives, and no jailbreak daemon freed it. Make sure one is "
+                                            "running before you open Porpoise: etaHEN or OnionHEN with PPSA99764 on "
+                                            "its app jailbreak list, or a standalone daemon such as Lapy. Then open "
+                                            "Porpoise again (if it still fails the first time, try once more). Until "
+                                            "then, games go in /app0/porpoise/games."));
     porpoise::sound::fade_music(1.0f, 2.5f);
     fetch_covers();
 

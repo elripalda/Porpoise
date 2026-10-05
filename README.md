@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 1.5</b></a> ·
+  <a href="https://github.com/elripalda/Porpoise/releases/latest"><b>Download Porpoise 1.5.1</b></a> ·
   <a href="#install">Install</a> ·
   <a href="#controls">Controls</a> ·
   <a href="BUILDING.md">Build from source</a> ·
@@ -234,7 +234,7 @@ that closed the menu never reaches the game.
 
 ## Install
 
-1. Download **`Porpoise-1.5.zip`** from the
+1. Download **`Porpoise-1.5.1.zip`** from the
    [latest release](https://github.com/elripalda/Porpoise/releases/latest) and
    unzip it on your computer. You get a folder named **`PPSA99764`**.
 2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
@@ -354,10 +354,20 @@ becomes the next player, up to four, and can join in the middle of a game.
   `/data/homebrew/PPSA99764/` completely before uploading the new folder.
 - **"Porpoise can't reach /data", only a few folders in the folder browser, or
   games in `/data/games` not showing?** The console started Porpoise inside the
-  app sandbox. Porpoise asks the HEN to free it, but the HEN only does that for
-  apps on its list: add **PPSA99764** to your HEN's list of apps to jailbreak
-  (etaHEN or OnionHEN settings), then open Porpoise again. Until then it keeps
-  its things in the app's own folder (`/data/homebrew/PPSA99764/porpoise/`).
+  app sandbox, and a jailbreak daemon has to free it. Make sure one is running
+  **before** you open Porpoise:
+  - **etaHEN** or **OnionHEN** with **PPSA99764** on its app-jailbreak list
+    (etaHEN or OnionHEN settings), or
+  - a standalone jailbreak daemon such as a **Lapy**-style daemon (loaded from
+    your Homebrew Launcher or `autoload.txt`).
+
+  Then open Porpoise. It now keeps asking the daemon for a few seconds as it
+  starts, so a daemon that loads a moment late or needs a second try is handled
+  on its own — but if a launch still lands in the sandbox, just open Porpoise
+  once more. This commonly explains "it worked the first time but not after":
+  the daemon wasn't up, or running, on the later launch. Until it's freed,
+  Porpoise keeps its things in the app's own folder
+  (`/data/homebrew/PPSA99764/porpoise/`).
 - **A game runs slowly?** Open its settings and look at **Recommended**: some
   of Dolphin's own fixes for a game cost speed on PS5, and Porpoise's picks
   turn them off where that's been tested. The speed line in `core.log` (below)

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.1 — 2026-10-04
+
+### Getting out of the sandbox
+- **More reliable sandbox escape.** When Porpoise starts inside the app
+  sandbox and can't see `/data` or USB drives, it now keeps asking a jailbreak
+  daemon to free it for a short while, instead of giving up after one try. This
+  fixes the common "worked the first time, then couldn't read /data on later
+  launches" problem, where the daemon starts a moment after Porpoise or the
+  first attempt loses a timing race.
+- Works with the etaHEN jailbreak-on-demand API that OnionHEN and standalone
+  daemons (a **Lapy**-style daemon) share, so no single HEN is required.
+- The "can't reach /data" message now explains what to do: make sure a
+  jailbreak daemon is running first, and try opening Porpoise once more if the
+  first launch still fails.
+
 ## 1.5 — 2026-10-04
 
 ### Revolution theme (Settings → Interface → Theme)

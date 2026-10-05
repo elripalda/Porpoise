@@ -6,7 +6,11 @@
  * player's games, USB drives, and so on. Most setups start it that way
  * already (etaHEN or the launcher frees each homebrew app). Where it starts
  * inside the sandbox, /data is missing or empty and the folder browser shows
- * only a few folders; Porpoise then asks the HEN itself, the way PS5SX2 does
+ * only a few folders; Porpoise then asks a jailbreak daemon itself. This is
+ * the etaHEN jailbreak-on-demand API, which OnionHEN and standalone daemons
+ * (a Lapy-style daemon) carry too: a process writes its PID to a request
+ * file in its own sandbox and the daemon, watching every sandbox, bumps it.
+ * Porpoise keeps asking for a short while, the way PS5SX2 does
  * (ps5/coreorbis/orbis-shims/ProsperoHenJailbreak.cpp and main-boot.cpp in
  * PS5SX2, GPL-3.0-or-later; this is a port of its approach):
  *
@@ -53,7 +57,12 @@ void note(const char *fmt, int a = 0, int b = 0, int c = 0)
     ps5::debug::mark(line);
 }
 
-/* The HEN's request file. True when it was consumed (and, ideally, we are root). */
+/* Publishes the request file (the daemon, etaHEN / OnionHEN / a Lapy-style
+ * daemon, watches each sandbox for it and bumps the process it names). Waits
+ * a short while for it to be taken; true when the daemon took it (the file is
+ * gone), so the caller can then wait for /data. One round: ensure() publishes
+ * again and again, because the daemon may start a moment after Porpoise and
+ * because the first bump can lose a timing race. */
 bool request_file()
 {
     const int pid = int(getpid());
@@ -76,25 +85,17 @@ bool request_file()
         note("jailbreak: request file not published (errno %d)", errno);
         return false;
     }
-    /* Up to 4 s for the HEN to take it, then up to 2 s for it to finish. */
+    /* Up to ~1.5 s for a daemon to take the file this round. */
     int polls = 0;
-    while (access(kRequest, F_OK) == 0 && polls < 240)
+    while (access(kRequest, F_OK) == 0 && polls < 90)
     {
         sceKernelUsleep(16667);
         ++polls;
     }
     if (access(kRequest, F_OK) == 0)
     {
-        unlink(kRequest);
-        note("jailbreak: the HEN didn't take the request (is PPSA99764 on its app jailbreak list?)");
+        unlink(kRequest); /* leave nothing behind for the next round */
         return false;
-    }
-    /* Up to 2 s for /data to open up (not every HEN makes the app root). */
-    int grace = 0;
-    while (!data_reachable() && grace < 120)
-    {
-        sceKernelUsleep(16667);
-        ++grace;
     }
     note("jailbreak: request taken after %d polls; uid now %d", polls, int(geteuid()));
     return true;
@@ -176,10 +177,32 @@ bool ensure()
     if (data_reachable())
         return true;
     note("jailbreak: /data isn't reachable (uid %d); asking the HEN", int(geteuid()));
-    if (!request_file())
-        request_port();
-    const bool ok = data_reachable();
-    note(ok ? "jailbreak: /data is reachable now" : "jailbreak: still sandboxed; using the app's own folder");
-    return ok;
+    /* A daemon may not be up the instant Porpoise starts (a cold launch from
+     * the home screen, or the daemon still loading), and the first bump can
+     * lose a timing race, so Porpoise keeps asking for a while rather than
+     * once. Each round re-publishes the request file and tries the legacy
+     * command ports; after any round that is taken, /data is given a moment
+     * to open. The common case (a daemon is up and bumps Porpoise) returns in
+     * the first round or two; the full ten rounds only run when there is no
+     * daemon at all, where Porpoise falls back to its own folder anyway. */
+    for (int round = 0; round < 10; ++round)
+    {
+        const bool taken = request_file();
+        if (!taken)
+            request_port();
+        /* Up to ~1.5 s for /data to open after a daemon acts (not every one
+         * makes the app root the same instant). */
+        for (int grace = 0; grace < 90; ++grace)
+        {
+            if (data_reachable())
+            {
+                note("jailbreak: /data is reachable now (round %d)", round);
+                return true;
+            }
+            sceKernelUsleep(16667);
+        }
+    }
+    note("jailbreak: still sandboxed; using the app's own folder");
+    return false;
 }
 } // namespace porpoise::jailbreak
