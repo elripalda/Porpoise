@@ -77,6 +77,51 @@ bool copy_file(const std::string &from, const std::string &to, std::size_t keep_
 }
 } // namespace
 
+void App::show_setup_check(bool first_start)
+{
+    std::string text;
+    auto line = [&](bool ok, const std::string &what) {
+        text += (ok ? "\xE2\x9C\x93  " : "\xE2\x9C\x97  ") + what + "\n";
+    };
+    if (sandboxed_)
+        line(false, tr("Porpoise is inside the app sandbox: it can't see /data or USB drives. Turn on Legacy Command "
+                       "Server in etaHEN, add PPSA99764 to OnionHEN's exact_title_ids, or run a Lapy daemon, then "
+                       "open Porpoise again."));
+    else
+        line(true, tr("Porpoise can see /data and USB drives."));
+    std::vector<std::string> drives;
+    for (int i = 0; i < 8; ++i)
+    {
+        struct stat st;
+        const std::string root = "/mnt/usb" + std::to_string(i);
+        if (stat(root.c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+            drives.push_back("USB " + std::to_string(i + 1));
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+        struct stat st;
+        if (stat(("/mnt/ext" + std::to_string(i)).c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+            drives.push_back(tr("extended storage"));
+    }
+    if (!sandboxed_)
+    {
+        std::string list;
+        for (const std::string &d : drives)
+            list += (list.empty() ? "" : ", ") + d;
+        line(true, drives.empty() ? tr("No USB drive found (games on one: format it exFAT).")
+                                  : trf("Drives: {list}.", {{"list", list}}));
+    }
+    const int games = int(lib_->games().size());
+    if (games > 0)
+        line(true, plural(games, "1 game found.", "{n} games found."));
+    else
+        line(false, tr("No games yet. Put them in /data/porpoise/games or on a USB drive, or add a folder in "
+                       "Settings > Games."));
+    line(settings_->download_covers, settings_->download_covers ? tr("Covers download while the console is online.")
+                                                                 : tr("Cover downloads are off (Settings > Games)."));
+    open_dialog(DialogKind::Info, first_start ? tr("Welcome to Porpoise") : tr("Your setup"), text, "");
+}
+
 std::string App::save_report(std::string &usb)
 {
     usb.clear();
@@ -370,6 +415,10 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.custom_textures);
     toggle("skip_dupes", "Skip duplicate frames", "Saves work when a game shows the same frame twice.",
            &t.skip_dupes);
+    toggle("quick_resume", "Quick resume (beta)",
+           "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next "
+           "time you start it. Start over (in the in-game menu) boots it fresh.",
+           &t.quick_resume);
     toggle("fast_states", "Fast save states",
            "Leaves the GPU's texture cache out of save states: much quicker to save, and smaller. Turn it off if a "
            "game looks wrong for a moment after loading a state.",
@@ -467,7 +516,8 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("wii_controller", "Wii controller",
            "How a Wii game sees your DualSense. Remote + Nunchuk: the Nunchuk on the left stick and L1 / L2. Remote: "
            "held pointing at the TV, with its motion. Sideways: held like an NES pad, tilt to steer. Two "
-           "controllers (beta): the second DualSense is the Nunchuk.",
+           "controllers (beta): the second DualSense is the Nunchuk. Otherwise every other controller is another "
+           "player's own Wii Remote, with its own pointer and motion.",
            &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
                                   "Two controllers (alpha)"});
     choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to centre it.",
@@ -585,6 +635,13 @@ void App::build_settings()
     const std::size_t n = lib_ ? lib_->games().size() : 0;
     action("Search for games now", "Looks through every folder again, for games you have just copied over.",
            plural((long long)n, "1 game", "{n} games"), kRowRescan);
+    action("Check my setup", "What Porpoise can see on this console - /data, USB drives, games - and what to do "
+           "about anything missing.",
+           "Check\xE2\x80\xA6", kRowSetupCheck);
+    action("Saves from a USB drive (beta)",
+           "Copies saves from the USB drive's Porpoise Saves folder in: GameCube saves onto Slot A, Wii saves to "
+           "their games. A save that's already here is left as it is. Options in Memory Cards copies a save out.",
+           "Copy in\xE2\x80\xA6", kRowImportSaves);
 
     add_game_rows(*settings_, false);
 
@@ -738,6 +795,7 @@ void App::build_game_settings()
     add_setup_rows(true);
     add_game_rows(game_, true);
     add_recommended_rows();
+    add_cheat_rows();
     if (settings_row_ < 0 || settings_row_ >= int(rows_.size()) || rows_[std::size_t(settings_row_)].header)
         settings_row_ = 1;
     rail_ = std::clamp(rail_, 0, std::max(0, section_count() - 1));
@@ -763,6 +821,41 @@ void App::add_setup_rows(bool per_game)
         r.values = {su.from.empty() ? tr("Use") : su.from};
         r.action = kRowUseSetup;
         r.setup = i;
+        rows_.push_back(r);
+    }
+}
+
+/* The codes Dolphin lists for this game (ui_cheats.hpp), one switch each. */
+void App::add_cheat_rows()
+{
+    cheats_.clear();
+    cheat_on_.clear();
+    if (!game_for_ || game_for_->id.size() != 6 || sys_dir_.empty())
+        return;
+    cheats_ = cheats_for(sys_dir_, game_for_->id);
+    if (cheats_.empty())
+        return;
+    SettingRow h;
+    h.section = "Cheats and patches (beta)";
+    h.header = true;
+    rows_.push_back(h);
+    for (std::size_t i = 0; i < cheats_.size() && i < 80; ++i)
+    {
+        const Cheat &c = cheats_[i];
+        const bool on = c.default_on ? game_.get(cheat_key(c, false)) != "1" : game_.get(cheat_key(c, true)) == "1";
+        cheat_on_.push_back(on);
+    }
+    for (std::size_t i = 0; i < cheat_on_.size(); ++i)
+    {
+        const Cheat &c = cheats_[i];
+        SettingRow r;
+        r.section = "Cheats and patches (beta)";
+        r.key = "cheat";
+        r.folder = int(i);
+        r.label = c.name.substr(1);
+        r.help = cheat_help(c);
+        r.bool_value = &cheat_on_[i];
+        r.values = {tr("Off"), tr("On")};
         rows_.push_back(r);
     }
 }
@@ -1059,6 +1152,37 @@ void App::change_setting(int dir)
         if (r.text_value && r.int_value == &border_choice_)
             *r.text_value = border_names_[std::size_t(std::clamp(border_choice_, 0, int(border_names_.size()) - 1))];
     }
+    if (r.key == "cheat" && screen_ == Screen::GameSettings && game_for_ && r.folder >= 0 &&
+        r.folder < int(cheats_.size()))
+    {
+        /* A code's switch: named in [<kind>_Enabled] when it is on and
+         * Dolphin doesn't turn it on by itself, in [<kind>_Disabled] when it
+         * is off and Dolphin would. Cheats (not patches) need Dolphin's
+         * cheats on for the game. */
+        const Cheat &c = cheats_[std::size_t(r.folder)];
+        const bool on = cheat_on_[std::size_t(r.folder)];
+        for (const std::string &k : {cheat_key(c, true), cheat_key(c, false)})
+        {
+            game_.forget(k);
+            game_keys_.erase(std::remove(game_keys_.begin(), game_keys_.end(), k), game_keys_.end());
+        }
+        const std::string k = on && !c.default_on ? cheat_key(c, true) : !on && c.default_on ? cheat_key(c, false) : "";
+        if (!k.empty())
+        {
+            game_.set(k, "1");
+            game_keys_.push_back(k);
+        }
+        if (on && c.kind != "OnFrame" && !game_.cheats)
+        {
+            game_.cheats = true;
+            if (std::find(game_keys_.begin(), game_keys_.end(), "cheats") == game_keys_.end())
+                game_keys_.push_back("cheats");
+        }
+        mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+        game_.save_keys(game_settings_path(*game_for_), game_keys_);
+        rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
+        return;
+    }
     if (screen_ == Screen::GameSettings && game_for_)
     {
         if (!r.key.empty() && std::find(game_keys_.begin(), game_keys_.end(), r.key) == game_keys_.end())
@@ -1117,6 +1241,35 @@ App::Action App::activate_row(const SettingRow &row)
         sfx(Sound::MenuScroll);
         update_phase_ = 1; /* until the updater says otherwise: a quick failure still shows */
         return Action::CheckUpdate;
+    case kRowSetupCheck:
+        sfx(Sound::MenuScroll);
+        show_setup_check(false);
+        return Action::None;
+    case kRowImportSaves:
+    {
+        sfx(Sound::MenuScroll);
+        if (usb_root().empty())
+        {
+            open_dialog(DialogKind::Info, tr("No USB drive"),
+                        tr("Plug in the USB drive with a Porpoise Saves folder (made by Options in Memory Cards)."),
+                        "");
+            return Action::None;
+        }
+        Card a, b;
+        load_cards(saves_dir_, a, b);
+        int gc = 0, wii = 0, skipped = 0;
+        import_usb_saves(saves_dir_, a, gc, wii, skipped);
+        cards_scanned_ = wii_scanned_ = false;
+        std::string text = trf("GameCube saves copied onto Slot A: {gc}. Wii saves copied: {wii}.",
+                               {{"gc", std::to_string(gc)}, {"wii", std::to_string(wii)}});
+        if (skipped)
+            text += " " + plural(skipped, "1 was already here and was left as it is.",
+                                 "{n} were already here and were left as they are.");
+        if (!a.folder && gc == 0)
+            text += " " + tr("Slot A is one memory card file, so GameCube saves can't be added to it one by one.");
+        open_dialog(DialogKind::Info, tr("Saves from the USB drive"), text, "");
+        return Action::None;
+    }
     case kRowSendReport:
     {
         sfx(Sound::MenuScroll);
@@ -1585,7 +1738,7 @@ void App::draw_settings()
         }
         if (qr_)
         {
-            const float qs = 150, qx = px + pw - qs - 50, qy = py + 24;
+            const float qs = 118, qx = px + pw - qs - 70, qy = py + 22; /* above the first row */
             g.panel(qx - 8, qy - 8, qs + 16, qs + 16, rgba(0x07102E, 0.5f), 1, kR, with_alpha(kCyan, 0.9f), 1.6f, 8);
             g.image(qr_, qx, qy, qs, qs, kWhite, 10);
         }
@@ -1619,7 +1772,16 @@ void App::draw_settings()
     else if (focus.toggle >= 0)
         draw_prompts({{Glyph::Cross, focus.toggle ? "Turn off" : "Turn on"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action)
-        draw_prompts({{Glyph::Cross, "Reset"}, {Glyph::Circle, "Sections"}}, {}, "");
+    {
+        /* The button says what the row's own button says ("Check…" → Check). */
+        std::string verb = focus.values.empty() ? std::string("Select") : focus.values.front();
+        const std::string dots = "\xE2\x80\xA6";
+        if (verb.size() >= dots.size() && verb.compare(verb.size() - dots.size(), dots.size(), dots) == 0)
+            verb.resize(verb.size() - dots.size());
+        if (verb.empty())
+            verb = "Select";
+        draw_prompts({{Glyph::Cross, verb}, {Glyph::Circle, "Sections"}}, {}, "");
+    }
     else if (info)
         draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Circle, "Sections"}}, {}, "");
     else

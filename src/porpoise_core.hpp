@@ -46,6 +46,7 @@ enum Menu
     kMenuResume = 1, /* back to the game */
     kMenuLibrary = 2,
     kMenuHome = 3,   /* close Porpoise */
+    kMenuRestart = 4, /* start the game over (and forget its quick-resume state) */
 };
 
 /* How a game ended. */
@@ -78,6 +79,9 @@ struct Playback
     int filter = 0;        /* porpoise::vk screen filter */
     float strength = 0.6f; /* 0..1 */
     const char *load_state = nullptr; /* a save state to load once the game is up */
+    /* Quick resume (beta): leaving from the in-game menu saves the game here;
+     * null when it is off. */
+    const char *resume_path = nullptr;
     /* A Wii game: how the DualSense plays the Wii Remote (pad.hpp). */
     porpoise::pad::WiiConfig wii;
     /* The debug folder (Settings > System > Debug logs), or null. With

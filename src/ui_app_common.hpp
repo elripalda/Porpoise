@@ -42,6 +42,8 @@ enum RowAction
     kRowUpdate,
     kRowPickVersion, /* About > Choose a version: left / right pick, Cross installs */
     kRowSendReport,  /* About > Report a bug: the logs into a report folder (and onto a USB drive) */
+    kRowSetupCheck,  /* Games > Check my setup: what Porpoise can see, and what to do about it */
+    kRowImportSaves, /* Games > Saves from a USB drive (beta) */
     kRowDeveloperOff,
 };
 

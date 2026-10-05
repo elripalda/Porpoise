@@ -117,6 +117,22 @@ void App::update_wii_saves(bool left, bool right, bool up, bool down)
                         "copy.",
                         {{"save", s.title + (s.detail.empty() ? "" : " - " + s.detail)}}),
                     tr("Delete"), true);
+    if (pressed(BtnOptions))
+    {
+        /* Beta: the save onto a USB drive, for a computer or another console. */
+        std::string where;
+        if (usb_root().empty())
+            open_dialog(DialogKind::Info, tr("No USB drive"),
+                        tr("Plug in a USB drive (exFAT) to copy saves to it."), "");
+        else if (export_wii_save(saves_dir_, s, where))
+        {
+            flash_note(trf("Copied to the USB drive: {path}", {{"path", where.substr(where.find("Porpoise Saves"))}}));
+            sfx(Sound::LaunchGame);
+        }
+        else
+            open_dialog(DialogKind::Info, tr("Could not copy the save"),
+                        tr("Copying it to the USB drive failed. Is the drive full or read-only?"), "");
+    }
     if (pressed(BtnSquare))
     {
         std::string where;
@@ -223,7 +239,7 @@ void App::draw_wii_saves(double time)
         std::snprintf(pos, sizeof pos, "%02d / %02d", wii_sel_ + 1, n);
     if (wii_sel_ < n)
         draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "GameCube cards"}, {Glyph::Circle, "Back"}},
-                     {{Glyph::Square, "Back up"}, {Glyph::Triangle, "Delete"}}, pos);
+                     {{Glyph::Options, "To USB"}, {Glyph::Square, "Back up"}, {Glyph::Triangle, "Delete"}}, pos);
     else
         draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "GameCube cards"}, {Glyph::Circle, "Back"}}, {}, pos);
 }

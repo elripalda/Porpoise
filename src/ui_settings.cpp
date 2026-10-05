@@ -63,6 +63,7 @@ const Field kFields[] = {
     {"skip_dupes", nullptr, &Settings::skip_dupes, 0, 1},
     {"vsync", nullptr, &Settings::vsync, 0, 1},
     {"fast_states", nullptr, &Settings::fast_states, 0, 1},
+    {"quick_resume", nullptr, &Settings::quick_resume, 0, 1},
     {"volume", &Settings::volume, nullptr, 0, 10},
     {"muted", nullptr, &Settings::muted, 0, 1},
     {"menu_music", nullptr, &Settings::menu_music, 0, 1},
@@ -93,6 +94,7 @@ const Field kFields[] = {
     {"developer", nullptr, &Settings::developer, 0, 1},
     {"beta_updates", nullptr, &Settings::beta_updates, 0, 1},
     {"perf_profile", nullptr, &Settings::perf_profile, 0, 1},
+    {"setup_checked", nullptr, &Settings::setup_checked, 0, 1},
     {"motion_logs", nullptr, &Settings::motion_logs, 0, 1},
     {"cpu_clock", &Settings::cpu_clock, nullptr, 0, 9},
     {"dual_core", nullptr, &Settings::dual_core, 0, 1},
@@ -413,10 +415,19 @@ bool Settings::write_dolphin_game_ini(const std::string &path) const
     std::fprintf(f, "%s from this game's settings; changes here are replaced.\n", kMark);
     for (const std::string &sec : sections)
     {
+        /* A list of codes (OnFrame_Enabled, Gecko_Disabled, ...) names each
+         * one on its own line; every other section is key = value. */
+        const bool list = (sec.size() > 8 && sec.compare(sec.size() - 8, 8, "_Enabled") == 0) ||
+                          (sec.size() > 9 && sec.compare(sec.size() - 9, 9, "_Disabled") == 0);
         std::fprintf(f, "\n[%s]\n", sec.c_str());
         for (const auto &kv : dolphin)
             if (kv.first.compare(8, sec.size() + 1, sec + ".") == 0)
-                std::fprintf(f, "%s = %s\n", kv.first.substr(9 + sec.size()).c_str(), kv.second.c_str());
+            {
+                if (!list)
+                    std::fprintf(f, "%s = %s\n", kv.first.substr(9 + sec.size()).c_str(), kv.second.c_str());
+                else if (kv.second == "1" || kv.second == "True")
+                    std::fprintf(f, "%s\n", kv.first.substr(9 + sec.size()).c_str());
+            }
     }
     std::fclose(f);
     return true;

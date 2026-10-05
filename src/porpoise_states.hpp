@@ -37,4 +37,6 @@ bool busy();
 void wait();
 bool load(const std::string &game_key, int index);
 bool remove(const std::string &game_key, int index);
+/* Quick resume: the state the game was left in (<data>/states/<key>/resume.state). */
+std::string resume_path(const std::string &game_key);
 } // namespace porpoise::states

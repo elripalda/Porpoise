@@ -268,4 +268,10 @@ bool remove(const std::string &game_key, int index)
     std::remove(s.picture_path.c_str());
     return std::remove(s.state_path.c_str()) == 0;
 }
+std::string resume_path(const std::string &game_key)
+{
+    mkdir((g_data_dir + "/states").c_str(), 0777);
+    mkdir(dir_of(game_key).c_str(), 0777);
+    return dir_of(game_key) + "/resume.state";
+}
 } // namespace porpoise::states

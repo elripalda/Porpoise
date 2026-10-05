@@ -11,11 +11,13 @@
 #include <map>
 #include <set>
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <vector>
 
 #include "porpoise_banner.hpp"
 #include "porpoise_borders.hpp"
+#include "ui_cheats.hpp"
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
 #include "ui_memcard.hpp"
@@ -237,6 +239,14 @@ private:
     void build_settings();
     void build_game_settings();
     void add_recommended_rows();
+    void add_cheat_rows();
+    std::vector<Cheat> cheats_;
+    std::deque<bool> cheat_on_; /* a deque: the rows point at its elements */
+    std::string sys_dir_;
+public:
+    /* Dolphin's Sys folder, for the cheats it lists. */
+    void set_sys_dir(const std::string &dir) { sys_dir_ = dir; }
+private:
     void add_setup_rows(bool per_game);
     struct RecRow
     {
@@ -271,6 +281,13 @@ private:
      * copy on the first USB drive (usb: its folder there, "" when none).
      * Returns the report's folder, "" when it couldn't be written. */
     std::string save_report(std::string &usb);
+public:
+    /* Whether Porpoise was left in the app sandbox (porpoise_main). */
+    void set_sandboxed(bool sandboxed) { sandboxed_ = sandboxed; }
+    /* The setup check: a title and what Porpoise can see, with what to do. */
+    void show_setup_check(bool first_start);
+private:
+    bool sandboxed_ = false;
     std::vector<std::string> version_tags_, version_labels_;
     std::vector<std::size_t> version_sizes_;
     std::vector<int> version_builds_;
@@ -307,6 +324,7 @@ private:
     Save *focused_save();
     void ask_delete_save();
     void ask_copy_save();
+    void export_save_to_usb();
     std::string copy_target(const Save &s) const;
 
     void draw_top_bar();
@@ -465,6 +483,7 @@ private:
     float menu_anim_ = 0;
     bool menu_closing_ = false;
     int menu_answer_ = 0;
+    bool menu_restart_armed_ = false; /* Start over asked once */
     std::string menu_change_;
     int menu_tab_ = 0;   /* Game, Video, Graphics, Controls */
     int menu_slot_ = 0;  /* the save-state slot under focus */

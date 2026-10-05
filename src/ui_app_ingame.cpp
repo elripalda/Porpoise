@@ -53,6 +53,7 @@ enum class Kind
     FastForward,
     Library,
     Home,
+    Restart, /* start the game over (a second press confirms) */
     Customize,
     SaveSetup, /* this game's video and graphics, kept as a setup */
     UseSetup,  /* a setup's settings for this game */
@@ -85,6 +86,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
         r.push_back({Kind::Save, "", "Save state\xE2\x80\xA6"});
         r.push_back({Kind::Load, "", "Load state\xE2\x80\xA6"});
         r.push_back({Kind::FastForward, "", "Fast forward"});
+        r.push_back({Kind::Restart, "", "Start over"});
         r.push_back({Kind::Int, "volume", "Volume", &p.volume, nullptr, 0, kPercent});
         r.push_back({Kind::Library, "", "Quit to library", nullptr, nullptr, 0, {}, true});
         r.push_back({Kind::Home, "", "Close Porpoise"});
@@ -327,6 +329,7 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_closing_ = false;
     menu_answer_ = 0;
     menu_note_.clear();
+    menu_restart_armed_ = false;
     map_in_game_ = false;
     menu_slots_mode_ = 0;
     menu_confirm_ = false;
@@ -447,6 +450,8 @@ int App::update_game_menu(const Input &in, double dt)
         sfx(Sound::MenuScroll);
     }
     menu_row_ = std::clamp(menu_row_, 0, count - 1);
+    if (up || down)
+        menu_restart_armed_ = false;
 
     auto close = [&](int answer) {
         sfx(answer == 1 ? Sound::DetailsFlip : Sound::MovingTab);
@@ -481,6 +486,20 @@ int App::update_game_menu(const Input &in, double dt)
     case Kind::Home:
         if (cross)
             return close(3);
+        break;
+    case Kind::Restart:
+        if (cross)
+        {
+            /* Once to ask, again to do it: the game boots afresh. */
+            if (menu_restart_armed_)
+            {
+                menu_restart_armed_ = false;
+                return close(4);
+            }
+            menu_restart_armed_ = true;
+            menu_note_ = tr("Press Cross again to start the game over. Unsaved progress is lost.");
+            sfx(Sound::MenuScroll);
+        }
         break;
     case Kind::Save:
     case Kind::Load:

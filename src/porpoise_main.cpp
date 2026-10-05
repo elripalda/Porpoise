@@ -1005,6 +1005,7 @@ int main()
     porpoise::vk::set_overlay(overlay, nullptr);
     porpoise::vk::set_prepass(prepass, nullptr);
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
+    g_app.set_sys_dir("/app0/system/dolphin-emu/Sys");
     g_app.set_sound_hook(play_sound);
     g_app.set_jingle_hook([](const std::int16_t *frames, std::size_t count) {
         porpoise::sound::play_jingle(frames, count);
@@ -1018,6 +1019,14 @@ int main()
                                        "/app0/assets/recommended.ini");
     read_latest_release();
     apply_settings();
+    g_app.set_sandboxed(g_sandboxed);
+    if (!g_sandboxed && !g_settings.setup_checked)
+    {
+        /* The first start: what Porpoise can see, once. */
+        g_app.show_setup_check(true);
+        g_settings.setup_checked = true;
+        g_settings.save(g_settings_path);
+    }
     if (g_sandboxed)
         g_app.show_message(porpoise::ui::tr("Porpoise can't reach /data"),
                            porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
@@ -1242,7 +1251,22 @@ int main()
         }
         if (playback.wii.active)
             ps5::debug::mark_value("main: Wii game; Wii controller", playback.wii.controller);
-        const std::string start_state = g_app.take_launch_state();
+        std::string start_state = g_app.take_launch_state();
+        /* Quick resume (beta): where the game was left, unless a save state
+         * was chosen in Details. */
+        const std::string resume = g_play.quick_resume
+                                       ? porpoise::states::resume_path(porpoise::ui::Library::key_of(*launch))
+                                       : std::string();
+        if (!resume.empty())
+        {
+            struct stat st;
+            if (start_state.empty() && stat(resume.c_str(), &st) == 0 && st.st_size > 0)
+            {
+                start_state = resume;
+                ps5::debug::mark("main: quick resume: picking up where the game was left");
+            }
+            playback.resume_path = resume.c_str();
+        }
         playback.load_state = start_state.empty() ? nullptr : start_state.c_str();
         porpoise::core::Paths core_paths;
         core_paths.saves = g_saves_path.c_str();

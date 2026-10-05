@@ -263,6 +263,7 @@ int main(int argc, char **argv)
     porpoise::Settings settings;
     App ui;
     ui.init(&gfx, &lib, &settings, out + "/settings.ini", out + "/options.ini", saves);
+    ui.set_sys_dir(std::string(getenv("HOME")) + "/porpoise-release/build/cores/stage/system/dolphin-emu/Sys");
     /* Two save states for the 4th game, with a cover for their pictures. */
     porpoise::states::set_data_dir(out);
     porpoise::borders::set_dirs(assets, out);
@@ -463,6 +464,39 @@ int main(int argc, char **argv)
     render("game-settings-video", [&] { ui.draw(12.0); });
     press(kCircle);
     press(kCircle); /* back to details */
+    {
+        /* A game Dolphin lists codes for: the Cheats and patches section. */
+        Game *g = nullptr;
+        for (Game &x : lib.games())
+            if (x.title == "Garden Critters")
+                g = &x;
+        if (g)
+        {
+            const std::string was = g->id;
+            g->id = "GMSE01";
+            press(kSquare); /* its details */
+            settle();
+            press(kDown, 2);
+            settle();
+            render("cheats-step0", [&] { ui.draw(12.0); });
+            press(kCross); /* Game settings, again */
+            settle();
+            render("cheats-step1", [&] { ui.draw(12.0); });
+            press(kDown, 12);
+            press(kRight);
+            settle();
+            render("game-settings-cheats", [&] { ui.draw(12.0); });
+            press(kDown, 2);
+            press(kCross);
+            settle();
+            render("game-settings-cheats-toggled", [&] { ui.draw(12.0); });
+            press(kCross);
+            press(kCircle);
+            press(kCircle);
+            settle();
+            g->id = was;
+        }
+    }
     press(kCircle); /* back to the library */
     settle();
 
@@ -636,6 +670,31 @@ int main(int argc, char **argv)
         settle();
         render("settings-developer", [&] { ui.draw(12.0); });
         press(kCircle);
+        /* Every section, top and bottom, for a look at the new rows. */
+        for (int sec = 0; sec < 10; ++sec)
+        {
+            press(1u << 0, 12);
+            press(kDown, sec);
+            press(kRight);
+            settle();
+            const std::string top = "sec-" + std::to_string(sec);
+            render(top.c_str(), [&] { ui.draw(12.0); });
+            press(kDown, 30);
+            settle();
+            const std::string end = top + "-end";
+            render(end.c_str(), [&] { ui.draw(12.0); });
+            press(1u << 0, sec == 9 ? 24 : 9);
+            if (sec == 9)
+            {
+                ui.set_versions({"v2.0-beta.1", "v1.5.1", "v1.5", "v1.1"}, {0, 0, 0, 0}, {true, false, false, false},
+                                {44u << 20, 42u << 20, 42u << 20, 40u << 20});
+                press(kDown, 7);
+            }
+            settle();
+            const std::string mid = top + "-mid";
+            render(mid.c_str(), [&] { ui.draw(12.0); });
+            press(kCircle);
+        }
         press(kCircle);
         settings.developer = false;
         ui.language_changed();

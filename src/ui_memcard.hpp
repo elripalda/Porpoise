@@ -32,6 +32,7 @@ struct Card
     std::string slot; /* "A" or "B" */
     bool present = false;
     bool folder = false; /* a Dolphin GCI folder rather than a .raw image */
+    std::string dir;     /* the GCI folder, when it is one */
     int total_blocks = 2043;
     int free_blocks = 2043;
     std::vector<Save> saves;
@@ -63,6 +64,18 @@ bool parse_wii_banner(const std::string &path, WiiSave &out);
 bool backup_wii_save(const std::string &saves_dir, const WiiSave &save, std::string &where);
 /* Removes the save's files (the game starts fresh). */
 bool delete_wii_save(const WiiSave &save);
+
+/* ---- saves on a USB drive (beta) ----
+ * <usb>/Porpoise Saves/GameCube/<save>.gci, and for Wii saves
+ * <usb>/Porpoise Saves/Wii/<game code> <title id>/ with the save's files and
+ * porpoise-wii-path.txt (where it goes under the saves folder). */
+/* The first USB drive's folder, "" when none is in. */
+std::string usb_root();
+bool export_gc_save(const Save &save, std::string &where);
+bool export_wii_save(const std::string &saves_dir, const WiiSave &save, std::string &where);
+/* Copies the USB drive's saves in: GameCube ones onto card (a GCI folder),
+ * Wii ones to their place. A save already there is left as it is (skipped). */
+bool import_usb_saves(const std::string &saves_dir, const Card &card, int &gc, int &wii, int &skipped);
 
 /* Finds cards A and B under Dolphin's user folder (<saves>/User/GC). */
 void load_cards(const std::string &saves_dir, Card &a, Card &b);

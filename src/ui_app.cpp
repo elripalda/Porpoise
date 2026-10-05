@@ -551,6 +551,8 @@ App::Action App::update(const Input &in, double dt)
                 ask_delete_save();
             if (pressed(BtnSquare))
                 ask_copy_save();
+            if (pressed(BtnOptions))
+                export_save_to_usb();
         }
         if (pressed(BtnCircle))
             set_tab(int(Tab::Library), -1);
@@ -837,6 +839,31 @@ void App::ask_delete_save()
                 trf("{save}. It is removed from Slot {slot} for good.",
                     {{"save", what + (s->detail.empty() ? "" : " - " + s->detail)}, {"slot", slot}}),
                 tr("Delete"), true);
+}
+
+/* Beta: the focused GameCube save onto a USB drive. */
+void App::export_save_to_usb()
+{
+    Save *s = focused_save();
+    if (!s)
+        return;
+    const Card &card = mc_card_ == 0 ? card_a_ : card_b_;
+    std::string where;
+    if (usb_root().empty())
+        open_dialog(DialogKind::Info, tr("No USB drive"), tr("Plug in a USB drive (exFAT) to copy saves to it."), "");
+    else if (!card.folder)
+        open_dialog(DialogKind::Info, tr("Can't copy from this card"),
+                    tr("This card is one memory card file, not Dolphin's folder of saves, so its saves can't be "
+                       "copied one by one."),
+                    "");
+    else if (export_gc_save(*s, where))
+    {
+        flash_note(trf("Copied to the USB drive: {path}", {{"path", where.substr(where.find("Porpoise Saves"))}}));
+        sfx(Sound::LaunchGame);
+    }
+    else
+        open_dialog(DialogKind::Info, tr("Could not copy the save"),
+                    tr("Copying it to the USB drive failed. Is the drive full or read-only?"), "");
 }
 
 void App::ask_copy_save()
@@ -1783,7 +1810,7 @@ void App::draw_memory_cards(double time)
         std::snprintf(pos, sizeof pos, "%s", trf("SLOT {slot}", {{"slot", card.slot}}).c_str());
     if (sel < n)
         draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}},
-                     {{Glyph::Square, trf("Copy to {slot}", {{"slot", mc_card_ == 0 ? "B" : "A"}})}, {Glyph::Triangle, "Delete"}},
+                     {{Glyph::Options, "To USB"}, {Glyph::Square, trf("Copy to {slot}", {{"slot", mc_card_ == 0 ? "B" : "A"}})}, {Glyph::Triangle, "Delete"}},
                      pos);
     else
         draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}}, {}, pos);

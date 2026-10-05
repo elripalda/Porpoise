@@ -64,6 +64,7 @@ struct CoreApi
     bool (*load_game)(const retro_game_info *);
     void (*unload_game)();
     void (*run)();
+    void (*reset)();
     std::size_t (*serialize_size)();
     bool (*serialize)(void *, std::size_t);
     bool (*unserialize)(const void *, std::size_t);
@@ -930,6 +931,7 @@ bool load_core()
     ok &= symbol(h.api.load_game, "retro_load_game");
     ok &= symbol(h.api.unload_game, "retro_unload_game");
     ok &= symbol(h.api.run, "retro_run");
+    ok &= symbol(h.api.reset, "retro_reset");
     ok &= symbol(h.api.serialize_size, "retro_serialize_size");
     ok &= symbol(h.api.serialize, "retro_serialize");
     ok &= symbol(h.api.unserialize, "retro_unserialize");
@@ -1406,8 +1408,28 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         if (paused)
         {
             const int answer = hooks.paused(hooks.user);
+            if (answer == kMenuRestart)
+            {
+                /* Start over: a fresh boot, and no quick resume into where it was. */
+                if (playback.resume_path)
+                    std::remove(playback.resume_path);
+                h.pending_state.clear();
+                h.api.reset();
+                porpoise::audio::flush();
+                paused = false;
+                h.hold_input = true;
+                pacer.resync();
+                ps5::debug::mark("core: started over");
+                continue;
+            }
             if (answer == kMenuLibrary || answer == kMenuHome)
             {
+                /* Quick resume: the game as it was left, for next time. */
+                if (playback.resume_path && h.have_frame)
+                {
+                    const bool kept = save_state(playback.resume_path);
+                    ps5::debug::mark(kept ? "core: quick resume kept" : "core: quick resume could not be kept");
+                }
                 exit = answer == kMenuLibrary ? Exit::Library : Exit::Home;
                 ps5::debug::mark(answer == kMenuLibrary ? "core: back to the library" : "core: closing Porpoise");
                 break;

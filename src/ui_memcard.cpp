@@ -193,6 +193,7 @@ void load_folder(const std::string &dir, Card &card)
         return;
     card.present = true;
     card.folder = true;
+    card.dir = dir;
     int used = 0;
     while (dirent *e = readdir(d))
     {
@@ -516,6 +517,153 @@ bool backup_wii_save(const std::string &saves_dir, const WiiSave &save, std::str
 bool delete_wii_save(const WiiSave &save)
 {
     return remove_tree(save.data_dir);
+}
+
+namespace
+{
+bool copy_one(const std::string &from, const std::string &to)
+{
+    std::FILE *in = std::fopen(from.c_str(), "rb");
+    if (!in)
+        return false;
+    const std::string part = to + ".part";
+    std::FILE *out = std::fopen(part.c_str(), "wb");
+    bool ok = out != nullptr;
+    char buf[65536];
+    std::size_t n;
+    while (ok && (n = std::fread(buf, 1, sizeof buf, in)) > 0)
+        ok = std::fwrite(buf, 1, n, out) == n;
+    std::fclose(in);
+    if (out)
+        ok = std::fclose(out) == 0 && ok;
+    if (!ok || std::rename(part.c_str(), to.c_str()) != 0)
+    {
+        std::remove(part.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool is_dir(const std::string &path)
+{
+    struct stat st;
+    return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+std::string usb_saves(bool make)
+{
+    const std::string usb = usb_root();
+    if (usb.empty())
+        return "";
+    const std::string dir = usb + "/Porpoise Saves";
+    if (make)
+    {
+        mkdir(dir.c_str(), 0777);
+        mkdir((dir + "/GameCube").c_str(), 0777);
+        mkdir((dir + "/Wii").c_str(), 0777);
+    }
+    return dir;
+}
+} // namespace
+
+std::string usb_root()
+{
+    for (int i = 0; i < 8; ++i)
+    {
+        const std::string root = "/mnt/usb" + std::to_string(i);
+        if (is_dir(root))
+            return root;
+    }
+    return "";
+}
+
+bool export_gc_save(const Save &save, std::string &where)
+{
+    const std::string dir = usb_saves(true);
+    if (dir.empty() || save.path.size() < 4 || save.path.compare(save.path.size() - 4, 4, ".gci") != 0)
+        return false;
+    where = dir + "/GameCube/" + save.path.substr(save.path.rfind('/') + 1);
+    return copy_one(save.path, where);
+}
+
+bool export_wii_save(const std::string &saves_dir, const WiiSave &save, std::string &where)
+{
+    const std::string dir = usb_saves(true);
+    const std::string wii_root = saves_dir + "/User/Wii/";
+    if (dir.empty() || save.data_dir.compare(0, wii_root.size(), wii_root) != 0)
+        return false;
+    where = dir + "/Wii/" + save.game_code + " " + save.title_id;
+    if (!copy_tree_to(save.data_dir, where))
+        return false;
+    if (std::FILE *f = std::fopen((where + "/porpoise-wii-path.txt").c_str(), "w"))
+    {
+        std::fprintf(f, "%s\n", save.data_dir.substr(wii_root.size()).c_str());
+        std::fclose(f);
+    }
+    return true;
+}
+
+bool import_usb_saves(const std::string &saves_dir, const Card &card, int &gc, int &wii, int &skipped)
+{
+    gc = wii = skipped = 0;
+    const std::string dir = usb_saves(false);
+    if (dir.empty())
+        return false;
+    if (card.folder && !card.dir.empty())
+        if (DIR *d = opendir((dir + "/GameCube").c_str()))
+        {
+            while (dirent *e = readdir(d))
+            {
+                const std::string name = e->d_name;
+                if (name.size() < 5 || name.compare(name.size() - 4, 4, ".gci") != 0)
+                    continue;
+                const std::string to = card.dir + "/" + name;
+                struct stat st;
+                if (stat(to.c_str(), &st) == 0)
+                    ++skipped;
+                else if (copy_one(dir + "/GameCube/" + name, to))
+                    ++gc;
+            }
+            closedir(d);
+        }
+    if (DIR *d = opendir((dir + "/Wii").c_str()))
+    {
+        while (dirent *e = readdir(d))
+        {
+            const std::string name = e->d_name;
+            if (name.empty() || name[0] == '.')
+                continue;
+            const std::string from = dir + "/Wii/" + name;
+            char rel[256] = {0};
+            if (std::FILE *f = std::fopen((from + "/porpoise-wii-path.txt").c_str(), "r"))
+            {
+                if (!std::fgets(rel, sizeof rel, f))
+                    rel[0] = 0;
+                std::fclose(f);
+            }
+            std::string path = rel;
+            while (!path.empty() && (path.back() == '\n' || path.back() == '\r'))
+                path.pop_back();
+            if (path.empty() || path.find("..") != std::string::npos || path.rfind("title/", 0) != 0)
+                continue;
+            const std::string to = saves_dir + "/User/Wii/" + path;
+            if (is_dir(to))
+            {
+                ++skipped;
+                continue;
+            }
+            /* The folders above it, then the save. */
+            for (std::size_t at = path.find('/'); at != std::string::npos; at = path.find('/', at + 1))
+                mkdir((saves_dir + "/User/Wii/" + path.substr(0, at)).c_str(), 0777);
+            if (copy_tree_to(from, to))
+            {
+                std::remove((to + "/porpoise-wii-path.txt").c_str());
+                ++wii;
+            }
+        }
+        closedir(d);
+    }
+    return true;
 }
 
 void load_cards(const std::string &saves_dir, Card &a, Card &b)
