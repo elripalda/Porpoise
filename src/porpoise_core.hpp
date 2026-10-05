@@ -4,6 +4,7 @@
 #pragma once
 
 #include "porpoise_pad.hpp"
+#include "porpoise_paths.hpp"
 
 #include <vector>
 
@@ -11,13 +12,17 @@ namespace porpoise::core
 {
 struct Paths
 {
+#ifdef PORPOISE_DESKTOP
+    const char *core = "./cores/dolphin_libretro.dll";
+#else
     const char *core = "/app0/cores/dolphin_libretro.so";
-    const char *system = "/app0/system";       /* Dolphin reads <system>/dolphin-emu/Sys */
-    const char *saves = "/app0/savefiles";
-    const char *assets = "/app0/content";
-    const char *options = "/app0/porpoise/options.ini";
-    const char *options_reference = "/app0/porpoise/options-reference.txt";
-    const char *log = "/app0/porpoise/core.log";
+#endif
+    const char *system = PORPOISE_APP "/system";       /* Dolphin reads <system>/dolphin-emu/Sys */
+    const char *saves = PORPOISE_APP "/savefiles";
+    const char *assets = PORPOISE_APP "/content";
+    const char *options = PORPOISE_APP "/porpoise/options.ini";
+    const char *options_reference = PORPOISE_APP "/porpoise/options-reference.txt";
+    const char *log = PORPOISE_APP "/porpoise/core.log";
 };
 
 /* What the launcher does while the game starts and runs. All optional. */

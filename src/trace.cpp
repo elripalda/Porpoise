@@ -6,6 +6,7 @@
  */
 
 #include "trace.hpp"
+#include "porpoise_paths.hpp"
 
 #include <cstdio>
 
@@ -15,7 +16,7 @@ namespace
 {
 /* Inside the title's own folder, which the console mounts at /app0 and which the
  * trace files written by an earlier build proved is writable. */
-constexpr const char *trace_path = "/app0/trace.txt";
+constexpr const char *trace_path = PORPOISE_APP "/trace.txt";
 
 void write(const char *line) noexcept
 {

@@ -9,7 +9,11 @@
  * The core is loaded with the title's own ELF loader (src/core_loader_ps5.cpp),
  * because this console refuses a title's dlopen, and its imports are bound to
  * the title's symbols (build/core_imports.inc). */
+#include "porpoise_paths.hpp"
 #include "porpoise_core.hpp"
+#ifdef PORPOISE_DESKTOP
+#include "porpoise_platform.hpp"
+#endif
 #include "porpoise_mic.hpp"
 #include "porpoise_speaker.hpp"
 #include "porpoise_states.hpp"
@@ -186,7 +190,7 @@ void apply_user_overrides()
 
 void write_options_reference()
 {
-    mkdir("/app0/porpoise", 0777);
+    mkdir(PORPOISE_APP "/porpoise", 0777);
     std::FILE *f = std::fopen(h.paths.options_reference, "w");
     if (!f)
         return;
@@ -1120,6 +1124,16 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     auto since_launch = [&](const char *what) { ps5::debug::mark_value(what, (now_ns() - launch_ns) / 1000000); };
     /* A fresh start: the previous game's core state is gone with its core. */
     h.paths = paths;
+#ifdef PORPOISE_DESKTOP
+    /* Dolphin is given whole paths: the program's folder, wherever it was started from. */
+    static std::string full_system, full_saves, full_assets;
+    full_system = porpoise::platform::absolute(paths.system);
+    full_saves = porpoise::platform::absolute(paths.saves);
+    full_assets = porpoise::platform::absolute(paths.assets);
+    h.paths.system = full_system.c_str();
+    h.paths.saves = full_saves.c_str();
+    h.paths.assets = full_assets.c_str();
+#endif
     h.library = nullptr;
     h.api = CoreApi{};
     h.options.clear();
@@ -1216,7 +1230,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             hooks.status(text, hooks.user);
     };
     status("Loading Dolphin");
-    mkdir("/app0/porpoise", 0777);
+    mkdir(PORPOISE_APP "/porpoise", 0777);
     mkdir(paths.saves, 0777);
     h.log = std::fopen(paths.log, "w");
 
@@ -1455,9 +1469,18 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 hooks.opened(hooks.user);
             ps5::debug::mark("core: paused (menu)");
         }
+#ifdef PORPOISE_DESKTOP
+        /* The window was closed: as Close Porpoise in the in-game menu, so the
+         * game's saves and the quick resume state are written first. */
+        const bool closing = porpoise::platform::quit_requested();
+        if (closing)
+            paused = true;
+#else
+        const bool closing = false;
+#endif
         if (paused)
         {
-            const int answer = hooks.paused(hooks.user);
+            const int answer = closing ? int(kMenuHome) : hooks.paused(hooks.user);
             if (answer == kMenuRestart)
             {
                 /* Start over: a fresh boot, and no quick resume into where it was. */

@@ -12,3 +12,4 @@ dist/
 *.a
 __pycache__/
 *.pyc
+dist/windows/

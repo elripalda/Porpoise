@@ -7,6 +7,7 @@
  * texture pattern keys and konst colours); see third_party/wii-banner-player.
  * Copyright (C) 2026 Ruben (Project Porpoise)
  * SPDX-License-Identifier: GPL-3.0-or-later */
+#include "porpoise_paths.hpp"
 #include "porpoise_banner.hpp"
 
 #include <algorithm>
@@ -1744,7 +1745,7 @@ struct Workers
     std::mutex lock;
     std::condition_variable wake;
     std::map<std::string, std::unique_ptr<Live>> lives;
-    std::string cache_dir = "/data/porpoise/banners", lang = "ENG";
+    std::string cache_dir = PORPOISE_DATA "/banners", lang = "ENG";
     bool paused = false;
     int threads = 0;
 };

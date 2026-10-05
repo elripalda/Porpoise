@@ -16,6 +16,7 @@
  * image over with set_image(), already in SHADER_READ_ONLY_OPTIMAL. One sync
  * slot per swapchain image; a slot's fence retires the core's use of the
  * matching image (wait_sync_index). */
+#include "porpoise_paths.hpp"
 #include "porpoise_vk.hpp"
 
 /* Vulkan create-info structs are written {VK_STRUCTURE_TYPE_...}: the rest is
@@ -35,6 +36,12 @@
 
 extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance,
                                                                          const char *name);
+#ifdef PORPOISE_DESKTOP
+/* A window on the desktop (desktop/porpoise_platform.cpp): SDL makes its
+ * surface, and the window's size is the swapchain's. */
+#include <SDL3/SDL_vulkan.h>
+#include "porpoise_platform.hpp"
+#else
 /* VideoOut (libSceVideoOut, linked for the driver's WSI): V-Sync. */
 extern "C" int sceVideoOutGetFlipStatus(int handle, std::uint64_t status[16]);
 /* The link wraps sceVideoOutOpen (tools/build-porpoise.sh, --wrap): the
@@ -43,6 +50,7 @@ extern "C" int sceVideoOutGetFlipStatus(int handle, std::uint64_t status[16]);
 extern "C" int __real_sceVideoOutOpen(int user, int bus, int index, const void *parameter);
 extern "C" int __wrap_sceVideoOutOpen(int user, int bus, int index, const void *parameter);
 extern "C" int sceVideoOutWaitVblank(int handle);
+#endif
 
 namespace
 {
@@ -283,6 +291,26 @@ template <typename F> bool load_device(F &fn, const char *name)
     return fn != nullptr;
 }
 
+#ifdef PORPOISE_DESKTOP
+bool pick_display()
+{
+    SDL_Window *window = porpoise::platform::window();
+    if (!window || !SDL_Vulkan_CreateSurface(window, s.instance, nullptr, &s.surface))
+    {
+        ps5::debug::mark((std::string("vk: no window surface: ") + SDL_GetError()).c_str());
+        return false;
+    }
+    int w = 0, h = 0;
+    SDL_GetWindowSizeInPixels(window, &w, &h);
+    s.extent = {std::uint32_t(std::max(w, 1)), std::uint32_t(std::max(h, 1))};
+    s.refresh_hz = porpoise::platform::display_hz();
+    char line[128];
+    std::snprintf(line, sizeof line, "vk: window %ux%u, display at %.3f Hz", s.extent.width, s.extent.height,
+                  s.refresh_hz);
+    ps5::debug::mark(line);
+    return true;
+}
+#else
 bool pick_display()
 {
     std::uint32_t count = 0;
@@ -313,7 +341,7 @@ bool pick_display()
      * Otherwise the largest mode, again closest to 60 Hz. (PS5 Mesa before
      * dc82d01 offered only 3840x2160.) */
     unsigned wanted = 1080;
-    if (std::FILE *f = std::fopen("/app0/porpoise/output.txt", "r"))
+    if (std::FILE *f = std::fopen(PORPOISE_APP "/porpoise/output.txt", "r"))
     {
         unsigned h = 0;
         if (std::fscanf(f, "%u", &h) == 1 && (h == 1080 || h == 1440 || h == 2160))
@@ -377,6 +405,7 @@ bool pick_display()
     CHECK(vkCreateDisplayPlaneSurfaceKHR(s.instance, &info, nullptr, &s.surface), "display surface");
     return true;
 }
+#endif
 
 bool own_device()
 {
@@ -647,6 +676,65 @@ bool create_pipeline()
  * lock keeps two presents from interleaving if that ever changes. */
 std::mutex present_mutex;
 
+#ifdef PORPOISE_DESKTOP
+/* The window changed size (or the swapchain went out of date): a new
+ * swapchain the window's size, its views and framebuffers. The render pass,
+ * pipeline and the per-slot sync stay; the slot count the core was told stays
+ * too. */
+bool g_swapchain_stale = false;
+
+bool recreate_swapchain()
+{
+    int w = 0, h = 0;
+    SDL_GetWindowSizeInPixels(porpoise::platform::window(), &w, &h);
+    if (w <= 0 || h <= 0)
+        return false; /* minimised: nothing to show */
+    {
+        std::lock_guard<std::mutex> queue_lock(s.queue_mutex);
+        (void)vkDeviceWaitIdle(s.device);
+    }
+    for (std::uint32_t i = 0; i < s.image_count; ++i)
+    {
+        if (s.framebuffers[i])
+            vkDestroyFramebuffer(s.device, s.framebuffers[i], nullptr);
+        if (s.views[i])
+            vkDestroyImageView(s.device, s.views[i], nullptr);
+        if (s.render_done[i])
+            vkDestroySemaphore(s.device, s.render_done[i], nullptr);
+        s.framebuffers[i] = VK_NULL_HANDLE;
+        s.views[i] = VK_NULL_HANDLE;
+        s.render_done[i] = VK_NULL_HANDLE;
+    }
+    vkDestroySwapchainKHR(s.device, s.swapchain, nullptr);
+    s.swapchain = VK_NULL_HANDLE;
+    s.extent = {std::uint32_t(w), std::uint32_t(h)};
+    const unsigned slots = s.slots;
+    if (!create_swapchain())
+        return false;
+    s.slots = slots;
+    for (std::uint32_t i = 0; i < s.image_count; ++i)
+    {
+        VkImageViewCreateInfo view{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        view.image = s.images[i];
+        view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        view.format = s.format;
+        view.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        CHECK(vkCreateImageView(s.device, &view, nullptr, &s.views[i]), "swapchain view");
+        VkFramebufferCreateInfo fb{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fb.renderPass = s.render_pass;
+        fb.attachmentCount = 1;
+        fb.pAttachments = &s.views[i];
+        fb.width = s.extent.width;
+        fb.height = s.extent.height;
+        fb.layers = 1;
+        CHECK(vkCreateFramebuffer(s.device, &fb, nullptr, &s.framebuffers[i]), "framebuffer");
+        VkSemaphoreCreateInfo sem{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        CHECK(vkCreateSemaphore(s.device, &sem, nullptr, &s.render_done[i]), "semaphore");
+    }
+    return true;
+}
+#endif
+
 /* One presented frame: optionally the core's image as a quad, over a clear. */
 void present(const float clear[3], const Push *quad, VkImageView view, bool sharp)
 {
@@ -655,6 +743,12 @@ void present(const float clear[3], const Push *quad, VkImageView view, bool shar
     /* How long the display kept this present waiting: the frame pacer's sign
      * that the swapchain is holding the loop to the vblank. */
     (void)vkWaitForFences(s.device, 1, &s.fences[slot], VK_TRUE, UINT64_MAX);
+#ifdef PORPOISE_DESKTOP
+    if (porpoise::platform::take_resized() || g_swapchain_stale)
+        g_swapchain_stale = !recreate_swapchain();
+    if (g_swapchain_stale)
+        return;
+#endif
 
     /* Only the acquire: the fence above waits for the GPU, the acquire for
      * the display to flip an image away. */
@@ -665,6 +759,12 @@ void present(const float clear[3], const Push *quad, VkImageView view, bool shar
                                                     s.acquired[slot], VK_NULL_HANDLE, &image);
     clock_gettime(CLOCK_MONOTONIC, &wait_end);
     s.last_wait_ns = (wait_end.tv_sec - wait_start.tv_sec) * 1000000000LL + (wait_end.tv_nsec - wait_start.tv_nsec);
+#ifdef PORPOISE_DESKTOP
+    if (acquired == VK_ERROR_OUT_OF_DATE_KHR || acquired == VK_SUBOPTIMAL_KHR)
+        g_swapchain_stale = true;
+    if (acquired == VK_ERROR_OUT_OF_DATE_KHR)
+        return;
+#endif
     if (acquired != VK_SUCCESS && acquired != VK_SUBOPTIMAL_KHR)
     {
         static bool reported = false;
@@ -801,20 +901,75 @@ bool open_display()
     app.applicationVersion = 1;
     app.pEngineName = "Porpoise";
     app.apiVersion = VK_API_VERSION_1_1;
+#ifdef PORPOISE_DESKTOP
+    /* The window system's own surface extensions, as SDL names them. */
+    Uint32 extension_count = 0;
+    const char *const *extensions = SDL_Vulkan_GetInstanceExtensions(&extension_count);
+    VkInstanceCreateInfo info{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    info.pApplicationInfo = &app;
+    info.enabledExtensionCount = extension_count;
+    info.ppEnabledExtensionNames = extensions;
+#else
     const char *extensions[] = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_DISPLAY_EXTENSION_NAME};
     VkInstanceCreateInfo info{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     info.pApplicationInfo = &app;
     info.enabledExtensionCount = 2;
     info.ppEnabledExtensionNames = extensions;
+#endif
     CHECK(create_instance(&info, nullptr, &s.instance), "instance");
 
     bool ok = true;
+#ifdef PORPOISE_DESKTOP
+    /* No display extension on a desktop: those are left out. */
+#define LOAD(name)                                                                                           \
+    {                                                                                                        \
+        const bool got_ = load_instance(name, #name);                                                         \
+        ok &= got_ || std::strstr(#name, "Display") != nullptr;                                               \
+    }
+#else
 #define LOAD(name) ok &= load_instance(name, #name);
+#endif
     PORPOISE_VK_INSTANCE_FUNCS(LOAD)
 #undef LOAD
     if (!ok)
         return false;
 
+#ifdef PORPOISE_DESKTOP
+    /* A desktop may have several GPUs (and a software one): the discrete
+     * one first, then integrated, then anything. */
+    std::uint32_t count = 0;
+    VkResult result = vkEnumeratePhysicalDevices(s.instance, &count, nullptr);
+    VkPhysicalDevice gpus[16];
+    count = std::min<std::uint32_t>(count, 16);
+    if (count)
+        result = vkEnumeratePhysicalDevices(s.instance, &count, gpus);
+    if ((result != VK_SUCCESS && result != VK_INCOMPLETE) || count == 0)
+    {
+        ps5::debug::mark_value("vk: no physical device", result);
+        return false;
+    }
+    auto rank = [](VkPhysicalDeviceType type) {
+        switch (type)
+        {
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return 0;
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return 1;
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return 2;
+        case VK_PHYSICAL_DEVICE_TYPE_CPU: return 4;
+        default: return 3;
+        }
+    };
+    int best_rank = 99;
+    for (std::uint32_t i = 0; i < count; ++i)
+    {
+        VkPhysicalDeviceProperties p{};
+        vkGetPhysicalDeviceProperties(gpus[i], &p);
+        if (rank(p.deviceType) < best_rank)
+        {
+            best_rank = rank(p.deviceType);
+            s.gpu = gpus[i];
+        }
+    }
+#else
     std::uint32_t count = 1;
     VkResult result = vkEnumeratePhysicalDevices(s.instance, &count, &s.gpu);
     if ((result != VK_SUCCESS && result != VK_INCOMPLETE) || count == 0)
@@ -822,6 +977,7 @@ bool open_display()
         ps5::debug::mark_value("vk: no physical device", result);
         return false;
     }
+#endif
     VkPhysicalDeviceProperties props{};
     vkGetPhysicalDeviceProperties(s.gpu, &props);
     ps5::debug::mark(props.deviceName);
@@ -1091,6 +1247,19 @@ int g_videoout_tries = 0;
 std::atomic<int> g_videoout_opened{-1};
 } // namespace
 
+#ifdef PORPOISE_DESKTOP
+/* A desktop's V-Sync is the swapchain's (FIFO); there's no vblank to wait on
+ * besides it. */
+void note_videoout(int) {}
+bool vblank_ready()
+{
+    return false;
+}
+bool wait_vblank()
+{
+    return false;
+}
+#else
 void note_videoout(int handle)
 {
     g_videoout_opened.store(handle);
@@ -1142,6 +1311,7 @@ bool wait_vblank()
 {
     return g_videoout >= 0 && sceVideoOutWaitVblank(g_videoout) == 0;
 }
+#endif
 
 double refresh_hz()
 {
@@ -1328,6 +1498,7 @@ void close()
 } // namespace porpoise::vk
 
 /* The driver's WSI opening VideoOut: the handle is kept for V-Sync. */
+#ifndef PORPOISE_DESKTOP
 extern "C" int __wrap_sceVideoOutOpen(int user, int bus, int index, const void *parameter)
 {
     const int handle = __real_sceVideoOutOpen(user, bus, index, parameter);
@@ -1335,3 +1506,4 @@ extern "C" int __wrap_sceVideoOutOpen(int user, int bus, int index, const void *
         porpoise::vk::note_videoout(handle);
     return handle;
 }
+#endif

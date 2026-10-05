@@ -78,7 +78,11 @@ struct Settings
      * from where the player sits, in tenths of a degree (0: not measured); and
      * whether to offer the setup before each Wii game. */
     int wii_screen_x = 0, wii_screen_y = 0;
+#ifdef PORPOISE_DESKTOP
+    bool wii_setup_ask = false; /* a computer's controller may have no motion to aim with */
+#else
     bool wii_setup_ask = true;
+#endif
     bool wii_setup_advanced = false; /* the setup's extra pages: size and distance, fine-tuning, presets */
     int wii_smooth = 1;              /* pointer smoothing: off, light, medium, strong */
     int wii_reach = 100;             /* percent */

@@ -562,7 +562,15 @@ bool parse(const std::string &json, Release &out)
                 break;
             const std::string url = field(json, at, end, "browser_download_url");
             const std::string name = url.substr(url.rfind('/') == std::string::npos ? 0 : url.rfind('/') + 1);
-            if (name.rfind("Porpoise", 0) == 0 && name.size() > 4 && name.compare(name.size() - 4, 4, ".zip") == 0)
+            /* The PS5's zip is Porpoise-<version>.zip; the Windows one has
+             * "Windows" in its name, and each build takes only its own. */
+            const bool windows_zip = name.find("Windows") != std::string::npos;
+#ifdef PORPOISE_DESKTOP
+            const bool ours = windows_zip;
+#else
+            const bool ours = !windows_zip && name.rfind("Porpoise", 0) == 0;
+#endif
+            if (ours && name.size() > 4 && name.compare(name.size() - 4, 4, ".zip") == 0)
             {
                 out.zip_url = url;
                 out.size = std::size_t(std::strtoull(field(json, at, end, "size").c_str(), nullptr, 10));
@@ -663,6 +671,13 @@ void start_install(const Release &release, const std::string &app_dir)
 {
     if (g_busy.exchange(true))
         return;
+#ifdef PORPOISE_DESKTOP
+    /* On Windows, a new version is downloaded and unzipped by hand for now. */
+    (void)app_dir;
+    set(Phase::Failed, 0, 0, "On Windows, download the new version from GitHub and unzip it over this one.");
+    g_busy = false;
+    return;
+#endif
     if (release.zip_url.empty())
     {
         set(Phase::Failed, 0, 0, "This release has no Porpoise zip. Download it from GitHub by hand.");

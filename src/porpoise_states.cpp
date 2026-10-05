@@ -1,6 +1,7 @@
 /* Porpoise - save states: three slots per game, each with a thumbnail.
  * Copyright (C) 2026 Ruben (Project Porpoise)
  * SPDX-License-Identifier: GPL-3.0-or-later */
+#include "porpoise_paths.hpp"
 #include "porpoise_states.hpp"
 
 #include <algorithm>
@@ -32,7 +33,7 @@ namespace porpoise::states
 {
 namespace
 {
-std::string g_data_dir = "/data/porpoise";
+std::string g_data_dir = PORPOISE_DATA;
 
 /* The save being written: the worker owns it until it sets done. */
 struct Job

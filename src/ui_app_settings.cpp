@@ -6,6 +6,10 @@
  * the right. Focus starts on the rail: up and down pick a section, Right or
  * Cross go into it, Circle comes back out. A game's own settings use the same
  * screen with the global values underneath and its changes on top. */
+#ifdef PORPOISE_DESKTOP
+#include "porpoise_platform.hpp"
+#endif
+#include "porpoise_paths.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -93,6 +97,23 @@ void App::show_setup_check(bool first_start)
 {
     std::vector<std::pair<bool, std::string>> checks;
     auto line = [&](bool ok, const std::string &what) { checks.emplace_back(ok, what); };
+#ifdef PORPOISE_DESKTOP
+    /* A computer: no sandbox and no console drives, just the games. */
+    {
+        const int games = int(lib_->games().size());
+        if (games > 0)
+            line(true, plural(games, "1 game found.", "{n} games found."));
+        else
+            line(false, tr("No games yet. Put them in the data/games folder beside Porpoise.exe, or add a folder "
+                           "in Settings > Games."));
+        line(settings_->download_covers, settings_->download_covers
+                                             ? tr("Covers download while the computer is online.")
+                                             : tr("Cover downloads are off (Settings > Games)."));
+        open_dialog(DialogKind::Info, first_start ? tr("Welcome to Porpoise") : tr("Your setup"), "", "");
+        dialog_.checks = std::move(checks);
+        return;
+    }
+#endif
     if (sandboxed_)
         line(false, tr("Porpoise is inside the app sandbox: it can't see /data or USB drives. Turn on Legacy Command "
                        "Server in etaHEN, add PPSA99764 to OnionHEN's exact_title_ids, or run a Lapy daemon, then "
@@ -148,8 +169,8 @@ std::string App::save_report(std::string &usb)
         return "";
     /* What happened (the newest 2 MB of each log), the settings, and a note
      * of what this is. */
-    copy_file("/app0/trace.txt", dir + "/trace.txt", 2u << 20);
-    copy_file("/app0/porpoise/core.log", dir + "/core.log", 2u << 20);
+    copy_file(PORPOISE_APP "/trace.txt", dir + "/trace.txt", 2u << 20);
+    copy_file(PORPOISE_APP "/porpoise/core.log", dir + "/core.log", 2u << 20);
     copy_file(settings_path_, dir + "/settings.ini");
     if (std::FILE *f = std::fopen((dir + "/about.txt").c_str(), "w"))
     {
@@ -401,12 +422,14 @@ void App::add_game_rows(Settings &t, bool per_game)
            "own clock instead.",
            &t.vsync);
 
+#ifndef PORPOISE_DESKTOP /* the PS5's own */
     if (!per_game)
         choice("output_res", "Output resolution",
                "The picture Porpoise sends to the TV, menus and games alike. 1080p is the quickest; 1440p and 4K are "
                "sharper on a 4K TV with a high internal resolution, and a little slower. Takes effect the next time "
                "Porpoise starts.",
                &t.output_res, 0, {"1080p", "1440p", "4K"});
+#endif
     if (!per_game)
         add_setup_rows(false);
 
@@ -414,11 +437,13 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("shader_mode", "Shader compilation",
            "Ubershaders hide the stutter when a game draws something new, at a GPU cost.", &t.shader_mode, 0,
            {"Synchronous", "Ubershaders", "Async ubershaders", "Async, skip drawing"});
+#ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("threaded_gpu", "Threaded GPU recording (beta)",
            "The graphics driver records Dolphin's drawing on a thread of its own, so Dolphin's video thread spends "
            "less time in the driver. Can speed up demanding games. Turn it off if a game crashes or looks wrong. "
            "Applies the next time a game starts.",
            &t.threaded_gpu);
+#endif
     choice("texture_cache", "Texture cache accuracy", "Safe fixes some games' text and effects; Fast is quickest.",
            &t.texture_cache, 0, {"Fast", "Middle", "Safe"});
     toggle("pixel_lighting", "Per-pixel lighting", "Smoother lighting on surfaces. A little heavier.",
@@ -579,10 +604,12 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
            &t.cpu_clock, 0, {"50%", "60%", "70%", "80%", "90%", "100%", "150%", "200%", "250%", "300%"});
     toggle("dual_core", "Dual core", "Faster. Turn it off for a game that freezes or glitches.", &t.dual_core);
+#ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("own_cores", "Emulator on its own cores",
            "Gives the emulated console's processor and its graphics a core of the PS5 each, away from "
            "Porpoise's other work. Usually faster; turn it off if a game runs worse.",
            &t.own_cores);
+#endif
     toggle("accurate_fma", "Exact multiply-add",
            "Rounds the console's floating-point multiply-adds exactly, as Dolphin does on a PC. Much slower in "
            "games heavy on 3D math, and very few games need it.",
@@ -687,10 +714,12 @@ void App::build_settings()
     };
 
     header("Games");
+#ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("auto_search", "Find games automatically",
            "Looks in /data/porpoise/games, /data/games, /data/roms, /data/iso and on USB drives.",
            &settings_->auto_search);
     rows_.back().rescan = true;
+#endif
     toggle("download_covers", "Download covers",
            "Box art from GameTDB.com, saved in /data/porpoise/covers. Needs the console online.",
            &settings_->download_covers);
@@ -713,6 +742,7 @@ void App::build_settings()
     const std::size_t n = lib_ ? lib_->games().size() : 0;
     action("Search for games now", "Looks through every folder again, for games you have just copied over.",
            plural((long long)n, "1 game", "{n} games"), kRowRescan);
+#ifndef PORPOISE_DESKTOP /* the PS5's own */
     action("Check my setup", "What Porpoise can see on this console - /data, USB drives, games - and what to do "
            "about anything missing.",
            "Check\xE2\x80\xA6", kRowSetupCheck);
@@ -720,6 +750,7 @@ void App::build_settings()
            "Copies saves from the USB drive's Porpoise Saves folder in: GameCube saves onto Slot A, Wii saves to "
            "their games. A save that's already here is left as it is. Options in Memory Cards copies a save out.",
            "Copy in\xE2\x80\xA6", kRowImportSaves);
+#endif
 
     add_game_rows(*settings_, false);
 
@@ -1374,6 +1405,10 @@ App::Action App::activate_row(const SettingRow &row)
     switch (row.action)
     {
     case kRowAddFolder:
+#ifdef PORPOISE_DESKTOP
+        open_browser(""); /* the shortcuts: the games folder, Downloads, the drives */
+        return Action::None;
+#endif
         open_browser("/");
         /* Start on /data, where most players keep their games. */
         for (int i = 0; i < int(browse_entries_.size()); ++i)
@@ -2139,7 +2174,17 @@ std::vector<App::BrowseEntry> App::browse_places() const
         e.path = path;
         out.push_back(e);
     };
-    if (is_dir(data_dir_ + "/games") && data_dir_ != "/app0/porpoise")
+#ifdef PORPOISE_DESKTOP
+    /* A computer: Porpoise's own games folder, the player's folders, and
+     * every drive. */
+    add(tr("Porpoise's games folder"), porpoise::platform::absolute(data_dir_ + "/games"));
+    for (const auto &f : porpoise::platform::user_folders())
+        if (is_dir(f.second))
+            add(tr(f.first.c_str()), f.second);
+    add(tr("Whole system"), "/");
+    return out;
+#endif
+    if (is_dir(data_dir_ + "/games") && data_dir_ != PORPOISE_APP "/porpoise")
         add(tr("Porpoise's games folder"), data_dir_ + "/games");
     if (is_dir("/data"))
         add(tr("Console storage"), "/data");
@@ -2175,6 +2220,21 @@ void App::open_browser(std::string path)
         return;
     }
     std::vector<BrowseEntry> folders, games;
+#ifdef PORPOISE_DESKTOP
+    if (path == "/")
+    {
+        /* The whole computer: its drives. */
+        for (const std::string &drive : porpoise::platform::drives())
+        {
+            BrowseEntry b;
+            b.kind = BrowseEntry::Folder;
+            b.label = drive.substr(0, 2);
+            b.path = drive;
+            browse_entries_.push_back(b);
+        }
+        return;
+    }
+#endif
     if (DIR *d = opendir(path.c_str()))
     {
         while (dirent *e = readdir(d))
@@ -2182,13 +2242,17 @@ void App::open_browser(std::string path)
             const std::string name = e->d_name;
             if (name.empty() || name[0] == '.')
                 continue;
-            const std::string full = path == "/" ? "/" + name : path + "/" + name;
+            const std::string full = !path.empty() && path.back() == '/' ? path + name : path + "/" + name;
             /* The entry's own type when the file system gives it; stat
              * otherwise (links, and file systems that don't say). A folder
              * stat can't look into still shows. */
             struct stat st;
             const bool stat_ok = stat(full.c_str(), &st) == 0;
+#ifdef PORPOISE_DESKTOP
+            const bool folder = stat_ok && S_ISDIR(st.st_mode); /* Windows' entries carry no type */
+#else
             const bool folder = e->d_type == DT_DIR || (stat_ok && S_ISDIR(st.st_mode));
+#endif
             BrowseEntry b;
             b.label = name;
             b.path = full;
@@ -2339,6 +2403,13 @@ App::Action App::update_browser(bool up, bool down)
         std::string parent = from.substr(0, from.rfind('/'));
         if (parent.empty())
             parent = "/";
+#ifdef PORPOISE_DESKTOP
+        /* C:/Games -> C:/ -> the drives. */
+        if (from.size() <= 3 && from.size() >= 2 && from[1] == ':')
+            parent = "/";
+        else if (parent.size() == 2 && parent[1] == ':')
+            parent += "/";
+#endif
         open_browser(parent);
         for (int i = 0; i < int(browse_entries_.size()); ++i)
             if (browse_entries_[std::size_t(i)].path == from)

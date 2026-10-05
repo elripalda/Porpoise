@@ -1,6 +1,7 @@
 /* Porpoise - screen borders: what fills the bars beside a 4:3 picture.
  * Copyright (C) 2026 Ruben (Project Porpoise)
  * SPDX-License-Identifier: GPL-3.0-or-later */
+#include "porpoise_paths.hpp"
 #include "porpoise_borders.hpp"
 
 #include <algorithm>
@@ -12,8 +13,8 @@ namespace porpoise::borders
 {
 namespace
 {
-std::string g_assets = "/app0/assets";
-std::string g_data = "/data/porpoise";
+std::string g_assets = PORPOISE_APP "/assets";
+std::string g_data = PORPOISE_DATA;
 
 struct BuiltIn
 {

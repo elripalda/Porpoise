@@ -582,6 +582,19 @@ index f0c62d4e3f..bbb4cb7791 100644
    }
  
    if (m_FileLoadedCb)
+diff --git a/Source/Core/Core/IOS/Network/Socket.cpp b/Source/Core/Core/IOS/Network/Socket.cpp
+index feb2579afb..2fc09c5e03 100644
+--- a/Source/Core/Core/IOS/Network/Socket.cpp
++++ b/Source/Core/Core/IOS/Network/Socket.cpp
+@@ -754,7 +754,7 @@ WiiSocket::ConnectingState WiiSocket::GetConnectingState() const
+   Common::ScopeGuard guard([&state] { Common::RestoreNetworkErrorState(state); });
+ 
+ #ifdef _WIN32
+-  constexpr int (*get_errno)() = &WSAGetLastError;
++  int (*const get_errno)() = &WSAGetLastError;  // imported: not a constant under MinGW
+ #else
+   constexpr int (*get_errno)() = []() { return errno; };
+ #endif
 diff --git a/Source/Core/Core/MemTools.cpp b/Source/Core/Core/MemTools.cpp
 index 871bb3f615..bad7c5d42a 100644
 --- a/Source/Core/Core/MemTools.cpp
@@ -1136,6 +1149,19 @@ index 8df1a7e320..2892601cf7 100644
  
  class SWGfx : public SW::SWGfx
  {
+diff --git a/Source/Core/VideoBackends/D3D/D3DBoundingBox.cpp b/Source/Core/VideoBackends/D3D/D3DBoundingBox.cpp
+index 049d090a0d..8bb8b759d6 100644
+--- a/Source/Core/VideoBackends/D3D/D3DBoundingBox.cpp
++++ b/Source/Core/VideoBackends/D3D/D3DBoundingBox.cpp
+@@ -90,7 +90,7 @@ std::vector<BBoxType> D3DBoundingBox::Read(u32 index, u32 length)
+ 
+ void D3DBoundingBox::Write(u32 index, std::span<const BBoxType> values)
+ {
+-  D3D11_BOX box{index * sizeof(BBoxType),
++  D3D11_BOX box{static_cast<u32>(index * sizeof(BBoxType)),
+                 0,
+                 0,
+                 static_cast<u32>((index + values.size()) * sizeof(BBoxType)),
 diff --git a/Source/Core/VideoBackends/Vulkan/VKMain.cpp b/Source/Core/VideoBackends/Vulkan/VKMain.cpp
 index 6338e52e3d..10539c661e 100644
 --- a/Source/Core/VideoBackends/Vulkan/VKMain.cpp

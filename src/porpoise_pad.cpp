@@ -14,6 +14,9 @@
  * user who signs out frees their player. */
 #include "porpoise_pad.hpp"
 #include "porpoise_aim.hpp"
+#ifdef PORPOISE_DESKTOP
+#include "porpoise_platform.hpp"
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -888,6 +891,9 @@ void set_rumble_enabled(bool enabled)
 
 const State &poll()
 {
+#ifdef PORPOISE_DESKTOP
+    porpoise::platform::pump(); /* the window's and controllers' events, on the main thread */
+#endif
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     if (g_ready && ++g_polls_since_scan >= polls_per_scan)
     {

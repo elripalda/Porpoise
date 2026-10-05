@@ -11,6 +11,7 @@
  * Then: the launcher (src/ui_*.cpp) on Porpoise's own Vulkan device; on Play,
  * the launch screen, the hand-over of the display to Dolphin's device, and the
  * game (src/porpoise_core.cpp). */
+#include "porpoise_paths.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -34,6 +35,9 @@
 #include "porpoise_audio.hpp"
 #include "porpoise_borders.hpp"
 #include "porpoise_core.hpp"
+#ifdef PORPOISE_DESKTOP
+#include "porpoise_platform.hpp"
+#endif
 #include "porpoise_speaker.hpp"
 #include "porpoise_banner.hpp"
 #include "porpoise_covers.hpp"
@@ -74,7 +78,7 @@ namespace
 /* Where the player's things live: /data/porpoise, outside the app folder, so
  * reinstalling Porpoise keeps games, saves, settings and covers. If the
  * sandbox will not let Porpoise write there, the app's own folder is used. */
-std::string g_data = "/app0/porpoise";
+std::string g_data = PORPOISE_APP "/porpoise";
 std::string g_settings_path, g_options_path, g_saves_path, g_options_reference, g_core_log;
 
 bool g_sandboxed = false; /* /data out of reach even after asking the HEN */
@@ -122,7 +126,7 @@ void copy_tree(const std::string &from, const std::string &to, int depth = 0)
  * still found there; covers download again). */
 void bring_over_app_folder_data()
 {
-    const std::string old_dir = "/app0/porpoise";
+    const std::string old_dir = PORPOISE_APP "/porpoise";
     struct stat st;
     if (stat((old_dir + "/settings.ini").c_str(), &st) != 0 || stat((g_data + "/settings.ini").c_str(), &st) == 0)
         return;
@@ -144,7 +148,7 @@ void choose_data_dir()
 {
     if (porpoise::jailbreak::ensure())
     {
-        g_data = "/data/porpoise";
+        g_data = PORPOISE_DATA;
         bring_over_app_folder_data();
     }
     else
@@ -158,14 +162,14 @@ void choose_data_dir()
     g_options_path = g_data + "/options.ini";
     g_saves_path = g_data + "/saves";
     g_options_reference = g_data + "/options-reference.txt";
-    g_core_log = "/app0/porpoise/core.log";
+    g_core_log = PORPOISE_APP "/porpoise/core.log";
     ps5::debug::mark(("main: player data in " + g_data).c_str());
     /* Test files the Dolphin core still reads: worth knowing about when a
      * setting doesn't seem to take. */
     struct stat st;
-    if (stat("/app0/dolphin-options.txt", &st) == 0)
+    if (stat(PORPOISE_APP "/dolphin-options.txt", &st) == 0)
         ps5::debug::mark("main: /app0/dolphin-options.txt is there: its options win over Porpoise's");
-    if (stat("/app0/dolphin-debug.txt", &st) == 0)
+    if (stat(PORPOISE_APP "/dolphin-debug.txt", &st) == 0)
         ps5::debug::mark("main: /app0/dolphin-debug.txt is there: the shader cache is off while it is");
 }
 
@@ -273,7 +277,7 @@ bool start_gfx()
     init.get_instance_proc = c.get_instance_proc;
     init.get_device_proc = c.get_device_proc;
     init.queue_mutex = c.queue_mutex;
-    init.asset_dir = "/app0/assets";
+    init.asset_dir = PORPOISE_APP "/assets";
     init.cjk_font = porpoise::ui::cjk_font(); /* the menus' language is set by now */
     init.cjk_also = porpoise::ui::language_names();
     if (!g_data.empty())
@@ -338,9 +342,10 @@ std::string info_path()
 porpoise::ui::LibraryPaths library_paths()
 {
     porpoise::ui::LibraryPaths paths;
-    paths.roots = {"/app0/content", g_data + "/games"};
-    if (g_data != "/app0/porpoise")
-        paths.roots.push_back("/app0/porpoise/games"); /* where a sandboxed 1.0 kept them */
+    paths.roots = {PORPOISE_APP "/content", g_data + "/games"};
+    if (g_data != PORPOISE_APP "/porpoise")
+        paths.roots.push_back(PORPOISE_APP "/porpoise/games"); /* where a sandboxed 1.0 kept them */
+#ifndef PORPOISE_DESKTOP
     if (g_settings.auto_search)
     {
         for (const char *dir : {"/data/games", "/data/GameCube", "/data/gamecube", "/data/Wii", "/data/wii",
@@ -351,6 +356,7 @@ porpoise::ui::LibraryPaths library_paths()
         paths.roots.push_back("/mnt/ext0");
         paths.roots.push_back("/mnt/ext1");
     }
+#endif
     paths.deep = g_settings.folders;
     paths.covers = g_data + "/covers";
     paths.state = g_data + "/library.txt";
@@ -393,7 +399,7 @@ std::vector<std::pair<std::string, std::string>> game_dolphin_options(const std:
     if (id.size() != 6)
         return out;
     std::vector<std::string> files;
-    for (const std::string &dir : {std::string("/app0/system/dolphin-emu/Sys/GameSettings"),
+    for (const std::string &dir : {std::string(PORPOISE_APP "/system/dolphin-emu/Sys/GameSettings"),
                                    g_saves_path + "/User/GameSettings"})
         for (const std::string &name : {id.substr(0, 1), id.substr(0, 3), id})
             files.push_back(dir + "/" + name + ".ini");
@@ -566,10 +572,10 @@ std::string install_dir()
         return text;
     };
     const std::string home = "/data/homebrew/PPSA99764";
-    const std::string mine = read_all("/app0/manifest.sha256");
+    const std::string mine = read_all(PORPOISE_APP "/manifest.sha256");
     const bool same = !mine.empty() && mine == read_all(home + "/manifest.sha256");
-    ps5::debug::mark(("main: the update goes to " + (same ? home : std::string("/app0"))).c_str());
-    return same ? home : "/app0";
+    ps5::debug::mark(("main: the update goes to " + (same ? home : std::string(PORPOISE_APP))).c_str());
+    return same ? home : PORPOISE_APP;
 }
 
 bool g_covers_again = false; /* a request came while a run was going: ask again once it ends */
@@ -673,14 +679,14 @@ void apply_settings()
         static const char *const kHeights[] = {"1080", "1440", "2160"};
         const char *want = kHeights[std::clamp(g_settings.output_res, 0, 2)];
         char have[8] = {0};
-        if (std::FILE *f = std::fopen("/app0/porpoise/output.txt", "r"))
+        if (std::FILE *f = std::fopen(PORPOISE_APP "/porpoise/output.txt", "r"))
         {
             if (!std::fgets(have, sizeof have, f))
                 have[0] = 0;
             std::fclose(f);
         }
         if (std::strncmp(have, want, 4) != 0)
-            if (std::FILE *f = std::fopen("/app0/porpoise/output.txt", "w"))
+            if (std::FILE *f = std::fopen(PORPOISE_APP "/porpoise/output.txt", "w"))
             {
                 std::fputs(want, f);
                 std::fclose(f);
@@ -688,7 +694,7 @@ void apply_settings()
     }
     /* Settings > About > Performance report: the sampling profiler
      * (sampler_ps5.cpp) reads this file when Porpoise starts. */
-    const char *const profile = "/app0/ps5-sampler.txt";
+    const char *const profile = PORPOISE_APP "/ps5-sampler.txt";
     struct stat st;
     const bool present = stat(profile, &st) == 0;
     if (g_settings.perf_profile && !present)
@@ -1027,7 +1033,7 @@ void launch_frame(bool core_frame, double fps, void *)
  * is read; the launcher's first frames lift the curtain off it. */
 void show_boot_mark()
 {
-    porpoise::ui::Texture *mark = g_gfx.texture_file("/app0/assets/brand/logo.png");
+    porpoise::ui::Texture *mark = g_gfx.texture_file(PORPOISE_APP "/assets/brand/logo.png");
     g_pacer.start(porpoise::vk::refresh_hz(), "boot");
     const float hz = float(porpoise::vk::refresh_hz() > 10 ? porpoise::vk::refresh_hz() : 60.0);
     /* The black, then the dolphin rising out of it with a soft glow. */
@@ -1174,15 +1180,23 @@ void mark_start(const char *what)
     ps5::debug::mark_value(what, (now_ns() - g_main_ns) / 1000000);
 }
 
+#ifdef PORPOISE_DESKTOP
+int main(int argc, char **argv)
+{
+    /* The window first: it also makes the program's folder the working one. */
+    if (!porpoise::platform::init(argc, argv))
+        return 1;
+#else
 int main()
 {
+#endif
     g_main_ns = now_ns();
     ps5::debug::mark("Porpoise: main() entered");
     /* Before any thread is started: clone this process's credential, so a Lapy
      * owned-root daemon will free it later (choose_data_dir -> jailbreak). */
     porpoise::jailbreak::prepare();
     ps5_open_permissions();
-    if (std::freopen("/app0/trace.txt", "a", stderr))
+    if (std::freopen(PORPOISE_APP "/trace.txt", "a", stderr))
     {
         static char stderr_buffer[64 * 1024];
         std::setvbuf(stderr, stderr_buffer, _IOFBF, sizeof stderr_buffer);
@@ -1190,7 +1204,7 @@ int main()
     }
     std::set_terminate(on_terminate);
     ps5::debug::mark(PS5_RETROARCH_BUILD_ID);
-    ps5::memory::init("/app0/memory-diagnostics.log", PS5_RETROARCH_BUILD_ID);
+    ps5::memory::init(PORPOISE_APP "/memory-diagnostics.log", PS5_RETROARCH_BUILD_ID);
     ps5_vulkan_profile_init();
     ps5_crash_report_install();
     ps5_memory_report("startup", 0, 0);
@@ -1208,11 +1222,11 @@ int main()
         ps5::debug::mark(line);
     }
 
-    mkdir("/app0/content", 0777);
-    mkdir("/app0/savefiles", 0777);
-    mkdir("/app0/system", 0777);
-    mkdir("/app0/porpoise", 0777);
-    mkdir("/app0/porpoise/covers", 0777);
+    mkdir(PORPOISE_APP "/content", 0777);
+    mkdir(PORPOISE_APP "/savefiles", 0777);
+    mkdir(PORPOISE_APP "/system", 0777);
+    mkdir(PORPOISE_APP "/porpoise", 0777);
+    mkdir(PORPOISE_APP "/porpoise/covers", 0777);
 
     if (!porpoise::vk::open_display())
     {
@@ -1271,18 +1285,18 @@ int main()
     ps5::debug::mark_value("main: games in the library", static_cast<long long>(g_library.games().size()));
     mark_start("start: library read, ms");
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
-    g_app.set_sys_dir("/app0/system/dolphin-emu/Sys");
+    g_app.set_sys_dir(PORPOISE_APP "/system/dolphin-emu/Sys");
     g_app.set_sound_hook(play_sound);
     g_app.set_jingle_hook([](const std::int16_t *frames, std::size_t count) {
         porpoise::sound::play_jingle(frames, count);
     });
     porpoise::banner::set_cache_dir(g_data + "/banners");
-    porpoise::sound::load("/app0/assets");
+    porpoise::sound::load(PORPOISE_APP "/assets");
     porpoise::states::set_data_dir(g_data);
-    porpoise::borders::set_dirs("/app0/assets", g_data);
+    porpoise::borders::set_dirs(PORPOISE_APP "/assets", g_data);
     porpoise::ui::setups::set_dir(g_data);
-    porpoise::ui::recommend::set_paths(g_data + "/recommended.ini", "/app0/system/dolphin-emu/Sys/GameSettings",
-                                       "/app0/assets/recommended.ini");
+    porpoise::ui::recommend::set_paths(g_data + "/recommended.ini", PORPOISE_APP "/system/dolphin-emu/Sys/GameSettings",
+                                       PORPOISE_APP "/assets/recommended.ini");
     read_latest_release();
     apply_settings();
     g_app.set_sandboxed(g_sandboxed);
@@ -1315,6 +1329,10 @@ int main()
         for (;;)
         {
             const porpoise::pad::State &pad = porpoise::pad::poll();
+#ifdef PORPOISE_DESKTOP
+            if (porpoise::platform::quit_requested())
+                leave(0); /* the window was closed */
+#endif
             porpoise::ui::Input in;
             in.held = pad.buttons;
             in.stick_x = pad.left_x / 32768.0f;
@@ -1616,7 +1634,13 @@ int main()
         porpoise::core::set_fast_forward(1);
         porpoise::vk::set_game_colour_filter(g_settings.colour_filter_games ? g_settings.colour_filter : 0);
         const long long played_from = now_ns();
+#ifdef PORPOISE_DESKTOP
+        porpoise::platform::set_in_game(true);
+#endif
         const porpoise::core::Exit exit = porpoise::core::run_game(launch->path.c_str(), core_paths, hooks, playback);
+#ifdef PORPOISE_DESKTOP
+        porpoise::platform::set_in_game(false);
+#endif
         setenv("RADV_THREADED_RECORDING", "0", 1); /* the launcher's device, made next, records directly */
         porpoise::speaker::close_ports();
         keep_cores(false);

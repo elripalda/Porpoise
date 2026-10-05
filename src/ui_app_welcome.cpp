@@ -176,7 +176,11 @@ void App::draw_welcome(double time)
     draw_mark(960, 118, 120, kWhite);
     g.text_mid(Font::ExtraBold, ts(58), 960, 222, kWhite, Align::Center, tr("Welcome to Porpoise"));
     g.text_mid(Font::SemiBold, ts(28), 960, 282, kSoft, Align::Center,
+#ifdef PORPOISE_DESKTOP
+               tr("Porpoise plays your GameCube and Wii games on your computer, powered by Dolphin."));
+#else
                tr("Porpoise plays your GameCube and Wii games on PS5, powered by Dolphin."));
+#endif
     g.text_mid(Font::Regular, ts(26), 960, 326, kLavender, Align::Center,
                tr("Choose a look to start with. You can change it any time in Settings > Interface."));
     g.set_tone(false);
