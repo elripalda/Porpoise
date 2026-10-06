@@ -9,6 +9,8 @@
   Classic (2.1), with the audio buffer and gap filling on their own rows.
 - An **Audio** tab in the in-game menu: volume, mute, the sound preset and the
   rest, while you play.
+- Games no longer run faster than their own speed (some did on a PS5 set to
+  120 Hz output).
 - Optimizations and fixes for reported bugs.
 
 ## 2.1.1 — 2026-10-06

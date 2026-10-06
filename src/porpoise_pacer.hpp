@@ -25,7 +25,15 @@
  * with a frame now and then landing a vblank late or early. V-Sync now waits
  * on the display's vblank itself (VideoOut's): a frame finished before its
  * vblank waits for it; one finished after doesn't wait at all, so a game
- * that can't quite hold 60 runs as fast as it can instead of dropping to 30. */
+ * that can't quite hold 60 runs as fast as it can instead of dropping to 30.
+ *
+ * 2.1.2: the vblanks are timed, not taken from the display mode. A console
+ * set to 120 Hz output reports a 60 Hz mode, and its vblanks came twice per
+ * frame: a light game (Rocky, Spider-Man 2) finished early, took the next
+ * vblank, and ran at 72-75 frames a second, faster than itself. Now a frame
+ * waits as many vblanks as make up its own time (two at 120 Hz); a display
+ * whose vblanks don't divide the game's rate gets Porpoise's own clock. And
+ * no frame, whatever the vblanks say, is shorter than 96% of the game's own. */
 #pragma once
 
 namespace porpoise::pacer
@@ -62,6 +70,8 @@ private:
     void enter_vblank();
     void vblank_frame();
     long long last_vblank_ns_ = 0;
+    int vblanks_per_frame_ = 1; /* 2 on a 120 Hz output */
+    long long frame_floor_ns_ = 0; /* 96% of the content's frame */
     int quick_vblanks_ = 0;
     int misses_ = 0;
     int vblank_retry_ = 0;

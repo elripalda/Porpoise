@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #include "porpoise_pacer.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <time.h>
@@ -19,6 +20,35 @@ constexpr int kProbeFrames = 120;  /* about two seconds */
 constexpr double kHeldMs = 0.25;   /* a present that waited at least this was held */
 constexpr long long kReprobeNs = 20000000000LL; /* on its own clock, try the vblank again this often */
 bool g_vsync = true;
+/* The display's real vblank interval, timed once (enter_vblank): the mode
+ * says 60 Hz on a console set to 120 Hz output. 0 until timed. */
+long long g_vblank_interval_ns = 0;
+
+long long time_vblanks()
+{
+    if (!porpoise::vk::wait_vblank()) /* to the start of one */
+        return 0;
+    long long gaps[4];
+    long long last = 0;
+    {
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        last = static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
+    }
+    for (long long &gap : gaps)
+    {
+        if (!porpoise::vk::wait_vblank())
+            return 0;
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        const long long now = static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
+        gap = now - last;
+        last = now;
+    }
+    /* The middle two of four: a late wake-up doesn't skew it. */
+    std::sort(gaps, gaps + 4);
+    return (gaps[1] + gaps[2]) / 2;
+}
 } // namespace
 
 void set_vsync(bool on)
@@ -56,6 +86,8 @@ void Pacer::start(double content_hz, const char *who)
     const double display = porpoise::vk::display_hz();
     period_ns_ = static_cast<long long>(1e9 / content);
     vblank_ns_ = static_cast<long long>(1e9 / (display > 10.0 ? display : 60.0));
+    frame_floor_ns_ = period_ns_ * 24 / 25;
+    vblanks_per_frame_ = 1;
     /* The display can be the clock when it runs at the content's own rate
      * (59.94 against 60 is close enough; 50 against 60 or 120 is not). */
     const double ratio = display / content;
@@ -78,14 +110,41 @@ void Pacer::start(double content_hz, const char *who)
 
 void Pacer::enter_vblank()
 {
+    if (g_vblank_interval_ns == 0)
+    {
+        const long long interval = time_vblanks();
+        char line[128];
+        std::snprintf(line, sizeof line, "pacer: the display's vblanks come every %.3f ms (%.2f Hz; the mode says %.2f)",
+                      interval / 1e6, interval > 0 ? 1e9 / double(interval) : 0.0, 1e9 / double(vblank_ns_));
+        ps5::debug::mark(line);
+        /* Something between 25 and 250 Hz, or it isn't a vblank wait. */
+        g_vblank_interval_ns = interval >= 4000000 && interval <= 40000000 ? interval : -1;
+    }
+    /* How many vblanks make one of the content's frames: one at 60 Hz, two at
+     * 120. One that doesn't divide it within 1.2% (144 Hz) gets the own clock. */
+    const long long interval = g_vblank_interval_ns;
+    const int n = interval > 0 ? int(std::lround(double(period_ns_) / double(interval))) : 0;
+    if (n < 1 || n > 4 || std::fabs(double(n * interval - period_ns_)) > 0.012 * double(period_ns_))
+    {
+        mode_ = Mode::Clock;
+        clock_since_ns_ = deadline_ns_ = last_ns_ = now_ns();
+        char line[128];
+        std::snprintf(line, sizeof line, "pacer: %s: the vblanks don't divide %.3f ms: own clock", who_,
+                      period_ns_ / 1e6);
+        ps5::debug::mark(line);
+        return;
+    }
+    vblank_ns_ = interval;
+    vblanks_per_frame_ = n;
     mode_ = Mode::Vblank;
     quick_vblanks_ = 0;
     if (porpoise::vk::wait_vblank())
         last_vblank_ns_ = now_ns();
     else
         last_vblank_ns_ = now_ns() - vblank_ns_ / 2;
+    last_ns_ = last_vblank_ns_;
     char line[128];
-    std::snprintf(line, sizeof line, "pacer: %s: V-Sync on the display's vblank", who_);
+    std::snprintf(line, sizeof line, "pacer: %s: V-Sync on the display's vblank, %d per frame", who_, n);
     ps5::debug::mark(line);
 }
 
@@ -97,18 +156,33 @@ void Pacer::enter_vblank()
 void Pacer::vblank_frame()
 {
     const long long now = now_ns();
-    const long long due = last_vblank_ns_ + vblank_ns_;
+    const long long due = last_vblank_ns_ + vblank_ns_ * vblanks_per_frame_;
     if (now < due)
     {
-        if (!porpoise::vk::wait_vblank())
+        /* The vblank this frame is due on: at 120 Hz the next one may be a
+         * frame early, so wait again until within half a vblank of it. */
+        long long after = now;
+        for (int waits = 0; waits <= vblanks_per_frame_; ++waits)
         {
-            mode_ = Mode::Clock;
-            clock_since_ns_ = now;
-            deadline_ns_ = now;
-            ps5::debug::mark("pacer: the vblank wait failed: own clock");
-            return;
+            if (!porpoise::vk::wait_vblank())
+            {
+                mode_ = Mode::Clock;
+                clock_since_ns_ = now;
+                deadline_ns_ = now;
+                ps5::debug::mark("pacer: the vblank wait failed: own clock");
+                return;
+            }
+            after = now_ns();
+            if (after >= due - vblank_ns_ / 2)
+                break;
         }
-        const long long after = now_ns();
+        /* Never shorter than 96% of the game's own frame, whatever the
+         * vblanks said: a game is never run faster than itself. */
+        if (after - last_ns_ < frame_floor_ns_)
+        {
+            sleep_until_ns(last_ns_ + frame_floor_ns_);
+            after = now_ns();
+        }
         /* A wait that ends at once when the vblank was still well away is not
          * a vblank wait: after a few, back to the own clock (a loop that
          * isn't held mustn't run fast). */
