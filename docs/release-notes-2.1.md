@@ -44,3 +44,5 @@ Playing GameCube and Wii games **together online** is what we're building next. 
 ## Legal
 
 Porpoise contains **no games and no BIOS or firmware files**. Play only games you own, from backups you made yourself. Porpoise is not affiliated with Nintendo, Sony or RetroAchievements. Emulation is provided by [Dolphin](https://dolphin-emu.org) (GPL-2.0-or-later); achievements by RetroAchievements' [rcheevos](https://github.com/RetroAchievements/rcheevos) (MIT). Porpoise is GPL-3.0-or-later, and every component's license and source revision is listed in `licenses/README.txt` inside the zip.
+
+`Porpoise-2.1.zip` SHA-256: `c4b2424825e1d045a7d5eacb17be4c7b9565923a88c471d0aa173e8c4d2d9988`
