@@ -8,6 +8,10 @@
  * of the first 0x80 bytes uncompressed at 0x58. GCZ and WBFS do not, so those
  * fall back to the file name. */
 #include "ui_library.hpp"
+
+#include <map>
+
+#include "porpoise_atomic.hpp"
 #include "porpoise_disc.hpp"
 #include "ui_i18n.hpp"
 
@@ -606,38 +610,45 @@ void Library::load_state()
 
 void Library::save() const
 {
-    std::FILE *f = std::fopen(paths_.state.c_str(), "w");
+    /* Written whole or not at all (porpoise_atomic.hpp): play time and
+     * favourites survive a console unplugged as a game starts. */
+    std::FILE *f = open_atomic(paths_.state);
     if (!f)
         return;
     std::fprintf(f, "selected=%s\nsort=%s\n", selected_.c_str(), sort_name(sort_));
     if (show_ != Show::All)
         std::fprintf(f, "show=%s\n", show_ == Show::Wii ? "wii" : show_ == Show::Channels ? "channels" : "gamecube");
-    /* One line of each kind per key, however many copies of a game there are. */
-    std::vector<std::string> done;
+    /* One line of each kind per key, however many copies of a game there are:
+     * each key once, in the library's order, with its copies merged. */
+    struct Merged
+    {
+        long long played = 0, seconds = 0;
+        bool fav = false;
+    };
+    std::vector<std::string> order;
+    std::map<std::string, Merged> merged;
     for (const Game &g : games_)
     {
         const std::string key = key_of(g);
-        if (std::find(done.begin(), done.end(), key) != done.end())
-            continue;
-        done.push_back(key);
-        long long played = 0, seconds = 0;
-        bool fav = false;
-        for (const Game &o : games_)
-            if (key_of(o) == key)
-            {
-                played = std::max(played, o.last_played);
-                seconds = std::max(seconds, o.play_seconds);
-                fav |= o.favourite;
-            }
-        if (played > 0)
-            std::fprintf(f, "played=%s %lld\n", key.c_str(), played);
-        if (seconds > 0)
-            std::fprintf(f, "time=%s %lld\n", key.c_str(), seconds);
-        if (fav)
+        auto [it, fresh] = merged.try_emplace(key);
+        if (fresh)
+            order.push_back(key);
+        it->second.played = std::max(it->second.played, g.last_played);
+        it->second.seconds = std::max(it->second.seconds, g.play_seconds);
+        it->second.fav |= g.favourite;
+    }
+    for (const std::string &key : order)
+    {
+        const Merged &m = merged[key];
+        if (m.played > 0)
+            std::fprintf(f, "played=%s %lld\n", key.c_str(), m.played);
+        if (m.seconds > 0)
+            std::fprintf(f, "time=%s %lld\n", key.c_str(), m.seconds);
+        if (m.fav)
             std::fprintf(f, "fav=%s\n", key.c_str());
     }
     for (const std::string &l : kept_lines_)
         std::fprintf(f, "%s\n", l.c_str());
-    std::fclose(f);
+    finish_atomic(f, paths_.state);
 }
 } // namespace porpoise::ui

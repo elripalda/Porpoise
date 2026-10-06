@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <cerrno>
 #include <cstring>
 #include <cxxabi.h>
 #include <dirent.h>
@@ -36,7 +37,9 @@
 #include "memory_diagnostics.hpp"
 #include "porpoise_audio.hpp"
 #include "porpoise_borders.hpp"
+#include "porpoise_atomic.hpp"
 #include "porpoise_core.hpp"
+#include "porpoise_disc.hpp"
 #ifdef PORPOISE_DESKTOP
 #include "porpoise_platform.hpp"
 #endif
@@ -530,6 +533,7 @@ void set_ini_value(const std::string &path, const std::string &section, const st
             break;
         }
     const std::string entry = key + " = " + value;
+    bool changed = true;
     if (sec == lines.size())
     {
         lines.push_back(header);
@@ -543,6 +547,7 @@ void set_ini_value(const std::string &path, const std::string &section, const st
             const auto eq = lines[i].find('=');
             if (eq != std::string::npos && trim(lines[i].substr(0, eq)) == key)
             {
+                changed = lines[i] != entry;
                 lines[i] = entry;
                 done = true;
             }
@@ -550,14 +555,16 @@ void set_ini_value(const std::string &path, const std::string &section, const st
         if (!done)
             lines.insert(lines.begin() + std::ptrdiff_t(end), entry);
     }
+    if (!changed)
+        return; /* already so: no rewrite (several of these run at each launch) */
     const std::string dir = path.substr(0, path.rfind('/'));
     mkdir(dir.substr(0, dir.rfind('/')).c_str(), 0777);
     mkdir(dir.c_str(), 0777);
-    if (std::FILE *f = std::fopen(path.c_str(), "w"))
+    if (std::FILE *f = porpoise::open_atomic(path))
     {
         for (const std::string &l : lines)
             std::fprintf(f, "%s\n", l.c_str());
-        std::fclose(f);
+        porpoise::finish_atomic(f, path);
     }
 }
 
@@ -611,7 +618,15 @@ std::string install_dir()
     };
     const std::string home = "/data/homebrew/PPSA99764";
     const std::string mine = read_all(PORPOISE_APP "/manifest.sha256");
-    const bool same = !mine.empty() && mine == read_all(home + "/manifest.sha256");
+    bool same = !mine.empty() && mine == read_all(home + "/manifest.sha256");
+    if (mine.empty())
+    {
+        /* No manifest (an FTP copy in text mode leaves it out): the same
+         * program in both places, by its size and time, is the same copy. */
+        struct stat a, b;
+        same = stat(PORPOISE_APP "/eboot.bin", &a) == 0 && stat((home + "/eboot.bin").c_str(), &b) == 0 &&
+               a.st_size == b.st_size && a.st_mtime == b.st_mtime;
+    }
     ps5::debug::mark(("main: the update goes to " + (same ? home : std::string(PORPOISE_APP))).c_str());
     return same ? home : PORPOISE_APP;
 }
@@ -1135,6 +1150,15 @@ void remove_tree(const std::string &dir, bool top)
 
 void *mover_worker(void *)
 {
+    /* A target that already holds a Porpoise folder (settings.ini) is someone's
+     * data: the copy would write over it. */
+    struct stat st;
+    if (g_mover.to != PORPOISE_DATA && stat((g_mover.to + "/settings.ini").c_str(), &st) == 0)
+    {
+        g_mover.error = "That place already has a Porpoise folder. Move or rename it first, then try again.";
+        g_mover.state = 4;
+        return nullptr;
+    }
     std::vector<char> buf(std::size_t(4) << 20);
     const bool ok = copy_into(g_mover.from, g_mover.to, true, buf);
     if (!ok)
@@ -1156,15 +1180,39 @@ void *mover_worker(void *)
         }
         return nullptr;
     }
-    /* Everything is there: the pointer, then the old copy goes. */
+    /* Everything is there: the pointer, then the old copy goes; only once the
+     * pointer is on the disk and reads back right (else Porpoise would start
+     * from an emptied folder, the data orphaned on the drive). */
     g_mover.state = 2;
     const std::string pointer = std::string(PORPOISE_DATA) + "/location.txt";
+    bool pointed = false;
     if (g_mover.to == PORPOISE_DATA)
-        std::remove(pointer.c_str());
-    else if (std::FILE *f = std::fopen(pointer.c_str(), "w"))
+        pointed = std::remove(pointer.c_str()) == 0 || errno == ENOENT;
+    else if (std::FILE *f = porpoise::open_atomic(pointer))
     {
         std::fprintf(f, "%s\n", g_mover.to.c_str());
-        std::fclose(f);
+        if (porpoise::finish_atomic(f, pointer))
+            if (std::FILE *r = std::fopen(pointer.c_str(), "r"))
+            {
+                char line[512] = {0};
+                std::string back = std::fgets(line, sizeof line, r) ? line : "";
+                std::fclose(r);
+                while (!back.empty() && (back.back() == '\n' || back.back() == '\r'))
+                    back.pop_back();
+                pointed = back == g_mover.to;
+            }
+    }
+    if (!pointed)
+    {
+        /* The folder in use is still the old one: the copy goes again. */
+        for (auto it = g_mover.made_files.rbegin(); it != g_mover.made_files.rend(); ++it)
+            std::remove(it->c_str());
+        for (auto it = g_mover.made_dirs.rbegin(); it != g_mover.made_dirs.rend(); ++it)
+            rmdir(it->c_str());
+        g_mover.error = "The move didn't finish (the drive may be full or not writable). Porpoise's folder "
+                        "stays where it was.";
+        g_mover.state = 4;
+        return nullptr;
     }
     remove_tree(g_mover.from, g_mover.from == PORPOISE_DATA);
     g_mover.state = 3;
@@ -1982,9 +2030,20 @@ int main()
         /* Widescreen: the game's own code or 16:9 option where it has one; the
          * emulated hack only when asked for (ui_widescreen.hpp). */
         const bool ws_wii = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
+        /* A game whose widescreen code Dolphin keeps per disc revision: the
+         * revision from the disc's header (byte 7). */
+        int ws_revision = -1;
+        if (!ws_wii && porpoise::ui::widescreen::has_revisions(PORPOISE_APP "/system/dolphin-emu/Sys", launch->id))
+        {
+            std::uint8_t header[0x100];
+            std::string error;
+            if (porpoise::disc::read_header(launch->path, header, error))
+                ws_revision = header[7];
+            ps5::debug::mark_value("main: disc revision (its widescreen code is per revision)", ws_revision);
+        }
         const porpoise::ui::widescreen::Plan ws_plan = porpoise::ui::widescreen::plan_for(
             g_play.wide_mode(),
-            porpoise::ui::widescreen::kind_of(launch->id, PORPOISE_APP "/system/dolphin-emu/Sys", ws_wii),
+            porpoise::ui::widescreen::kind_of(launch->id, PORPOISE_APP "/system/dolphin-emu/Sys", ws_wii, ws_revision),
             porpoise::ui::widescreen::code_needs_hack(launch->id));
         static_assert(int(porpoise::ui::widescreen::Plan::Patch) == 1 && int(porpoise::ui::widescreen::Plan::Hack) == 3 &&
                           int(porpoise::ui::widescreen::Plan::PatchHack) == 4,
@@ -2075,7 +2134,7 @@ int main()
                 bool ws_on = false;
                 const bool ws_cheats = porpoise::ui::widescreen::add_codes(
                     launch->id, PORPOISE_APP "/system/dolphin-emu/Sys", dir + "/" + launch->id + ".ini", ws_plan, off,
-                    &g_play, ws_on);
+                    &g_play, ws_on, ws_revision);
                 if (ws_on)
                     ps5::debug::mark("main: the game's widescreen code is on");
                 if (ws_cheats && !g_play.cheats)

@@ -4710,5 +4710,9 @@
  {
   "en": "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.",
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "That place already has a Porpoise folder. Move or rename it first, then try again.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  }
 ]

@@ -144,6 +144,13 @@ App::Action App::update_account(bool up, bool down, bool left, bool right)
             if (right)
                 acct_.kc = (acct_.kc + 1) % kKeyCols;
         }
+        if (acct_.kr < 4)
+        {
+            /* A shorter row (the symbols' last, "@-"): only its own keys. */
+            const int len = int(std::strlen(acct_.symbols ? kSymbols[acct_.kr] : kLetters[acct_.kr]));
+            if (len > 0 && acct_.kc >= len)
+                acct_.kc = right ? 0 : len - 1;
+        }
         if (up || down || left || right)
             sfx(Sound::MenuScroll);
         if (pressed(BtnCross))

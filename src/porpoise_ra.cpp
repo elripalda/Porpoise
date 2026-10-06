@@ -41,7 +41,6 @@ std::string g_path; /* <data>/retroachievements.ini */
 Account g_account;
 std::string g_token;
 bool g_login_done = false;
-std::string g_agent;
 
 /* The game's connection, made at its first request and closed with it. */
 std::mutex g_session_lock;
@@ -52,6 +51,11 @@ std::atomic<bool> g_unreachable_said{false}, g_error_said{false};
 std::string g_lists;           /* <data>/achievements */
 std::string g_disc_id;         /* the game being played */
 std::atomic<void *> g_core{nullptr};
+/* The core's list and pending-request functions, looked up once a game. */
+using ListFn = int (*)(char *buf, int size);
+using PendingFn = int (*)();
+std::atomic<ListFn> g_list_fn{nullptr};
+std::atomic<PendingFn> g_pending_fn{nullptr};
 std::atomic<bool> g_dirty{false};
 std::chrono::steady_clock::time_point g_refreshed{};
 std::mutex g_toast_lock;
@@ -62,9 +66,10 @@ bool g_badge_worker = false;
 
 const std::string &agent()
 {
-    if (g_agent.empty())
-        g_agent = std::string("Porpoise/") + porpoise::ui::look::kVersion + " (PS5) rcheevos/12.2";
-    return g_agent;
+    /* Built once, whichever thread asks first (the sign-in worker, the game's
+     * request thread): sessions keep a pointer into it. */
+    static const std::string kAgent = std::string("Porpoise/") + porpoise::ui::look::kVersion + " (PS5) rcheevos/12.2";
+    return kAgent;
 }
 
 std::string url_encode(const std::string &s)
@@ -249,12 +254,9 @@ int core_request(const char *url, const char *post_data, void *ctx, void (*sink)
 
 /* ---- the game's list and its badges --------------------------------------------------------- */
 
-using ListFn = int (*)(char *buf, int size);
-
 bool list_text(std::string &out)
 {
-    void *core = g_core.load();
-    auto list = reinterpret_cast<ListFn>(core ? ps5_core_dlsym(core, "porpoise_ra_list") : nullptr);
+    const ListFn list = g_core.load() ? g_list_fn.load() : nullptr;
     if (!list)
         return false;
     for (int attempt = 0; attempt < 3; ++attempt)
@@ -334,8 +336,9 @@ void *badge_worker(void *)
     }
 }
 
-/* Keeps the running game's list for the library and fetches badges it lacks. */
-void refresh_now()
+/* Keeps the running game's list for the library and fetches badges it lacks
+ * (not as the game leaves: the exit doesn't wait on downloads). */
+void refresh_now(bool fetch_badges = true)
 {
     std::string text;
     porpoise::ui::AchievementSet set;
@@ -354,6 +357,8 @@ void refresh_now()
                 std::remove(tmp.c_str());
         }
     }
+    if (!fetch_badges)
+        return;
     const std::string dir = g_lists + "/badges";
     mkdir(dir.c_str(), 0777);
     std::vector<std::pair<std::string, std::string>> missing;
@@ -433,7 +438,11 @@ void core_event(int kind, const char *title, const char *text, const char *image
         break;
     }
     case LoginFailed:
-        if (a == -34 /* RC_INVALID_CREDENTIALS */ || a == -35 /* RC_EXPIRED_TOKEN */ || a == -28 /* RC_LOGIN_REQUIRED */)
+        /* Signed out only when the server says the token is no good. A sign-in
+         * that failed for any other reason (no answer, the server busy) ends
+         * as RC_LOGIN_REQUIRED (-28) too: achievements are off for this game,
+         * the account stays. */
+        if (a == -34 /* RC_INVALID_CREDENTIALS */ || a == -35 /* RC_EXPIRED_TOKEN */)
         {
             {
                 std::lock_guard<std::mutex> lock(g_lock);
@@ -451,16 +460,22 @@ void core_event(int kind, const char *title, const char *text, const char *image
                                    Sound::Default);
         break;
     case GameLoaded:
+        if (!g_core.load())
+            break; /* the player left before the set arrived */
         g_dirty = true;
         popup("RetroAchievements", t,
               trf("RetroAchievements: {done} of {total} unlocked", {{"done", std::to_string(a)}, {"total", std::to_string(b)}}),
               pic, Sound::Default, false);
         break;
     case Unlocked:
+        if (!g_core.load())
+            break;
         g_dirty = true;
         popup(tr("Achievement unlocked"), t, x, pic, Sound::Trophy, true);
         break;
     case Completed:
+        if (!g_core.load())
+            break;
         g_dirty = true;
         popup(tr("Game completed"), trf("{game} completed", {{"game", t}}), tr("Every achievement unlocked"), pic,
               Sound::Platinum, true);
@@ -489,7 +504,6 @@ struct CoreSetup
     void (*event)(int, const char *, const char *, const char *, int, int);
 };
 using SetupFn = int (*)(const CoreSetup *);
-using PendingFn = int (*)();
 } // namespace
 
 void init(const std::string &data_dir)
@@ -645,6 +659,8 @@ void start_game(void *core_library)
     ps5::debug::mark_value("ra: achievements this game", on);
     if (on)
     {
+        g_list_fn = reinterpret_cast<ListFn>(ps5_core_dlsym(core_library, "porpoise_ra_list"));
+        g_pending_fn = reinterpret_cast<PendingFn>(ps5_core_dlsym(core_library, "porpoise_ra_pending"));
         g_core = core_library;
         porpoise::notify::hold(8); /* a toast in the game's first seconds loses its picture */
     }
@@ -652,11 +668,10 @@ void start_game(void *core_library)
 
 void finish_game(void *core_library, int max_ms)
 {
-    auto pending = reinterpret_cast<PendingFn>(core_library ? ps5_core_dlsym(core_library, "porpoise_ra_pending") : nullptr);
+    const PendingFn pending = core_library && g_core.load() == core_library ? g_pending_fn.load() : nullptr;
     if (!pending)
         return;
-    if (g_core.load())
-        refresh_now(); /* the list as the game leaves it, for the library */
+    refresh_now(false); /* the list as the game leaves it, for the library */
     const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(max_ms);
     int left = pending();
     if (left > 0)
@@ -673,6 +688,8 @@ void finish_game(void *core_library, int max_ms)
 void end_game()
 {
     g_core = nullptr; /* the badge worker stops after the badge in hand */
+    g_list_fn = nullptr;
+    g_pending_fn = nullptr;
     {
         std::lock_guard<std::mutex> lock(g_badge_lock);
         g_badges.clear();

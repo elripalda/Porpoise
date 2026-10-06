@@ -31,6 +31,7 @@ bool g_loaded = false;
 std::map<std::string, std::vector<Code>> g_codes;
 std::set<std::string> g_native;
 std::set<std::string> g_needs_hack;
+std::map<std::string, bool> g_revisions; /* game ID: Dolphin has <ID>rN.ini files */
 
 std::string trim(std::string s)
 {
@@ -120,6 +121,36 @@ bool native(const std::string &game_id)
     return g_native.count(game_id) > 0;
 }
 
+/* The first widescreen code in Dolphin's file for one revision of the disc
+ * (<ID>r<N>.ini): its kind and name, or empty. */
+std::pair<std::string, std::string> revision_code(const std::string &sys_dir, const std::string &game_id, int revision)
+{
+    if (revision < 0 || revision > 9 || sys_dir.empty())
+        return {};
+    std::FILE *f = std::fopen((sys_dir + "/GameSettings/" + game_id + "r" + std::to_string(revision) + ".ini").c_str(), "r");
+    if (!f)
+        return {};
+    std::pair<std::string, std::string> found;
+    std::string section;
+    char buf[512];
+    while (found.second.empty() && std::fgets(buf, sizeof buf, f))
+    {
+        const std::string line = trim(buf);
+        if (line.empty() || line[0] == '#')
+            continue;
+        if (line[0] == '[')
+        {
+            section = line.substr(1, line.find(']') == std::string::npos ? 0 : line.find(']') - 1);
+            continue;
+        }
+        if (line[0] == '$' && (section == "OnFrame" || section == "ActionReplay" || section == "Gecko") &&
+            is_widescreen_code(line))
+            found = {section, line};
+    }
+    std::fclose(f);
+    return found;
+}
+
 /* Dolphin's own widescreen codes for the game (its Sys/GameSettings). */
 std::vector<Cheat> dolphin_widescreen(const std::string &game_id, const std::string &sys_dir)
 {
@@ -132,6 +163,25 @@ std::vector<Cheat> dolphin_widescreen(const std::string &game_id, const std::str
     return out;
 }
 } // namespace
+
+bool has_revisions(const std::string &sys_dir, const std::string &game_id)
+{
+    if (game_id.size() != 6 || sys_dir.empty())
+        return false;
+    std::lock_guard<std::mutex> lock(g_lock);
+    const auto it = g_revisions.find(game_id);
+    if (it != g_revisions.end())
+        return it->second;
+    bool any = false;
+    for (int r = 0; r < 10 && !any; ++r)
+        if (std::FILE *f = std::fopen((sys_dir + "/GameSettings/" + game_id + "r" + std::to_string(r) + ".ini").c_str(), "r"))
+        {
+            std::fclose(f);
+            any = true;
+        }
+    g_revisions[game_id] = any;
+    return any;
+}
 
 void set_dir(const std::string &dir)
 {
@@ -165,12 +215,22 @@ bool has_native(const std::string &game_id)
     return native(game_id);
 }
 
-Kind kind_of(const std::string &game_id, const std::string &sys_dir, bool wii)
+Kind kind_of(const std::string &game_id, const std::string &sys_dir, bool wii, int revision)
 {
     if (wii)
         return Kind::Native; /* the Wii's own 16:9 setting */
     if (game_id.size() != 6)
         return Kind::None;
+    if (has_revisions(sys_dir, game_id))
+    {
+        /* Codes per revision: the running one's, when it has one (a revision
+         * not known yet: whether any has one). */
+        const bool code = revision >= 0 ? !revision_code(sys_dir, game_id, revision).second.empty()
+                                        : !dolphin_widescreen(game_id, sys_dir).empty();
+        if (code)
+            return Kind::Patch;
+        return native(game_id) ? Kind::Native : Kind::None;
+    }
     for (const Code &c : codes_of(game_id))
         if (c.enabled)
             return Kind::Patch;
@@ -208,7 +268,7 @@ std::vector<Cheat> pack_codes(const std::string &game_id)
 }
 
 bool add_codes(const std::string &game_id, const std::string &sys_dir, const std::string &ini_path, Plan plan,
-               bool (*off)(const Cheat &, const void *), const void *user, bool &widescreen_on)
+               bool (*off)(const Cheat &, const void *), const void *user, bool &widescreen_on, int revision)
 {
     widescreen_on = false;
     const std::vector<Code> codes = codes_of(game_id);
@@ -222,14 +282,23 @@ bool add_codes(const std::string &game_id, const std::string &sys_dir, const std
         return off && off(c, user);
     };
     bool pack_widescreen = false;
+    const bool revisions = has_revisions(sys_dir, game_id);
     for (const Code &c : codes)
-        if (c.enabled)
+        if (c.enabled && !revisions) /* a collection code is made for one revision of the disc */
         {
             pack_widescreen = true;
             if ((plan == Plan::Patch || plan == Plan::PatchHack) && !turned_off(c.kind, c.name))
                 on.emplace_back(c.kind, c.name);
         }
-    if (plan == Plan::Patch && !pack_widescreen)
+    if (revisions && (plan == Plan::Patch || plan == Plan::PatchHack))
+    {
+        /* The running revision's own code (Dolphin loads its file), or none:
+         * then the game stays 4:3 (widescreen_on false). */
+        const auto rc = revision_code(sys_dir, game_id, revision);
+        if (!rc.second.empty() && !turned_off(rc.first, rc.second))
+            on.emplace_back(rc.first, rc.second);
+    }
+    else if (plan == Plan::Patch && !pack_widescreen)
     {
         const std::vector<Cheat> own = dolphin_widescreen(game_id, sys_dir);
         if (!own.empty() && !turned_off(own.front().kind, own.front().name))
@@ -274,7 +343,7 @@ bool add_codes(const std::string &game_id, const std::string &sys_dir, const std
                 if (!header)
                     std::fprintf(f, "\n[%s_Enabled]\n", kind);
                 header = true;
-                std::fprintf(f, "%s\n", name.c_str());
+                std::fprintf(f, "%s\n", list_name(k, name).c_str());
                 cheats |= k != "OnFrame";
             }
     }

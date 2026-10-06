@@ -1176,5 +1176,6 @@
  "Takes effect the next time the game starts.": "Wirkt ab dem nächsten Start des Spiels.",
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin listet für dieses Spiel keine auf. Eigene Codes kommen in /data/porpoise/cheats/{id}.ini.",
  "None for this game": "Keine für dieses Spiel",
- "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Ein Breitbild-Code aus der Liste von Dolphin. Aktiv, wenn Breitbild auf Auto oder Ein steht, mit dem Bild in 16:9."
+ "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Ein Breitbild-Code aus der Liste von Dolphin. Aktiv, wenn Breitbild auf Auto oder Ein steht, mit dem Bild in 16:9.",
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "An diesem Ort gibt es schon einen Porpoise-Ordner. Verschiebe oder benenne ihn zuerst um und versuche es dann erneut."
 }

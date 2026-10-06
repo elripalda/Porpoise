@@ -43,7 +43,12 @@ enum class Plan
 
 /* Where codes.ini and native.txt are (read once, when first asked). */
 void set_dir(const std::string &dir);
-Kind kind_of(const std::string &game_id, const std::string &sys_dir, bool wii);
+/* revision: the disc's (its header's byte 7) when known, else -1. */
+Kind kind_of(const std::string &game_id, const std::string &sys_dir, bool wii, int revision = -1);
+/* Dolphin keeps this game's codes per disc revision (Sys/GameSettings/
+ * <ID>r0.ini...): the collection's code, made for one revision, isn't used for
+ * it; the running revision's own widescreen code is. */
+bool has_revisions(const std::string &sys_dir, const std::string &game_id);
 /* The collection marks a few games whose codes work only with the hack on. */
 bool code_needs_hack(const std::string &game_id);
 Plan plan_for(int mode, Kind kind, bool code_needs_hack = false);
@@ -62,7 +67,7 @@ bool is_widescreen_code(const std::string &name);
  * in Cheats, which Settings::write_dolphin_game_ini writes. True when an
  * Action Replay or Gecko code is turned on here, which needs Dolphin's cheats. */
 bool add_codes(const std::string &game_id, const std::string &sys_dir, const std::string &ini_path, Plan plan,
-               bool (*off)(const Cheat &, const void *), const void *user, bool &widescreen_on);
+               bool (*off)(const Cheat &, const void *), const void *user, bool &widescreen_on, int revision = -1);
 /* A line for the game's settings, about its widescreen. */
 std::string about(Kind kind);
 } // namespace porpoise::ui::widescreen

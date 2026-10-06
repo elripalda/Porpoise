@@ -1176,5 +1176,6 @@
  "Takes effect the next time the game starts.": "Oyun bir sonraki başlatılışında geçerli olur.",
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin bu oyun için hiçbirini listelemiyor. Kendi kodlarınızı /data/porpoise/cheats/{id}.ini dosyasına koyun.",
  "None for this game": "Bu oyun için yok",
- "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Dolphin'in listesinden bir geniş ekran kodu. Geniş ekran Otomatik veya Açık olduğunda açıktır; görüntü 16:9 olur."
+ "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Dolphin'in listesinden bir geniş ekran kodu. Geniş ekran Otomatik veya Açık olduğunda açıktır; görüntü 16:9 olur.",
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "Bu konumda zaten bir Porpoise klasörü var. Önce onu taşıyın ya da adını değiştirin, sonra yeniden deneyin."
 }

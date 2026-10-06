@@ -499,7 +499,7 @@ index 0000000000..bc4d5fe73d
 +
 +#endif  // USE_RETRO_ACHIEVEMENTS
 diff --git a/Source/Core/Core/AchievementManager.cpp b/Source/Core/Core/AchievementManager.cpp
-index ec0fee2059..52925e11c4 100644
+index ec0fee2059..05458c7b83 100644
 --- a/Source/Core/Core/AchievementManager.cpp
 +++ b/Source/Core/Core/AchievementManager.cpp
 @@ -5,6 +5,7 @@
@@ -683,7 +683,19 @@ index ec0fee2059..52925e11c4 100644
      m_rich_presence.fill('\0');
      m_system.store(nullptr, std::memory_order_release);
      if (Config::Get(Config::RA_DISCORD_PRESENCE_ENABLED))
-@@ -933,6 +1056,9 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
+@@ -799,6 +922,11 @@ void AchievementManager::Shutdown()
+   {
+     CloseGame();
+     m_queue.Shutdown();
++#ifdef __LIBRETRO__
++    // Porpoise: the image queue's thread too, or it outlives the core, which
++    // then can't be unmapped after the game (the loader waits for its threads).
++    m_image_queue.Shutdown();
++#endif
+     Config::RemoveConfigChangedCallback(m_config_changed_callback_id);
+     std::lock_guard lg{m_lock};
+     // DON'T log out - keep those credentials for next run.
+@@ -933,6 +1061,9 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
    {
      WARN_LOG_FMT(ACHIEVEMENTS, "Failed to login {} to RetroAchievements server.",
                   Config::Get(Config::RA_USERNAME));
@@ -693,7 +705,7 @@ index ec0fee2059..52925e11c4 100644
      Config::SetBaseOrCurrent(Config::RA_API_TOKEN, "");
      instance.update_event.Trigger({.failed_login_code = result});
      instance.login_event.Trigger(result);
-@@ -962,6 +1088,15 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
+@@ -962,6 +1093,15 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
  
    INFO_LOG_FMT(ACHIEVEMENTS, "Successfully logged in {} to RetroAchievements server.",
                 user->username);
@@ -709,7 +721,7 @@ index ec0fee2059..52925e11c4 100644
    std::lock_guard lg{instance.GetLock()};
    Config::SetBaseOrCurrent(Config::RA_API_TOKEN, user->token);
    instance.FetchPlayerBadge();
-@@ -1014,6 +1149,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1014,6 +1154,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
    if (result == RC_API_FAILURE)
    {
      WARN_LOG_FMT(ACHIEVEMENTS, "Load data request rejected for old Dolphin version.");
@@ -719,7 +731,7 @@ index ec0fee2059..52925e11c4 100644
      OSD::AddMessage("RetroAchievements no longer supports this version of Dolphin.",
                      OSD::Duration::VERY_LONG, OSD::Color::RED);
      OSD::AddMessage("Please update Dolphin to a newer version.", OSD::Duration::VERY_LONG,
-@@ -1023,6 +1161,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1023,6 +1166,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
    if (result == RC_LOGIN_REQUIRED || result == RC_INVALID_CREDENTIALS || result == RC_EXPIRED_TOKEN)
    {
      WARN_LOG_FMT(ACHIEVEMENTS, "Invalid/expired RetroAchievements API token.");
@@ -729,7 +741,7 @@ index ec0fee2059..52925e11c4 100644
      OSD::AddMessage(
          "You have been logged out from RetroAchievements due to invalid/expired credentials.",
          OSD::Duration::VERY_LONG, OSD::Color::RED);
-@@ -1046,11 +1187,41 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1046,11 +1192,41 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
      {
        INFO_LOG_FMT(ACHIEVEMENTS, "Loaded data for game ID {}.", game->id);
        instance.m_display_welcome_message = true;
@@ -771,7 +783,7 @@ index ec0fee2059..52925e11c4 100644
      OSD::AddMessage("Achievements are not supported for this title.", OSD::Duration::VERY_LONG,
                      OSD::Color::RED);
    }
-@@ -1065,6 +1236,15 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1065,6 +1241,15 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
    instance.m_last_rp_time = std::chrono::steady_clock::now() - std::chrono::minutes{2};
  
    std::lock_guard lg{instance.GetLock()};
@@ -787,7 +799,7 @@ index ec0fee2059..52925e11c4 100644
    auto* leaderboard_list =
        rc_client_create_leaderboard_list(client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE);
    for (u32 bucket = 0; bucket < leaderboard_list->num_buckets; bucket++)
-@@ -1141,6 +1321,18 @@ void AchievementManager::DisplayWelcomeMessage()
+@@ -1141,6 +1326,18 @@ void AchievementManager::DisplayWelcomeMessage()
  void AchievementManager::HandleAchievementTriggeredEvent(const rc_client_event_t* client_event)
  {
    auto& instance = AchievementManager::GetInstance();
@@ -806,7 +818,7 @@ index ec0fee2059..52925e11c4 100644
  
    OSD::AddMessage(fmt::format("Unlocked: {} ({})", client_event->achievement->title,
                                client_event->achievement->points),
-@@ -1286,6 +1478,10 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
+@@ -1286,6 +1483,10 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
      return;
    }
    bool hardcore = rc_client_get_hardcore_enabled(client);
@@ -817,7 +829,7 @@ index ec0fee2059..52925e11c4 100644
    OSD::AddMessage(fmt::format("Congratulations, {}! You have {} {}", user_info->display_name,
                                hardcore ? "mastered" : "completed", game_info->title),
                    OSD::Duration::VERY_LONG, hardcore ? OSD::Color::YELLOW : OSD::Color::CYAN,
-@@ -1295,13 +1491,21 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
+@@ -1295,13 +1496,21 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
  void AchievementManager::HandleResetEvent(const rc_client_event_t* client_event)
  {
    INFO_LOG_FMT(ACHIEVEMENTS, "Reset requested by Achievement Manager");
@@ -839,7 +851,7 @@ index ec0fee2059..52925e11c4 100644
  }
  
  void AchievementManager::Request(const rc_api_request_t* request,
-@@ -1309,7 +1513,41 @@ void AchievementManager::Request(const rc_api_request_t* request,
+@@ -1309,7 +1518,41 @@ void AchievementManager::Request(const rc_api_request_t* request,
                                   rc_client_t* client)
  {
    std::string url = request->url;
@@ -882,7 +894,7 @@ index ec0fee2059..52925e11c4 100644
    AchievementManager::GetInstance().m_queue.Push(
        [url = std::move(url), post_data = std::move(post_data), callback, callback_data] {
          Common::HttpRequest http_request;
-@@ -1365,6 +1603,14 @@ void AchievementManager::FetchBadge(AchievementManager::Badge* badge, u32 badge_
+@@ -1365,6 +1608,14 @@ void AchievementManager::FetchBadge(AchievementManager::Badge* badge, u32 badge_
                                      AchievementManager::BadgeNameFunction function,
                                      UpdatedItems callback_data)
  {
@@ -1441,7 +1453,7 @@ index a96698067d..a4853c3586 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..2f87c8a38f 100644
+index c53281053f..4651edce57 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -25,6 +25,7 @@
@@ -1523,15 +1535,20 @@ index c53281053f..2f87c8a38f 100644
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -732,6 +775,7 @@ bool retro_load_game(const struct retro_game_info* game)
-     }
-   }
- 
-+  Libretro::Achievements::Start(normalized_game_paths.front()); /* Porpoise: before the boot, which loads the game's set */
-   if (!BootManager::BootCore(Core::System::GetInstance(), std::move(boot_params), wsi))
-   {
+@@ -737,6 +780,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
-@@ -804,6 +848,7 @@ void retro_unload_game(void)
+     return false;
+   }
++  /* Porpoise: RetroAchievements after BootCore, which closes any game the
++   * manager has (SetRunningGameMetadata -> CloseGame cancels its queue: the
++   * token sign-in queued before it was dropped, and the set never loaded).
++   * The game itself boots on the first retro_run (EmuThread), which is when
++   * its set is identified. */
++  Libretro::Achievements::Start(normalized_game_paths.front());
+ 
+   Libretro::Input::InitStage2();
+ 
+@@ -804,6 +853,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
@@ -1671,6 +1688,33 @@ index 0601c80065..2f0345a32a 100644
    constexpr const char CHEATS_ENABLED[] = "dolphin_cheats_enabled";
    constexpr const char SKIP_GC_BIOS[] = "dolphin_skip_gc_bios";
    constexpr const char DISC_BASED_GAMES_BOOT_TO_WII_MENU[] = "dolphin_disc_based_games_boot_to_wii_menu";
+diff --git a/Source/Core/DolphinLibretro/Log.cpp b/Source/Core/DolphinLibretro/Log.cpp
+index 1a1915cd1d..c6ee649d84 100644
+--- a/Source/Core/DolphinLibretro/Log.cpp
++++ b/Source/Core/DolphinLibretro/Log.cpp
+@@ -112,18 +112,18 @@ void LogListener::Log(Common::Log::LogLevel level, const char* text)
+   switch (level)
+   {
+   case Common::Log::LogLevel::LDEBUG:
+-    m_log(RETRO_LOG_DEBUG, text);
++    m_log(RETRO_LOG_DEBUG, "%s", text);  // Porpoise: the text is not a format (a path with %)
+     break;
+   case Common::Log::LogLevel::LWARNING:
+-    m_log(RETRO_LOG_WARN, text);
++    m_log(RETRO_LOG_WARN, "%s", text);  // Porpoise: the text is not a format (a path with %)
+     break;
+   case Common::Log::LogLevel::LERROR:
+-    m_log(RETRO_LOG_ERROR, text);
++    m_log(RETRO_LOG_ERROR, "%s", text);  // Porpoise: the text is not a format (a path with %)
+     break;
+   case Common::Log::LogLevel::LNOTICE:
+   case Common::Log::LogLevel::LINFO:
+   default:
+-    m_log(RETRO_LOG_INFO, text);
++    m_log(RETRO_LOG_INFO, "%s", text);  // Porpoise: the text is not a format (a path with %)
+     break;
+   }
+ #if defined(ANDROID) && defined(_DEBUG)
 diff --git a/Source/Core/DolphinLibretro/Main.cpp b/Source/Core/DolphinLibretro/Main.cpp
 index cd8753b666..85271453ba 100644
 --- a/Source/Core/DolphinLibretro/Main.cpp

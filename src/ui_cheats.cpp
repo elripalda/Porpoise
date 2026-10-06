@@ -83,7 +83,8 @@ std::vector<std::string> own_files(const std::string &own_dir, const std::string
     return out;
 }
 
-std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &game_id, const std::string &own_dir)
+std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &game_id, const std::string &own_dir,
+                              bool wii)
 {
     std::vector<Cheat> out;
     if (game_id.size() < 3)
@@ -93,6 +94,12 @@ std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &gam
         read_file(sys_dir + "/GameSettings/" + game_id.substr(0, 4) + ".ini", out);
     if (game_id.size() == 6)
         read_file(sys_dir + "/GameSettings/" + game_id + ".ini", out);
+    /* Codes Dolphin keeps per disc revision (<ID>r1.ini...): listed by name,
+     * once; Dolphin loads the running revision's lines. */
+    const bool revisions = game_id.size() == 6 && widescreen::has_revisions(sys_dir, game_id);
+    if (revisions)
+        for (int r = 0; r < 10; ++r)
+            read_file(sys_dir + "/GameSettings/" + game_id + "r" + std::to_string(r) + ".ini", out);
     /* Patches first (widescreen, frame rate), then the cheats. */
     std::stable_sort(out.begin(), out.end(), [](const Cheat &a, const Cheat &b) {
         return (a.kind == "OnFrame") > (b.kind == "OnFrame");
@@ -100,11 +107,14 @@ std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &gam
     /* The widescreen collection's codes for the game, then the player's own. */
     if (game_id.size() == 6)
     {
-        const std::vector<Cheat> pack = widescreen::pack_codes(game_id);
+        std::vector<Cheat> pack = widescreen::pack_codes(game_id);
+        if (revisions)
+            for (Cheat &c : pack)
+                c.default_on = false; /* made for one revision of the disc: off unless turned on */
         bool pack_widescreen = false;
         for (const Cheat &c : pack)
             pack_widescreen |= c.default_on;
-        if (!pack_widescreen && !widescreen::has_native(game_id))
+        if (!wii && !pack_widescreen && !widescreen::has_native(game_id))
             for (Cheat &c : out)
                 if (!c.default_on && widescreen::is_widescreen_code(c.name))
                 {
@@ -113,14 +123,22 @@ std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &gam
                 }
         out.insert(out.end(), pack.begin(), pack.end());
     }
-    /* The player's own after Dolphin's: on unless turned off. */
-    const std::size_t dolphin_count = out.size();
+    /* The player's own after Dolphin's: on unless turned off. One with the
+     * name of a code already listed is that code, now the player's (their
+     * file defines it, and turns it on). */
+    std::vector<Cheat> mine;
     for (const std::string &path : own_files(own_dir, game_id))
-        read_file(path, out);
-    for (std::size_t i = dolphin_count; i < out.size(); ++i)
+        read_file(path, mine);
+    for (Cheat &m : mine)
     {
-        out[i].own = true;
-        out[i].default_on = true;
+        Cheat *same = nullptr;
+        for (Cheat &c : out)
+            if (c.kind == m.kind && c.name == m.name)
+                same = &c;
+        Cheat &c = same ? *same : (out.push_back(m), out.back());
+        c.own = true;
+        c.pack = false;
+        c.default_on = true;
     }
     return out;
 }
@@ -216,12 +234,26 @@ bool add_own_cheats(const std::string &own_dir, const std::string &game_id, cons
                 if (!header)
                     std::fprintf(f, "\n[%s_Enabled]\n", kind);
                 header = true;
-                std::fprintf(f, "%s\n", c.name.c_str());
+                std::fprintf(f, "%s\n", list_name(c.kind, c.name).c_str());
                 cheats |= c.kind != "OnFrame";
             }
     }
     std::fclose(f);
     return cheats;
+}
+
+std::string list_name(const std::string &kind, const std::string &name)
+{
+    if (kind != "Gecko")
+        return name;
+    std::string n = name.substr(0, name.find('['));
+    while (!n.empty() && (n.back() == ' ' || n.back() == '\t'))
+        n.pop_back();
+    /* Dolphin also trims the start, after the '$'. */
+    std::size_t i = n.empty() || n[0] != '$' ? 0 : 1;
+    while (i < n.size() && (n[i] == ' ' || n[i] == '\t'))
+        n.erase(i, 1);
+    return n.size() > 1 ? n : name;
 }
 
 std::string cheat_key(const Cheat &cheat, bool on)

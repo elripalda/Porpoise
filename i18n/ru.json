@@ -1176,5 +1176,6 @@
  "Takes effect the next time the game starts.": "Вступит в силу при следующем запуске игры.",
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "В списке Dolphin для этой игры ничего нет. Свои коды поместите в /data/porpoise/cheats/{id}.ini.",
  "None for this game": "Нет для этой игры",
- "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Широкоэкранный код из списка Dolphin. Включён, когда настройка «Широкий экран» стоит на «Авто» или «Вкл.», и изображение выводится в 16:9."
+ "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Широкоэкранный код из списка Dolphin. Включён, когда настройка «Широкий экран» стоит на «Авто» или «Вкл.», и изображение выводится в 16:9.",
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "В этом месте уже есть папка Porpoise. Сначала переместите или переименуйте её, затем повторите попытку."
 }

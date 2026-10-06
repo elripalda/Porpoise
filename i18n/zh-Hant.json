@@ -1176,5 +1176,6 @@
  "Takes effect the next time the game starts.": "下次啟動遊戲時套用。",
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin 沒有為這款遊戲列出任何項目。你自己的代碼請放在 /data/porpoise/cheats/{id}.ini。",
  "None for this game": "這款遊戲沒有",
- "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "來自 Dolphin 清單的寬螢幕代碼。「寬螢幕」設為「自動」或「開啟」時開啟，畫面為 16:9。"
+ "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "來自 Dolphin 清單的寬螢幕代碼。「寬螢幕」設為「自動」或「開啟」時開啟，畫面為 16:9。",
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "該位置已有 Porpoise 的資料夾。請先將其移走或重新命名，然後再試一次。"
 }

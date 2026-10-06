@@ -1114,7 +1114,14 @@ void App::add_cheat_rows()
         rows_.push_back(r);
     }
     if (game_for_->id.size() == 6 && !sys_dir_.empty())
-        cheats_ = cheats_for(sys_dir_, game_for_->id, data_dir_ + "/cheats");
+    {
+        cheats_ = cheats_for(sys_dir_, game_for_->id, data_dir_ + "/cheats", game_for_->platform == "Wii");
+        /* What Porpoise or the player turns on first (the widescreen code, the
+         * player's own), so the 80 shown always hold them. */
+        std::stable_sort(cheats_.begin(), cheats_.end(), [](const Cheat &a, const Cheat &b) {
+            return (a.default_on || a.own) > (b.default_on || b.own);
+        });
+    }
     if (cheats_.empty())
     {
         SettingRow r;

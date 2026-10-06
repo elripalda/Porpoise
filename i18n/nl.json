@@ -1176,5 +1176,6 @@
  "Takes effect the next time the game starts.": "Werkt vanaf de volgende keer dat de game start.",
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin vermeldt er geen voor deze game. Je eigen codes zet je in /data/porpoise/cheats/{id}.ini.",
  "None for this game": "Geen voor deze game",
- "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Een breedbeeldcode uit de lijst van Dolphin. Staat aan als Breedbeeld op Auto of Aan staat, met het beeld in 16:9."
+ "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Een breedbeeldcode uit de lijst van Dolphin. Staat aan als Breedbeeld op Auto of Aan staat, met het beeld in 16:9.",
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "Op die plek staat al een map van Porpoise. Verplaats of hernoem die eerst en probeer het dan opnieuw."
 }

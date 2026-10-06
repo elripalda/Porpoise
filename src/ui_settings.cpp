@@ -7,6 +7,8 @@
  * resetting all go through it. */
 #include "ui_settings.hpp"
 
+#include "porpoise_atomic.hpp"
+
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -362,8 +364,8 @@ bool Settings::load(const std::string &path, bool overlay)
         shader_mode = 2;
     /* 2.1.1: the widescreen hack switch became the Widescreen choice; on, it
      * is On (the hack for games with no code of their own). Per game too. */
-    if (!saw_wide && legacy_wide == 1)
-        wide = 1;
+    if (!saw_wide && legacy_wide >= 0)
+        wide = legacy_wide == 1 ? 1 : 0; /* a game's own "hack off" is Auto: no hack, its code if it has one */
     widescreen = false;
     /* 1.1: Smooth / Sharp became the first two screen filters. */
     if (legacy_sharp >= 0 && !saw_filter)
@@ -380,8 +382,7 @@ bool Settings::load(const std::string &path, bool overlay)
 
 bool Settings::save(const std::string &path) const
 {
-    const std::string tmp = path + ".part";
-    std::FILE *f = std::fopen(tmp.c_str(), "w");
+    std::FILE *f = open_atomic(path);
     if (!f)
         return false;
     std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 13\n");
@@ -411,8 +412,7 @@ bool Settings::save(const std::string &path) const
     }
     for (const std::string &folder : folders)
         std::fprintf(f, "folder = %s\n", folder.c_str());
-    std::fclose(f);
-    return std::rename(tmp.c_str(), path.c_str()) == 0;
+    return finish_atomic(f, path);
 }
 
 bool Settings::save_keys(const std::string &path, const std::vector<std::string> &keys) const
@@ -422,7 +422,7 @@ bool Settings::save_keys(const std::string &path, const std::vector<std::string>
         std::remove(path.c_str());
         return true;
     }
-    std::FILE *f = std::fopen(path.c_str(), "w");
+    std::FILE *f = open_atomic(path);
     if (!f)
         return false;
     std::fprintf(f, "# This game's own settings (Porpoise > Details > Game settings)\n");
@@ -438,8 +438,7 @@ bool Settings::save_keys(const std::string &path, const std::vector<std::string>
         else if (is_dolphin_key(k) && !get(k).empty())
             std::fprintf(f, "%s = %s\n", k.c_str(), get(k).c_str());
     }
-    std::fclose(f);
-    return true;
+    return finish_atomic(f, path);
 }
 
 std::vector<std::string> Settings::keys_in(const std::string &path)
@@ -497,7 +496,7 @@ bool Settings::write_dolphin_game_ini(const std::string &path) const
         if (std::find(sections.begin(), sections.end(), sec) == sections.end())
             sections.push_back(sec);
     }
-    std::FILE *f = std::fopen(path.c_str(), "w");
+    std::FILE *f = open_atomic(path);
     if (!f)
         return false;
     std::fprintf(f, "%s from this game's settings; changes here are replaced.\n", kMark);
@@ -514,11 +513,26 @@ bool Settings::write_dolphin_game_ini(const std::string &path) const
                 if (!list)
                     std::fprintf(f, "%s = %s\n", kv.first.substr(9 + sec.size()).c_str(), kv.second.c_str());
                 else if (kv.second == "1" || kv.second == "True")
-                    std::fprintf(f, "%s\n", kv.first.substr(9 + sec.size()).c_str());
+                {
+                    /* A Gecko code by the name Dolphin gives it: up to its
+                     * author tag (ui_cheats list_name). */
+                    std::string name = kv.first.substr(9 + sec.size());
+                    if (sec.rfind("Gecko_", 0) == 0)
+                    {
+                        std::string n = name.substr(0, name.find('['));
+                        while (!n.empty() && (n.back() == ' ' || n.back() == '\t'))
+                            n.pop_back();
+                        std::size_t i = n.empty() || n[0] != '$' ? 0 : 1;
+                        while (i < n.size() && (n[i] == ' ' || n[i] == '\t'))
+                            n.erase(i, 1);
+                        if (n.size() > 1)
+                            name = n;
+                    }
+                    std::fprintf(f, "%s\n", name.c_str());
+                }
             }
     }
-    std::fclose(f);
-    return true;
+    return finish_atomic(f, path);
 }
 
 bool Settings::migrate_game_file(const std::string &path, Settings &global)
@@ -816,12 +830,14 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
 bool Settings::write_core_options(const std::string &options_ini) const
 {
     std::vector<std::string> keep;
+    std::string old_text;
     if (std::FILE *f = std::fopen(options_ini.c_str(), "r"))
     {
         char line[512];
         while (std::fgets(line, sizeof line, f))
         {
             std::string s = line;
+            old_text += s;
             const std::string key = trim(s.substr(0, s.find('=')));
             bool is_managed = false;
             for (const char *m : kManaged)
@@ -831,15 +847,18 @@ bool Settings::write_core_options(const std::string &options_ini) const
         }
         std::fclose(f);
     }
-    std::FILE *f = std::fopen(options_ini.c_str(), "w");
+    std::string text;
+    for (const std::string &s : keep)
+        text += s;
+    text += "# Set by Porpoise's Settings screen:\n";
+    for (const auto &[key, value] : core_options())
+        text += key + " = " + value + "\n";
+    if (text == old_text)
+        return true; /* as it is already: no rewrite (this runs several times a launch) */
+    std::FILE *f = open_atomic(options_ini);
     if (!f)
         return false;
-    for (const std::string &s : keep)
-        std::fputs(s.c_str(), f);
-    std::fprintf(f, "# Set by Porpoise's Settings screen:\n");
-    for (const auto &[key, value] : core_options())
-        std::fprintf(f, "%s = %s\n", key.c_str(), value.c_str());
-    std::fclose(f);
-    return true;
+    std::fputs(text.c_str(), f);
+    return finish_atomic(f, options_ini);
 }
 } // namespace porpoise

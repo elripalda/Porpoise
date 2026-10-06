@@ -47,6 +47,7 @@ struct Audio
     pthread_t thread{};
     bool thread_started = false;
     std::atomic<bool> stop{false};
+    std::atomic<bool> dead{false}; /* the port refused a write: no one is listening any more */
     int port = -1;
     std::int16_t ring[ring_frames * 2] = {};
     std::size_t head = 0, count = 0; /* guarded by mutex */
@@ -90,6 +91,7 @@ void *worker(void *)
         if (sceAudioOutOutput(a.port, a.out) < 0)
         {
             ps5::debug::mark("audio: output failed; audio stops");
+            a.dead = true; /* push and wait_below stop waiting on it */
             break;
         }
     }
@@ -161,7 +163,7 @@ double source_rate()
 
 void push(const std::int16_t *frames, std::size_t count)
 {
-    if (!g || !g->thread_started || count == 0)
+    if (!g || !g->thread_started || g->dead.load(std::memory_order_relaxed) || count == 0)
         return;
     Audio &a = *g;
     pthread_mutex_lock(&a.mutex);
@@ -233,7 +235,7 @@ std::size_t queued()
 
 long wait_below(std::size_t frames, int timeout_ms)
 {
-    if (!g || !g->thread_started)
+    if (!g || !g->thread_started || g->dead.load(std::memory_order_relaxed))
         return 0;
     long waited = 0;
     while (queued() > frames && waited < long(timeout_ms) * 1000)

@@ -27,7 +27,10 @@ struct Cheat
 /* The codes for a game (its six-character ID), from <sys>/GameSettings:
  * the ID's first three characters' file, then its own; then the player's
  * own from own_dir, when given. */
-std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &game_id, const std::string &own_dir = "");
+/* wii: a Wii game (its 16:9 is the Wii's own setting, so no widescreen code
+ * is turned on by itself). */
+std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &game_id, const std::string &own_dir = "",
+                              bool wii = false);
 /* Adds the player's own codes for the game (own_dir/<ID>.ini, or its first
  * four or three letters, in Dolphin's format) to Dolphin's per-game file at
  * ini_path: their code lines, and each one that isn't turned off (off(code)
@@ -35,6 +38,10 @@ std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &gam
  * which needs Dolphin's cheats on. */
 bool add_own_cheats(const std::string &own_dir, const std::string &game_id, const std::string &ini_path,
                     bool (*off)(const Cheat &cheat, const void *user), const void *user);
+/* How a code is named in Dolphin's [<kind>_Enabled] / [<kind>_Disabled]
+ * lists: as written, except a Gecko code's, which Dolphin takes only up to its
+ * author tag ("$16:9 Widescreen [Ralf]" is "$16:9 Widescreen" there). */
+std::string list_name(const std::string &kind, const std::string &name);
 /* The setting a code's switch is kept under for the game. */
 std::string cheat_key(const Cheat &cheat, bool on);
 /* What a code is, from its name and kind, for its row's help. */

@@ -146,6 +146,24 @@ std::string clean_reason(std::string s)
     const std::size_t tag = s.find("]: ");
     if (tag != std::string::npos && tag < 80)
         s = s.substr(tag + 3);
+    /* Paths as their file names: a long one has no spaces to wrap at. */
+    std::string out;
+    std::size_t i = 0;
+    while (i < s.size())
+    {
+        const std::size_t sp = s.find(' ', i);
+        std::string word = s.substr(i, sp == std::string::npos ? std::string::npos : sp - i);
+        const std::size_t slash = word.find_last_of('/');
+        if (slash != std::string::npos && slash + 1 < word.size() && word.find('/') != slash)
+            word = word.substr(slash + 1); /* "/mnt/usb0/games/x.rvz" (or quoted) -> "x.rvz" */
+        if (!out.empty())
+            out += ' ';
+        out += word;
+        if (sp == std::string::npos)
+            break;
+        i = sp + 1;
+    }
+    s = out;
     if (s.size() > 200)
         s = s.substr(0, 197) + "...";
     return s;
@@ -1305,10 +1323,18 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     }
     g_failure = Failure::None;
     g_failure_reason.clear();
+    /* Every way out before the game runs closes the core's log. */
+    auto close_log = [] {
+        if (h.log)
+            std::fclose(h.log);
+        h.log = nullptr;
+    };
     if (!load_core())
     {
         const char *why = ps5_core_dlerror();
         fail(Failure::Core, why ? why : "a function Porpoise needs is missing from the core");
+        unload_core(); /* loaded, but missing a function: it goes too */
+        close_log();
         return Exit::Failed;
     }
 
@@ -1340,14 +1366,27 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     {
         if (!read_whole_file(game_path, bytes))
         {
+            const int e = errno;
             ps5::debug::mark("core: could not read the game file");
-            fail(Failure::File, std::strerror(errno));
+            fail(Failure::File, std::strerror(e));
             h.api.deinit();
             unload_core();
+            close_log();
             return Exit::Failed;
         }
         game.data = bytes.data();
         game.size = bytes.size();
+    }
+    else if (access(game_path, R_OK) != 0)
+    {
+        /* Dolphin opens the file itself: a drive unplugged, a file gone. */
+        const int e = errno;
+        ps5::debug::mark("core: the game file can't be read");
+        fail(Failure::File, std::strerror(e));
+        h.api.deinit();
+        unload_core();
+        close_log();
+        return Exit::Failed;
     }
     /* RetroAchievements: the account and Porpoise's network go to the core
      * before the game boots (it loads the game's set as it does). */
@@ -1359,6 +1398,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         porpoise::ra::end_game();
         h.api.deinit();
         unload_core();
+        close_log();
         return Exit::Failed;
     }
     since_launch("core: game loaded, ms after the launch");
@@ -1407,6 +1447,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         porpoise::ra::end_game();
         h.api.deinit();
         unload_core();
+        close_log();
         return Exit::Failed;
     }
     /* The display changes hands: the launcher's device goes, Dolphin makes its
@@ -1423,6 +1464,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         porpoise::ra::end_game();
         h.api.deinit();
         unload_core();
+        close_log();
         return Exit::Failed;
     }
     if (hooks.device_ready)

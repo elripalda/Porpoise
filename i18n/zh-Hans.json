@@ -1176,5 +1176,6 @@
  "Takes effect the next time the game starts.": "下次启动游戏时生效。",
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin没有为此游戏列出任何项目。你自己的代码请放在/data/porpoise/cheats/{id}.ini中。",
  "None for this game": "此游戏没有",
- "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "来自Dolphin列表的宽屏代码。“宽屏”设为“自动”或“开”时开启，画面为16:9。"
+ "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "来自Dolphin列表的宽屏代码。“宽屏”设为“自动”或“开”时开启，画面为16:9。",
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "该位置已有Porpoise的文件夹。请先将其移走或重命名，然后再试一次。"
 }

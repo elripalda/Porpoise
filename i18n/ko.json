@@ -1176,5 +1176,6 @@
  "Takes effect the next time the game starts.": "다음에 게임을 시작할 때 적용됩니다.",
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin 목록에는 이 게임용 항목이 없습니다. 직접 만든 코드는 /data/porpoise/cheats/{id}.ini에 넣으세요.",
  "None for this game": "이 게임에는 없음",
- "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Dolphin 목록에 있는 와이드스크린 코드입니다. '와이드스크린'이 '자동'이나 '켜기'일 때 켜지며, 화면은 16:9가 됩니다."
+ "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Dolphin 목록에 있는 와이드스크린 코드입니다. '와이드스크린'이 '자동'이나 '켜기'일 때 켜지며, 화면은 16:9가 됩니다.",
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "그 위치에 이미 Porpoise 폴더가 있습니다. 먼저 옮기거나 이름을 바꾼 다음 다시 시도하세요."
 }

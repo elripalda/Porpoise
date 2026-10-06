@@ -328,18 +328,26 @@ void *worker(void *)
     return nullptr;
 }
 
-void queue(Toast t)
+/* Under s.lock. True when the worker is running. */
+bool start_worker(Shared &s)
 {
-    Shared &s = S();
-    std::lock_guard<std::mutex> lock(s.lock);
     if (!s.started)
     {
         pthread_t thread;
         if (create_title_thread(&thread, worker, nullptr) != 0)
-            return;
+            return false;
         pthread_detach(thread);
         s.started = true;
     }
+    return true;
+}
+
+void queue(Toast t)
+{
+    Shared &s = S();
+    std::lock_guard<std::mutex> lock(s.lock);
+    if (!start_worker(s))
+        return;
     if (s.queue.size() >= kMaxQueued)
         return;
     s.queue.push_back(std::move(t));
@@ -370,6 +378,9 @@ void hold(int seconds)
 {
     Shared &s = S();
     std::lock_guard<std::mutex> lock(s.lock);
+    /* The worker starts here, on Porpoise's own thread as a game starts,
+     * rather than from a core thread's first popup. */
+    start_worker(s);
     s.hold_until = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
 }
 

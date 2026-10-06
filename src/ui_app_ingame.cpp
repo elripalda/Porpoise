@@ -412,9 +412,7 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_cheat_on_.clear();
     if (game && play && game->id.size() == 6 && !sys_dir_.empty())
     {
-        menu_cheats_ = cheats_for(sys_dir_, game->id, data_dir_ + "/cheats");
-        if (menu_cheats_.size() > 80)
-            menu_cheats_.resize(80);
+        menu_cheats_ = cheats_for(sys_dir_, game->id, data_dir_ + "/cheats", game->platform == "Wii");
         for (const Cheat &c : menu_cheats_)
             menu_cheat_on_.push_back(c.default_on ? play->get(cheat_key(c, false)) != "1"
                                                   : play->get(cheat_key(c, true)) == "1");
@@ -424,7 +422,9 @@ void App::open_game_menu(Game *game, Settings *play)
         for (std::size_t i = 0; i < order.size(); ++i)
             order[i] = i;
         auto rank = [&](std::size_t i) {
-            return !menu_cheat_on_[i] ? 2 : widescreen::is_widescreen_code(menu_cheats_[i].name) ? 0 : 1;
+            return !menu_cheat_on_[i] ? (menu_cheats_[i].own ? 2 : 3)
+                   : widescreen::is_widescreen_code(menu_cheats_[i].name) ? 0
+                                                                          : 1;
         };
         std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return rank(a) < rank(b); });
         std::vector<Cheat> cheats;
@@ -433,6 +433,12 @@ void App::open_game_menu(Game *game, Settings *play)
         {
             cheats.push_back(menu_cheats_[i]);
             on.push_back(menu_cheat_on_[i]);
+        }
+        /* At most 80, after the sort: what's on (and the player's own) stays. */
+        if (cheats.size() > 80)
+        {
+            cheats.resize(80);
+            on.resize(80);
         }
         menu_cheats_.swap(cheats);
         menu_cheat_on_.swap(on);
@@ -756,7 +762,9 @@ int App::update_game_menu(const Input &in, double dt)
                 p.set(k, "1");
                 keys.push_back(k);
             }
-            if (on && c.kind != "OnFrame" && !p.cheats)
+            /* A cheat (not a patch) needs the game's cheats on, saved: this
+             * run may have them on only for its widescreen code. */
+            if (on && c.kind != "OnFrame")
             {
                 p.cheats = true;
                 if (std::find(keys.begin(), keys.end(), "cheats") == keys.end())
