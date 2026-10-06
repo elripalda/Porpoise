@@ -8,7 +8,9 @@
 #include "trace.hpp"
 #include "porpoise_paths.hpp"
 
+#include <atomic>
 #include <cstdio>
+#include <unistd.h>
 
 namespace ps5::debug
 {
@@ -17,6 +19,12 @@ namespace
 /* Inside the title's own folder, which the console mounts at /app0 and which the
  * trace files written by an earlier build proved is writable. */
 constexpr const char *trace_path = PORPOISE_APP "/trace.txt";
+/* The first lines go to the disk itself, not only the console's cache: a
+ * console that freezes as Porpoise starts has to be unplugged, and a file
+ * still in the cache is lost with the power (2.1.1's first test left no
+ * trace at all). Past them, the cache is enough. */
+constexpr int kSyncedLines = 120;
+std::atomic<int> g_lines{0};
 
 void write(const char *line) noexcept
 {
@@ -26,6 +34,8 @@ void write(const char *line) noexcept
     std::fputs(line, file);
     std::fputc('\n', file);
     std::fflush(file);
+    if (g_lines.fetch_add(1, std::memory_order_relaxed) < kSyncedLines)
+        fsync(fileno(file));
     std::fclose(file);
 }
 } // namespace
