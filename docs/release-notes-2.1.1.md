@@ -9,9 +9,13 @@
 - A clearer message, with the reason, when a game doesn't start.
 - RetroAchievements fixes, stability improvements, optimizations and fixes for reported bugs.
 
-Help and bug reports: **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**.
+> [!WARNING]
+> **Porpoise is still in early development on the PS5.** If you run into bugs or glitches in a game, please report them on the **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**, with the game's name, and we'll get them fixed as soon as we can.
 
 ## Install or update
+
+> [!NOTE]
+> **Having trouble with PS5 Upload?** As of October 6, 2026, some players couldn't install this update with PS5 Upload. If it doesn't work for you, copy Porpoise over FTP instead (in binary mode, see below). Still stuck? Reach out on the **[Discord](https://discord.gg/GgDE5Vynyu)** and we'll help you out.
 
 **From 2.0 or later:** **Settings → About → Updates**.
 
