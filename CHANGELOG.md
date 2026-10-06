@@ -8,7 +8,6 @@
   collection, or Dolphin's own) play in true 16:9 by default; the rest stay
   4:3 unless you choose the emulated hack, which now warns what it does.
 - Achievement popups drawn by Porpoise when the console's own can't show.
-- Faster start when no jailbreak answers.
 - Optimizations and fixes for reported bugs.
 
 ## 2.1 — 2026-10-05

@@ -4,7 +4,6 @@
 
 - **Achievements lists:** a new Achievements tab in the in-game menu, and each game's list from its Details (Square), with badges.
 - **Widescreen per game:** over 300 GameCube games now play in true 16:9 by default, with no pop-in at the edges. Widescreen codes by **Warped Polygon**.
-- Faster start on consoles where no jailbreak answers.
 - Optimizations and fixes for reported bugs.
 
 Help and bug reports: **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**.

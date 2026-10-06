@@ -129,10 +129,8 @@ bool request_file()
     return taken;
 }
 
-/* The legacy command servers: magic, command 5 (jailbreak), the PID. heard:
- * set when a server took the connection (a daemon is there); refused: set when
- * one answered in full and said no. */
-bool request_port(bool &heard, bool &refused)
+/* The legacy command servers: magic, command 5 (jailbreak), the PID. */
+bool request_port()
 {
     struct Command
     {
@@ -169,7 +167,6 @@ bool request_port(bool &heard, bool &refused)
             note("jailbreak: nothing on port %d", port);
             continue;
         }
-        heard = true;
         const bool sent = send(fd, &cmd, sizeof cmd, 0) == ssize_t(sizeof cmd);
         int got = 0;
         while (sent && got < int(sizeof cmd))
@@ -183,8 +180,6 @@ bool request_port(bool &heard, bool &refused)
         note("jailbreak: port %d answered %d (%d bytes)", port, cmd.ret, got);
         if (sent && got == int(sizeof cmd) && cmd.ret == 0)
             return true;
-        if (sent && got == int(sizeof cmd))
-            refused = true;
     }
     return false;
 }
@@ -226,27 +221,16 @@ bool ensure()
      * once. Each round re-publishes the request file and tries the legacy
      * command ports; after any round that is taken, /data is given a moment
      * to open. The common case (a daemon is up and bumps Porpoise) returns in
-     * the first round or two. With no daemon at all (no request taken, no
-     * command port open) Porpoise stops after two rounds, about 3 s, and uses
-     * its own folder: 2.0 kept asking for 30 s, which looked like a freeze. */
-    bool heard = false;
-    int refusals = 0;
+     * the first round or two; the full ten rounds only run when there is no
+     * daemon at all, where Porpoise falls back to its own folder anyway. */
     for (int round = 0; round < 10; ++round)
     {
         const bool taken = request_file();
-        heard = heard || taken;
-        bool refused = false;
-        if (!taken && request_port(heard, refused))
-            refused = false; /* one of them said yes */
-        refusals += refused ? 1 : 0;
-        if (!heard && round >= 1)
-        {
-            note("jailbreak: no jailbreak daemon answered in %d rounds", round + 1);
-            break;
-        }
+        if (!taken)
+            request_port();
         /* Up to ~1.5 s for /data to open after a daemon acts (not every one
-         * makes the app root the same instant); a quick look when none did. */
-        for (int grace = 0; grace < (heard ? 90 : 6); ++grace)
+         * makes the app root the same instant). */
+        for (int grace = 0; grace < 90; ++grace)
         {
             if (data_reachable())
             {
@@ -254,12 +238,6 @@ bool ensure()
                 return true;
             }
             sceKernelUsleep(16667);
-        }
-        if (refusals >= 2)
-        {
-            /* A daemon that says no (Porpoise isn't on its list) keeps saying no. */
-            note("jailbreak: the daemon refused %d times", refusals);
-            break;
         }
     }
     note("jailbreak: still sandboxed; using the app's own folder");

@@ -76,6 +76,7 @@ extern "C"
     void ps5_sampler_start();
     void ps5_open_permissions();
     void ps5_memory_report(const char *, size_t, int);
+    int sysctlbyname(const char *, void *, size_t *, const void *, size_t);
 }
 
 namespace
@@ -1640,6 +1641,20 @@ int main()
     }
     std::set_terminate(on_terminate);
     ps5::debug::mark(PS5_RETROARCH_BUILD_ID);
+#ifndef PORPOISE_DESKTOP
+    {
+        /* The console's firmware, for reports (0x04500000 is 4.50). */
+        unsigned int firmware = 0;
+        std::size_t bytes = sizeof firmware;
+        if (sysctlbyname("kern.sdk_version", &firmware, &bytes, nullptr, 0) == 0)
+        {
+            char line[64];
+            std::snprintf(line, sizeof line, "main: firmware %x.%02x (0x%08x)", firmware >> 24,
+                          (firmware >> 16) & 0xFF, firmware);
+            ps5::debug::mark(line);
+        }
+    }
+#endif
     ps5::memory::init(PORPOISE_APP "/memory-diagnostics.log", PS5_RETROARCH_BUILD_ID);
     ps5_vulkan_profile_init();
     ps5_crash_report_install();
