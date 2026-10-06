@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "В списке Dolphin для этой игры ничего нет. Свои коды поместите в /data/porpoise/cheats/{id}.ini.",
  "None for this game": "Нет для этой игры",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Широкоэкранный код из списка Dolphin. Включён, когда настройка «Широкий экран» стоит на «Авто» или «Вкл.», и изображение выводится в 16:9.",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "В этом месте уже есть папка Porpoise. Сначала переместите или переименуйте её, затем повторите попытку."
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "В этом месте уже есть папка Porpoise. Сначала переместите или переименуйте её, затем повторите попытку.",
+ "Sound preset": "Предустановка звука",
+ "Responsive": "Быстрый отклик",
+ "Extra smooth": "Очень мягкий",
+ "Classic (2.1)": "Классический (2.1)",
+ "Fill audio gaps": "Заполнять пропуски звука",
+ "40 ms": "40 мс",
+ "80 ms": "80 мс",
+ "160 ms": "160 мс",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "Мягкий: собственный микшер Dolphin заполняет пропуски, когда игра замедляется, как на ПК, вместо треска. Быстрый отклик держит наготове меньше звука — чуть меньше задержка. Очень мягкий держит больше — для игр, которые часто замедляются. Классический — звук Porpoise 2.1. Переход на Классический или с него вступит в силу при следующем запуске игры.",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "Сколько звука держится наготове. Больше — меньше треска, когда игра замедляется, ценой небольшой задержки.",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "Когда игра замедляется, только что прозвучавший звук заполняет пропуск, затухая, вместо треска. Если выключено, пропуск остаётся тишиной.",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "Мягкий заполняет пропуски, когда игра замедляется, как Dolphin на ПК. Быстрый отклик: меньше задержка. Очень мягкий: для игр, которые часто замедляются. Классический: звук 2.1, со следующего запуска.",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "Классический — звук 2.1. Мягкий, Быстрый отклик и Очень мягкий заполняют пропуски, когда игра замедляется; они вступят в силу при следующем запуске игры.",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "Точный звуковой чип Dolphin: исправляет неверный звук в нескольких играх, но требует гораздо больше от процессора. Вступит в силу при следующем запуске игры.",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Звуки из динамика Wii Remote: в звуке телевизора или из контроллера. Вступит в силу при следующем запуске игры."
 }

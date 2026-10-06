@@ -98,6 +98,127 @@ index 86cd50b192..2a601ab81d 100644
  
    INFO_LOG_FMT(AUDIO, "Done shutting down sound stream");
  }
+diff --git a/Source/Core/AudioCommon/Mixer.cpp b/Source/Core/AudioCommon/Mixer.cpp
+index a57b6024b7..bb0e16e616 100644
+--- a/Source/Core/AudioCommon/Mixer.cpp
++++ b/Source/Core/AudioCommon/Mixer.cpp
+@@ -4,6 +4,7 @@
+ #include "AudioCommon/Mixer.h"
+ 
+ #include <algorithm>
++#include <atomic>
+ #include <cmath>
+ #include <cstring>
+ #include <span>
+@@ -60,6 +61,37 @@ void Mixer::DoState(PointerWrap& p)
+     mixer.DoState(p);
+ }
+ 
++// Porpoise (Mixer::PorpoiseSetPull): the front end's pull, buffer and gap filling.
++namespace
++{
++std::atomic<bool> s_porpoise_pull{false};
++std::atomic<int> s_porpoise_buffer_ms{80};
++std::atomic<bool> s_porpoise_fill_gaps{true};
++std::atomic<unsigned long long> s_porpoise_pushed{0};
++}  // namespace
++
++void Mixer::PorpoiseSetPull(bool pull, int buffer_ms, bool fill_gaps)
++{
++  s_porpoise_buffer_ms.store(std::clamp(buffer_ms, 16, 512), std::memory_order_relaxed);
++  s_porpoise_fill_gaps.store(fill_gaps, std::memory_order_relaxed);
++  s_porpoise_pull.store(pull, std::memory_order_release);
++}
++
++bool Mixer::PorpoiseIsPulling()
++{
++  return s_porpoise_pull.load(std::memory_order_acquire);
++}
++
++void Mixer::PorpoiseQueue(unsigned* queued, unsigned* target, unsigned long long* pushed) const
++{
++  if (queued)
++    *queued = static_cast<unsigned>(m_dma_mixer.QueuedGranules());
++  if (target)
++    *target = static_cast<unsigned>(m_dma_mixer.TargetGranules());
++  if (pushed)
++    *pushed = s_porpoise_pushed.load(std::memory_order_relaxed);
++}
++
+ // Executed from sound stream thread
+ void Mixer::MixerFifo::Mix(s16* samples, std::size_t num_samples)
+ {
+@@ -86,7 +118,10 @@ void Mixer::MixerFifo::Mix(s16* samples, std::size_t num_samples)
+   const StereoPair volume{m_LVolume.load() / 256.0f, m_RVolume.load() / 256.0f};
+ 
+   // Calculate the ideal length of the granule queue.
+-  const std::size_t buffer_size_ms = m_mixer->m_config_audio_buffer_ms;
++  const std::size_t buffer_size_ms =
++      s_porpoise_pull.load(std::memory_order_relaxed) ?
++          static_cast<std::size_t>(s_porpoise_buffer_ms.load(std::memory_order_relaxed)) :
++          static_cast<std::size_t>(m_mixer->m_config_audio_buffer_ms);
+   const std::size_t buffer_size_samples = std::llround(buffer_size_ms * in_sample_rate / 1000.0);
+ 
+   // Limit the possible queue sizes to any number between 4 and 64.
+@@ -215,6 +250,7 @@ std::size_t Mixer::MixSurround(float* samples, std::size_t num_samples)
+ 
+ void Mixer::PushSamples(const s16* samples, std::size_t num_samples)
+ {
++  s_porpoise_pushed.fetch_add(num_samples, std::memory_order_relaxed);
+   if (IsOutputSampleRateValid())
+   {
+     // Big-endian RL-orderered stereo samples.
+@@ -570,7 +606,10 @@ bool Mixer::MixerFifo::Dequeue(Granule* granule)
+   {
+     // Only fill gaps when running to prevent stutter on pause.
+     const bool is_running = Core::GetState(Core::System::GetInstance()) == Core::State::Running;
+-    if (m_mixer->m_config_fill_audio_gaps && is_running)
++    const bool fill_gaps = s_porpoise_pull.load(std::memory_order_relaxed) ?
++                               s_porpoise_fill_gaps.load(std::memory_order_relaxed) :
++                               m_mixer->m_config_fill_audio_gaps && is_running;
++    if (fill_gaps)
+     {
+       // Jump the playhead to half the queue size behind the head.
+       // This provides smoother audio playback than suddenly stopping.
+diff --git a/Source/Core/AudioCommon/Mixer.h b/Source/Core/AudioCommon/Mixer.h
+index aca334bcf8..e5ec5597ad 100644
+--- a/Source/Core/AudioCommon/Mixer.h
++++ b/Source/Core/AudioCommon/Mixer.h
+@@ -56,6 +56,15 @@ public:
+   void StartLogDSPAudio(const std::string& filename);
+   void StopLogDSPAudio();
+ 
++  // Porpoise: the front end pulls the sound itself, at the speakers' pace (Mix from its own
++  // audio thread), with its own buffer size and gap filling. The pause a frame step leaves
++  // between the frames it runs counts as playing: gaps are filled then too.
++  static void PorpoiseSetPull(bool pull, int buffer_ms, bool fill_gaps);
++  static bool PorpoiseIsPulling();
++  // The DMA sound waiting, in granules, against the queue length the buffer size asks for,
++  // and the DMA frames pushed so far (the emulated speed).
++  void PorpoiseQueue(unsigned* queued, unsigned* target, unsigned long long* pushed) const;
++
+   // 54000000 doesn't work here as it doesn't evenly divide with 32000, but 108000000 does
+   static constexpr u64 FIXED_SAMPLE_RATE_DIVIDEND = 54000000 * 2;
+ 
+@@ -132,6 +141,18 @@ private:
+     void SetVolume(u32 lvolume, u32 rvolume);
+     std::pair<s32, s32> GetVolume() const;
+ 
++    // Porpoise: granules waiting, and the queue length the buffer size asks for.
++    std::size_t QueuedGranules() const
++    {
++      return (m_queue_head.load(std::memory_order_acquire) -
++              m_queue_tail.load(std::memory_order_acquire)) &
++             GRANULE_QUEUE_MASK;
++    }
++    std::size_t TargetGranules() const
++    {
++      return m_granule_queue_size.load(std::memory_order_relaxed);
++    }
++
+   private:
+     Mixer* m_mixer;
+ 
 diff --git a/Source/Core/Common/BlockingLoop.h b/Source/Core/Common/BlockingLoop.h
 index 472a84b1f6..b4ad7a6dcd 100644
 --- a/Source/Core/Common/BlockingLoop.h
@@ -963,10 +1084,10 @@ index f0cc8511b7..ffbcace60a 100644
  const Info<bool> MAIN_DSP_HLE{{System::Main, "Core", "DSPHLE"}, true};
  const Info<int> MAIN_MAX_FALLBACK{{System::Main, "Core", "MaxFallback"}, 100};
 diff --git a/Source/Core/Core/Core.cpp b/Source/Core/Core/Core.cpp
-index cda66bffd1..42dac3e0df 100644
+index cda66bffd1..f34121d4f1 100644
 --- a/Source/Core/Core/Core.cpp
 +++ b/Source/Core/Core/Core.cpp
-@@ -3,6 +3,12 @@
+@@ -3,8 +3,15 @@
  
  #include "Core/Core.h"
  
@@ -978,8 +1099,11 @@ index cda66bffd1..42dac3e0df 100644
 +
  #include <algorithm>
  #include <atomic>
++#include <chrono>
  #include <functional>
-@@ -97,6 +103,8 @@ static bool s_wants_determinism;
+ #include <future>
+ #include <mutex>
+@@ -97,6 +104,8 @@ static bool s_wants_determinism;
  
  #ifdef __LIBRETRO__
  static std::vector<Common::ScopeGuard<Common::MoveOnlyFunction<void()>>> s_emu_thread_scope_guards;
@@ -988,7 +1112,34 @@ index cda66bffd1..42dac3e0df 100644
  std::unique_ptr<BootParameters> g_boot_params;
  #endif
  // Declarations and definitions
-@@ -351,6 +359,24 @@ static void CpuThread(Core::System& system, const std::optional<std::string> sav
+@@ -107,10 +116,26 @@ std::thread s_emu_thread;
+ static Common::HookableEvent<Core::State> s_state_changed_event;
+ 
+ static bool s_is_throttler_temp_disabled = false;
++#ifdef __LIBRETRO__
++// Porpoise: the CPU thread's frame steps, timed (porpoise_perf_take).
++std::atomic<long long> g_porpoise_cpu_ns{0};
++std::atomic<long long> g_porpoise_cpu_max_ns{0};
++std::atomic<unsigned> g_porpoise_cpu_frames{0};
++#endif
+ #ifndef __LIBRETRO__
+ static
+ #endif
+ bool s_frame_step = false;
++#ifdef __LIBRETRO__
++// Porpoise: how long the CPU thread takes to run each frame step (porpoise_perf_take).
++std::atomic<long long> s_porpoise_step_start_ns{0};
++long long PorpoiseNowNs()
++{
++  return std::chrono::duration_cast<std::chrono::nanoseconds>(
++             std::chrono::steady_clock::now().time_since_epoch())
++      .count();
++}
++#endif
+ #ifndef __LIBRETRO__
+ static
+ #endif
+@@ -351,6 +376,24 @@ static void CpuThread(Core::System& system, const std::optional<std::string> sav
    else
      Common::SetCurrentThreadName("CPU-GPU thread");
  
@@ -1013,7 +1164,7 @@ index cda66bffd1..42dac3e0df 100644
  #ifdef USE_ANALYTICS
    // This needs to be delayed until after the video backend is ready.
    DolphinAnalytics::Instance().ReportGameStart();
-@@ -456,6 +482,23 @@ static void FifoPlayerThread(Core::System& system, const std::optional<std::stri
+@@ -456,6 +499,23 @@ static void FifoPlayerThread(Core::System& system, const std::optional<std::stri
  
      CPUSetInitialExecutionState(system);
  
@@ -1037,7 +1188,25 @@ index cda66bffd1..42dac3e0df 100644
      system.GetCPU().Run();
  
      system.GetPowerPC().InjectExternalCPUCore(nullptr);
-@@ -1036,6 +1079,7 @@ void Shutdown(Core::System& system)
+@@ -994,6 +1054,17 @@ void Callback_NewField(Core::System& system)
+     if (s_stop_frame_step.load())
+ #endif
+     {
++#ifdef __LIBRETRO__
++      const long long start = s_porpoise_step_start_ns.load(std::memory_order_relaxed);
++      if (start != 0)
++      {
++        const long long ns = PorpoiseNowNs() - start;
++        g_porpoise_cpu_ns.fetch_add(ns, std::memory_order_relaxed);
++        if (ns > g_porpoise_cpu_max_ns.load(std::memory_order_relaxed))
++          g_porpoise_cpu_max_ns.store(ns, std::memory_order_relaxed);
++        g_porpoise_cpu_frames.fetch_add(1, std::memory_order_relaxed);
++      }
++#endif
+       s_frame_step = false;
+       system.GetCPU().Break();
+       NotifyStateChanged(Core::GetState(system));
+@@ -1036,6 +1107,7 @@ void Shutdown(Core::System& system)
    if (s_emu_thread.joinable())
      s_emu_thread.join();
  #ifdef __LIBRETRO__
@@ -1045,6 +1214,16 @@ index cda66bffd1..42dac3e0df 100644
    for (auto& g : s_emu_thread_scope_guards)
      g.Exit();
    s_emu_thread_scope_guards.clear();
+@@ -1136,6 +1208,9 @@ void DoFrameStep(Core::System& system)
+     // if already paused, frame advance for 1 frame
+     s_stop_frame_step = false;
+     s_frame_step = true;
++#ifdef __LIBRETRO__
++    s_porpoise_step_start_ns.store(PorpoiseNowNs(), std::memory_order_relaxed);
++#endif
+     SetState(system, State::Running, false);
+   }
+   else if (!s_frame_step)
 diff --git a/Source/Core/Core/FifoPlayer/FifoPlayer.cpp b/Source/Core/Core/FifoPlayer/FifoPlayer.cpp
 index f0c62d4e3f..bbb4cb7791 100644
 --- a/Source/Core/Core/FifoPlayer/FifoPlayer.cpp
@@ -1402,10 +1581,10 @@ index 0000000000..ff7129fc3d
 +void Stop();
 +}  // namespace Libretro::Achievements
 diff --git a/Source/Core/DolphinLibretro/Audio.cpp b/Source/Core/DolphinLibretro/Audio.cpp
-index a96698067d..a4853c3586 100644
+index a96698067d..5f74d2dbe2 100644
 --- a/Source/Core/DolphinLibretro/Audio.cpp
 +++ b/Source/Core/DolphinLibretro/Audio.cpp
-@@ -1,8 +1,10 @@
+@@ -1,9 +1,12 @@
  #include <libretro.h>
 +#include <mutex>
  #include "Audio.h"
@@ -1414,9 +1593,32 @@ index a96698067d..a4853c3586 100644
  #include "Core/Config/MainSettings.h"
 +#include "Core/System.h"
  #include "AudioCommon/AudioCommon.h"
++#include "AudioCommon/Mixer.h"
  #include "VideoCommon/Present.h"
  #include "DolphinLibretro/Common/Globals.h"
-@@ -451,6 +453,35 @@ void retroarch_audio_buffer_status_cb(bool active,
+ 
+@@ -152,6 +155,10 @@ bool Stream::IsValid()
+ 
+ void Stream::Update(unsigned int num_samples)
+ {
++  // Porpoise pulls the sound itself (porpoise_audio_pull): nothing is pushed.
++  if (Mixer::PorpoiseIsPulling())
++    return;
++
+   if (g_use_call_back_audio != CallBackMode::PUSH_SAMPLES) {
+     return;
+   }
+@@ -219,6 +226,9 @@ void Stream::MixAndPush(unsigned int num_samples)
+ 
+ void Stream::PushAudioForFrame()
+ {
++  if (Mixer::PorpoiseIsPulling())
++    return;
++
+   if (g_use_call_back_audio != CallBackMode::SYNC_PER_FRAME || !m_mixer || !batch_cb)
+     return;
+ 
+@@ -451,6 +461,73 @@ void retroarch_audio_buffer_status_cb(bool active,
    Libretro::Audio::g_buf_underrun.store(underrun_likely, std::memory_order_relaxed);
  }
  
@@ -1438,6 +1640,44 @@ index a96698067d..a4853c3586 100644
 +  if (!sound_stream || !sound_stream->GetMixer() || !stereo)
 +    return 0;
 +  return sound_stream->GetMixer()->MixWiimoteSpeaker(index, stereo, frames);
++}
++
++// Porpoise: the game's sound pulled at the speakers' pace, as Dolphin's own audio backends
++// do, so Dolphin's mixer fills the gaps when a game runs slow (instead of the front end's
++// queue running dry and crackling). pull 0 goes back to the sound pushed each frame.
++extern "C" __attribute__((visibility("default"))) int porpoise_audio_pull_config(int pull, int buffer_ms,
++                                                                               int fill_gaps)
++{
++  Mixer::PorpoiseSetPull(pull != 0, buffer_ms, fill_gaps != 0);
++  return 1;
++}
++
++// Mixes `frames` stereo frames at out_rate (the mixer's output rate follows it, which the
++// front end nudges to keep the queue at its length). 0 when there is no game sound yet.
++extern "C" __attribute__((visibility("default"))) size_t porpoise_audio_pull(int16_t* stereo, size_t frames,
++                                                                           unsigned out_rate)
++{
++  std::lock_guard<std::mutex> lock(g_porpoise_sound_stream_lock);
++  SoundStream* sound_stream = Core::System::GetInstance().GetSoundStream();
++  if (!sound_stream || !sound_stream->GetMixer() || !stereo || !Mixer::PorpoiseIsPulling())
++    return 0;
++  Mixer* mixer = sound_stream->GetMixer();
++  if (out_rate >= 8000 && out_rate <= 192000 && mixer->GetSampleRate() != out_rate)
++    mixer->SetSampleRate(out_rate);
++  return mixer->Mix(stereo, frames);
++}
++
++// The game's sound waiting (granules), the length the buffer size asks for, and the frames
++// the game has made so far.
++extern "C" __attribute__((visibility("default"))) int porpoise_audio_queue(unsigned* queued, unsigned* target,
++                                                                         unsigned long long* pushed)
++{
++  std::lock_guard<std::mutex> lock(g_porpoise_sound_stream_lock);
++  SoundStream* sound_stream = Core::System::GetInstance().GetSoundStream();
++  if (!sound_stream || !sound_stream->GetMixer())
++    return 0;
++  sound_stream->GetMixer()->PorpoiseQueue(queued, target, pushed);
++  return 1;
 +}
 +
 +extern "C" __attribute__((visibility("default"))) unsigned porpoise_wiimote_speaker_rate()
@@ -1716,10 +1956,16 @@ index 1a1915cd1d..c6ee649d84 100644
    }
  #if defined(ANDROID) && defined(_DEBUG)
 diff --git a/Source/Core/DolphinLibretro/Main.cpp b/Source/Core/DolphinLibretro/Main.cpp
-index cd8753b666..85271453ba 100644
+index cd8753b666..f9c0821ab6 100644
 --- a/Source/Core/DolphinLibretro/Main.cpp
 +++ b/Source/Core/DolphinLibretro/Main.cpp
-@@ -35,6 +35,12 @@
+@@ -1,4 +1,5 @@
+ 
++#include <atomic>
+ #include <cstdint>
+ #include <libretro.h>
+ #include <string>
+@@ -35,6 +36,12 @@
  #include "Core/PatchEngine.h"
  #include "Core/State.h"
  #include "Core/System.h"
@@ -1732,7 +1978,7 @@ index cd8753b666..85271453ba 100644
  #include "DolphinLibretro/Audio.h"
  #include "DolphinLibretro/Input.h"
  #include "DolphinLibretro/Common/Options.h"
-@@ -82,10 +88,61 @@ extern void reload_cheats_from_ini();
+@@ -82,10 +89,61 @@ extern void reload_cheats_from_ini();
  extern unsigned msg_interface_version;
  }  // namespace Libretro
  
@@ -1794,7 +2040,7 @@ index cd8753b666..85271453ba 100644
    Libretro::environ_cb = cb;
  #ifdef PERF_TEST
    environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf_cb);
-@@ -203,8 +260,39 @@ void retro_reset(void)
+@@ -203,8 +261,70 @@ void retro_reset(void)
    Core::System::GetInstance().GetProcessorInterface().ResetButton_Tap();
  }
  
@@ -1826,6 +2072,37 @@ index cd8753b666..85271453ba 100644
 +}
 +#endif
 +
++namespace Core
++{
++extern std::atomic<long long> g_porpoise_cpu_ns;
++extern std::atomic<long long> g_porpoise_cpu_max_ns;
++extern std::atomic<unsigned> g_porpoise_cpu_frames;
++}  // namespace Core
++namespace Fifo
++{
++extern std::atomic<long long> g_porpoise_gpu_ns;
++}  // namespace Fifo
++
++// Porpoise: where a frame's time goes, since the last call. cpu_ms: the CPU thread's run of
++// a frame step on average; cpu_max_ms: the longest; gpu_ms: the video loop's busy time per
++// frame. Returns the frames counted.
++extern "C" __attribute__((visibility("default"))) unsigned porpoise_perf_take(double* cpu_ms,
++                                                                            double* cpu_max_ms,
++                                                                            double* gpu_ms)
++{
++  const unsigned frames = Core::g_porpoise_cpu_frames.exchange(0, std::memory_order_relaxed);
++  const long long cpu = Core::g_porpoise_cpu_ns.exchange(0, std::memory_order_relaxed);
++  const long long cpu_max = Core::g_porpoise_cpu_max_ns.exchange(0, std::memory_order_relaxed);
++  const long long gpu = Fifo::g_porpoise_gpu_ns.exchange(0, std::memory_order_relaxed);
++  if (cpu_ms)
++    *cpu_ms = frames ? cpu / 1e6 / frames : 0.0;
++  if (cpu_max_ms)
++    *cpu_max_ms = cpu_max / 1e6;
++  if (gpu_ms)
++    *gpu_ms = frames ? gpu / 1e6 / frames : 0.0;
++  return frames;
++}
++
  void retro_run(void)
  {
 +#ifdef __PROSPERO__
@@ -1834,7 +2111,7 @@ index cd8753b666..85271453ba 100644
    Libretro::Input::InitSensors();
    Libretro::Options::CheckForUpdatedVariables();
    Libretro::FrameTiming::CheckForFastForwarding();
-@@ -482,6 +570,7 @@ void retro_run(void)
+@@ -482,6 +602,7 @@ void retro_run(void)
    RETRO_PERFORMANCE_INIT(dolphin_main_func);
    RETRO_PERFORMANCE_START(dolphin_main_func);
  
@@ -1842,7 +2119,7 @@ index cd8753b666..85271453ba 100644
    if (system.IsDualCoreMode())
    {
      Core::DoFrameStep(system);
-@@ -491,6 +580,7 @@ void retro_run(void)
+@@ -491,6 +612,7 @@ void retro_run(void)
    {
      system.GetCPU().RunSingleFrame();
    }
@@ -2062,10 +2339,18 @@ index 976592c829..8684ae12e7 100644
    void DoState(PointerWrap& p);
  };
 diff --git a/Source/Core/VideoCommon/Fifo.cpp b/Source/Core/VideoCommon/Fifo.cpp
-index d40bd0e8db..d5d588054d 100644
+index d40bd0e8db..558a31fd02 100644
 --- a/Source/Core/VideoCommon/Fifo.cpp
 +++ b/Source/Core/VideoCommon/Fifo.cpp
-@@ -288,6 +288,42 @@ void FifoManager::ResetVideoBuffer()
+@@ -4,6 +4,7 @@
+ #include "VideoCommon/Fifo.h"
+ 
+ #include <atomic>
++#include <chrono>
+ #include <cstring>
+ 
+ #include "Common/Assert.h"
+@@ -288,12 +289,70 @@ void FifoManager::ResetVideoBuffer()
    m_fifo_aux_read_ptr = m_fifo_aux_data;
  }
  
@@ -2107,8 +2392,36 @@ index d40bd0e8db..d5d588054d 100644
 +
  // Description: Main FIFO update loop
  // Purpose: Keep the Core HW updated about the CPU-GPU distance
++#ifdef __LIBRETRO__
++// Porpoise: the video loop's busy time (porpoise_perf_take), against the CPU thread's.
++std::atomic<long long> g_porpoise_gpu_ns{0};
++namespace
++{
++struct PorpoiseGpuTimer
++{
++  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
++  ~PorpoiseGpuTimer()
++  {
++    g_porpoise_gpu_ns.fetch_add(std::chrono::duration_cast<std::chrono::nanoseconds>(
++                                    std::chrono::steady_clock::now() - start)
++                                    .count(),
++                                std::memory_order_relaxed);
++  }
++};
++}  // namespace
++#endif
++
  void FifoManager::RunGpuLoop()
-@@ -330,6 +366,10 @@ void FifoManager::RunGpuLoop()
+ {
+   m_gpu_mainloop.Run(
+       [this] {
++#ifdef __LIBRETRO__
++        const PorpoiseGpuTimer porpoise_timer;
++#endif
+         // Run events from the CPU thread.
+         AsyncRequests::GetInstance()->PullEvents();
+ 
+@@ -330,6 +389,10 @@ void FifoManager::RunGpuLoop()
                break;
  
              u32 cyclesExecuted = 0;
@@ -2119,7 +2432,7 @@ index d40bd0e8db..d5d588054d 100644
              u32 readPtr = fifo.CPReadPointer.load(std::memory_order_relaxed);
              ReadDataFromFifo(readPtr);
  
-@@ -338,6 +378,7 @@ void FifoManager::RunGpuLoop()
+@@ -338,6 +401,7 @@ void FifoManager::RunGpuLoop()
              else
                readPtr += GPFifo::GATHER_PIPE_SIZE;
  
@@ -2127,7 +2440,7 @@ index d40bd0e8db..d5d588054d 100644
              const s32 distance =
                  static_cast<s32>(fifo.CPReadWriteDistance.load(std::memory_order_relaxed)) -
                  GPFifo::GATHER_PIPE_SIZE;
-@@ -345,13 +386,18 @@ void FifoManager::RunGpuLoop()
+@@ -345,13 +409,18 @@ void FifoManager::RunGpuLoop()
                         "Negative fifo.CPReadWriteDistance = {} in FIFO Loop !\nThat can produce "
                         "instability in the game. Please report it.",
                         distance);

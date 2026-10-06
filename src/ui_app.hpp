@@ -741,7 +741,7 @@ private:
     int menu_answer_ = 0;
     bool menu_restart_armed_ = false; /* Start over asked once */
     std::string menu_change_;
-    int menu_tab_ = 0;   /* Game, Video, Graphics, Controls */
+    int menu_tab_ = 0;   /* Game, Video, Graphics, Audio, Controls, Patches (and Achievements) */
     int menu_slot_ = 0;  /* the save-state slot under focus */
     int menu_ff_ = 0;    /* fast forward: off, 2x, 4x */
     int menu_setup_ = 0; /* the setup under focus in the Graphics tab */
@@ -863,6 +863,7 @@ private:
     bool qr_tried_ = false;
     std::vector<std::string> border_names_; /* the Border row's choices */
     int border_choice_ = 0;
+    int audio_preset_ = 0; /* Settings > Audio's Sound preset row (Settings::audio_preset) */
     Game *map_game_ = nullptr;       /* the game whose settings those are, if any */
     bool map_in_game_ = false;       /* opened from the in-game menu */
     int map_preset_ = 0;             /* the player's layout being edited, 0..3 */

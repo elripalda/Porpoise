@@ -117,6 +117,11 @@ struct Playback
     /* The Wii Remotes' speakers on the controllers' (porpoise_speaker): the
      * ports are opened by the caller; this starts and stops the sending. */
     bool controller_speakers = false;
+    /* 2.1.2: the game's sound pulled from Dolphin's mixer, which fills the
+     * gaps when a game runs slow (Settings > Audio; off is Classic, 2.1's). */
+    bool audio_pull = true;
+    int audio_buffer_ms = 80;
+    bool audio_fill = true;
 };
 /* The Wii Remote's settings changed in the in-game menu. */
 void set_wii(const porpoise::pad::WiiConfig &config);

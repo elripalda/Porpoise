@@ -143,8 +143,20 @@ struct Settings
      * TV's sound, a fuller buffer, stretching through slowdowns. */
     bool dsp_accurate = false;
     int wiimote_speaker = 0;   /* 0 off, 1 in the TV's sound, 2 on the controller's speaker */
-    int audio_buffer = 1;   /* 0 low, 1 normal, 2 safe */
-    bool audio_stretch = false;
+    int audio_buffer = 1;   /* 0 low, 1 normal, 2 safe (40, 80, 160 ms pulled) */
+    bool audio_stretch = false; /* Classic only */
+    /* 2.1.2: the game's sound pulled from Dolphin's mixer, which fills the
+     * gaps when a game runs slow; off is Classic (2.1's, pushed). */
+    bool audio_pull = true;
+    bool audio_fill = true;
+    /* Sound presets (Settings > Audio): Smooth, Responsive, Extra smooth,
+     * Classic; kAudioCustom when the rows match none. */
+    static constexpr int kAudioPresets = 4;
+    static constexpr int kAudioCustom = 4;
+    int audio_preset() const;
+    void use_audio_preset(int preset);
+    /* The mixer's buffer for audio_buffer, pulled (ms). */
+    int audio_buffer_ms() const;
     /* The microphone (beta): the DualSense's, as the GameCube Microphone and
      * the Wii Speak. */
     bool microphone = false;

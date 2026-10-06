@@ -46,11 +46,16 @@ enum TabId
     kTabGame,
     kTabVideo,
     kTabGraphics,
+    kTabAudio,
     kTabControls,
     kTabPatches,
     kTabCount,
 };
-const char *const kTabNames[kTabCount] = {"Game", "Video", "Graphics", "Controls", "Patches"};
+const char *const kTabNames[kTabCount] = {"Game", "Video", "Graphics", "Audio", "Controls", "Patches"};
+
+/* The Audio tab's Sound preset row (Settings::audio_preset), worked out from
+ * the game's settings each time its rows are. */
+int g_audio_preset = 0;
 
 /* What a row does. */
 enum class Kind
@@ -105,7 +110,6 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         r.push_back({Kind::Load, "", "Load state\xE2\x80\xA6"});
         r.push_back({Kind::FastForward, "", "Fast forward"});
         r.push_back({Kind::Restart, "", "Start over"});
-        r.push_back({Kind::Int, "volume", "Volume", &p.volume, nullptr, 0, kPercent});
         r.push_back({Kind::Library, "", "Quit to library", nullptr, nullptr, 0, {}, true});
         r.push_back({Kind::Home, "", "Close Porpoise"});
         break;
@@ -144,6 +148,34 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         r.push_back({Kind::SaveSetup, "", "Save as a setup", nullptr, nullptr, 0, {}, true});
         r.push_back({Kind::UseSetup, "", "Use a setup"});
         break;
+    case kTabAudio:
+    {
+        r.push_back({Kind::Int, "volume", "Volume", &p.volume, nullptr, 0, kPercent});
+        r.push_back({Kind::Bool, "muted", "Mute game", nullptr, &p.muted, 0, {"Off", "On"}});
+        g_audio_preset = p.audio_preset();
+        std::vector<std::string> presets = {"Smooth", "Responsive", "Extra smooth", "Classic (2.1)"};
+        if (g_audio_preset == Settings::kAudioCustom)
+            presets.push_back("Custom");
+        r.push_back({Kind::Int, "audio_preset", "Sound preset", &g_audio_preset, nullptr, 0, presets, true});
+        if (p.audio_pull)
+        {
+            r.push_back({Kind::Int, "audio_buffer", "Audio buffer", &p.audio_buffer, nullptr, 0,
+                         {"40 ms", "80 ms", "160 ms"}});
+            r.push_back({Kind::Bool, "audio_fill", "Fill audio gaps", nullptr, &p.audio_fill, 0, {"Off", "On"}});
+        }
+        else
+        {
+            r.push_back({Kind::Int, "audio_buffer", "Audio buffer", &p.audio_buffer, nullptr, 0,
+                         {"Low", "Normal", "Safe"}});
+            r.push_back({Kind::Bool, "audio_stretch", "Audio stretching", nullptr, &p.audio_stretch, 0,
+                         {"Off", "On"}});
+        }
+        r.push_back({Kind::Bool, "dsp_accurate", "Accurate audio", nullptr, &p.dsp_accurate, 0, {"Off", "On"}, true});
+        if (wii)
+            r.push_back({Kind::Int, "wiimote_speaker", "Wii Remote speaker", &p.wiimote_speaker, nullptr, 0,
+                         {"Off", "TV", "Controller"}});
+        break;
+    }
     case kTabControls:
         if (!wii)
         {
@@ -237,6 +269,25 @@ const char *help_for(const Row &row, const Settings &p)
         return "The whole setup: the Wii controller, how to hold it, your screen, and (advanced) fine-tuning.";
     if (row.key == std::string("wii_preset"))
         return "A Wii Remote set-up kept under a name (made in the setup's Fine-tune page, Advanced).";
+    if (row.key == std::string("audio_preset"))
+        return p.audio_pull ? "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: "
+                              "less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from "
+                              "the next start."
+                            : "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the "
+                              "game runs slow; they apply the next time the game starts.";
+    if (row.key == std::string("audio_buffer"))
+        return "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.";
+    if (row.key == std::string("audio_fill"))
+        return "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off "
+               "leaves the gap silent.";
+    if (row.key == std::string("audio_stretch"))
+        return "When a game slows down, its sound slows with it, slightly lower, instead of crackling.";
+    if (row.key == std::string("dsp_accurate"))
+        return "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. "
+               "Takes effect the next time the game starts.";
+    if (row.key == std::string("wiimote_speaker"))
+        return "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the "
+               "next time the game starts.";
     if (row.kind == Kind::Customize)
         return "Your own layouts: change any button on a picture of the DualSense.";
     return "Changes here are saved for this game.";
@@ -814,6 +865,14 @@ int App::update_game_menu(const Input &in, double dt)
         break;
     }
     std::vector<std::string> also;
+    bool save_key = true;
+    if (key == "audio_preset")
+    {
+        /* A preset sets the sound rows; they are what is saved. */
+        p.use_audio_preset(g_audio_preset);
+        also = {"audio_pull", "audio_buffer", "audio_fill", "audio_stretch"};
+        save_key = false;
+    }
     if (key == "wide" && p.widescreen)
     {
         p.widescreen = false; /* 2.0's hack switch gives way to the choice */
@@ -830,7 +889,7 @@ int App::update_game_menu(const Input &in, double dt)
     {
         /* Saved as this game's own setting, so it sticks next time. */
         std::vector<std::string> keys = Settings::keys_in(game_settings_path(*menu_game_));
-        if (std::find(keys.begin(), keys.end(), key) == keys.end())
+        if (save_key && std::find(keys.begin(), keys.end(), key) == keys.end())
             keys.push_back(key);
         for (const std::string &k : also)
             if (std::find(keys.begin(), keys.end(), k) == keys.end())
@@ -999,8 +1058,8 @@ void App::draw_game_menu(double time)
         const float ty = hy + 28, tab_h = 50;
         float size = tabs > kTabCount ? ts(22) : ts(24);
         const float pad = tabs > kTabCount ? 28.0f : 36.0f;
-        const char *names[kTabCount + 1] = {kTabNames[0], kTabNames[1], kTabNames[2], kTabNames[3], kTabNames[4],
-                                            "Achievements"};
+        const char *names[kTabCount + 1] = {kTabNames[0], kTabNames[1], kTabNames[2], kTabNames[3],
+                                            kTabNames[4], kTabNames[5], "Achievements"};
         float widths[kTabCount + 1], total = 0;
         for (int pass = 0; pass < 2; ++pass)
         {

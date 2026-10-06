@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin n'en liste aucun pour ce jeu. Tes propres codes vont dans /data/porpoise/cheats/{id}.ini.",
  "None for this game": "Aucun pour ce jeu",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Un code écran large de la liste de Dolphin. Activé quand Écran large est sur Auto ou Oui, avec l'image en 16:9.",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "Cet emplacement contient déjà un dossier Porpoise. Déplace-le ou renomme-le d'abord, puis réessaie."
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "Cet emplacement contient déjà un dossier Porpoise. Déplace-le ou renomme-le d'abord, puis réessaie.",
+ "Sound preset": "Préréglage sonore",
+ "Responsive": "Réactif",
+ "Extra smooth": "Extra lisse",
+ "Classic (2.1)": "Classique (2.1)",
+ "Fill audio gaps": "Combler les trous audio",
+ "40 ms": "40 ms",
+ "80 ms": "80 ms",
+ "160 ms": "160 ms",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "Lisse : le mixeur de Dolphin comble les trous quand un jeu ralentit, comme sur PC, au lieu de craquer. Réactif garde moins de son prêt, pour un peu moins de retard. Extra lisse en garde plus, pour les jeux qui ralentissent souvent. Classique est le son de Porpoise 2.1. Passer à Classique ou en sortir prend effet au prochain lancement d'un jeu.",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "La quantité de son gardée prête. Plus évite les craquements quand un jeu ralentit, au prix d'un léger retard.",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "Quand un jeu ralentit, le son qu'il vient de jouer comble le trou, en fondu, au lieu d'un craquement. Sur Non, le trou reste silencieux.",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "Lisse comble les trous quand le jeu ralentit, comme Dolphin sur PC. Réactif : moins de retard. Extra lisse : pour les jeux qui ralentissent souvent. Classique : le son de 2.1, au prochain lancement.",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "Classique est le son de 2.1. Lisse, Réactif et Extra lisse comblent les trous quand le jeu ralentit ; ils prennent effet au prochain lancement du jeu.",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "La puce sonore exacte de Dolphin : corrige le son erroné de quelques jeux, mais demande beaucoup plus au processeur. Prend effet au prochain lancement du jeu.",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Les sons du haut-parleur de la télécommande Wii : dans le son de la télé, ou depuis la manette. Prend effet au prochain lancement du jeu."
 }

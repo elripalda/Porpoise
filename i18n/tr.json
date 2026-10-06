@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin bu oyun için hiçbirini listelemiyor. Kendi kodlarınızı /data/porpoise/cheats/{id}.ini dosyasına koyun.",
  "None for this game": "Bu oyun için yok",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Dolphin'in listesinden bir geniş ekran kodu. Geniş ekran Otomatik veya Açık olduğunda açıktır; görüntü 16:9 olur.",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "Bu konumda zaten bir Porpoise klasörü var. Önce onu taşıyın ya da adını değiştirin, sonra yeniden deneyin."
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "Bu konumda zaten bir Porpoise klasörü var. Önce onu taşıyın ya da adını değiştirin, sonra yeniden deneyin.",
+ "Sound preset": "Ses ön ayarı",
+ "Responsive": "Hızlı tepki",
+ "Extra smooth": "Ekstra yumuşak",
+ "Classic (2.1)": "Klasik (2.1)",
+ "Fill audio gaps": "Ses boşluklarını doldur",
+ "40 ms": "40 ms",
+ "80 ms": "80 ms",
+ "160 ms": "160 ms",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "Yumuşak: Bir oyun yavaşladığında Dolphin'in kendi mikseri, PC'de olduğu gibi boşlukları cızırtı yerine doldurur. Hızlı tepki daha az sesi hazırda tutar; gecikme biraz azalır. Ekstra yumuşak daha fazlasını tutar; sık yavaşlayan oyunlar içindir. Klasik, Porpoise 2.1'in sesidir. Klasik'e geçiş ya da Klasik'ten çıkış, bir oyunun bir sonraki başlatılışında geçerli olur.",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "Ne kadar sesin hazırda tutulduğu. Daha fazlası, oyun yavaşladığında cızırtıyı önler; biraz gecikme pahasına.",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "Bir oyun yavaşladığında, cızırtı yerine az önce çalınan ses azalarak boşluğu doldurur. Kapalıyken boşluk sessiz kalır.",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "Yumuşak, oyun yavaşladığında PC'deki Dolphin gibi boşlukları doldurur. Hızlı tepki: daha az gecikme. Ekstra yumuşak: sık yavaşlayan oyunlar için. Klasik: 2.1'in sesi, bir sonraki başlatıştan itibaren.",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "Klasik, 2.1'in sesidir. Yumuşak, Hızlı tepki ve Ekstra yumuşak oyun yavaşladığında boşlukları doldurur; oyunun bir sonraki başlatılışında geçerli olur.",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "Dolphin'in tam ses çipi: birkaç oyundaki yanlış sesi düzeltir, ancak işlemciden çok daha fazlasını ister. Oyun bir sonraki başlatılışında geçerli olur.",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Wii Remote'un kendi hoparlöründen gelen sesler: TV'nin sesinde ya da kumandadan. Oyun bir sonraki başlatılışında geçerli olur."
 }

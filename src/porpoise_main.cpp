@@ -861,6 +861,21 @@ int menu_paused(void *)
     const std::string key = g_app.take_menu_change();
     if (key == "volume")
         porpoise::audio::set_volume(g_play.volume / 10.0f);
+    else if (key == "muted")
+        porpoise::audio::set_muted(g_play.muted);
+    else if (key == "audio_preset" || key == "audio_buffer" || key == "audio_fill" || key == "audio_stretch" ||
+             key == "audio_pull")
+    {
+        /* The sound: the mixer's buffer and gap filling at once (Classic and
+         * pulled sound swap at the next start). */
+        if (porpoise::audio::pulling())
+            porpoise::audio::set_pull_config(g_play.audio_buffer_ms(), g_play.audio_fill);
+        else
+        {
+            porpoise::audio::set_buffer(g_play.audio_buffer);
+            porpoise::audio::set_stretching(g_play.audio_stretch);
+        }
+    }
     else if (key == "screen_filter" || key == "filter_strength")
         porpoise::core::set_picture(g_play.screen_filter, g_play.filter_strength / 10.0f);
     else if (key == "setup")
@@ -2205,6 +2220,9 @@ int main()
         const bool is_wii = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
         playback.wii = g_play.wii_config(is_wii);
         playback.controller_speakers = g_controller_speakers;
+        playback.audio_pull = g_play.audio_pull;
+        playback.audio_buffer_ms = g_play.audio_buffer_ms();
+        playback.audio_fill = g_play.audio_fill;
         g_wii_hint_from = g_time + 2.0; /* once the game is up */
         g_wii_centrings = 0;
         const std::string debug_dir = g_data + "/debug";

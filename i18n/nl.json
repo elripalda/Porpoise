@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin vermeldt er geen voor deze game. Je eigen codes zet je in /data/porpoise/cheats/{id}.ini.",
  "None for this game": "Geen voor deze game",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Een breedbeeldcode uit de lijst van Dolphin. Staat aan als Breedbeeld op Auto of Aan staat, met het beeld in 16:9.",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "Op die plek staat al een map van Porpoise. Verplaats of hernoem die eerst en probeer het dan opnieuw."
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "Op die plek staat al een map van Porpoise. Verplaats of hernoem die eerst en probeer het dan opnieuw.",
+ "Sound preset": "Geluidspreset",
+ "Responsive": "Snel reagerend",
+ "Extra smooth": "Extra zacht",
+ "Classic (2.1)": "Classic (2.1)",
+ "Fill audio gaps": "Geluidsgaten opvullen",
+ "40 ms": "40 ms",
+ "80 ms": "80 ms",
+ "160 ms": "160 ms",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "Zacht: de eigen mixer van Dolphin vult de gaten wanneer een game traag loopt, zoals op een pc, in plaats van te kraken. Snel reagerend houdt minder geluid klaar, voor iets minder vertraging. Extra zacht houdt meer klaar, voor games die vaak vertragen. Classic is het geluid van Porpoise 2.1. Overschakelen naar of van Classic werkt vanaf de volgende keer dat een game start.",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "Hoeveel geluid er klaar wordt gehouden. Meer houdt gekraak tegen wanneer een game vertraagt, met een kleine vertraging.",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "Wanneer een game traag loopt, vult het geluid dat net speelde het gat, uitgefaded, in plaats van gekraak. Uit laat het gat stil.",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "Zacht vult de gaten wanneer de game traag loopt, zoals Dolphin op een pc. Snel reagerend: minder vertraging. Extra zacht: voor games die vaak vertragen. Classic: het geluid van 2.1, vanaf de volgende start.",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "Classic is het geluid van 2.1. Zacht, Snel reagerend en Extra zacht vullen de gaten wanneer de game traag loopt; ze werken vanaf de volgende keer dat de game start.",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "De exacte geluidschip van Dolphin: verhelpt verkeerd geluid in een paar games, maar vraagt veel meer van de processor. Werkt vanaf de volgende keer dat de game start.",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Geluiden uit de luidspreker van de Wii Remote: in het geluid van de tv, of uit de controller. Werkt vanaf de volgende keer dat de game start."
 }

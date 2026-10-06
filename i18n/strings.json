@@ -4714,5 +4714,65 @@
  {
   "en": "That place already has a Porpoise folder. Move or rename it first, then try again.",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Sound preset",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Responsive",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Extra smooth",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Classic (2.1)",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Fill audio gaps",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "40 ms",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "80 ms",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "160 ms",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.",
+  "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.",
+  "section": "2.1.2: sound presets and the Audio tab"
  }
 ]

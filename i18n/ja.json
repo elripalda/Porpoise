@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphinのリストには、このゲーム用のものはありません。自作のコードは/data/porpoise/cheats/{id}.iniに入れてください。",
  "None for this game": "このゲームにはなし",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Dolphinのリストにあるワイドスクリーンコードです。「ワイドスクリーン」が「自動」か「オン」のときにオンになり、映像は16:9になります。",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "その場所にはすでにPorpoiseのフォルダーがあります。先に移動するか名前を変更してから、もう一度お試しください。"
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "その場所にはすでにPorpoiseのフォルダーがあります。先に移動するか名前を変更してから、もう一度お試しください。",
+ "Sound preset": "サウンドプリセット",
+ "Responsive": "低遅延",
+ "Extra smooth": "よりなめらか",
+ "Classic (2.1)": "クラシック (2.1)",
+ "Fill audio gaps": "音の途切れを埋める",
+ "40 ms": "40 ms",
+ "80 ms": "80 ms",
+ "160 ms": "160 ms",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "なめらか：ゲームが遅くなったとき、PCと同じようにDolphin自身のミキサーが音の途切れを埋め、音割れを防ぎます。低遅延は用意しておく音を減らし、遅れを少し小さくします。よりなめらかは多めに用意し、よく遅くなるゲーム向けです。クラシックはPorpoise 2.1の音です。クラシックへの切り替え、またはクラシックからの切り替えは、次にゲームを起動したときに反映されます。",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "前もって用意しておく音の量です。多いほどゲームが遅くなったときの音割れを防げますが、音が少し遅れます。",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "ゲームが遅くなったとき、音割れの代わりに、直前に鳴った音をフェードさせて途切れを埋めます。オフにすると、途切れは無音になります。",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "なめらか：ゲームが遅くなったとき、PCのDolphinと同じように途切れを埋めます。低遅延：遅れが少なめ。よりなめらか：よく遅くなるゲーム向け。クラシック：2.1の音（次の起動から）。",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "クラシックは2.1の音です。なめらか、低遅延、よりなめらかは、ゲームが遅くなったときに途切れを埋めます。次にゲームを起動したときに反映されます。",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "Dolphinの正確なサウンドチップです。一部のゲームの音の不具合を直しますが、プロセッサーへの負荷がずっと大きくなります。次にゲームを起動したときに反映されます。",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Wiiリモコンのスピーカーから出る音を、テレビの音に混ぜるか、コントローラーから鳴らします。次にゲームを起動したときに反映されます。"
 }

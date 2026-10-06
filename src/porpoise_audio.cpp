@@ -10,7 +10,15 @@
  * Dolphin pushes samples at its own rate once a frame (32 kHz by default). They
  * are resampled to 48 kHz here, linearly, with a ratio nudged by at most 0.5%
  * toward a target queue depth. That absorbs the difference between the game's
- * frame rate (59.94 Hz) and the display's (60 Hz) without pops or drift. */
+ * frame rate (59.94 Hz) and the display's (60 Hz) without pops or drift.
+ *
+ * 2.1.2: the game's sound is pulled instead (start_pull), at the speakers' pace,
+ * from Dolphin's own mixer, as Dolphin's audio backends on a PC do. When a game
+ * runs slow, the mixer fills the gap with the sound it just played, faded, rather
+ * than this queue running dry: no crackle. The mixer resamples to 48 kHz itself
+ * (6-point Hermite), and the rate it is told it plays at is nudged by at most
+ * 0.4% to keep its queue at its length (the 59.94 against 60 Hz difference).
+ * The queue here then holds only Porpoise's own sounds (the in-game menu's). */
 #include "porpoise_audio.hpp"
 
 #include <algorithm>
@@ -58,6 +66,17 @@ struct Audio
     std::int16_t prev[2] = {0, 0};
     std::atomic<float> volume{1.0f};
     std::atomic<bool> muted{false};
+    /* Pulling (start_pull): the core's functions, guarded by pull_lock so
+     * stop_pull can't return while one is running (the core is unloaded
+     * after). */
+    pthread_mutex_t pull_lock = PTHREAD_MUTEX_INITIALIZER;
+    porpoise::audio::PullFn pull = nullptr;
+    porpoise::audio::QueueFn queue = nullptr;
+    porpoise::audio::ConfigFn config = nullptr;
+    std::atomic<bool> pull_paused{false};
+    std::atomic<bool> fast_forward{false};
+    double rate_error = 0.0; /* the mixer queue's distance from its aim, smoothed (worker only) */
+    std::atomic<unsigned> gaps{0}; /* grains the mixer had no new sound for (for the log) */
 };
 
 Audio *g = nullptr;
@@ -67,19 +86,65 @@ void *worker(void *)
     Audio &a = *g;
     while (!a.stop.load(std::memory_order_relaxed))
     {
-        pthread_mutex_lock(&a.mutex);
-        const std::size_t take = std::min(grain, a.count);
-        std::size_t tail = (a.head + ring_frames - a.count) % ring_frames;
-        for (std::size_t i = 0; i < take; ++i)
+        /* The game's sound, from the core's mixer (start_pull). */
+        bool pulled = false;
+        pthread_mutex_lock(&a.pull_lock);
+        if (a.pull && !a.pull_paused.load(std::memory_order_relaxed))
         {
-            a.out[i * 2] = a.ring[tail * 2];
-            a.out[i * 2 + 1] = a.ring[tail * 2 + 1];
-            tail = (tail + 1) % ring_frames;
+            unsigned queued = 0, target = 0;
+            unsigned long long made = 0;
+            if (a.queue && a.queue(&queued, &target, &made) && target > 0)
+            {
+                /* Aim for 60% of the length the buffer asks for: a frame's sound
+                 * arrives at once, so the queue swings by about four granules. */
+                const double aim = target * 0.6;
+                const double error = std::clamp((double(queued) - aim) / aim, -1.0, 1.0);
+                a.rate_error += (error - a.rate_error) * 0.02; /* about a second */
+                if (queued == 0)
+                    a.gaps.fetch_add(1, std::memory_order_relaxed);
+            }
+            /* A fuller queue: tell the mixer it plays slightly slower, so it
+             * takes slightly more of the game's sound per frame. */
+            const double factor = 1.0 - std::clamp(a.rate_error * 0.004, -0.004, 0.004);
+            const std::size_t got = a.pull(a.out, grain, unsigned(std::lround(out_rate * factor)));
+            if (got < grain)
+                std::memset(a.out + got * 2, 0, (grain - got) * 2 * sizeof(std::int16_t));
+            if (a.fast_forward.load(std::memory_order_relaxed))
+                std::memset(a.out, 0, sizeof a.out); /* drained, not heard */
+            pulled = true;
         }
-        a.count -= take;
-        pthread_mutex_unlock(&a.mutex);
-        if (take < grain)
-            std::memset(a.out + take * 2, 0, (grain - take) * 2 * sizeof(std::int16_t));
+        pthread_mutex_unlock(&a.pull_lock);
+        if (pulled)
+        {
+            /* Porpoise's own sounds (the in-game menu's) on top. */
+            pthread_mutex_lock(&a.mutex);
+            const std::size_t take = std::min(grain, a.count);
+            std::size_t tail = (a.head + ring_frames - a.count) % ring_frames;
+            for (std::size_t i = 0; i < take * 2; i += 2)
+            {
+                a.out[i] = std::int16_t(std::clamp(int(a.out[i]) + a.ring[tail * 2], -32768, 32767));
+                a.out[i + 1] = std::int16_t(std::clamp(int(a.out[i + 1]) + a.ring[tail * 2 + 1], -32768, 32767));
+                tail = (tail + 1) % ring_frames;
+            }
+            a.count -= take;
+            pthread_mutex_unlock(&a.mutex);
+        }
+        else
+        {
+            pthread_mutex_lock(&a.mutex);
+            const std::size_t take = std::min(grain, a.count);
+            std::size_t tail = (a.head + ring_frames - a.count) % ring_frames;
+            for (std::size_t i = 0; i < take; ++i)
+            {
+                a.out[i * 2] = a.ring[tail * 2];
+                a.out[i * 2 + 1] = a.ring[tail * 2 + 1];
+                tail = (tail + 1) % ring_frames;
+            }
+            a.count -= take;
+            pthread_mutex_unlock(&a.mutex);
+            if (take < grain)
+                std::memset(a.out + take * 2, 0, (grain - take) * 2 * sizeof(std::int16_t));
+        }
 
         const float volume = a.muted.load(std::memory_order_relaxed)
                                  ? 0.0f
@@ -254,5 +319,86 @@ void flush()
     pthread_mutex_lock(&g->mutex);
     g->count = 0;
     pthread_mutex_unlock(&g->mutex);
+}
+
+void start_pull(PullFn pull, QueueFn queue, ConfigFn config, int buffer_ms, bool fill_gaps)
+{
+    if (!g || !pull)
+        return;
+    if (config)
+        config(1, buffer_ms, fill_gaps ? 1 : 0);
+    pthread_mutex_lock(&g->pull_lock);
+    g->config = config;
+    g->queue = queue;
+    g->pull = pull;
+    g->rate_error = 0.0;
+    g->pull_paused = false;
+    g->fast_forward = false;
+    g->gaps = 0;
+    pthread_mutex_unlock(&g->pull_lock);
+    flush();
+    ps5::debug::mark_value("audio: the game's sound is pulled from Dolphin's mixer; buffer ms", buffer_ms);
+}
+
+void set_pull_config(int buffer_ms, bool fill_gaps)
+{
+    if (!g)
+        return;
+    pthread_mutex_lock(&g->pull_lock);
+    if (g->pull && g->config)
+        g->config(1, buffer_ms, fill_gaps ? 1 : 0);
+    pthread_mutex_unlock(&g->pull_lock);
+}
+
+void stop_pull()
+{
+    if (!g)
+        return;
+    pthread_mutex_lock(&g->pull_lock);
+    if (g->config)
+        g->config(0, 80, 1); /* the core pushes again, as before (the next game may be Classic) */
+    g->pull = nullptr;
+    g->queue = nullptr;
+    g->config = nullptr;
+    pthread_mutex_unlock(&g->pull_lock);
+}
+
+bool pulling()
+{
+    if (!g)
+        return false;
+    pthread_mutex_lock(&g->pull_lock);
+    const bool on = g->pull != nullptr;
+    pthread_mutex_unlock(&g->pull_lock);
+    return on;
+}
+
+void set_pull_paused(bool paused)
+{
+    if (g)
+        g->pull_paused.store(paused);
+}
+
+void set_fast_forward(bool on)
+{
+    if (g)
+        g->fast_forward.store(on);
+}
+
+unsigned take_gaps()
+{
+    return g ? g->gaps.exchange(0) : 0;
+}
+
+bool pull_queue(unsigned &queued, unsigned &target)
+{
+    queued = target = 0;
+    if (!g)
+        return false;
+    pthread_mutex_lock(&g->pull_lock);
+    unsigned long long made = 0;
+    const bool ok = g->pull && g->queue && g->queue(&queued, &target, &made);
+    pthread_mutex_unlock(&g->pull_lock);
+    return ok;
 }
 } // namespace porpoise::audio

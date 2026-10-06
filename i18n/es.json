@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin no tiene ninguno en su lista para este juego. Tus propios códigos van en /data/porpoise/cheats/{id}.ini.",
  "None for this game": "Ninguno para este juego",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Un código de pantalla ancha de la lista de Dolphin. Activado cuando Pantalla ancha está en Auto o en Sí, con la imagen en 16:9.",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "Ese lugar ya tiene una carpeta de Porpoise. Muévela o cámbiale el nombre primero y vuelve a intentarlo."
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "Ese lugar ya tiene una carpeta de Porpoise. Muévela o cámbiale el nombre primero y vuelve a intentarlo.",
+ "Sound preset": "Preajuste de sonido",
+ "Responsive": "Respuesta rápida",
+ "Extra smooth": "Extra suave",
+ "Classic (2.1)": "Clásico (2.1)",
+ "Fill audio gaps": "Rellenar huecos de audio",
+ "40 ms": "40 ms",
+ "80 ms": "80 ms",
+ "160 ms": "160 ms",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "Suave: el mezclador propio de Dolphin cubre los huecos cuando un juego va lento, como en un PC, en lugar de dar chasquidos. Respuesta rápida tiene menos sonido preparado, para algo menos de retraso. Extra suave tiene más, para juegos que se ralentizan a menudo. Clásico es el sonido de Porpoise 2.1. Un cambio a Clásico o desde él se aplica la próxima vez que se inicie un juego.",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "Cuánto sonido se tiene preparado. Más evita los chasquidos cuando un juego se ralentiza, a cambio de un poco de retraso.",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "Cuando un juego va lento, el sonido que acaba de sonar cubre el hueco, atenuado, en lugar de un chasquido. Si está desactivado, el hueco queda en silencio.",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "Suave cubre los huecos cuando el juego va lento, como Dolphin en un PC. Respuesta rápida: menos retraso. Extra suave: para juegos que se ralentizan a menudo. Clásico: el sonido de 2.1, desde el próximo inicio.",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "Clásico es el sonido de 2.1. Suave, Respuesta rápida y Extra suave cubren los huecos cuando el juego va lento; se aplican la próxima vez que se inicie el juego.",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "El chip de sonido exacto de Dolphin: corrige el sonido incorrecto en algunos juegos, pero necesita mucho más del procesador. Se aplica la próxima vez que se inicie el juego.",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Los sonidos del altavoz del mando de Wii: en el sonido de la tele o desde el mando. Se aplica la próxima vez que se inicie el juego."
 }

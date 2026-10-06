@@ -523,7 +523,12 @@ int main(int argc, char **argv)
         tap(kR1); /* Video */
         tap(kDown);
         shot("patches-video");
-        tap(kR1, 3); /* Patches */
+        tap(kR1, 2); /* Audio */
+        shot("patches-audio");
+        tap(kDown, 2);
+        tap(kRight); /* Responsive */
+        shot("patches-audio-preset");
+        tap(kR1, 2); /* Patches */
         shot("patches-tab");
         tap(kDown, 2);
         shot("patches-code");

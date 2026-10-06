@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin没有为此游戏列出任何项目。你自己的代码请放在/data/porpoise/cheats/{id}.ini中。",
  "None for this game": "此游戏没有",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "来自Dolphin列表的宽屏代码。“宽屏”设为“自动”或“开”时开启，画面为16:9。",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "该位置已有Porpoise的文件夹。请先将其移走或重命名，然后再试一次。"
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "该位置已有Porpoise的文件夹。请先将其移走或重命名，然后再试一次。",
+ "Sound preset": "声音预设",
+ "Responsive": "快速响应",
+ "Extra smooth": "更平滑",
+ "Classic (2.1)": "经典（2.1）",
+ "Fill audio gaps": "填补音频空隙",
+ "40 ms": "40 ms",
+ "80 ms": "80 ms",
+ "160 ms": "160 ms",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "平滑：游戏变慢时，Dolphin自己的混音器会像在PC上一样填补空隙，而不是出现爆音。快速响应预先准备的声音更少，延迟稍低。更平滑准备得更多，适合经常变慢的游戏。经典是Porpoise 2.1的声音。切换到经典或从经典切换，会在下次启动游戏时生效。",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "预先准备好的声音量。越多越能防止游戏变慢时出现爆音，但会稍有延迟。",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "游戏变慢时，刚播放过的声音会渐弱着填补空隙，而不是出现爆音。关闭后，空隙保持无声。",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "平滑：游戏变慢时，像PC上的Dolphin一样填补空隙。快速响应：延迟更低。更平滑：适合经常变慢的游戏。经典：2.1的声音，下次启动起生效。",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "经典是2.1的声音。平滑、快速响应和更平滑会在游戏变慢时填补空隙；下次启动游戏时生效。",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "Dolphin的精确声音芯片：能修正少数游戏中错误的声音，但需要多得多的处理器性能。下次启动游戏时生效。",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Wii遥控器扬声器发出的声音：混入电视的声音，或从手柄播放。下次启动游戏时生效。"
 }

@@ -32,4 +32,25 @@ std::size_t queued();
  * speakers are the clock that keeps a game at its real speed. Returns the
  * time spent waiting, in microseconds. */
 long wait_below(std::size_t frames, int timeout_ms);
+
+/* 2.1.2: the game's sound pulled from Dolphin's own mixer at the speakers'
+ * pace (the patched core's porpoise_audio_* functions), so the mixer fills the
+ * gaps when a game runs slow, as on a PC, instead of the queue running dry. */
+using PullFn = std::size_t (*)(std::int16_t *stereo, std::size_t frames, unsigned out_rate);
+using QueueFn = int (*)(unsigned *queued, unsigned *target, unsigned long long *pushed);
+using ConfigFn = int (*)(int pull, int buffer_ms, int fill_gaps);
+void start_pull(PullFn pull, QueueFn queue, ConfigFn config, int buffer_ms, bool fill_gaps);
+/* Settings > Audio while the game runs: the mixer's buffer and gap filling. */
+void set_pull_config(int buffer_ms, bool fill_gaps);
+/* Before the core goes: no call into it after this returns. */
+void stop_pull();
+bool pulling();
+/* The in-game menu: the game's sound stops; Porpoise's own still plays. */
+void set_pull_paused(bool paused);
+/* Fast forward: the game's sound is drained, not heard. */
+void set_fast_forward(bool on);
+/* Grains the mixer had nothing new for since the last call (the log). */
+unsigned take_gaps();
+/* The mixer's queue and its length, in granules (the log). */
+bool pull_queue(unsigned &queued, unsigned &target);
 } // namespace porpoise::audio

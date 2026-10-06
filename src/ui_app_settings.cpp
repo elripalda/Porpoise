@@ -487,12 +487,44 @@ void App::add_game_rows(Settings &t, bool per_game)
            "Sounds Wii games play from the Remote's own speaker (a bow, an item box): in the TV's sound, or from "
            "each player's controller, as on a Wii.",
            &t.wiimote_speaker, 0, {"Off", "TV", "Controller"});
-    choice("audio_buffer", "Audio buffer (beta)",
-           "How much sound is kept ready. Safe holds more, against crackling in demanding games, for a little delay.",
-           &t.audio_buffer, 0, {"Low", "Normal", "Safe"});
-    toggle("audio_stretch", "Audio stretching (beta)",
-           "When a game slows down, its sound slows with it, slightly lower, instead of crackling.",
-           &t.audio_stretch);
+    {
+        /* A preset sets the rows below at once (Settings::use_audio_preset). */
+        SettingRow r;
+        r.section = section;
+        r.key = "audio_preset";
+        r.label = tr("Sound preset");
+        r.help = tr("Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of "
+                    "crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, "
+                    "for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from "
+                    "Classic applies the next time a game starts.");
+        audio_preset_ = t.audio_preset();
+        r.int_value = &audio_preset_;
+        r.values = {tr("Smooth"), tr("Responsive"), tr("Extra smooth"), tr("Classic (2.1)")};
+        if (audio_preset_ == Settings::kAudioCustom)
+            r.values.push_back(tr("Custom"));
+        r.order = {0, 1, 2, 3};
+        rows_.push_back(r);
+    }
+    if (t.audio_pull)
+    {
+        choice("audio_buffer", "Audio buffer",
+               "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.",
+               &t.audio_buffer, 0, {"40 ms", "80 ms", "160 ms"});
+        toggle("audio_fill", "Fill audio gaps",
+               "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off "
+               "leaves the gap silent.",
+               &t.audio_fill);
+    }
+    else
+    {
+        choice("audio_buffer", "Audio buffer",
+               "How much sound is kept ready. Safe holds more, against crackling in demanding games, for a little "
+               "delay.",
+               &t.audio_buffer, 0, {"Low", "Normal", "Safe"});
+        toggle("audio_stretch", "Audio stretching",
+               "When a game slows down, its sound slows with it, slightly lower, instead of crackling.",
+               &t.audio_stretch);
+    }
     toggle("microphone", "Microphone (beta)",
            "The DualSense's microphone as the GameCube Microphone (Mario Party 6 and 7; R3 is its button) and the "
            "Wii Speak.",
@@ -1475,6 +1507,33 @@ void App::change_setting(int dir)
         mkdir((data_dir_ + "/game-settings").c_str(), 0777);
         game_.save_keys(game_settings_path(*game_for_), game_keys_);
         rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
+        return;
+    }
+    if (r.key == "audio_preset" || r.key == "audio_buffer" || r.key == "audio_fill" || r.key == "audio_stretch")
+    {
+        /* The sound rows follow each other: a preset sets several, and the
+         * preset shown follows the rows. */
+        const bool per_game = screen_ == Screen::GameSettings && game_for_;
+        Settings &t = per_game ? game_ : *settings_;
+        const std::string key = r.key; /* r goes with the rebuild */
+        if (key == "audio_preset")
+            t.use_audio_preset(audio_preset_);
+        if (per_game)
+        {
+            const std::vector<std::string> keys =
+                key == "audio_preset" ? std::vector<std::string>{"audio_pull", "audio_buffer", "audio_fill", "audio_stretch"}
+                                      : std::vector<std::string>{key};
+            for (const std::string &k : keys)
+                if (std::find(game_keys_.begin(), game_keys_.end(), k) == game_keys_.end())
+                    game_keys_.push_back(k);
+            mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+            game_.save_keys(game_settings_path(*game_for_), game_keys_);
+            build_game_settings();
+            return;
+        }
+        settings_->save(settings_path_);
+        settings_->write_core_options(options_path_);
+        build_settings();
         return;
     }
     if (r.key == "wide")

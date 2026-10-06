@@ -154,7 +154,7 @@ Settings are split into sections:
 |---|---|
 | **Video** | **Output resolution** (*Match the PS5* by default, or 1080p, 1440p, 4K), internal resolution (1080p by default; 4x and above marked *experimental*), **Widescreen** (see [Widescreen](#widescreen)), aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
 | **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
-| **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume; and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller), **audio buffer**, **audio stretching** and the **microphone** (see [Sound](#sound-beta)) |
+| **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume; the **sound preset**, **audio buffer** and **fill audio gaps** (see [Sound](#sound)); and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller) and the **microphone** |
 | **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, **fast forward buttons**, connected controllers; per game, **Console** (Auto, GameCube or Wii) for a game Porpoise detected wrong |
 | **Wii Remote** | Wii Remote setup, presets, setup before each Wii game, How to hold it, Wii controller, pointer, pointer speed, grip, motion, flick to shake |
 | **System** | Emulated CPU clock (50–300%), dual core, emulator on its own cores, exact multiply-add, fast disc loading, cheats, console language, progressive scan; and, in beta, **Wii widescreen**, **PAL games at 60 Hz**, **sensor bar** position, **start Wii discs in the Wii Menu**, the **GameCube boot animation** (see [Your own BIOS and Wii Menu](#your-own-bios-and-wii-menu-beta)) and **Online** (WiiConnect24 channels through WiiLink) |
@@ -200,18 +200,20 @@ Settings are split into sections:
 
 ### In-game menu
 Press **Options + touch pad** together while playing. The game pauses and the
-menu opens, with five tabs (**L1 / R1**), plus **Achievements** when the
+menu opens, with six tabs (**L1 / R1**), plus **Achievements** when the
 game has a RetroAchievements set:
 
 - **Game:** Resume, **Save state…** and **Load state…** (three slots, with
   pictures: pick a slot with left and right; saving over a used slot asks for a
   second press, and a spinner shows while the state is written), **Fast
-  forward** (2x or 4x), Volume, Quit to library and Close Porpoise.
+  forward** (2x or 4x), Quit to library and Close Porpoise.
 - **Video:** resolution, widescreen, aspect ratio, anti-aliasing, anisotropic
   filtering, screen filter and strength, border, FPS counter.
 - **Graphics:** shader compilation, texture cache, texture filtering, output
   resampling, per-pixel lighting, fog, overscan, duplicate frames, and **Save
   as a setup / Use a setup**.
+- **Audio:** volume, mute, the **sound preset**, audio buffer, fill audio
+  gaps, accurate audio, and the Wii Remote speaker in Wii games.
 - **Controls:** button layout, **Customize buttons** over the paused game,
   vibration, and the DualSense drawn with a line to every button saying which
   GameCube button it is.
@@ -235,20 +237,29 @@ that closed the menu never reaches the game.
   game starts and comes back in the library.
 - Music and effects each have their own switch and volume.
 
-### Sound (beta)
-Settings → Audio, for every game or one:
-- **Accurate audio:** Dolphin's exact sound chip (LLE) instead of its fast one.
+### Sound
+Settings → Audio, for every game or one (and the in-game menu's **Audio** tab):
+- **Sound preset:** *Smooth* (the default) pulls the game's sound from
+  Dolphin's own mixer, as Dolphin does on a PC: when a game runs slow, the
+  mixer covers the gap with the sound it just played, faded, instead of a
+  crackle. *Responsive* keeps less sound ready, for a little less delay;
+  *Extra smooth* keeps more, for games that slow down often; *Classic (2.1)*
+  is the sound of Porpoise 2.1. A change to or from Classic applies the next
+  time a game starts.
+- **Audio buffer:** how much sound is kept ready: 40, 80 or 160 ms (*Low*,
+  *Normal* or *Safe* with Classic). More holds off crackling when a game slows
+  down, for a little delay.
+- **Fill audio gaps:** on by default; off leaves the gaps silent. With
+  Classic, **Audio stretching** takes its place: the sound slows with the game,
+  slightly lower, instead of crackling.
+- **Accurate audio (beta):** Dolphin's exact sound chip (LLE) instead of its fast one.
   It fixes missing or wrong sound in a few games but needs much more of the
   processor, so turn it on for the game that needs it.
-- **Wii Remote speaker:** the sounds Wii games play from the Remote's own
+- **Wii Remote speaker (beta):** the sounds Wii games play from the Remote's own
   speaker. *TV* mixes them into the game's sound; *Controller* plays them from
   each player's DualSense, as on a Wii (if a controller's speaker can't be
   opened, they stay on the TV).
-- **Audio buffer:** *Low*, *Normal* or *Safe*. Safe keeps more sound ready,
-  against crackling in demanding games, for a little delay.
-- **Audio stretching:** when a game slows down, its sound slows with it,
-  slightly lower, instead of crackling.
-- **Microphone:** the DualSense's microphone becomes the GameCube Microphone
+- **Microphone (beta):** the DualSense's microphone becomes the GameCube Microphone
   (Mario Party 6 and 7: hold **R3** to talk) and the Wii Speak.
 
 ### Languages

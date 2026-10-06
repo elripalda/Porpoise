@@ -1177,5 +1177,20 @@
  "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.": "Dolphin 목록에는 이 게임용 항목이 없습니다. 직접 만든 코드는 /data/porpoise/cheats/{id}.ini에 넣으세요.",
  "None for this game": "이 게임에는 없음",
  "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.": "Dolphin 목록에 있는 와이드스크린 코드입니다. '와이드스크린'이 '자동'이나 '켜기'일 때 켜지며, 화면은 16:9가 됩니다.",
- "That place already has a Porpoise folder. Move or rename it first, then try again.": "그 위치에 이미 Porpoise 폴더가 있습니다. 먼저 옮기거나 이름을 바꾼 다음 다시 시도하세요."
+ "That place already has a Porpoise folder. Move or rename it first, then try again.": "그 위치에 이미 Porpoise 폴더가 있습니다. 먼저 옮기거나 이름을 바꾼 다음 다시 시도하세요.",
+ "Sound preset": "사운드 프리셋",
+ "Responsive": "빠른 반응",
+ "Extra smooth": "더 부드럽게",
+ "Classic (2.1)": "클래식 (2.1)",
+ "Fill audio gaps": "오디오 끊김 채우기",
+ "40 ms": "40 ms",
+ "80 ms": "80 ms",
+ "160 ms": "160 ms",
+ "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.": "부드럽게: 게임이 느려질 때 PC에서처럼 Dolphin 자체 믹서가 소리의 빈틈을 채워 지직거리지 않게 합니다. 빠른 반응은 준비해 두는 소리를 줄여 지연이 조금 줄어듭니다. 더 부드럽게는 더 많이 준비해 두어 자주 느려지는 게임에 좋습니다. 클래식은 Porpoise 2.1의 소리입니다. 클래식으로 바꾸거나 클래식에서 바꾸면 다음에 게임을 시작할 때 적용됩니다.",
+ "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.": "미리 준비해 두는 소리의 양입니다. 많을수록 게임이 느려질 때 소리가 지직거리는 것을 막지만, 소리가 약간 늦어집니다.",
+ "When a game runs slow, the sound it just played covers the gap, faded, instead of a crackle. Off leaves the gap silent.": "게임이 느려지면 지직거리는 대신 방금 재생된 소리가 페이드되며 빈틈을 채웁니다. 끄면 빈틈은 조용하게 남습니다.",
+ "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.": "부드럽게: 게임이 느려질 때 PC의 Dolphin처럼 빈틈을 채웁니다. 빠른 반응: 지연이 적습니다. 더 부드럽게: 자주 느려지는 게임용. 클래식: 2.1의 소리, 다음 시작부터.",
+ "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.": "클래식은 2.1의 소리입니다. 부드럽게, 빠른 반응, 더 부드럽게는 게임이 느려질 때 빈틈을 채우며, 다음에 게임을 시작할 때 적용됩니다.",
+ "Dolphin's exact sound chip: fixes wrong sound in a few games, but needs much more of the processor. Takes effect the next time the game starts.": "Dolphin의 정확한 사운드 칩입니다. 일부 게임의 잘못된 소리를 고치지만 프로세서를 훨씬 많이 씁니다. 다음에 게임을 시작할 때 적용됩니다.",
+ "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.": "Wii 리모컨 스피커의 소리를 TV 소리로 내거나 컨트롤러에서 냅니다. 다음에 게임을 시작할 때 적용됩니다."
 }

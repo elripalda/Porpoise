@@ -1486,6 +1486,26 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         else
             ps5::debug::mark("core: no Remote speaker export in this core");
     }
+    /* 2.1.2: the game's sound pulled from Dolphin's own mixer (porpoise_audio.hpp). */
+    if (playback.audio_pull)
+    {
+        auto pull = reinterpret_cast<porpoise::audio::PullFn>(ps5_core_dlsym(h.library, "porpoise_audio_pull"));
+        auto queue = reinterpret_cast<porpoise::audio::QueueFn>(ps5_core_dlsym(h.library, "porpoise_audio_queue"));
+        auto config =
+            reinterpret_cast<porpoise::audio::ConfigFn>(ps5_core_dlsym(h.library, "porpoise_audio_pull_config"));
+        if (pull && queue && config)
+            porpoise::audio::start_pull(pull, queue, config, playback.audio_buffer_ms, playback.audio_fill);
+        else
+            ps5::debug::mark("core: no audio pull in this core: its sound is pushed (Classic)");
+    }
+    else
+        ps5::debug::mark("core: Classic sound (pushed each frame)");
+    const bool pulling = porpoise::audio::pulling();
+    /* Where a frame's time goes (the log every 10 s). */
+    using PerfFn = unsigned (*)(double *, double *, double *);
+    const auto perf_take = reinterpret_cast<PerfFn>(ps5_core_dlsym(h.library, "porpoise_perf_take"));
+    if (perf_take)
+        perf_take(nullptr, nullptr, nullptr); /* from now */
     if (const char *cpus = std::getenv("PORPOISE_VIDEO_THREAD_CPUS"))
     {
         /* Emulator on its own cores (porpoise_main.cpp, keep_cores): this
@@ -1532,6 +1552,10 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     unsigned long long window_frames = 0, window_samples = 0;
     long long window_audio_wait_us = 0;
     double window_present_wait_ms = 0;
+    /* Each frame's parts, summed over the window (ns): the core's run, the
+     * overlay, the present, and the pacing waits. */
+    long long window_run_ns = 0, window_hook_ns = 0, window_present_ns = 0, window_pace_ns = 0;
+    long long window_run_max_ns = 0;
     double measured_fps = 0;
     long long fps_start = window_start;
     unsigned fps_frames = 0;
@@ -1590,6 +1614,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         if (!paused && combo_pressed && hooks.paused)
         {
             paused = true;
+            porpoise::audio::set_pull_paused(true);
             porpoise::audio::flush();
             if (hooks.opened)
                 hooks.opened(hooks.user);
@@ -1615,6 +1640,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 h.pending_state.clear();
                 h.api.reset();
                 porpoise::audio::flush();
+                porpoise::audio::set_pull_paused(false);
                 paused = false;
                 h.hold_input = true;
                 pacer.resync();
@@ -1660,6 +1686,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             if (answer == kMenuResume)
             {
                 paused = false;
+                porpoise::audio::set_pull_paused(false);
                 h.hold_input = true;
                 ps5::debug::mark("core: resumed");
             }
@@ -1677,8 +1704,15 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         /* Fast forward: several emulated frames for each one shown, without
          * their sound. */
         const int runs = h.fast_forward;
+        porpoise::audio::set_fast_forward(runs > 1);
+        const long long run_start = monotonic_ns();
         for (int i = 0; i < runs; ++i)
             h.api.run();
+        {
+            const long long run_ns = monotonic_ns() - run_start;
+            window_run_ns += run_ns;
+            window_run_max_ns = std::max(window_run_max_ns, run_ns);
+        }
         if (runs > 1)
             porpoise::audio::flush();
         /* A save state chosen in Details loads once the game is up. */
@@ -1690,7 +1724,8 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 std::fprintf(h.log, "[porpoise] could not load %s\n", path.c_str());
         }
 
-        if (!rate_checked && h.samples_in > 4096)
+        /* Pulled, the core pushes no sound: two seconds of frames instead. */
+        if (!rate_checked && (h.samples_in > 4096 || (pulling && frames > 120)))
         {
             rate_checked = true;
             retro_system_av_info now_av{};
@@ -1712,20 +1747,27 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             pacer.start(content_hz(), "game");
         }
 
+        const long long hook_start = monotonic_ns();
         if (hooks.frame)
             hooks.frame(h.have_frame, measured_fps, hooks.user);
+        const long long present_start = monotonic_ns();
         if (h.have_frame)
             porpoise::vk::present_core_frame(h.last_width, h.last_height, h.aspect, h.filter, h.strength);
         else
             porpoise::vk::present_clear(0, 0, 0);
         window_present_wait_ms += porpoise::vk::last_present_wait_ms();
+        const long long pace_start = monotonic_ns();
+        window_hook_ns += present_start - hook_start;
+        window_present_ns += pace_start - present_start;
 
-        /* The speakers: never run far ahead of what has been heard. */
-        if (rate_checked && runs == 1)
+        /* The speakers: never run far ahead of what has been heard (pushed
+         * sound only: pulled, the mixer keeps its own queue). */
+        if (rate_checked && runs == 1 && !pulling)
             window_audio_wait_us +=
                 porpoise::audio::wait_below(pacer.display_locked() ? kAudioBackstop : kAudioHighWater, 40);
 
         pacer.frame_done();
+        window_pace_ns += monotonic_ns() - pace_start;
 
         ++frames;
         ++window_frames;
@@ -1743,20 +1785,44 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         {
             const double secs = (now - window_start) / 1e9;
             const unsigned long long samples = h.samples_in - window_samples;
-            /* Emulated speed: the core's sound per wall second over its rate. */
+            /* Emulated speed: the core's sound per wall second over its rate
+             * (pushed), or its frames over the game's rate (pulled). */
+            const double speed = pulling ? 100.0 * window_frames / secs / (h.fps > 10.0 ? h.fps : 60.0)
+                                         : 100.0 * samples / secs / h.sample_rate;
             std::fprintf(h.log,
                          "[porpoise] %.2f frames/s (game %.3f), %.0f%% speed (%.0f audio frames/s at %.0f Hz), "
                          "%s, display wait %.1f ms/frame, queue %zu, waited %.1f ms/s for the speakers, players %d\n",
-                         window_frames / secs, h.fps, 100.0 * samples / secs / h.sample_rate, samples / secs,
-                         h.sample_rate, pacer.display_locked() ? "locked to the vblank" : "own clock",
+                         window_frames / secs, h.fps, speed, samples / secs, h.sample_rate,
+                         pacer.display_locked() ? "locked to the vblank" : "own clock",
                          window_frames ? window_present_wait_ms / window_frames : 0.0, porpoise::audio::queued(),
                          window_audio_wait_us / 1000.0 / secs, porpoise::pad::connected_count());
+            /* Where each frame's time went: what holds a game under its rate. */
+            if (window_frames)
+            {
+                const double n = double(window_frames);
+                double cpu_ms = 0, cpu_max_ms = 0, gpu_ms = 0;
+                const unsigned steps = perf_take ? perf_take(&cpu_ms, &cpu_max_ms, &gpu_ms) : 0;
+                std::fprintf(h.log,
+                             "[porpoise] frame time: core %.1f ms (max %.1f; Dolphin's CPU thread %.1f ms, max %.1f, "
+                             "video loop busy %.1f ms, %u steps), overlay %.1f ms, present %.1f ms, pacing %.1f ms\n",
+                             window_run_ns / 1e6 / n, window_run_max_ns / 1e6, cpu_ms, cpu_max_ms, gpu_ms, steps,
+                             window_hook_ns / 1e6 / n, window_present_ns / 1e6 / n, window_pace_ns / 1e6 / n);
+                if (pulling)
+                {
+                    unsigned q = 0, t = 0;
+                    porpoise::audio::pull_queue(q, t);
+                    std::fprintf(h.log, "[porpoise] sound: pulled, mixer queue %u of %u granules, %u gaps filled\n",
+                                 q, t, porpoise::audio::take_gaps());
+                }
+            }
             std::fflush(h.log);
             window_start = now;
             window_frames = 0;
             window_samples = h.samples_in;
             window_audio_wait_us = 0;
             window_present_wait_ms = 0;
+            window_run_ns = window_hook_ns = window_present_ns = window_pace_ns = 0;
+            window_run_max_ns = 0;
         }
     }
 
@@ -1764,6 +1830,9 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     h.fast_forward = 1;
     porpoise::mic::close_all(); /* no game listening any more */
     porpoise::speaker::stop();   /* before the core and its mixer go */
+    porpoise::audio::stop_pull(); /* likewise: no call into the core after this */
+    porpoise::audio::set_pull_paused(false);
+    porpoise::audio::set_fast_forward(false);
     porpoise::audio::flush();
     porpoise::vk::close();
     /* Everything Porpoise made on the core's device goes before the core

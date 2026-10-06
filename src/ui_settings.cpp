@@ -83,6 +83,8 @@ const Field kFields[] = {
     {"wiimote_speaker", &Settings::wiimote_speaker, nullptr, 0, 2},
     {"audio_buffer", &Settings::audio_buffer, nullptr, 0, 2},
     {"audio_stretch", nullptr, &Settings::audio_stretch, 0, 1},
+    {"audio_pull", nullptr, &Settings::audio_pull, 0, 1},
+    {"audio_fill", nullptr, &Settings::audio_fill, 0, 1},
     {"microphone", nullptr, &Settings::microphone, 0, 1},
     {"wii_widescreen", nullptr, &Settings::wii_widescreen, 0, 1},
     {"pal60", nullptr, &Settings::pal60, 0, 1},
@@ -770,6 +772,59 @@ void Settings::reset()
     folders = keep;
     std::memcpy(presets, own, sizeof own);
     std::memcpy(wii_buttons, wii, sizeof wii);
+}
+
+int Settings::audio_preset() const
+{
+    if (!audio_pull)
+        return 3; /* Classic */
+    if (!audio_fill)
+        return kAudioCustom;
+    switch (audio_buffer)
+    {
+    case 1:
+        return 0; /* Smooth */
+    case 0:
+        return 1; /* Responsive */
+    case 2:
+        return 2; /* Extra smooth */
+    default:
+        return kAudioCustom;
+    }
+}
+
+void Settings::use_audio_preset(int preset)
+{
+    switch (preset)
+    {
+    case 0: /* Smooth: Dolphin's mixer, as on a PC */
+        audio_pull = true;
+        audio_buffer = 1;
+        audio_fill = true;
+        break;
+    case 1: /* Responsive: less sound kept ready */
+        audio_pull = true;
+        audio_buffer = 0;
+        audio_fill = true;
+        break;
+    case 2: /* Extra smooth: more kept ready, for games that slow down often */
+        audio_pull = true;
+        audio_buffer = 2;
+        audio_fill = true;
+        break;
+    case 3: /* Classic: 2.1's sound */
+        audio_pull = false;
+        audio_buffer = 1;
+        audio_stretch = false;
+        break;
+    default:
+        break;
+    }
+}
+
+int Settings::audio_buffer_ms() const
+{
+    return audio_buffer <= 0 ? 40 : audio_buffer >= 2 ? 160 : 80;
 }
 
 std::vector<std::pair<std::string, std::string>> Settings::core_options() const

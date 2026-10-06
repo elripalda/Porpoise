@@ -20,7 +20,7 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "2.1.1";
+constexpr const char *kVersion = "2.1.2";
 constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 2, kVersionMinor = 1, kVersionPatch = 1;
 constexpr int kVersionBeta = 0; /* 0 for a final release; its betas come before it */
