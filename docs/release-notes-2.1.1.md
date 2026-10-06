@@ -4,8 +4,10 @@
 
 - **Achievements lists:** a new Achievements tab in the in-game menu, and each game's list from its Details (Square), with badges.
 - **Widescreen per game:** over 300 GameCube games now play in true 16:9 by default, with no pop-in at the edges. Widescreen codes by **Warped Polygon**.
-- **Patches tab** in the in-game menu: see the game's widescreen state and its cheats and patches at a glance.
-- RetroAchievements fixes, optimizations and fixes for reported bugs.
+- **Patches tab** in the in-game menu: the game's widescreen state and its cheats and patches at a glance, each with its own switch. Every game's settings have a **Cheats and patches** section too.
+- Achievement popups drawn over the game when the console's own can't show.
+- A clearer message, with the reason, when a game doesn't start.
+- RetroAchievements fixes, stability improvements, optimizations and fixes for reported bugs.
 
 Help and bug reports: **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**.
 

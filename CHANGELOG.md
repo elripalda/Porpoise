@@ -10,8 +10,9 @@
 - Achievement popups drawn by Porpoise when the console's own can't show.
 - A **Patches** tab in the in-game menu: the game's widescreen state and its
   cheats and patches, and a Cheats and patches section in every game's settings.
-- Clearer message when a game doesn't start.
-- RetroAchievements fixes, optimizations and fixes for reported bugs.
+- A clearer message, with the reason, when a game doesn't start.
+- RetroAchievements fixes, stability improvements, optimizations and fixes for
+  reported bugs.
 
 ## 2.1 — 2026-10-05
 

@@ -399,7 +399,8 @@ format, so copy games to it over FTP instead (for example into
 Porpoise's folder to extended storage* (or a USB drive) moves your settings,
 saves, save states, covers and texture packs, then Porpoise closes; open it
 again. If that drive isn't connected at the next start, Porpoise says so and
-uses the console's storage until it is.
+uses the console's storage until it is. A place that already has a Porpoise
+folder is left alone: move or rename that folder first.
 
 ### Widescreen
 
