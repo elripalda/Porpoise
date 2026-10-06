@@ -11,8 +11,6 @@
   rest, while you play.
 - Games no longer run faster than their own speed (some did on a PS5 set to
   120 Hz output).
-- Porpoise no longer closes at once when a jailbreak daemon (the Lapy daemon,
-  LegacyJB) frees it from the sandbox.
 - Optimizations and fixes for reported bugs.
 
 ## 2.1.1 — 2026-10-06

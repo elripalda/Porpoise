@@ -1808,7 +1808,7 @@ index 50497a7171..2e5629cfa6 100644
    Boot.cpp
    Host.cpp
 diff --git a/Source/Core/DolphinLibretro/Common/Options.cpp b/Source/Core/DolphinLibretro/Common/Options.cpp
-index 52791da8de..d19d9e7d6b 100644
+index 52791da8de..74bb0297af 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.cpp
 +++ b/Source/Core/DolphinLibretro/Common/Options.cpp
 @@ -1,6 +1,13 @@
@@ -1848,7 +1848,7 @@ index 52791da8de..d19d9e7d6b 100644
    {
      Libretro::Options::core::CHEATS_ENABLED,
      "Core > Internal Cheats",
-@@ -1876,9 +1899,62 @@ void Init()
+@@ -1876,9 +1899,61 @@ void Init()
    CheckForUpdatedVariables();
  }
  
@@ -1881,18 +1881,17 @@ index 52791da8de..d19d9e7d6b 100644
 +  // defaults (RetroArch reads it when the options are set, just after this), so
 +  // the first run of this profile sets it aside, recoverable, as the PPSSPP port
 +  // does. The folder is made first, open to FTP, so the marker exists even on a
-+  // console that has never saved Dolphin's options. Porpoise's own folder is the
-+  // working directory (a jailbreak that frees it leaves no /app0).
-+  const char* const folder = "./config/dolphin-emu";
-+  const char* const saved = "./config/dolphin-emu/dolphin-emu.opt";
-+  const char* const marker = "./config/dolphin-emu/ps5-default-profile-v1";
++  // console that has never saved Dolphin's options.
++  const char* const folder = "/app0/config/dolphin-emu";
++  const char* const saved = "/app0/config/dolphin-emu/dolphin-emu.opt";
++  const char* const marker = "/app0/config/dolphin-emu/ps5-default-profile-v1";
 +  struct stat status;
 +  if (stat(marker, &status) == 0)
 +    return;
 +  if (mkdir(folder, 0777) == 0)
 +    chmod(folder, 0777);
 +  if (stat(saved, &status) == 0)
-+    std::rename(saved, "./config/dolphin-emu/dolphin-emu.opt.before-ps5-profile");
++    std::rename(saved, "/app0/config/dolphin-emu/dolphin-emu.opt.before-ps5-profile");
 +  const int fd = open(marker, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 +  if (fd >= 0)
 +  {

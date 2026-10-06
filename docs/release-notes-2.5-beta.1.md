@@ -6,7 +6,6 @@
 - **Sound presets** in **Settings → Audio**: Smooth, Responsive, Extra smooth and Classic (2.1), with the audio buffer and gap filling on their own rows.
 - An **Audio** tab in the in-game menu: volume, mute, the sound preset and the rest, while you play.
 - Games no longer run faster than their own speed.
-- Porpoise no longer closes at once when a jailbreak daemon frees it from the sandbox.
 - Optimizations and fixes for reported bugs.
 
 > [!WARNING]
@@ -23,4 +22,4 @@
 
 Porpoise contains no games, BIOS or firmware. Play only games you own. Not affiliated with Nintendo, Sony or RetroAchievements. Licenses are in `licenses/README.txt` inside the zip.
 
-`Porpoise-2.5-beta.1.zip` SHA-256: `80986b4fe4b63f0b08ba8e51df8a1b2e31f358d567f7dd375475f4054fd041c9`
+`Porpoise-2.5-beta.1.zip` SHA-256: `(set after the build)`
