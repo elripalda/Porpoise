@@ -2564,7 +2564,7 @@ App::Action App::update_browser(bool up, bool down)
         /* A game: offer to copy it to the console's own storage, unless it's
          * there already. */
         const std::string home = data_dir_ + "/games";
-        if (data_dir_ == "/app0/porpoise" || browse_path_ == home)
+        if (data_dir_ == PORPOISE_APP "/porpoise" || browse_path_ == home)
         {
             sfx(Sound::MovingTab);
             return Action::None;
@@ -2721,7 +2721,7 @@ void App::draw_browser()
         right.push_back({Glyph::Square, "Use this folder"});
     right.push_back({Glyph::Triangle, browse_path_.empty() ? "Whole system" : "Drives"});
     const bool on_game = browse_row_ < n && browse_entries_[std::size_t(browse_row_)].kind == BrowseEntry::Game;
-    const bool can_copy = on_game && data_dir_ != "/app0/porpoise" && browse_path_ != data_dir_ + "/games";
+    const bool can_copy = on_game && data_dir_ != PORPOISE_APP "/porpoise" && browse_path_ != data_dir_ + "/games";
     std::vector<std::pair<Glyph, std::string>> left;
     if (!on_game && n > 0)
         left.push_back({Glyph::Cross, "Open"});

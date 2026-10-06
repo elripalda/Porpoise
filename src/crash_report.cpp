@@ -16,6 +16,7 @@
  * signal arrives.
  */
 
+#include "porpoise_paths.hpp"
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
@@ -67,7 +68,7 @@ void report(int signal, siginfo_t *info, void *context_pointer)
         static_cast<unsigned long long>(rip), static_cast<unsigned long long>(rsp),
         static_cast<unsigned long long>(top),
         static_cast<unsigned long long>(reinterpret_cast<std::uintptr_t>(&report)), flexible);
-    const int fd = open("/app0/trace.txt", O_WRONLY | O_APPEND);
+    const int fd = open(PORPOISE_APP "/trace.txt", O_WRONLY | O_APPEND);
     if (fd >= 0 && length > 0)
         (void)!write(fd, line, static_cast<std::size_t>(length));
     /* Sixteen more stack words: with frame pointers omitted, the callers'

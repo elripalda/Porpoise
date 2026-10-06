@@ -27,13 +27,20 @@
  * cloned its own credential first (prepare(), called before any thread). So
  * each round publishes all three names; whichever daemon is up takes its own.
  *
- * Every step goes to trace.txt. Nothing here runs when /data is reachable. */
+ * Every step goes to trace.txt. Nothing here runs when /data is reachable.
+ *
+ * A daemon that frees Porpoise this way (the Lapy daemon, LegacyJB) also sets
+ * its root to the console's, where /app0 doesn't exist: before 2.1.2 every
+ * file Porpoise opened after that, its trace included, failed, and it closed
+ * at once. Its files are now found from the working directory (main() sets
+ * it to /app0 first), which the daemons leave alone. */
 #include "porpoise_jailbreak.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
 #include <initializer_list>
+#include <string>
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
@@ -234,7 +241,20 @@ bool ensure()
         {
             if (data_reachable())
             {
-                note("jailbreak: /data is reachable now (round %d)", round);
+                /* Freed. Porpoise's own files are found from the working
+                 * directory (porpoise_paths.hpp): a daemon that moved this
+                 * process's root to the console's leaves no /app0. */
+                note("jailbreak: /data is reachable now (round %d); app files %d, /app0 %d", round,
+                     access("eboot.bin", F_OK) == 0, access("/app0/eboot.bin", F_OK) == 0);
+                /* A daemon that moved the working directory too: Porpoise's
+                 * folder where the console mounts it from. */
+                if (access("eboot.bin", F_OK) != 0)
+                    for (const char *dir : {"/app0", "/mnt/sandbox/PPSA99764_000/app0", "/data/homebrew/PPSA99764"})
+                        if (chdir(dir) == 0 && access("eboot.bin", F_OK) == 0)
+                        {
+                            ps5::debug::mark((std::string("jailbreak: Porpoise's files are in ") + dir).c_str());
+                            break;
+                        }
                 return true;
             }
             sceKernelUsleep(16667);

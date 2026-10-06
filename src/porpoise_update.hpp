@@ -16,6 +16,7 @@
  * Everything runs on a worker thread; progress() says how far it is. */
 #pragma once
 
+#include "porpoise_paths.hpp"
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -72,7 +73,7 @@ Progress progress();
  * answer is written to cache_path. */
 void start_check(const std::string &cache_path);
 /* Downloads the release and puts it in app_dir; the zip is held in memory. */
-void start_install(const Release &release, const std::string &app_dir = "/app0");
+void start_install(const Release &release, const std::string &app_dir = PORPOISE_APP);
 /* Back to Idle once the UI has shown the result. */
 void acknowledge();
 } // namespace porpoise::update

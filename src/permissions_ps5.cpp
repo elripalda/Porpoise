@@ -24,6 +24,7 @@
  * them. Only permission bits change; no file's contents are touched.
  */
 
+#include "porpoise_paths.hpp"
 #include <cerrno>
 #include <cstdarg>
 #include <cstdio>
@@ -162,7 +163,7 @@ void *repair_thread(void *)
 {
     const double start = now_ms();
     RepairCounts counts;
-    repair("/app0", kRepairDepth, counts);
+    repair(PORPOISE_APP, kRepairDepth, counts);
     char line[160];
     std::snprintf(line, sizeof(line),
                   "permissions: /app0 checked=%u repaired=%u refused=%u in %.1f ms", counts.checked,

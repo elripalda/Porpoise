@@ -1685,7 +1685,19 @@ int main()
 {
 #endif
     g_main_ns = now_ns();
+#ifndef PORPOISE_DESKTOP
+    /* Porpoise's own files are found from here (porpoise_paths.hpp): a
+     * jailbreak that frees Porpoise moves its root to the console's, where
+     * /app0 isn't, but keeps this. Before anything opens a file. */
+    const int at_app = chdir("/app0");
+    mkdir(PORPOISE_APP "/tmp", 0777);
+    setenv("TMPDIR", PORPOISE_APP "/tmp", 1); /* the platform layer's tmpfile */
+#endif
     ps5::debug::mark("Porpoise: main() entered");
+#ifndef PORPOISE_DESKTOP
+    if (at_app != 0)
+        ps5::debug::mark_value("main: chdir(/app0) failed; errno", errno);
+#endif
     /* Before any thread is started: clone this process's credential, so a Lapy
      * owned-root daemon will free it later (choose_data_dir -> jailbreak). */
     porpoise::jailbreak::prepare();

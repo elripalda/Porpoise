@@ -6,6 +6,7 @@
 - **Sound presets** in **Settings → Audio**: Smooth, Responsive, Extra smooth and Classic (2.1), with the audio buffer and gap filling on their own rows.
 - An **Audio** tab in the in-game menu: volume, mute, the sound preset and the rest, while you play.
 - Games no longer run faster than their own speed.
+- Porpoise no longer closes at once when a jailbreak daemon frees it from the sandbox.
 - Optimizations and fixes for reported bugs.
 
 > [!WARNING]

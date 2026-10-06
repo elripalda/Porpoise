@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include "porpoise_paths.hpp"
 #include "gfx/include/vulkan/vulkan.h"
 
 #include <cstdio>
@@ -296,14 +297,14 @@ VKAPI_ATTR VkResult VKAPI_CALL traced_acquire(VkDevice device, VkSwapchainKHR sw
 
 extern "C" void ps5_vulkan_profile_init()
 {
-    FILE *config = std::fopen("/app0/gpu-profile.txt", "r");
+    FILE *config = std::fopen(PORPOISE_APP "/gpu-profile.txt", "r");
     if (!config)
         return;
     unsigned seconds = 0;
     const int parsed = std::fscanf(config, "%u", &seconds);
     std::fclose(config);
     // Consume the opt-in so a later manual launch cannot inherit the experiment.
-    std::remove("/app0/gpu-profile.txt");
+    std::remove(PORPOISE_APP "/gpu-profile.txt");
     if (parsed == 1 && seconds >= 1 && seconds <= 60)
     {
         profile.configure(seconds);
@@ -335,7 +336,7 @@ extern "C" void ps5_vulkan_profile_end()
     profile.finish(PS5_VULKAN_PROFILE_NOW());
     if (profile.finished)
     {
-        FILE *out = std::fopen("/app0/gpu-profile.tsv", "w");
+        FILE *out = std::fopen(PORPOISE_APP "/gpu-profile.tsv", "w");
         if (!out)
         {
             std::fputs("gpu profile: could not open result file\n", stderr);

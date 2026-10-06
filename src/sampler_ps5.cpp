@@ -22,6 +22,7 @@
  * Testing only: enabled by /app0/ps5-sampler.txt, which is never shipped.
  */
 
+#include "porpoise_paths.hpp"
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
@@ -462,7 +463,7 @@ static std::uint64_t stack_top(pthread_t thread)
 /* Starts the sampler on the calling thread when /app0/ps5-sampler.txt exists. */
 extern "C" void ps5_sampler_start()
 {
-    std::FILE *const flag = std::fopen("/app0/ps5-sampler.txt", "rb");
+    std::FILE *const flag = std::fopen(PORPOISE_APP "/ps5-sampler.txt", "rb");
     if (flag == nullptr)
         return;
     char line[64];

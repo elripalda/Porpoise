@@ -17,7 +17,7 @@ struct Paths
 #ifdef PORPOISE_DESKTOP
     const char *core = "./cores/dolphin_libretro.dll";
 #else
-    const char *core = "/app0/cores/dolphin_libretro.so";
+    const char *core = PORPOISE_APP "/cores/dolphin_libretro.so";
 #endif
     const char *system = PORPOISE_APP "/system";       /* Dolphin reads <system>/dolphin-emu/Sys */
     const char *saves = PORPOISE_APP "/savefiles";
