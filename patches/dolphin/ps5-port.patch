@@ -1956,7 +1956,7 @@ index 1a1915cd1d..c6ee649d84 100644
    }
  #if defined(ANDROID) && defined(_DEBUG)
 diff --git a/Source/Core/DolphinLibretro/Main.cpp b/Source/Core/DolphinLibretro/Main.cpp
-index cd8753b666..f9c0821ab6 100644
+index cd8753b666..d44103edeb 100644
 --- a/Source/Core/DolphinLibretro/Main.cpp
 +++ b/Source/Core/DolphinLibretro/Main.cpp
 @@ -1,4 +1,5 @@
@@ -2040,7 +2040,7 @@ index cd8753b666..f9c0821ab6 100644
    Libretro::environ_cb = cb;
  #ifdef PERF_TEST
    environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf_cb);
-@@ -203,8 +261,70 @@ void retro_reset(void)
+@@ -203,8 +261,74 @@ void retro_reset(void)
    Core::System::GetInstance().GetProcessorInterface().ResetButton_Tap();
  }
  
@@ -2072,6 +2072,9 @@ index cd8753b666..f9c0821ab6 100644
 +}
 +#endif
 +
++// Inside the extern "C" block: C++ names, as Core.cpp and Fifo.cpp define them.
++extern "C++"
++{
 +namespace Core
 +{
 +extern std::atomic<long long> g_porpoise_cpu_ns;
@@ -2082,6 +2085,7 @@ index cd8753b666..f9c0821ab6 100644
 +{
 +extern std::atomic<long long> g_porpoise_gpu_ns;
 +}  // namespace Fifo
++}
 +
 +// Porpoise: where a frame's time goes, since the last call. cpu_ms: the CPU thread's run of
 +// a frame step on average; cpu_max_ms: the longest; gpu_ms: the video loop's busy time per
@@ -2111,7 +2115,7 @@ index cd8753b666..f9c0821ab6 100644
    Libretro::Input::InitSensors();
    Libretro::Options::CheckForUpdatedVariables();
    Libretro::FrameTiming::CheckForFastForwarding();
-@@ -482,6 +602,7 @@ void retro_run(void)
+@@ -482,6 +606,7 @@ void retro_run(void)
    RETRO_PERFORMANCE_INIT(dolphin_main_func);
    RETRO_PERFORMANCE_START(dolphin_main_func);
  
@@ -2119,7 +2123,7 @@ index cd8753b666..f9c0821ab6 100644
    if (system.IsDualCoreMode())
    {
      Core::DoFrameStep(system);
-@@ -491,6 +612,7 @@ void retro_run(void)
+@@ -491,6 +616,7 @@ void retro_run(void)
    {
      system.GetCPU().RunSingleFrame();
    }
