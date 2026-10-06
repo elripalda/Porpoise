@@ -1,5 +1,58 @@
 # Changelog
 
+## 2.1 — 2026-10-05
+
+RetroAchievements with PS5-style trophy popups, your own cheats folder,
+custom buttons for every Wii controller, Porpoise's folder on extended
+storage or a USB drive, an Online switch for WiiLink, and fixes for what
+players reported after 2.0.
+
+### RetroAchievements (softcore)
+- **Sign in from the library:** **L1 + Square** (or Settings → Games →
+  RetroAchievements) opens the account panel, with an on-screen keyboard.
+  Porpoise keeps a sign-in token in `retroachievements.ini`, never your
+  password. Sign out from the same panel.
+- **Unlocks pop up like PS5 trophies:** the achievement's badge, its title and
+  the trophy sound, in the PS5's own notifications (the Trophies channel, so
+  your trophy notification settings apply). Completing a game plays the
+  platinum sound. When a game starts, a popup says how many you've unlocked.
+- The popups go through your jailbreak's ELF loader (port 9021), as PS5SX2's
+  do; without one they're plain notifications.
+- Dolphin's own RetroAchievements support, built into the PS5 core: every disc
+  format Porpoise plays is recognized, and save states keep your progress.
+  Softcore only: hardcore mode isn't available.
+- Leaving a game waits a few seconds for an unlock still being sent.
+
+### Cheats and buttons
+- **Your own cheats folder:** put a game's codes in `/data/porpoise/cheats/`
+  as `<game ID>.ini` (Dolphin's format, Action Replay or Gecko) and they turn
+  on by themselves when the game starts. Each shows in the game's **Cheats**
+  with its own switch. Wiimmfi's online patch codes go here too.
+- **Customize buttons for Wii controllers:** Remote + Nunchuk, Remote,
+  Sideways and Classic each get their own layout (Settings → Controls →
+  Customize buttons, L1 / R1 pick the controller).
+
+### Video and system
+- **Output resolution** is now the first row of Video, and **Match the PS5**
+  is the default: Porpoise keeps the console's own output, so the TV doesn't
+  switch modes when Porpoise opens.
+- **Online (beta)** (Settings → System): WiiConnect24 channels through
+  WiiLink.
+- **Move Porpoise's folder** (Settings → Games) to extended storage, a second
+  extended drive or a USB drive: settings, saves, save states, covers and
+  texture packs move together, with a progress bar and Circle to stop.
+
+### Fixes
+- The **Custom textures** row no longer disappears from Details after you play.
+- A game with a texture pack says so as it starts: **Custom textures: N found**.
+- Porpoise asks the jailbreak to leave the app sandbox before anything else
+  starts, which should stop it closing right after Lapy frees it.
+- The sandbox message has **Don't show again**, and Settings → Games →
+  *Sandbox message at start* turns it back on.
+
+### Coming in 2.5
+- **Netplay** is next: playing GameCube and Wii games together online.
+
 ## 2.0 — 2026-10-05
 
 A big update: faster and steadier games, WiiWare, Virtual Console and

@@ -15,6 +15,7 @@
 #include "porpoise_platform.hpp"
 #endif
 #include "porpoise_mic.hpp"
+#include "porpoise_ra.hpp"
 #include "porpoise_speaker.hpp"
 #include "porpoise_states.hpp"
 
@@ -1274,9 +1275,13 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         game.data = bytes.data();
         game.size = bytes.size();
     }
+    /* RetroAchievements: the account and Porpoise's network go to the core
+     * before the game boots (it loads the game's set as it does). */
+    porpoise::ra::start_game(h.library);
     if (!h.api.load_game(&game))
     {
         ps5::debug::mark("core: retro_load_game refused the game");
+        porpoise::ra::end_game();
         h.api.deinit();
         unload_core();
         return Exit::Failed;
@@ -1323,6 +1328,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         ps5::debug::mark("core: did not ask for Vulkan; Porpoise needs it");
         porpoise::mic::close_all();
         h.api.unload_game();
+        porpoise::ra::end_game();
         h.api.deinit();
         unload_core();
         return Exit::Failed;
@@ -1337,6 +1343,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     {
         porpoise::mic::close_all();
         h.api.unload_game();
+        porpoise::ra::end_game();
         h.api.deinit();
         unload_core();
         return Exit::Failed;
@@ -1647,7 +1654,10 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     porpoise::vk::close_device();
     if (h.hw.context_destroy)
         h.hw.context_destroy();
+    /* An unlock still on its way gets a few seconds before the game goes. */
+    porpoise::ra::finish_game(h.library, 5000);
     h.api.unload_game();
+    porpoise::ra::end_game();
     h.api.deinit();
     unload_core();
     ps5::debug::mark("core: game closed");

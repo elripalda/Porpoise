@@ -62,7 +62,7 @@ const Field kFields[] = {
     {"custom_textures", nullptr, &Settings::custom_textures, 0, 1},
     {"skip_dupes", nullptr, &Settings::skip_dupes, 0, 1},
     {"vsync", nullptr, &Settings::vsync, 0, 1},
-    {"output_res", &Settings::output_res, nullptr, 0, 2},
+    {"output_res", &Settings::output_res, nullptr, 0, 3},
     {"fast_states", nullptr, &Settings::fast_states, 0, 1},
     {"quick_resume", nullptr, &Settings::quick_resume, 0, 1},
     {"volume", &Settings::volume, nullptr, 0, 10},
@@ -74,6 +74,7 @@ const Field kFields[] = {
     {"button_layout", &Settings::button_layout, nullptr, 0, 5},
     {"rumble", nullptr, &Settings::rumble, 0, 1},
     {"ff_buttons", nullptr, &Settings::ff_buttons, 0, 1},
+    {"sandbox_notice", nullptr, &Settings::sandbox_notice, 0, 1},
     {"console", &Settings::console, nullptr, 0, 2},
     {"dsp_accurate", nullptr, &Settings::dsp_accurate, 0, 1},
     {"wiimote_speaker", &Settings::wiimote_speaker, nullptr, 0, 2},
@@ -85,6 +86,7 @@ const Field kFields[] = {
     {"sensor_bar", &Settings::sensor_bar, nullptr, 0, 1},
     {"wii_menu_boot", nullptr, &Settings::wii_menu_boot, 0, 1},
     {"gc_bios", nullptr, &Settings::gc_bios, 0, 1},
+    {"wii_online", nullptr, &Settings::wii_online, 0, 1},
     {"wii_controller", &Settings::wii_controller, nullptr, 0, 4},
     {"wii_pointer", &Settings::wii_pointer, nullptr, 0, 2},
     {"wii_speed", &Settings::wii_speed, nullptr, 0, 10},
@@ -283,6 +285,31 @@ bool Settings::load(const std::string &path, bool overlay)
             }
             continue;
         }
+        if (k.size() == 11 && k.rfind("wiibuttons", 0) == 0 && k[10] >= '1' && k[10] <= '4')
+        {
+            /* The player's own Wii buttons: sixteen controls, a permutation. */
+            if (overlay)
+                continue;
+            int row[porpoise::pad::CtlCount];
+            bool seen[porpoise::pad::CtlCount] = {};
+            bool ok = true;
+            const char *c = v.c_str();
+            for (int i = 0; i < porpoise::pad::CtlCount && ok; ++i)
+            {
+                char *end = nullptr;
+                const long n = std::strtol(c, &end, 10);
+                ok = end != c && n >= 0 && n < porpoise::pad::CtlCount && !seen[n];
+                if (ok)
+                {
+                    row[i] = int(n);
+                    seen[n] = true;
+                    c = end;
+                }
+            }
+            if (ok) /* anything else (damaged) keeps Porpoise's */
+                std::memcpy(wii_buttons[k[10] - '1'], row, sizeof row);
+            continue;
+        }
         if (k.rfind("map_", 0) == 0)
         {
             /* 1.0 kept a single custom layout in map_* keys: it becomes the
@@ -320,6 +347,10 @@ bool Settings::load(const std::string &path, bool overlay)
      * game each time it draws something new; asynchronous ubershaders are the
      * default now. And the old two-way layout switch is gone: everyone starts
      * on the GameCube layout, PlayStation and Custom are a choice away. */
+    /* 13: Output resolution gained "Match the PS5" first (and the default):
+     * a chosen 1440p or 4K moves up one; 1080p, the old default, matches. */
+    if (!overlay && version < 13 && output_res > 0)
+        output_res = std::min(output_res + 1, 3);
     if (!overlay && version < 11 && shader_mode == 0)
         shader_mode = 2;
     /* 1.1: Smooth / Sharp became the first two screen filters. */
@@ -341,7 +372,7 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = std::fopen(tmp.c_str(), "w");
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 12\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 13\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     std::fprintf(f, "border = %s\n", border.c_str());
@@ -350,6 +381,13 @@ bool Settings::save(const std::string &path) const
         std::fprintf(f, "layout%d =", p + 1);
         for (int i = 0; i < porpoise::pad::GcCount; ++i)
             std::fprintf(f, " %d", presets[p][i]);
+        std::fprintf(f, "\n");
+    }
+    for (int s = 0; s < kWiiButtonSets; ++s)
+    {
+        std::fprintf(f, "wiibuttons%d =", s + 1);
+        for (int i = 0; i < porpoise::pad::CtlCount; ++i)
+            std::fprintf(f, " %d", wii_buttons[s][i]);
         std::fprintf(f, "\n");
     }
     for (int p = 0; p < kWiiPresets; ++p)
@@ -697,9 +735,12 @@ void Settings::reset()
     const std::vector<std::string> keep = folders;
     int own[kPresets][porpoise::pad::GcCount];
     std::memcpy(own, presets, sizeof own);
+    int wii[kWiiButtonSets][porpoise::pad::CtlCount];
+    std::memcpy(wii, wii_buttons, sizeof wii);
     *this = Settings{};
     folders = keep;
     std::memcpy(presets, own, sizeof own);
+    std::memcpy(wii_buttons, wii, sizeof wii);
 }
 
 std::vector<std::pair<std::string, std::string>> Settings::core_options() const

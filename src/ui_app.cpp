@@ -355,6 +355,19 @@ App::Action App::update(const Input &in, double dt)
     if (in.stick_y < -0.55f) held_ |= BtnUp;
     if (in.stick_y > 0.55f) held_ |= BtnDown;
 
+    /* L1 alone changes tab as it's let go; L1 + Square is the account panel. */
+    if (pressed(BtnL1))
+    {
+        l1_armed_ = true;
+        l1_chord_ = false;
+    }
+    l1_tap_ = false;
+    if (!(held_ & BtnL1))
+    {
+        l1_tap_ = l1_armed_ && !l1_chord_;
+        l1_armed_ = false;
+    }
+
     const bool left = nav(BtnLeft, rep_left_, dt), right = nav(BtnRight, rep_right_, dt);
     const bool up = nav(BtnUp, rep_up_, dt), down = nav(BtnDown, rep_down_, dt);
     auto &games = lib_->games();
@@ -402,6 +415,8 @@ App::Action App::update(const Input &in, double dt)
     }
     if (dialog_.open)
         return update_dialog(left, right);
+    if (acct_.open)
+        return update_account(up, down, left, right);
     if (screen_ == Screen::Welcome)
         return update_welcome(left, right, dt);
     if (screen_ == Screen::Browse)
@@ -458,6 +473,13 @@ App::Action App::update(const Input &in, double dt)
         if (pressed(BtnCircle | BtnTriangle))
             screen_ = Screen::Main;
         return action;
+    }
+    if ((held_ & BtnL1) && pressed(BtnSquare) && ra_state_)
+    {
+        /* L1 + Square: RetroAchievements (the tab stays where it was). */
+        l1_chord_ = true;
+        open_account();
+        return Action::None;
     }
     if (starcube())
     {
@@ -561,7 +583,7 @@ App::Action App::update(const Input &in, double dt)
         return action;
     }
 
-    if (pressed(BtnL1))
+    if (l1_tap_)
         set_tab((int(tab_) + 2) % 3, -1);
     if (pressed(BtnR1))
         set_tab((int(tab_) + 1) % 3, +1);
@@ -757,6 +779,13 @@ void App::draw_check_mark(float cx, float cy, float size, bool ok)
     bar(cx - size * 0.06f, cy + size * 0.17f, cx + size * 0.23f, cy - size * 0.15f);
 }
 
+void App::show_sandbox_notice(const std::string &title, const std::string &message)
+{
+    open_dialog(DialogKind::SandboxNotice, title, message, tr("OK"));
+    dialog_.no = tr("Don't show again");
+    dialog_.choice = 1; /* OK first */
+}
+
 void App::close_dialog()
 {
     dialog_.open = false;
@@ -792,6 +821,17 @@ App::Action App::update_dialog(bool left, bool right)
         const DialogKind kind = dialog_.kind;
         const int choice = dialog_.choice;
         close_dialog();
+        if (kind == DialogKind::SandboxNotice)
+        {
+            if (choice == 0)
+            {
+                /* Don't show again: back on from Settings > Games. */
+                settings_->sandbox_notice = false;
+                settings_->save(settings_path_);
+                build_settings();
+            }
+            return Action::None;
+        }
         if (kind == DialogKind::Resume && resume_game_)
         {
             /* Resume, or Start Over: the saved spot goes and the game boots afresh. */
@@ -822,6 +862,13 @@ App::Action App::confirm_dialog(DialogKind kind)
         apply_language(settings_->ui_language, data_dir_ + "/lang");
         build_settings();
         return Action::SettingsChanged;
+    case DialogKind::MoveData:
+        if (move_pick_ >= 0 && move_pick_ < int(move_places_.size()))
+        {
+            move_target_ = move_places_[std::size_t(move_pick_)].second;
+            return Action::MoveData;
+        }
+        return Action::None;
     case DialogKind::Reinitialize:
     {
         /* Settings wiped (games' own too); games, folders, saves and states
@@ -940,6 +987,7 @@ App::Action App::confirm_dialog(DialogKind kind)
 
 void App::draw_dialog()
 {
+    draw_account(); /* under any dialog */
     if (!dialog_.open)
         return;
     Gfx &g = *g_;
@@ -1317,8 +1365,8 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
                        const std::vector<std::pair<Glyph, std::string>> &right_in, const std::string &center)
 {
     Gfx &g = *g_;
-    if (dialog_.open && !drawing_dialog_)
-        return; /* the dialog brings its own */
+    if ((dialog_.open || acct_.open) && !drawing_dialog_)
+        return; /* the dialog (or the account panel) brings its own */
     /* Every prompt is translated here, so callers write plain English. */
     std::vector<std::pair<Glyph, std::string>> left_tr, right_tr;
     for (const auto &p : left_in)
@@ -1818,6 +1866,20 @@ void App::draw_details(double time)
             facts.push_back({tr("Texture pack"), settings_->custom_textures ? trf("On ({id})", {{"id", details_tex_}})
                                                                              : trf("Found ({id}), turned off",
                                                                                    {{"id", details_tex_}})});
+    }
+    /* Nine fit. When there are more (full game info, play time and a texture
+     * pack), the least useful go first, so the texture pack and play time stay. */
+    for (const char *drop : {"Rating", "Players", "Genre", "Publisher"})
+    {
+        if (facts.size() <= 9)
+            break;
+        const std::string label = tr(drop);
+        for (auto it = facts.begin(); it != facts.end(); ++it)
+            if (it->first == label)
+            {
+                facts.erase(it);
+                break;
+            }
     }
     if (facts.size() > 9)
         facts.resize(9);

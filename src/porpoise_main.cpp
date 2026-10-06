@@ -13,6 +13,8 @@
  * game (src/porpoise_core.cpp). */
 #include "porpoise_paths.hpp"
 #include <algorithm>
+#include <atomic>
+#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -45,6 +47,7 @@
 #include "porpoise_pacer.hpp"
 #include "porpoise_aim.hpp"
 #include "porpoise_pad.hpp"
+#include "porpoise_ra.hpp"
 #include "porpoise_sound.hpp"
 #include "porpoise_states.hpp"
 #include "porpoise_update.hpp"
@@ -52,6 +55,7 @@
 #include "title_threads.hpp"
 #include "trace.hpp"
 #include "ui_app.hpp"
+#include "ui_cheats.hpp"
 #include "ui_app_common.hpp"
 #include "ui_gfx.hpp"
 #include "ui_i18n.hpp"
@@ -82,6 +86,24 @@ std::string g_data = PORPOISE_APP "/porpoise";
 std::string g_settings_path, g_options_path, g_saves_path, g_options_reference, g_core_log;
 
 bool g_sandboxed = false; /* /data out of reach even after asking the HEN */
+int g_freed = -1;         /* the HEN's answer, asked once at the very start (-1: not asked) */
+/* Porpoise's folder can live on another drive (Settings > Games > Move
+ * Porpoise's folder): /data/porpoise/location.txt names it. */
+std::string g_location_missing; /* named there but not connected */
+
+bool writable_dir(const std::string &dir)
+{
+    struct stat st;
+    if (stat(dir.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
+        return false;
+    const std::string probe = dir + "/.write-test";
+    std::FILE *f = std::fopen(probe.c_str(), "w");
+    if (!f)
+        return false;
+    std::fclose(f);
+    std::remove(probe.c_str());
+    return true;
+}
 
 /* Copies a file or a whole folder; what's already at `to` is left alone. */
 void copy_tree(const std::string &from, const std::string &to, int depth = 0)
@@ -146,10 +168,23 @@ void bring_over_app_folder_data()
 
 void choose_data_dir()
 {
-    if (porpoise::jailbreak::ensure())
+    if (g_freed >= 0 ? g_freed == 1 : porpoise::jailbreak::ensure())
     {
         g_data = PORPOISE_DATA;
         bring_over_app_folder_data();
+        if (std::FILE *f = std::fopen((g_data + "/location.txt").c_str(), "r"))
+        {
+            char line[512] = {0};
+            std::string where = std::fgets(line, sizeof line, f) ? line : "";
+            std::fclose(f);
+            while (!where.empty() && (where.back() == '\n' || where.back() == '\r' || where.back() == ' '))
+                where.pop_back();
+            if (!where.empty() && writable_dir(where))
+                g_data = where;
+            else if (!where.empty())
+                g_location_missing = where;
+            ps5::debug::mark(("main: Porpoise's folder is set to " + where).c_str());
+        }
     }
     else
         g_sandboxed = true;
@@ -158,6 +193,7 @@ void choose_data_dir()
     mkdir((g_data + "/games").c_str(), 0777);
     mkdir((g_data + "/saves").c_str(), 0777);
     mkdir((g_data + "/bios").c_str(), 0777); /* the player's own GameCube BIOS, if they have one */
+    mkdir((g_data + "/cheats").c_str(), 0777); /* the player's own codes, <game ID>.ini */
     g_settings_path = g_data + "/settings.ini";
     g_options_path = g_data + "/options.ini";
     g_saves_path = g_data + "/saves";
@@ -672,12 +708,13 @@ void apply_settings()
     porpoise::pad::set_mapping(g_settings.mapping());
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
     porpoise::pad::set_fast_forward_buttons(g_settings.ff_buttons);
+    porpoise::pad::set_wii_buttons(g_settings.wii_buttons);
     porpoise::pacer::set_vsync(g_settings.vsync);
     {
         /* Settings > Video > Output resolution: porpoise_vk reads it when the
          * display opens, before the settings are loaded. */
-        static const char *const kHeights[] = {"1080", "1440", "2160"};
-        const char *want = kHeights[std::clamp(g_settings.output_res, 0, 2)];
+        static const char *const kHeights[] = {"0", "1080", "1440", "2160"}; /* 0: match the console */
+        const char *want = kHeights[std::clamp(g_settings.output_res, 0, 3)];
         char have[8] = {0};
         if (std::FILE *f = std::fopen(PORPOISE_APP "/porpoise/output.txt", "r"))
         {
@@ -685,7 +722,7 @@ void apply_settings()
                 have[0] = 0;
             std::fclose(f);
         }
-        if (std::strncmp(have, want, 4) != 0)
+        if (std::strcmp(have, want) != 0)
             if (std::FILE *f = std::fopen(PORPOISE_APP "/porpoise/output.txt", "w"))
             {
                 std::fputs(want, f);
@@ -964,6 +1001,325 @@ void draw_motion_readout()
     g_gfx.panel(px - 3, py - 3, 6, 6, rgba(0xFFC85C), 1, 3);
 }
 
+/* ---- moving Porpoise's folder to another drive ------------------------------------------ */
+
+struct Mover
+{
+    std::string from, to;
+    std::atomic<long long> done{0}, total{0};
+    std::atomic<int> state{0}; /* 1 copying, 2 tidying the old folder, 3 done, 4 failed, 5 stopped */
+    std::atomic<bool> stop{false};
+    std::string error;
+};
+Mover g_mover;
+
+long long tree_bytes(const std::string &dir)
+{
+    long long n = 0;
+    if (DIR *d = opendir(dir.c_str()))
+    {
+        while (dirent *e = readdir(d))
+        {
+            const std::string name = e->d_name;
+            if (name == "." || name == "..")
+                continue;
+            struct stat st;
+            const std::string full = dir + "/" + name;
+            if (stat(full.c_str(), &st) != 0)
+                continue;
+            n += S_ISDIR(st.st_mode) ? tree_bytes(full) : (long long)st.st_size;
+        }
+        closedir(d);
+    }
+    return n;
+}
+
+/* Copies dir's contents into to; false on a failed write or a stop. The
+ * pointer file itself (location.txt) stays behind. */
+bool copy_into(const std::string &dir, const std::string &to, bool top, std::vector<char> &buf)
+{
+    mkdir(to.c_str(), 0777);
+    DIR *d = opendir(dir.c_str());
+    if (!d)
+        return false;
+    bool ok = true;
+    while (dirent *e = readdir(d))
+    {
+        const std::string name = e->d_name;
+        if (name == "." || name == ".." || (top && (name == "location.txt" || name == ".write-test")))
+            continue;
+        if (g_mover.stop.load())
+        {
+            ok = false;
+            break;
+        }
+        const std::string src = dir + "/" + name, dst = to + "/" + name;
+        struct stat st;
+        if (stat(src.c_str(), &st) != 0)
+            continue;
+        if (S_ISDIR(st.st_mode))
+        {
+            if (!copy_into(src, dst, false, buf))
+            {
+                ok = false;
+                break;
+            }
+            continue;
+        }
+        std::FILE *in = std::fopen(src.c_str(), "rb");
+        std::FILE *out = in ? std::fopen(dst.c_str(), "wb") : nullptr;
+        bool file_ok = in && out;
+        while (file_ok && !g_mover.stop.load())
+        {
+            const std::size_t n = std::fread(buf.data(), 1, buf.size(), in);
+            if (n == 0)
+                break;
+            file_ok = std::fwrite(buf.data(), 1, n, out) == n;
+            g_mover.done += (long long)n;
+        }
+        if (in)
+            std::fclose(in);
+        if (out)
+            file_ok = std::fclose(out) == 0 && file_ok;
+        if (!file_ok || g_mover.stop.load())
+        {
+            ok = false;
+            break;
+        }
+    }
+    closedir(d);
+    return ok;
+}
+
+/* Removes dir's contents (and dir, unless keep_top): location.txt at the top stays. */
+void remove_tree(const std::string &dir, bool top)
+{
+    if (DIR *d = opendir(dir.c_str()))
+    {
+        while (dirent *e = readdir(d))
+        {
+            const std::string name = e->d_name;
+            if (name == "." || name == ".." || (top && name == "location.txt"))
+                continue;
+            const std::string full = dir + "/" + name;
+            struct stat st;
+            if (stat(full.c_str(), &st) != 0)
+                continue;
+            if (S_ISDIR(st.st_mode))
+                remove_tree(full, false);
+            else
+                std::remove(full.c_str());
+        }
+        closedir(d);
+    }
+    if (!top)
+        rmdir(dir.c_str());
+}
+
+void *mover_worker(void *)
+{
+    std::vector<char> buf(std::size_t(4) << 20);
+    const bool ok = copy_into(g_mover.from, g_mover.to, true, buf);
+    if (!ok)
+    {
+        /* Stopped or failed: the half copy goes, the folder stays where it was. */
+        remove_tree(g_mover.to, false);
+        if (g_mover.stop.load())
+            g_mover.state = 5;
+        else
+        {
+            g_mover.error = "The move didn't finish (the drive may be full or not writable). Porpoise's folder "
+                            "stays where it was.";
+            g_mover.state = 4;
+        }
+        return nullptr;
+    }
+    /* Everything is there: the pointer, then the old copy goes. */
+    g_mover.state = 2;
+    const std::string pointer = std::string(PORPOISE_DATA) + "/location.txt";
+    if (g_mover.to == PORPOISE_DATA)
+        std::remove(pointer.c_str());
+    else if (std::FILE *f = std::fopen(pointer.c_str(), "w"))
+    {
+        std::fprintf(f, "%s\n", g_mover.to.c_str());
+        std::fclose(f);
+    }
+    remove_tree(g_mover.from, g_mover.from == PORPOISE_DATA);
+    g_mover.state = 3;
+    return nullptr;
+}
+
+void draw_mover(double hz)
+{
+    g_time += 1.0 / hz;
+    begin_ui_frame(0.6f);
+    g_app.draw(g_time);
+    using namespace porpoise::ui;
+    g_gfx.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.6f), 1, 0);
+    g_gfx.panel(560, 380, 800, 320, rgba(0x0F1F63, 0.92f), 0.9f, 28, rgba(0x8FB4FF, 0.9f), 2.0f, 12, 0.15f);
+    const int state = g_mover.state.load();
+    g_gfx.text_mid(Font::Bold, 40, 960, 450, rgba(0xFFFFFF), Align::Center,
+                   tr(state == 2 ? "Tidying up the old folder\xE2\x80\xA6" : "Moving Porpoise's folder\xE2\x80\xA6"));
+    const double total = double(std::max(1LL, g_mover.total.load()));
+    const float part = float(std::min(1.0, double(g_mover.done.load()) / total));
+    g_gfx.panel(620, 520, 680, 26, rgba(0x07102E, 0.9f), 1, 13, rgba(0x3D4F9E, 0.9f), 1.4f);
+    g_gfx.panel(620, 520, std::max(26.0f, 680 * part), 26, rgba(0x5CD3FF, 0.95f), 1, 13);
+    char amount[96];
+    std::snprintf(amount, sizeof amount, "%.1f / %.1f GB", double(g_mover.done.load()) / 1e9, total / 1e9);
+    g_gfx.text_mid(Font::SemiBold, 28, 960, 590, rgba(0xC9D6FF), Align::Center, amount);
+    if (state == 1)
+        g_gfx.text_mid(Font::Regular, 24, 960, 645, rgba(0x9FB0E8), Align::Center, tr("Circle: stop (nothing changes)"));
+    porpoise::vk::present_clear(0, 0, 0);
+    porpoise::sound::pump();
+    g_pacer.frame_done();
+}
+
+/* Settings > Games > Move Porpoise's folder: everything copied to the drive,
+ * the pointer written, the old copy removed; then Porpoise closes so it opens
+ * from there. */
+void move_data(const std::string &to, double hz)
+{
+    ps5::debug::mark(("main: moving Porpoise's folder from " + g_data + " to " + to).c_str());
+    g_mover.from = g_data;
+    g_mover.to = to;
+    g_mover.done = 0;
+    g_mover.total = tree_bytes(g_data);
+    g_mover.stop = false;
+    g_mover.error.clear();
+    g_mover.state = 1;
+    porpoise::covers::stop();
+    pthread_t thread;
+    const bool threaded = create_title_thread(&thread, mover_worker, nullptr) == 0;
+    if (!threaded)
+        mover_worker(nullptr);
+    while (g_mover.state.load() == 1 || g_mover.state.load() == 2)
+    {
+        const porpoise::pad::State &pad = porpoise::pad::poll();
+        if ((pad.buttons & porpoise::pad::BtnCircle) && g_mover.state.load() == 1)
+            g_mover.stop = true;
+        draw_mover(hz);
+    }
+    if (threaded)
+        pthread_join(thread, nullptr);
+    const int state = g_mover.state.load();
+    ps5::debug::mark_value("main: the move ended, state", state);
+    if (state == 3)
+    {
+        for (int frame = 0; frame < int(hz * 2.5); ++frame)
+        {
+            begin_ui_frame(0.6f);
+            g_app.draw(g_time);
+            using namespace porpoise::ui;
+            g_gfx.panel(560, 400, 800, 260, rgba(0x0F1F63, 0.92f), 0.9f, 28, rgba(0x6BE3A8, 0.9f), 2.0f, 12, 0.15f);
+            g_gfx.text_mid(Font::Bold, 38, 960, 480, rgba(0xFFFFFF), Align::Center, tr("Porpoise's folder moved"));
+            g_gfx.text_mid(Font::Regular, 26, 960, 560, rgba(0xC9D6FF), Align::Center,
+                           tr("Porpoise closes now. Open it again."));
+            porpoise::vk::present_clear(0, 0, 0);
+            g_pacer.frame_done();
+        }
+        leave(0);
+    }
+    if (state == 4)
+        g_app.show_message(porpoise::ui::tr("The move didn't finish"), porpoise::ui::tr(g_mover.error));
+}
+
+/* The game's texture pack, counted as it starts (in the background: a pack
+ * can be tens of thousands of files) and shown for a few seconds over the
+ * game, as Dolphin's own note did before Porpoise hid Dolphin's messages. */
+std::atomic<int> g_texture_count{-1};
+std::string g_texture_pack;
+double g_texture_note_from = 0;
+
+int count_textures(const std::string &dir, int depth)
+{
+    int n = 0;
+    if (DIR *d = opendir(dir.c_str()))
+    {
+        while (dirent *e = readdir(d))
+        {
+            const std::string name = e->d_name;
+            if (name.empty() || name[0] == '.')
+                continue;
+            const std::string full = dir + "/" + name;
+            struct stat st;
+            if (stat(full.c_str(), &st) != 0)
+                continue;
+            if (S_ISDIR(st.st_mode))
+            {
+                if (depth < 8)
+                    n += count_textures(full, depth + 1);
+            }
+            else if (name.size() > 4)
+            {
+                std::string ext = name.substr(name.size() - 4);
+                for (char &c : ext)
+                    c = char(std::tolower(static_cast<unsigned char>(c)));
+                if (ext == ".png" || ext == ".dds")
+                    ++n;
+            }
+        }
+        closedir(d);
+    }
+    return n;
+}
+
+void *texture_counter(void *arg)
+{
+    std::string *dir = static_cast<std::string *>(arg);
+    g_texture_count.store(count_textures(*dir, 0));
+    delete dir;
+    return nullptr;
+}
+
+/* Looks for the game's pack (Load/Textures/<ID>, or its first three letters)
+ * and starts counting it. */
+void start_texture_note(const porpoise::ui::Game &game)
+{
+    g_texture_count.store(-1);
+    g_texture_pack.clear();
+    if (!g_play.custom_textures || game.id.empty())
+        return;
+    const std::string root = g_saves_path + "/User/Load/Textures/";
+    for (const std::string &name : {game.id, game.id.substr(0, std::min<std::size_t>(3, game.id.size()))})
+    {
+        struct stat st;
+        if (stat((root + name).c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+        {
+            g_texture_pack = name;
+            break;
+        }
+    }
+    if (g_texture_pack.empty())
+        return;
+    g_texture_note_from = 0;
+    pthread_t thread;
+    if (create_title_thread(&thread, texture_counter, new std::string(root + g_texture_pack)) == 0)
+        pthread_detach(thread);
+}
+
+void draw_texture_note()
+{
+    const int n = g_texture_count.load();
+    if (n < 0 || g_texture_pack.empty())
+        return;
+    if (g_texture_note_from == 0)
+        g_texture_note_from = g_time;
+    const double age = g_time - g_texture_note_from;
+    if (age > 8.0)
+        return;
+    const float a = float(age < 0.4 ? age / 0.4 : age > 7.2 ? (8.0 - age) / 0.8 : 1.0);
+    const std::string text =
+        n > 0 ? porpoise::ui::trf(n == 1 ? "Custom textures: 1 found ({pack})" : "Custom textures: {n} found ({pack})",
+                                  {{"n", std::to_string(n)}, {"pack", g_texture_pack}})
+              : porpoise::ui::trf("Custom textures: none found in {pack}", {{"pack", g_texture_pack}});
+    const float y = g_play.fps_overlay ? 96 : 30;
+    const float w = g_gfx.measure(porpoise::ui::Font::SemiBold, 26, text) + 48;
+    g_gfx.panel(36, y, w, 50, porpoise::ui::rgba(0x0A1236, 0.72f * a), 0.9f * a, 14,
+                porpoise::ui::rgba(0x5CD3FF, 0.9f * a), 1.6f);
+    g_gfx.text_mid(porpoise::ui::Font::SemiBold, 26, 60, y + 25, porpoise::ui::rgba(0xF4F7FF, a),
+                   porpoise::ui::Align::Left, text);
+}
+
 void launch_frame(bool core_frame, double fps, void *)
 {
     g_time += 1.0 / 60.0;
@@ -1020,6 +1376,8 @@ void launch_frame(bool core_frame, double fps, void *)
         g_gfx.text_mid(porpoise::ui::Font::Bold, 28, 111, 55, porpoise::ui::rgba(0xF4F7FF),
                    porpoise::ui::Align::Center, text);
     }
+    if (!g_menu_open)
+        draw_texture_note();
     if (g_play.motion_readout && g_play.developer && !g_menu_open)
         draw_motion_readout();
     if (!g_menu_open)
@@ -1195,6 +1553,12 @@ int main()
     /* Before any thread is started: clone this process's credential, so a Lapy
      * owned-root daemon will free it later (choose_data_dir -> jailbreak). */
     porpoise::jailbreak::prepare();
+#ifndef PORPOISE_DESKTOP
+    /* Ask to be freed now, while Porpoise is still one thread: the Lapy
+     * owned-root daemon frees only a single-threaded process, and one freed
+     * after Porpoise's threads had started could close. */
+    g_freed = porpoise::jailbreak::ensure() ? 1 : 0;
+#endif
     ps5_open_permissions();
     if (std::freopen(PORPOISE_APP "/trace.txt", "a", stderr))
     {
@@ -1290,6 +1654,25 @@ int main()
     g_app.set_jingle_hook([](const std::int16_t *frames, std::size_t count) {
         porpoise::sound::play_jingle(frames, count);
     });
+#ifndef PORPOISE_DESKTOP /* RetroAchievements is the PS5's for now */
+    porpoise::ra::init(g_data);
+    g_app.set_ra(
+        [] {
+            const porpoise::ra::Account a = porpoise::ra::account();
+            porpoise::ui::App::RaState s;
+            s.signed_in = a.signed_in;
+            s.busy = a.busy;
+            s.user = a.user;
+            s.points = a.points;
+            s.message = a.message;
+            return s;
+        },
+        [](const std::string &user, const std::string &password) {
+            porpoise::covers::stop(); /* one connection at a time: the sign-in goes first */
+            return porpoise::ra::begin_login(user, password);
+        },
+        [] { porpoise::ra::logout(); });
+#endif
     porpoise::banner::set_cache_dir(g_data + "/banners");
     porpoise::sound::load(PORPOISE_APP "/assets");
     porpoise::states::set_data_dir(g_data);
@@ -1306,8 +1689,14 @@ int main()
          * Porpoise can see (setup_checked is saved once a look is chosen). */
         g_app.start_welcome();
     }
-    if (g_sandboxed)
-        g_app.show_message(porpoise::ui::tr("Porpoise can't reach /data"),
+    if (!g_location_missing.empty())
+        g_app.show_message(porpoise::ui::tr("Porpoise's folder isn't connected"),
+                           porpoise::ui::trf("Porpoise's folder is on a drive that isn't connected now ({path}). "
+                                             "Connect it and open Porpoise again. Until then, Porpoise uses the "
+                                             "console's storage.",
+                                             {{"path", g_location_missing}}));
+    else if (g_sandboxed && g_settings.sandbox_notice)
+        g_app.show_sandbox_notice(porpoise::ui::tr("Porpoise can't reach /data"),
                            porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
                                             "/data or USB drives, and no jailbreak daemon freed it. A daemon that "
                                             "frees Porpoise must be running before you open it:\n"
@@ -1377,6 +1766,11 @@ int main()
             }
             if (g_covers_again && !porpoise::covers::busy())
                 fetch_covers();
+            if (porpoise::ra::take_login_done())
+            {
+                g_app.account_changed();
+                fetch_covers(); /* the covers paused for the sign-in */
+            }
             static long long last_frame_ns = now_ns();
             const long long frame_now = now_ns();
             const double frame_ms = (frame_now - last_frame_ns) / 1e6;
@@ -1431,6 +1825,8 @@ int main()
             }
             if (action == porpoise::ui::App::Action::FetchCovers)
                 fetch_covers(true);
+            if (action == porpoise::ui::App::Action::MoveData && !g_app.move_target().empty())
+                move_data(g_app.move_target(), hz);
             if (action == porpoise::ui::App::Action::CheckUpdate)
             {
                 porpoise::covers::stop(); /* one download at a time: let the check go first */
@@ -1511,6 +1907,8 @@ int main()
         if (wii_game && g_play.wiimote_speaker == 2)
             controller_speakers = porpoise::speaker::open_ports() > 0;
         set_ini_value(dolphin_ini, "Core", "WiimoteEnableSpeaker", g_play.wiimote_speaker > 0 ? "True" : "False");
+        /* Online (beta): WiiConnect24 through WiiLink. */
+        set_ini_value(dolphin_ini, "Core", "EnableWiiLink", g_play.wii_online ? "True" : "False");
         set_ini_value(dolphin_ini, "Core", "WiimoteAudioRoutingEnabled", controller_speakers ? "True" : "False");
         for (int p = 0; p < 4; ++p)
             set_ini_value(dolphin_ini, "Core", "Wiimote" + std::to_string(p + 1) + "AudioOutputEnabled",
@@ -1535,6 +1933,26 @@ int main()
             mkdir(dir.c_str(), 0777);
             if (!g_play.write_dolphin_game_ini(dir + "/" + launch->id + ".ini"))
                 ps5::debug::mark("main: the game's Dolphin settings file is the player's own; left as it is");
+            else
+            {
+                /* The player's own codes (<data>/cheats/<ID>.ini): on unless
+                 * turned off in the game's Cheats; a cheat among them needs
+                 * Dolphin's cheats on for this game. */
+                auto off = [](const porpoise::ui::Cheat &c, const void *user) {
+                    const auto *play = static_cast<const porpoise::Settings *>(user);
+                    return play->get(porpoise::ui::cheat_key(c, false)) == "1";
+                };
+                if (porpoise::ui::add_own_cheats(g_data + "/cheats", launch->id, dir + "/" + launch->id + ".ini", off,
+                                                 &g_play))
+                {
+                    ps5::debug::mark("main: the player's own cheats are on for this game");
+                    if (!g_play.cheats)
+                    {
+                        g_play.cheats = true;
+                        g_play.write_core_options(g_options_path);
+                    }
+                }
+            }
             for (const auto &[k, v] : g_play.dolphin)
                 ps5::debug::mark(("main: Dolphin setting for this game: " + k + " = " + v).c_str());
             /* The same values as core options, so a change in the in-game menu
@@ -1626,6 +2044,7 @@ int main()
             playback.resume_path = resume.c_str();
         }
         playback.load_state = start_state.empty() ? nullptr : start_state.c_str();
+        start_texture_note(*launch);
         porpoise::core::Paths core_paths;
         core_paths.saves = g_saves_path.c_str();
         core_paths.options = g_options_path.c_str();

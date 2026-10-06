@@ -25,14 +25,14 @@ mkdir -p "$obj" "$out"
 # sampler and crash report, its HTTP and jailbreak (desktop/ has their stand-ins).
 ps5_only="core_imports_ps5 core_loader_ps5 core_threads_ps5 crash_report memory_diagnostics memory_ps5 memory_status
 permissions_ps5 sampler_ps5 thread_probe porpoise_jailbreak porpoise_http vulkan_trace libc_shims locale_shims
-overflow_heap platform_wraps present_clock_ps5vk radv_icd_ps5"
+overflow_heap platform_wraps present_clock_ps5vk radv_icd_ps5 porpoise_notify"
 sources=()
 for f in "$root"/src/*.cpp "$root"/src/*.c; do
     base=$(basename "${f%.*}")
     [[ " $(echo $ps5_only) " == *" $base "* ]] && continue
     sources+=("$f")
 done
-sources+=("$root/desktop/porpoise_platform.cpp" "$root/desktop/porpoise_http_desktop.cpp")
+sources+=("$root/desktop/porpoise_platform.cpp" "$root/desktop/porpoise_http_desktop.cpp" "$root/desktop/porpoise_notify_desktop.cpp")
 
 [[ -f $root/build/title_build_identity.h ]] ||
     echo '#define PS5_RETROARCH_BUILD_ID "Porpoise build identity: windows"' > "$root/build/title_build_identity.h"

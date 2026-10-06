@@ -335,8 +335,12 @@ void App::start_preset_from(int layout)
 
 App::Action App::update_mapping(bool up, bool down, bool left, bool right)
 {
+    if (map_kind_ > 0)
+        return update_wii_mapping(up, down);
     const bool global = map_target_ == settings_;
     const Action changed = global ? Action::SettingsChanged : Action::None;
+    if (!map_capture_ && switch_map_kind())
+        return Action::None;
     if (map_capture_)
     {
         /* The press that started the capture doesn't count: wait for every
@@ -431,6 +435,11 @@ void App::draw_mapping(double time)
     Gfx &g = *g_;
     if (!map_target_)
         return;
+    if (map_kind_ > 0)
+    {
+        draw_wii_mapping(time);
+        return;
+    }
     const Settings &s = *map_target_;
     /* The screen shows the layout being edited, whichever is in use. */
     Mapping m{};
@@ -526,8 +535,8 @@ void App::draw_mapping(double time)
     /* Right: the list. */
     const float px = 950, py = 136, pw = 880, ph = 800;
     g.panel(px, py, pw, ph, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-    const float row_h = 44, row_x = px + 22, row_w = pw - 44;
-    float y = py + 22;
+    const float row_h = 42, row_x = px + 22, row_w = pw - 44;
+    float y = py + 70; /* under the controller tabs */
     for (int i = 0; i < kMapRows; ++i)
     {
         if (i == kFirstButton || i == kFromGameCube)
@@ -599,6 +608,7 @@ void App::draw_mapping(double time)
                    fit(g, Font::SemiBold, ts(24), map_note_, pw - 60));
     }
 
+    draw_map_tabs();
     if (map_capture_)
     {
         const int left = int(std::ceil(kCaptureSeconds - (time_ - map_capture_start_)));
@@ -607,11 +617,14 @@ void App::draw_mapping(double time)
                                   {"n", std::to_string(std::max(1, left))}}));
     }
     else if (map_row_ == kSelectRow)
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Use this layout"}, {Glyph::Circle, "Back"}}, {}, "");
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Use this layout"}, {Glyph::Circle, "Back"}},
+                     {{kKeyL1R1, "Controller"}}, "");
     else if (map_row_ < kFromGameCube)
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Change"}, {Glyph::Circle, "Back"}}, {}, "");
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Change"}, {Glyph::Circle, "Back"}},
+                     {{kKeyL1R1, "Controller"}}, "");
     else
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Start over"}, {Glyph::Circle, "Back"}}, {}, "");
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Start over"}, {Glyph::Circle, "Back"}},
+                     {{kKeyL1R1, "Controller"}}, "");
 }
 
 /* ---- a Wii game's controls ------------------------------------------------------------- */
@@ -661,6 +674,23 @@ float wii_arrow(int input)
     case WiRight: return kPi * 0.5f;
     default: return 0;
     }
+}
+/* A Wii input's name, chip, colour and arrow (the Wii buttons' list). */
+const char *wii_input_name(int input)
+{
+    return input >= 0 && input < WiInputCount ? kWiiInfo[input].name : "";
+}
+const char *wii_input_chip(int input)
+{
+    return input >= 0 && input < WiInputCount ? kWiiInfo[input].chip : "";
+}
+std::uint32_t wii_input_colour(int input)
+{
+    return input >= 0 && input < WiInputCount ? kWiiInfo[input].colour : kWiiWhite;
+}
+float wii_input_arrow(int input)
+{
+    return wii_arrow(input);
 }
 const char *stick_name(int role)
 {
@@ -1917,4 +1947,252 @@ void App::draw_wii_setup(double time)
         big_line(ws_note_, 960, rgba(0xFFC85C));
 }
 
+} // namespace porpoise::ui
+
+/* ---- Customize buttons: a Wii controller's ------------------------------------------------ */
+
+namespace porpoise::ui
+{
+using namespace look;
+using namespace porpoise::pad;
+
+namespace
+{
+/* The four Wii controllers the player can set buttons for, in tab order after
+ * GameCube (Settings::wii_buttons, porpoise::pad::wii_button_set). */
+constexpr int kWiiSetController[4] = {WiiRemoteNunchuk, WiiRemote, WiiSideways, WiiClassic};
+constexpr const char *kMapKindNames[5] = {"GameCube", "Remote + Nunchuk", "Remote", "Remote sideways",
+                                          "Classic Controller"};
+/* The tabs' short names, across the top of the list. */
+constexpr const char *kMapKindTabs[5] = {"GameCube", "Remote + Nunchuk", "Remote", "Sideways", "Classic"};
+
+/* Porpoise's own layout for a set, held face up: the rows of the list. */
+WiiLayout base_layout(int set)
+{
+    WiiConfig config;
+    config.active = true;
+    config.controller = kWiiSetController[set];
+    config.menu = true; /* Porpoise's buttons, not the player's */
+    return wii_layout(config, false, PoseFlat);
+}
+} // namespace
+
+bool App::switch_map_kind()
+{
+    if (!pressed(BtnL1 | BtnR1))
+        return false;
+    map_kind_ = (map_kind_ + (pressed(BtnL1) ? 4 : 1)) % 5;
+    map_row_ = map_kind_ > 0 ? 0 : kSelectRow;
+    map_capture_ = false;
+    map_note_.clear();
+    sfx(Sound::MovingTab);
+    return true;
+}
+
+/* The controllers, as tabs across the top of the list panel (L1 / R1). */
+void App::draw_map_tabs()
+{
+    Gfx &g = *g_;
+    const float px = 950, pw = 880, cy = 136 + 34;
+    float size = ts(22), total = 0;
+    float widths[5];
+    for (int pass = 0; pass < 2; ++pass)
+    {
+        total = 0;
+        for (int i = 0; i < 5; ++i)
+        {
+            widths[i] = g.measure(Font::SemiBold, size, tr(kMapKindTabs[i])) + 30;
+            total += widths[i];
+        }
+        if (total <= pw - 40)
+            break;
+        size *= (pw - 40) / total; /* a long language: smaller */
+    }
+    float x = px + (pw - total) * 0.5f;
+    g.panel(x - 4, cy - 22, total + 8, 44, rgba(0x07102E, 0.55f), 0.8f, 22, rgba(0x3D4F9E, 0.8f), 1.2f);
+    for (int i = 0; i < 5; ++i)
+    {
+        const bool on = i == map_kind_;
+        if (on)
+            g.panel(x, cy - 18, widths[i], 36, rgba(0x1D45B8, 0.95f), 0.8f, 18, kIcy, 1.8f, 6, 0.15f);
+        g.text_mid(Font::SemiBold, size, x + widths[i] * 0.5f, cy, on ? kWhite : kSoft, Align::Center,
+                   tr(kMapKindTabs[i]));
+        x += widths[i];
+    }
+}
+
+App::Action App::update_wii_mapping(bool up, bool down)
+{
+    const int set = map_kind_ - 1;
+    const WiiLayout base = base_layout(set);
+    const int rows = base.count + 1; /* each binding, then Start over */
+    int *perm = settings_->wii_buttons[set];
+    if (map_capture_)
+    {
+        const std::uint32_t mask = 0xFFFFu;
+        if (time_ - map_capture_start_ > kCaptureSeconds)
+        {
+            map_capture_ = false;
+            map_note_ = tr("Nothing pressed; the button is unchanged.");
+            map_note_time_ = time_;
+            return Action::None;
+        }
+        if (!map_armed_)
+        {
+            map_armed_ = (raw_held_ & mask) == 0;
+            if (map_armed_)
+                map_capture_start_ = time_;
+            return Action::None;
+        }
+        const std::uint32_t fresh = (raw_held_ & ~raw_prev_) & mask;
+        if (fresh && map_row_ < base.count)
+            for (int c = 0; c < CtlCount; ++c)
+                if (fresh & control_bit(c))
+                {
+                    /* The binding moves to the pressed control; whatever was
+                     * there takes its old place. */
+                    const int from = base.binds[map_row_].control;
+                    int other = 0;
+                    for (int e = 0; e < CtlCount; ++e)
+                        if (perm[e] == c)
+                            other = e;
+                    std::swap(perm[from], perm[other]);
+                    porpoise::pad::set_wii_buttons(settings_->wii_buttons);
+                    settings_->save(settings_path_);
+                    map_note_ = trf("{button} is now on {control}.",
+                                    {{"button", tr(wii_input_name(base.binds[map_row_].input))},
+                                     {"control", control_name(c)}});
+                    map_note_time_ = time_;
+                    map_capture_ = false;
+                    sfx(Sound::LaunchGame);
+                    return Action::SettingsChanged;
+                }
+        return Action::None;
+    }
+    if (switch_map_kind())
+        return Action::None;
+    if (up && map_row_ > 0)
+    {
+        --map_row_;
+        sfx(Sound::MenuScroll);
+    }
+    if (down && map_row_ + 1 < rows)
+    {
+        ++map_row_;
+        sfx(Sound::MenuScroll);
+    }
+    if (pressed(BtnCircle))
+    {
+        map_kind_ = 0;
+        close_mapping();
+        return Action::None;
+    }
+    if (pressed(BtnCross))
+    {
+        if (map_row_ < base.count)
+        {
+            map_capture_ = true;
+            map_armed_ = false;
+            map_capture_start_ = time_;
+            sfx(Sound::DetailsFlip);
+            return Action::None;
+        }
+        for (int c = 0; c < CtlCount; ++c)
+            perm[c] = c;
+        porpoise::pad::set_wii_buttons(settings_->wii_buttons);
+        settings_->save(settings_path_);
+        map_note_ = trf("{controller} is back to Porpoise's layout.", {{"controller", tr(kMapKindNames[map_kind_])}});
+        map_note_time_ = time_;
+        sfx(Sound::LaunchGame);
+        return Action::SettingsChanged;
+    }
+    return Action::None;
+}
+
+void App::draw_wii_mapping(double time)
+{
+    Gfx &g = *g_;
+    const int set = map_kind_ - 1;
+    const WiiLayout base = base_layout(set);
+    const int *perm = settings_->wii_buttons[set];
+    WiiLayout mine = base;
+    for (int i = 0; i < mine.count; ++i)
+        mine.binds[i].control = perm[mine.binds[i].control];
+    if (map_in_game_)
+        g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.78f), 1, 0);
+
+    /* Left: the DualSense as this Wii controller, with the player's buttons. */
+    const float lx = 90, ly = 136, lw = 830, lh = 800;
+    g.panel(lx, ly, lw, lh, rgba(0x0A1236, 0.55f), 0.85f, kR, rgba(0x3D4F9E, 0.9f), 1.6f, 0, 0.10f);
+    g.text_mid(Font::Bold, ts(46), lx + 46, ly + 64, kWhite, Align::Left, tr(kMapKindNames[map_kind_]));
+    g.text_mid(Font::Regular, ts(26), lx + 46, ly + 112, kLavender, Align::Left,
+               fit(g, Font::Regular, ts(26), tr("Every Wii game played with this controller"), lw - 92));
+    draw_wii_pad(mine, PoseFlat, lx + 35, ly + 170, 760, 1.0f);
+    (void)time;
+
+    /* Right: each Wii input and the DualSense control it's on. */
+    const float px = 950, py = 136, pw = 880, ph = 800;
+    g.panel(px, py, pw, ph, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
+    const int rows = base.count + 1;
+    const float row_h = std::min(44.0f, (ph - 180) / float(rows)), row_x = px + 22, row_w = pw - 44;
+    float y = py + 74;
+    for (int i = 0; i < rows; ++i)
+    {
+        const bool on = i == map_row_;
+        const float cy = y + row_h * 0.5f;
+        if (i == base.count)
+        {
+            g.panel(row_x + 20, y + 4, row_w - 40, 1.5f, rgba(0x3D4F9E, 0.8f), 1, 0);
+            y += 12;
+        }
+        const float ry = i == base.count ? y : y;
+        const float rcy = i == base.count ? ry + row_h * 0.5f : cy;
+        if (on)
+            g.panel(row_x, ry + 2, row_w, row_h - 4, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.2f, 8, 0.18f);
+        const float right = row_x + row_w - 22;
+        if (i < base.count)
+        {
+            const int input = base.binds[i].input;
+            const float h = 28, chx = row_x + 44;
+            const std::string chip = wii_input_chip(input);
+            const float w = chip.empty() ? h : std::max(h, g.measure(Font::Bold, h * 0.5f, chip) + h * 0.7f);
+            g.panel(chx - w * 0.5f, rcy - h * 0.5f, w, h, rgba(wii_input_colour(input)), 0.8f, h * 0.5f,
+                    rgba(0xFFFFFF, 0.6f), 1.2f);
+            if (chip.empty())
+                g.glyph(Glyph::Arrow, chx, rcy, h * 0.5f, rgba(0x0A1236), wii_input_arrow(input));
+            else
+                g.text_mid(Font::Bold, h * 0.5f, chx, rcy, rgba(0x0A1236), Align::Center, chip);
+            g.text_mid(Font::SemiBold, ts(25), row_x + 96, rcy, on ? kWhite : kSoft, Align::Left,
+                       tr(wii_input_name(input)));
+            if (on && map_capture_)
+                g.text_mid(Font::Bold, ts(24), right, rcy, kCyan, Align::Right, tr("Press a button\xE2\x80\xA6"));
+            else
+                draw_control(perm[base.binds[i].control], right, rcy, on, std::min(50.0f, row_h + 6));
+        }
+        else
+            g.text_mid(Font::SemiBold, ts(26), row_x + 34, rcy, on ? kWhite : kSoft, Align::Left,
+                       tr("Start over from Porpoise's layout"));
+        y += row_h;
+    }
+    const double since = time_ - map_note_time_;
+    if (!map_note_.empty() && since < 4.0)
+    {
+        const float a = since < 3.0 ? 1.0f : float(4.0 - since);
+        g.text_mid(Font::SemiBold, ts(24), px + pw * 0.5f, py + ph - 32, with_alpha(kCyan, a), Align::Center,
+                   fit(g, Font::SemiBold, ts(24), map_note_, pw - 60));
+    }
+    draw_map_tabs();
+    if (map_capture_ && map_row_ < base.count)
+    {
+        const int left = int(std::ceil(kCaptureSeconds - (time_ - map_capture_start_)));
+        draw_prompts({}, {}, trf("Press the DualSense button for {button} ({n})",
+                                 {{"button", tr(wii_input_name(base.binds[map_row_].input))},
+                                  {"n", std::to_string(std::max(1, left))}}));
+    }
+    else
+        draw_prompts({{Glyph::DPad, "Browse"},
+                      {Glyph::Cross, map_row_ < base.count ? "Change" : "Start over"},
+                      {Glyph::Circle, "Back"}},
+                     {{kKeyL1R1, "Controller"}}, "");
+}
 } // namespace porpoise::ui

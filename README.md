@@ -83,6 +83,25 @@ BIOS or firmware files.
 - **Grip:** Auto reads how you're holding the DualSense, or choose one.
   **How to hold it** (Settings → Wii Remote) draws the DualSense as each Wii
   controller with every button labeled.
+- **Your own buttons for each Wii controller:** Settings → Controls →
+  Customize buttons, then L1 / R1 to pick Remote + Nunchuk, Remote, Sideways
+  or Classic.
+
+### RetroAchievements (softcore)
+- Earn [RetroAchievements](https://retroachievements.org) as you play. In the
+  library, press **L1 + Square** (or go to Settings → Games →
+  RetroAchievements) and sign in with your RetroAchievements account; the
+  panel has its own on-screen keyboard. Porpoise keeps a sign-in token, never
+  your password, in `/data/porpoise/retroachievements.ini`. Until you sign in,
+  nothing connects.
+- **Unlocks pop up like PS5 trophies:** the badge, the title and the trophy
+  sound, in the Trophies notifications (your trophy notification settings
+  apply). Completing a game plays the platinum sound, and each game starts
+  with a popup of how many you've unlocked.
+- The popups go through your jailbreak's **ELF loader** (port 9021, as etaHEN
+  and the ELF loader payloads have); without one they're plain notifications.
+- Softcore only: hardcore mode isn't available. Your game has to be a version
+  RetroAchievements knows; Porpoise says so when it isn't.
 
 ### Box art and game info
 - Front covers, back covers and disc art download from
@@ -128,13 +147,13 @@ Settings are split into sections:
 
 | Section | What's inside |
 |---|---|
-| **Video** | Internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
+| **Video** | **Output resolution** (*Match the PS5* by default, or 1080p, 1440p, 4K), internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
 | **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
 | **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume; and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller), **audio buffer**, **audio stretching** and the **microphone** (see [Sound](#sound-beta)) |
 | **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, **fast forward buttons**, connected controllers; per game, **Console** (Auto, GameCube or Wii) for a game Porpoise detected wrong |
 | **Wii Remote** | Wii Remote setup, presets, setup before each Wii game, How to hold it, Wii controller, pointer, pointer speed, grip, motion, flick to shake |
-| **System** | Emulated CPU clock (50–300%), dual core, emulator on its own cores, exact multiply-add, fast disc loading, cheats, console language, progressive scan; and, in beta, **Wii widescreen**, **PAL games at 60 Hz**, **sensor bar** position, **start Wii discs in the Wii Menu** and the **GameCube boot animation** (see [Your own BIOS and Wii Menu](#your-own-bios-and-wii-menu-beta)) |
-| **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info |
+| **System** | Emulated CPU clock (50–300%), dual core, emulator on its own cores, exact multiply-add, fast disc loading, cheats, console language, progressive scan; and, in beta, **Wii widescreen**, **PAL games at 60 Hz**, **sensor bar** position, **start Wii discs in the Wii Menu**, the **GameCube boot animation** (see [Your own BIOS and Wii Menu](#your-own-bios-and-wii-menu-beta)) and **Online** (WiiConnect24 channels through WiiLink) |
+| **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info, **move Porpoise's folder** to extended storage or a USB drive, **RetroAchievements** |
 | **Interface** | Menu language, **Theme** (fifteen, among them Porpoise, Star Cube and Revolution), **Colors**, **Font**, library and Memory Cards views, Revolution's home screen and pointer, **reset all settings**, **Reinitialize Porpoise** |
 | **About** | Version, **Updates** (check GitHub and install a new Porpoise), the **Discord** for help and bug reports (with a QR code), **Report a bug**, and credits |
 
@@ -360,8 +379,25 @@ You can also copy a game from the drive to the console: in **Add a game
 folder**, browse to it on the drive and press **Cross** on the game.
 
 **PS5 extended storage** (a drive the PS5 formatted for its own games) shows
-up as `/mnt/ext0`. A computer can't read that format, so copy games to it over
-FTP instead (for example into `/mnt/ext0/games/`).
+up as `/mnt/ext0` (a second one as `/mnt/ext1`). A computer can't read that
+format, so copy games to it over FTP instead (for example into
+`/mnt/ext0/games/`).
+
+**Porpoise's own folder can live there too:** Settings → Games → *Move
+Porpoise's folder to extended storage* (or a USB drive) moves your settings,
+saves, save states, covers and texture packs, then Porpoise closes; open it
+again. If that drive isn't connected at the next start, Porpoise says so and
+uses the console's storage until it is.
+
+### Your own cheats
+
+Put a game's codes in **`/data/porpoise/cheats/<game ID>.ini`** (the 6-letter
+ID, such as `GYQE01.ini`; 4 or 3 letters for all regions), in Dolphin's
+format: `[ActionReplay]` or `[Gecko]` sections, as Dolphin writes them. They
+turn on by themselves when the game starts, and each appears in the game's
+settings under **Cheats** with its own switch. Wiimmfi's online patch codes
+for a Wii game go here too (with **Settings → System → Online** for
+WiiConnect24 channels).
 
 ## Controls
 
@@ -378,6 +414,7 @@ FTP instead (for example into `/mnt/ext0/games/`).
 | **L2 / R2** | – | Previous / next game | – |
 | **Right stick** | – | Turn the box | – |
 | **L1 / R1** | Switch tabs: Library, Memory Cards, Settings | | |
+| **L1 + Square** | RetroAchievements: sign in or out | | |
 
 ### In a game
 
@@ -427,6 +464,9 @@ becomes the next player, up to four, and can join in the middle of a game.
 | `/data/porpoise/latest-release.json` | What GitHub last said about the newest release |
 | `/data/porpoise/lang/` | Your own translation fixes (optional) |
 | `/data/porpoise/bios/` | Your own GameCube BIOS, as `USA/IPL.bin`, `EUR/IPL.bin` or `JAP/IPL.bin` (optional) |
+| `/data/porpoise/cheats/` | Your own cheat codes, one `<game ID>.ini` per game (optional) |
+| `/data/porpoise/retroachievements.ini` | Your RetroAchievements sign-in token (not your password) |
+| `/data/porpoise/location.txt` | Where Porpoise's folder is, after you moved it to another drive |
 | `/data/porpoise/cache/` | The menus' lettering, made once at the first start |
 
 ## Troubleshooting
@@ -497,7 +537,9 @@ and the code beside it opens the Discord on your phone.
 - Save states are tied to the Porpoise and Dolphin version that made them; a
   future update may not load older ones. Your memory card saves always carry
   over.
-- Netplay and achievements aren't part of Porpoise.
+- Netplay isn't part of Porpoise yet; it's planned for 2.5.
+- RetroAchievements is softcore only, and its popups need the jailbreak's ELF
+  loader to show badges and play the trophy sound.
 - Memory-card copy and delete work on saves Dolphin keeps as files (the normal
   `Card A` and `Card B` folders).
 
@@ -546,9 +588,14 @@ It stands on the work of many people. The full list, with licenses, is in
   **[Exo 2](https://github.com/googlefonts/Exo-2.0)**,
   **[Lora](https://github.com/cyrealtype/Lora-Cyrillic)** (as Porpoise Serif) and
   **[M PLUS 1](https://github.com/coz-m/MPLUS_FONTS)** (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
+- **[RetroAchievements](https://retroachievements.org)** and its
+  **[rcheevos](https://github.com/RetroAchievements/rcheevos)** library (MIT),
+  which Dolphin's achievements are built on.
 - The PS5 scene: **etaHEN**, **kstuff** and **ShadowMountPlus**, and the front
   ends **PS5SX2** and **ProsperoEden** for the inspiration. Porpoise asks the
-  HEN to leave the app sandbox the way PS5SX2 does.
+  HEN to leave the app sandbox the way PS5SX2 does, and its RetroAchievements
+  popups follow **PS5SX2**'s (Spyros, with Gabriel Fonseca's groundwork): the
+  trophy-style notifications sent through the ELF loader.
 
 ## Legal
 

@@ -4226,5 +4226,301 @@
  {
   "en": "TV",
   "section": "2.0: channels, sound, Wii options, About"
+ },
+ {
+  "en": "The move didn't finish (the drive may be full or not writable). Porpoise's folder stays where it was.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Tidying up the old folder…",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Moving Porpoise's folder…",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Circle: stop (nothing changes)",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Porpoise's folder moved",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Porpoise closes now. Open it again.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "The move didn't finish",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Custom textures: 1 found ({pack})",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Custom textures: {n} found ({pack})",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Custom textures: none found in {pack}",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Porpoise's folder isn't connected",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Porpoise's folder is on a drive that isn't connected now ({path}). Connect it and open Porpoise again. Until then, Porpoise uses the console's storage.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "On Windows, download the new version from GitHub and unzip it over this one.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Don't show again",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Sideways",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Classic",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "{controller} is back to Porpoise's layout.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Every Wii game played with this controller",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Start over from Porpoise's layout",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "No games yet. Put them in the data/games folder beside Porpoise.exe, or add a folder in Settings > Games.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Covers download while the computer is online.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "The picture Porpoise sends to the TV, menus and games alike. Match the PS5 keeps the console's own output, so the TV doesn't switch modes when Porpoise opens. 1080p is the quickest; 1440p and 4K are sharper on a 4K TV with a high internal resolution. Takes effect the next time Porpoise starts.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Match the PS5",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Online (beta)",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. For online play in games, put a Wiimmfi patch code in Porpoise's cheats folder. Needs the console online.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "the console's storage",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "extended storage 2",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "a USB drive",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Move Porpoise's folder to {place}",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Porpoise's folder is on {here} now. Moving it takes everything in it there: settings, saves, save states, covers and texture packs. Then Porpoise closes; open it again. Your game files elsewhere stay where they are.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Move…",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Sandbox message at start",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "When the console starts Porpoise inside the app sandbox, says so and how to free it. Off: Porpoise just uses its own folder (games in /app0/porpoise/games).",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Earn achievements as you play (softcore). Unlocks pop up like PS5 trophies. In your library, L1 + Square opens this too.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Sign in…",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Move Porpoise's folder to {place}?",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Everything in Porpoise's folder moves there: settings, saves, save states, covers and texture packs. A big folder takes a while. Porpoise closes when it's done; open it again.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Move",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Porpoise plays your GameCube and Wii games on your computer, powered by Dolphin.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Your own code, from Porpoise's cheats folder. On unless you turn it off here.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Couldn't reach RetroAchievements. Check the PS5's internet connection.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Wrong username or password.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "RetroAchievements didn't accept the sign-in. Try again later.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "RetroAchievements signed you out. Sign in again.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "RetroAchievements signed you out",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Sign in again in your library: L1 + Square.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Couldn't reach RetroAchievements",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Achievements are off for this game. Check the PS5's internet connection.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "RetroAchievements: {done} of {total} unlocked",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "{game} completed",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Every achievement unlocked",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "No RetroAchievements for this game",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "RetroAchievements doesn't know this game, or this version of it.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "The server had a problem.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Couldn't start signing in. Try again.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Unlocks pop up like PS5 trophies, with the badge and the trophy sound. That needs your jailbreak's ELF loader (port 9021); without it they're plain notifications. Softcore only: hardcore mode isn't available.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Earn achievements as you play, in softcore. Unlocks pop up like PS5 trophies. No account? Make one for free at retroachievements.org.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Signing in…",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Softcore",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Signed in as {user}",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "1 point",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "{n} points",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Sign out",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Your RetroAchievements username",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Your password",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Username",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Password",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Sign in",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Porpoise keeps a sign-in token, never your password.",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Shift",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Space",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Type",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Capitals",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
+ },
+ {
+  "en": "Symbols",
+  "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  }
 ]

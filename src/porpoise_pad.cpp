@@ -963,7 +963,48 @@ int expected_pose(const WiiConfig &config, bool second)
     }
 }
 
+WiiLayout wii_layout_plain(const WiiConfig &config, bool second, int pose);
+
+int g_wii_buttons[4][CtlCount] = {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
+
+void set_wii_buttons(const int (*sets)[CtlCount])
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    for (int s = 0; s < 4; ++s)
+        for (int c = 0; c < CtlCount; ++c)
+            g_wii_buttons[s][c] = std::clamp(sets[s][c], 0, CtlCount - 1);
+}
+
+int wii_button_set(int controller)
+{
+    switch (controller)
+    {
+    case WiiRemote:
+    case WiiTwoControllers: return 1;
+    case WiiSideways: return 2;
+    case WiiClassic: return 3;
+    default: return 0;
+    }
+}
+
 WiiLayout wii_layout(const WiiConfig &config, bool second, int pose)
+{
+    WiiLayout lay = wii_layout_plain(config, second, pose);
+    /* In a game, the player's own buttons: each binding moves to the control
+     * the player put it on (Settings > Controls > Customize buttons). Porpoise's
+     * own menus (menu = true) keep Porpoise's. */
+    if (!second && !config.menu)
+    {
+        std::lock_guard<std::recursive_mutex> lock(g_lock);
+        const int *perm = g_wii_buttons[wii_button_set(config.controller)];
+        for (int i = 0; i < lay.count; ++i)
+            if (lay.binds[i].control >= 0 && lay.binds[i].control < CtlCount)
+                lay.binds[i].control = perm[lay.binds[i].control];
+    }
+    return lay;
+}
+
+WiiLayout wii_layout_plain(const WiiConfig &config, bool second, int pose)
 {
     WiiLayout lay;
     if (pose < 0)

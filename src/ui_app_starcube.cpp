@@ -199,7 +199,7 @@ App::Action App::update_starcube(bool left, bool right, bool up, bool down, bool
         return Action::None;
     }
     /* L1 / R1: round the cube's edges without going back out. */
-    if (pressed(BtnL1) || pressed(BtnR1))
+    if (l1_tap_ || pressed(BtnR1))
     {
         const int face = sc_calendar_ ? 1 : sc_face_of_tab();
         sc_open((face + (pressed(BtnR1) ? 1 : 3)) % 4, false);

@@ -190,6 +190,12 @@ struct WiiConfig
     bool menu = false;
 };
 void set_wii(const WiiConfig &config);
+/* The player's own Wii buttons: for each of the four sets (wii_button_set),
+ * the control that does what Porpoise's layout puts on control i. */
+void set_wii_buttons(const int (*sets)[CtlCount]);
+/* Which set a Wii controller uses: 0 Remote + Nunchuk, 1 Remote (and two
+ * controllers' Remote), 2 sideways, 3 Classic. */
+int wii_button_set(int controller);
 /* Centre player's pointer now, as R1 held would (the Wii Remote setup), and
  * move the centre by (yaw, pitch) radians (yaw + right, pitch + up). */
 void centre_now(int player);

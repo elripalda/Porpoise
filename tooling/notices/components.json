@@ -385,6 +385,30 @@
       "modifications": "patches/dolphin/ps5-port.patch in https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5 (the PS5 port, from Mihawk's PS5 RetroArch)."
     },
     {
+      "id": "rcheevos",
+      "name": "rcheevos, RetroAchievements' library (in the Dolphin core, for achievements)",
+      "kind": "code",
+      "artifacts": [
+        "cores/dolphin_libretro.so"
+      ],
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2018 RetroAchievements.org"
+      ],
+      "texts": [
+        {
+          "from": ".deps/dolphin-src/Externals/rcheevos/rcheevos/LICENSE",
+          "to": "LICENSE"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".deps/dolphin-src/Externals/rcheevos/rcheevos",
+        "url": "https://github.com/RetroAchievements/rcheevos/tree/{rev}"
+      },
+      "modifications": "Unmodified: the copy Dolphin carries in Externals/rcheevos."
+    },
+    {
       "id": "nunito",
       "name": "Nunito font (Porpoise UI type)",
       "kind": "asset",

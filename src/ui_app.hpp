@@ -13,6 +13,7 @@
 #include <set>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -63,7 +64,9 @@ public:
         InstallVersion, /* the one picked in About > Choose a version (picked_version()) */
         Quit,        /* close Porpoise (after an update) */
         Reinitialize, /* settings wiped: Porpoise starts again as at its first start */
+        MoveData,     /* Porpoise's folder moves to move_target() */
     };
+    const std::string &move_target() const { return move_target_; }
 
     void set_sound_hook(void (*play)(Sound)) { sound_ = play; }
     /* Plays a Wii disc's banner jingle (48 kHz stereo frames); null stops it. */
@@ -76,6 +79,17 @@ public:
     Game *launch_game() { return launch_; }
 #ifdef PORPOISE_HOST_PREVIEW
     void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
+    void preview_mapping(int kind, int row) /* tools/ui-preview: Customize buttons on a controller's tab */
+    {
+        map_target_ = settings_;
+        map_game_ = nullptr;
+        map_in_game_ = false;
+        map_return_ = Screen::Main;
+        begin_mapping();
+        map_kind_ = kind;
+        map_row_ = row;
+        open_screen(Screen::Mapping);
+    }
     void preview_pointer(float x, float y) /* tools/ui-preview: the home screen's pointer there */
     {
         preview_px_ = x;
@@ -180,6 +194,41 @@ public:
     {
         open_dialog(DialogKind::Info, title, message, "");
     }
+    /* The sandbox message at start, which the player can turn off. */
+    void show_sandbox_notice(const std::string &title, const std::string &message);
+    /* RetroAchievements: the account the panel shows, and signing in and out
+     * (porpoise_ra, given by the host). Without them there is no panel. */
+    struct RaState
+    {
+        bool signed_in = false, busy = false;
+        std::string user, message;
+        int points = 0;
+    };
+    void set_ra(std::function<RaState()> state, std::function<bool(const std::string &, const std::string &)> login,
+                std::function<void()> logout)
+    {
+        ra_state_ = std::move(state);
+        ra_login_ = std::move(login);
+        ra_logout_ = std::move(logout);
+    }
+    /* The account panel (L1 + Square in the library, or Settings > Games). */
+    void open_account();
+    /* Signed in or out: Settings' row says so. */
+    void account_changed() { build_settings(); }
+#ifdef PORPOISE_HOST_PREVIEW
+    void preview_account(bool typing, int field, int kr, int kc)
+    {
+        open_account();
+        acct_.typing = typing;
+        acct_.field = field;
+        acct_.row = field;
+        acct_.kr = kr;
+        acct_.kc = kc;
+        acct_.anim = 1;
+        acct_.user = "Ripalda";
+        acct_.pass = "hunter22";
+    }
+#endif
 
 private:
     enum class Tab
@@ -234,6 +283,8 @@ private:
         DeleteWiiSave,
         Resume, /* quick resume: Resume (yes) or Start Over (the other button) */
         Reinitialize,
+        SandboxNotice, /* OK, or Don't show again (the other button) */
+        MoveData,      /* Porpoise's folder to another drive */
     };
     struct Dialog
     {
@@ -249,6 +300,30 @@ private:
         int choice = 0; /* 0 = cancel, 1 = yes */
         float anim = 0;
     };
+
+    /* The RetroAchievements account panel and its keyboard. */
+    struct AccountPanel
+    {
+        bool open = false;
+        int row = 0;           /* signed out: 0 username, 1 password, 2 sign in */
+        std::string user, pass;
+        bool typing = false;   /* the keyboard is up */
+        int field = 0;         /* what it types into: 0 username, 1 password */
+        int kr = 1, kc = 0;    /* the key in focus */
+        bool shift = false, symbols = false;
+        bool was_busy = false;
+        float anim = 0;
+    };
+    AccountPanel acct_;
+    std::function<RaState()> ra_state_;
+    std::function<bool(const std::string &, const std::string &)> ra_login_;
+    std::function<void()> ra_logout_;
+    /* L1 changes tab when it's let go, unless Square came while it was held
+     * (L1 + Square: the account panel). */
+    bool l1_armed_ = false, l1_chord_ = false, l1_tap_ = false;
+    Action update_account(bool up, bool down, bool left, bool right);
+    void draw_account();
+    void account_key(int kr, int kc);
 
     std::uint32_t pressed(std::uint32_t bits) const { return (held_ & ~prev_) & bits; }
     void sfx(Sound s) const
@@ -382,6 +457,11 @@ private:
     void close_mapping();
     Action update_mapping(bool up, bool down, bool left, bool right);
     void draw_mapping(double time);
+    /* The same screen for a Wii controller's buttons (map_kind_ 1..4). */
+    Action update_wii_mapping(bool up, bool down);
+    void draw_wii_mapping(double time);
+    void draw_map_tabs();
+    bool switch_map_kind(); /* L1 / R1: GameCube, then each Wii controller */
     void assign_control(int gc_input, int control);
     void save_mapping(bool layout_changed);
     void draw_keycap(float right, float cy, const std::string &label, bool on, float height = 40);
@@ -747,6 +827,12 @@ private:
     double map_capture_start_ = 0;
     std::string map_note_; /* a line under the list after a change */
     double map_note_time_ = -10;
+    int map_kind_ = 0;
+    /* Settings > Games > Move Porpoise's folder: the places offered (label,
+     * path), the one picked, and the one confirmed. */
+    std::vector<std::pair<std::string, std::string>> move_places_;
+    int move_pick_ = -1;
+    std::string move_target_; /* 0 GameCube; 1..4 a Wii controller's buttons (porpoise::pad::wii_button_set + 1) */
 
     /* Details: L2 / R2 swipe to the previous / next game. */
     float swipe_anim_ = 0; /* 1 -> 0 */

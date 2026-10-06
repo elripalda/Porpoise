@@ -409,6 +409,49 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    /* PREVIEW_ACCOUNT=1: the RetroAchievements panel signed out, typing, busy
+     * with an error, and signed in; then stop. */
+    if (std::getenv("PREVIEW_ACCOUNT"))
+    {
+        static porpoise::ui::App::RaState ra;
+        ui.set_ra([] { return ra; }, [](const std::string &, const std::string &) { return true; }, [] {});
+        settle();
+        ui.preview_account(false, 0, 1, 0);
+        ui.preview_account(false, 2, 1, 0);
+        settle();
+        render("account-out", [&] { ui.draw(12.0); });
+        ui.preview_account(true, 1, 2, 3);
+        settle();
+        render("account-typing", [&] { ui.draw(12.0); });
+        ra.message = "Wrong username or password.";
+        ui.preview_account(false, 2, 1, 0);
+        settle();
+        render("account-error", [&] { ui.draw(12.0); });
+        ra.message.clear();
+        ra.signed_in = true;
+        ra.user = "Ripalda";
+        ra.points = 1250;
+        ui.preview_account(false, 0, 1, 0);
+        settle();
+        render("account-in", [&] { ui.draw(12.0); });
+        return 0;
+    }
+    /* PREVIEW_WIIMAP=1: Customize buttons on each controller's tab; then stop. */
+    if (std::getenv("PREVIEW_WIIMAP"))
+    {
+        settle();
+        for (int kind = 0; kind < 5; ++kind)
+        {
+            ui.preview_mapping(kind, kind == 0 ? 1 : 2);
+            settle();
+            render(("wiimap-" + std::to_string(kind)).c_str(), [&] { ui.draw(12.0); });
+        }
+        settings.wii_buttons[0][0] = 2, settings.wii_buttons[0][2] = 0; /* Cross and Square swapped */
+        ui.preview_mapping(1, 0);
+        settle();
+        render("wiimap-custom", [&] { ui.draw(12.0); });
+        return 0;
+    }
     /* PREVIEW_ABOUT=1: Settings > About on the Discord row and on the
      * creator's row; then stop. */
     if (std::getenv("PREVIEW_ABOUT"))
@@ -1188,6 +1231,19 @@ int main(int argc, char **argv)
         press(kCross);
         settle();
         render("mapping-playstation", [&] { ui.draw(12.0); });
+        press(kR1); /* the Wii Remote + Nunchuk's buttons */
+        settle();
+        render("mapping-wii", [&] { ui.draw(12.0); });
+        press(kDown, 2);  /* the 1 button */
+        press(kCross);
+        for (int i = 0; i < 20; ++i)
+            ui.update(none, 0.016);
+        press(kSquare);   /* 1 on Square */
+        settle();
+        render("mapping-wii-custom", [&] { ui.draw(12.0); });
+        press(kR1, 3);    /* the Classic Controller */
+        settle();
+        render("mapping-classic", [&] { ui.draw(12.0); });
         press(kCircle);
         settle();
         render("settings-controls-after", [&] { ui.draw(12.0); });

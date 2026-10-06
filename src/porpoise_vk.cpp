@@ -50,6 +50,8 @@ extern "C" int sceVideoOutGetFlipStatus(int handle, std::uint64_t status[16]);
 extern "C" int __real_sceVideoOutOpen(int user, int bus, int index, const void *parameter);
 extern "C" int __wrap_sceVideoOutOpen(int user, int bus, int index, const void *parameter);
 extern "C" int sceVideoOutWaitVblank(int handle);
+extern "C" int sceVideoOutGetResolutionStatus(int handle, void *status);
+extern "C" int sceVideoOutClose(int handle);
 #endif
 
 namespace
@@ -340,13 +342,36 @@ bool pick_display()
      * frame per vblank, so a 120 Hz mode would run games at double speed.
      * Otherwise the largest mode, again closest to 60 Hz. (PS5 Mesa before
      * dc82d01 offered only 3840x2160.) */
-    unsigned wanted = 1080;
+    unsigned wanted = 0; /* 0: whatever the console outputs now */
     if (std::FILE *f = std::fopen(PORPOISE_APP "/porpoise/output.txt", "r"))
     {
         unsigned h = 0;
         if (std::fscanf(f, "%u", &h) == 1 && (h == 1080 || h == 1440 || h == 2160))
             wanted = h;
         std::fclose(f);
+    }
+    if (wanted == 0)
+    {
+        /* Match the PS5: the resolution the console is sending the TV right
+         * now, so the TV keeps its mode (no blank resync as Porpoise opens).
+         * Asked through a VideoOut handle of Porpoise's own, closed again
+         * before the driver opens the display. */
+        std::uint32_t status[64] = {}; /* SceVideoOutResolutionStatus: full width, full height, ... */
+        const int handle = __real_sceVideoOutOpen(0xff, 0, 0, nullptr);
+        int got = -1;
+        if (handle >= 0)
+        {
+            got = sceVideoOutGetResolutionStatus(handle, status);
+            sceVideoOutClose(handle);
+        }
+        char line[128];
+        std::snprintf(line, sizeof line, "vk: the console outputs %ux%u (handle %#x, status %#x)", status[0], status[1],
+                      unsigned(handle), unsigned(got));
+        ps5::debug::mark(line);
+        if (got == 0 && status[1] >= 480 && status[1] <= 4320)
+            wanted = status[1];
+        else
+            wanted = 1080; /* couldn't tell: Porpoise's own default */
     }
     int best = -1;
     auto better = [&](const VkDisplayModePropertiesKHR &m, const VkDisplayModePropertiesKHR &b) {

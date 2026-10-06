@@ -374,6 +374,14 @@ void App::add_game_rows(Settings &t, bool per_game)
     };
 
     header("Video");
+#ifndef PORPOISE_DESKTOP /* the PS5's own */
+    if (!per_game)
+        choice("output_res", "Output resolution",
+               "The picture Porpoise sends to the TV, menus and games alike. Match the PS5 keeps the console's own "
+               "output, so the TV doesn't switch modes when Porpoise opens. 1080p is the quickest; 1440p and 4K are "
+               "sharper on a 4K TV with a high internal resolution. Takes effect the next time Porpoise starts.",
+               &t.output_res, 0, {"Match the PS5", "1080p", "1440p", "4K"});
+#endif
     choice("resolution", "Internal resolution", "How sharp games render. 1080p is the tested default; above it is experimental and can slow games.",
            &t.resolution, 1, {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p) \xE2\x80\xA2 experimental",
             "5x (1800p) \xE2\x80\xA2 experimental", "6x (4K) \xE2\x80\xA2 experimental"});
@@ -422,14 +430,6 @@ void App::add_game_rows(Settings &t, bool per_game)
            "own clock instead.",
            &t.vsync);
 
-#ifndef PORPOISE_DESKTOP /* the PS5's own */
-    if (!per_game)
-        choice("output_res", "Output resolution",
-               "The picture Porpoise sends to the TV, menus and games alike. 1080p is the quickest; 1440p and 4K are "
-               "sharper on a 4K TV with a high internal resolution, and a little slower. Takes effect the next time "
-               "Porpoise starts.",
-               &t.output_res, 0, {"1080p", "1440p", "4K"});
-#endif
     if (!per_game)
         add_setup_rows(false);
 
@@ -636,6 +636,10 @@ void App::add_game_rows(Settings &t, bool per_game)
            "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in "
            "/data/porpoise/bios/USA, EUR or JAP. Porpoise includes none.",
            &t.gc_bios);
+    toggle("wii_online", "Online (beta)",
+           "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. For online play in "
+           "games, put a Wiimmfi patch code in Porpoise's cheats folder. Needs the console online.",
+           &t.wii_online);
     if (!per_game)
         toggle("debug_logs", "Debug logs",
                "For testing: Porpoise keeps notes on what it did in /data/porpoise/debug, for bug reports.",
@@ -737,6 +741,52 @@ void App::build_settings()
         r.folder = int(i);
         rows_.push_back(r);
     }
+#ifndef PORPOISE_DESKTOP
+    {
+        /* Porpoise's folder on another drive: extended storage or a USB drive,
+         * for big texture packs and saves (the console's storage stays free). */
+        move_places_.clear();
+        auto place = [&](const std::string &label, const std::string &drive) {
+            struct stat st;
+            if (drive != "/data" && (stat(drive.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)))
+                return;
+            const std::string path = drive + "/porpoise";
+            if (path != data_dir_)
+                move_places_.emplace_back(label, path);
+        };
+        place(tr("the console's storage"), "/data");
+        place(tr("extended storage"), "/mnt/ext0");
+        place(tr("extended storage 2"), "/mnt/ext1");
+        for (int i = 0; i < 8; ++i)
+            place(trf("USB drive {n}", {{"n", std::to_string(i + 1)}}), "/mnt/usb" + std::to_string(i));
+        std::string here = tr("the console's storage");
+        if (data_dir_.rfind("/mnt/ext0", 0) == 0)
+            here = tr("extended storage");
+        else if (data_dir_.rfind("/mnt/ext1", 0) == 0)
+            here = tr("extended storage 2");
+        else if (data_dir_.rfind("/mnt/usb", 0) == 0)
+            here = tr("a USB drive");
+        if (!sandboxed_)
+            for (std::size_t i = 0; i < move_places_.size(); ++i)
+            {
+                SettingRow r;
+                r.section = section;
+                r.label = trf("Move Porpoise's folder to {place}", {{"place", move_places_[i].first}});
+                r.help = trf("Porpoise's folder is on {here} now. Moving it takes everything in it there: "
+                             "settings, saves, save states, covers and texture packs. Then Porpoise closes; open "
+                             "it again. Your game files elsewhere stay where they are.",
+                             {{"here", here}});
+                r.values = {tr("Move\xE2\x80\xA6")};
+                r.action = kRowMoveData;
+                r.folder = int(i);
+                rows_.push_back(r);
+            }
+    }
+    toggle("sandbox_notice", "Sandbox message at start",
+           "When the console starts Porpoise inside the app sandbox, says so and how to free it. Off: Porpoise "
+           "just uses its own folder (games in /app0/porpoise/games).",
+           &settings_->sandbox_notice);
+#endif
     action("Add a game folder", "Pick any folder on the console or a USB drive to search for games.",
            "Choose\xE2\x80\xA6", kRowAddFolder);
     const std::size_t n = lib_ ? lib_->games().size() : 0;
@@ -746,6 +796,18 @@ void App::build_settings()
     action("Check my setup", "What Porpoise can see on this console - /data, USB drives, games - and what to do "
            "about anything missing.",
            "Check\xE2\x80\xA6", kRowSetupCheck);
+    if (ra_state_)
+    {
+        const RaState ra = ra_state_();
+        SettingRow r;
+        r.section = section;
+        r.label = "RetroAchievements";
+        r.help = tr("Earn achievements as you play (softcore). Unlocks pop up like PS5 trophies. In your library, "
+                    "L1 + Square opens this too.");
+        r.values = {ra.signed_in ? ra.user : tr("Sign in\xE2\x80\xA6")};
+        r.action = kRowAccount;
+        rows_.push_back(r);
+    }
     action("Saves from a USB drive (beta)",
            "Copies saves from the USB drive's Porpoise Saves folder in: GameCube saves onto Slot A, Wii saves to "
            "their games. A save that's already here is left as it is. Options in Memory Cards copies a save out.",
@@ -1019,7 +1081,7 @@ void App::add_cheat_rows()
     cheat_on_.clear();
     if (!game_for_ || game_for_->id.size() != 6 || sys_dir_.empty())
         return;
-    cheats_ = cheats_for(sys_dir_, game_for_->id);
+    cheats_ = cheats_for(sys_dir_, game_for_->id, data_dir_ + "/cheats");
     if (cheats_.empty())
         return;
     SettingRow h;
@@ -1404,6 +1466,21 @@ App::Action App::activate_row(const SettingRow &row)
 {
     switch (row.action)
     {
+    case kRowAccount:
+        open_account();
+        break;
+    case kRowMoveData:
+        if (row.folder >= 0 && row.folder < int(move_places_.size()))
+        {
+            move_pick_ = row.folder;
+            open_dialog(DialogKind::MoveData,
+                        trf("Move Porpoise's folder to {place}?", {{"place", move_places_[std::size_t(row.folder)].first}}),
+                        tr("Everything in Porpoise's folder moves there: settings, saves, save states, covers and "
+                           "texture packs. A big folder takes a while. Porpoise closes when it's done; open it "
+                           "again."),
+                        tr("Move"));
+        }
+        return Action::None;
     case kRowAddFolder:
 #ifdef PORPOISE_DESKTOP
         open_browser(""); /* the shortcuts: the games folder, Downloads, the drives */

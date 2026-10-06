@@ -20,9 +20,9 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "2.0";
+constexpr const char *kVersion = "2.1";
 constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
-constexpr int kVersionMajor = 2, kVersionMinor = 0, kVersionPatch = 0;
+constexpr int kVersionMajor = 2, kVersionMinor = 1, kVersionPatch = 0;
 constexpr int kVersionBeta = 0; /* 0 for a final release; its betas come before it */
 
 /* What a settings row does when pressed, besides changing a value. */
@@ -43,6 +43,8 @@ enum RowAction
     kRowPickVersion, /* About > Choose a version: left / right pick, Cross installs */
     kRowSendReport,  /* About > Report a bug: the logs into a report folder (and onto a USB drive) */
     kRowSetupCheck,  /* Games > Check my setup: what Porpoise can see, and what to do about it */
+    kRowMoveData,    /* Games > Move Porpoise's folder to a drive (folder: the place's index) */
+    kRowAccount,     /* Games > RetroAchievements: the account panel */
     kRowImportSaves, /* Games > Saves from a USB drive (beta) */
     kRowDeveloperOff,
     kRowReinitialize, /* Interface > Reinitialize Porpoise: settings wiped, the first start again */

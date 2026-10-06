@@ -25,6 +25,7 @@ without him. Details and licenses are under [PS5 platform](#ps5-platform).
 | [libretro/dolphin](https://github.com/libretro/dolphin) | Dolphin packaged as a libretro core, tracking upstream Dolphin | GPL-2.0-or-later |
 | [libretro / RetroArch](https://www.libretro.com) | The libretro API (`libretro.h`) that Porpoise uses to host the Dolphin core | MIT (API headers) |
 | [libretro-core-info](https://github.com/libretro/libretro-core-info) | The Dolphin core's `.info` metadata | MIT |
+| [rcheevos](https://github.com/RetroAchievements/rcheevos) by [RetroAchievements](https://retroachievements.org) | The achievements runtime in Dolphin's RetroAchievements support, built into the PS5 core | MIT |
 
 Porpoise builds Dolphin from libretro/dolphin revision
 `4d23cf151640eb810cb1b8e9d9fc922cf59c0b87` with one patch,
@@ -62,6 +63,13 @@ Porpoise builds Dolphin from libretro/dolphin revision
   like Porpoise possible.
 - **PS5SX2** and **ProsperoEden**, PS5 homebrew front ends that showed the way
   and inspired Porpoise's approach.
+- **PS5SX2 (Spyros, with Gabriel Fonseca's RetroAchievements groundwork)**:
+  Porpoise's RetroAchievements popups follow its design and findings: the
+  account on the shelf with L1 + Square, softcore only, and unlocks as PS5
+  trophy-style notifications with the trophy sounds, sent through the
+  jailbreak's ELF loader by a small relay payload
+  (`tools/notify-relay/notify_relay.c`, `src/porpoise_notify.cpp`;
+  GPL-3.0-or-later, as PS5SX2's).
 
 ## Trademarks
 

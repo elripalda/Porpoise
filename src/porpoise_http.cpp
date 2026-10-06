@@ -33,6 +33,7 @@ extern "C"
     int sceHttp2SetRecvTimeOut(int id, std::uint32_t usec);
     int sceHttp2SetTimeOut(int id, std::uint32_t usec);
     int sceHttp2SetAutoRedirect(int id, int enable);
+    int sceHttp2AddRequestHeader(int id, const char *name, const char *value, std::uint32_t mode);
     int sceNetCtlInit(void);
     void sceNetCtlTerm(void);
     int sceNetCtlGetState(int *state);
@@ -62,7 +63,7 @@ bool Session::init()
     pool_ = sceNetPoolCreate(name_, 64 * 1024, 0);
     ssl_ = pool_ >= 0 ? sceSslInit(256 * 1024) : -1;
     ctx_ = ssl_ >= 0 ? sceHttp2Init(pool_, ssl_, 256 * 1024, 1) : -1;
-    tmpl_ = ctx_ >= 0 ? sceHttp2CreateTemplate(ctx_, "Porpoise/1.1", 3, 1) : -1;
+    tmpl_ = ctx_ >= 0 ? sceHttp2CreateTemplate(ctx_, agent_, 3, 1) : -1;
     char line[160];
     std::snprintf(line, sizeof line, "%s: https pool %#x ssl %#x http2 %#x template %#x", name_, unsigned(pool_),
                   unsigned(ssl_), unsigned(ctx_), unsigned(tmpl_));
@@ -124,6 +125,52 @@ int Session::get(const std::string &url, std::vector<std::uint8_t> &out,
                 break;
             out.insert(out.end(), buf.begin(), buf.begin() + n);
             if (out.size() > limit || (progress && !progress(out.size())))
+            {
+                status = -1;
+                break;
+            }
+        }
+    }
+    sceHttp2DeleteRequest(req);
+    return status;
+}
+int Session::request(const std::string &url, const std::string *form, std::vector<std::uint8_t> &out,
+                     std::size_t limit)
+{
+    out.clear();
+    if (tmpl_ < 0)
+        return -1;
+    const int req = sceHttp2CreateRequestWithURL(tmpl_, form ? "POST" : "GET", url.c_str(),
+                                                 form ? std::uint64_t(form->size()) : 0);
+    if (req < 0)
+        return -1;
+    sceHttp2SetResolveTimeOut(req, 10 * 1000 * 1000);
+    sceHttp2SetConnectTimeOut(req, 10 * 1000 * 1000);
+    sceHttp2SetSendTimeOut(req, 10 * 1000 * 1000);
+    sceHttp2SetRecvTimeOut(req, 20 * 1000 * 1000);
+    sceHttp2SetTimeOut(req, 30 * 1000 * 1000);
+    sceHttp2SetAutoRedirect(req, 1);
+    if (form)
+        sceHttp2AddRequestHeader(req, "Content-Type", "application/x-www-form-urlencoded", 0 /* overwrite */);
+    int status = -1;
+    if (sceHttp2SendRequest(req, form ? form->data() : nullptr, form ? form->size() : 0) != 0 ||
+        sceHttp2GetStatusCode(req, &status) != 0)
+        status = -1;
+    else
+    {
+        std::vector<std::uint8_t> buf(16 * 1024);
+        for (;;)
+        {
+            const int n = sceHttp2ReadData(req, buf.data(), buf.size());
+            if (n < 0)
+            {
+                status = -1;
+                break;
+            }
+            if (n == 0)
+                break;
+            out.insert(out.end(), buf.begin(), buf.begin() + n);
+            if (out.size() > limit)
             {
                 status = -1;
                 break;

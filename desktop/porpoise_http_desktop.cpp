@@ -123,4 +123,15 @@ int Session::get(const std::string &url, std::vector<std::uint8_t> &out,
         out.clear();
     return status;
 }
+/* RetroAchievements (the only POST) is PS5-only for now. */
+int Session::request(const std::string &url, const std::string *form, std::vector<std::uint8_t> &out,
+                     std::size_t limit)
+{
+    if (form)
+    {
+        out.clear();
+        return -1;
+    }
+    return get(url, out, {}, limit);
+}
 } // namespace porpoise::http

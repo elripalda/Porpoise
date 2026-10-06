@@ -107,7 +107,7 @@ cmake -S "$source_dir" -B "$build/ps5-build" \
     -DUSE_MGBA=OFF -DENABLE_LLVM=OFF -DENCODE_FRAMEDUMPS=OFF -DUSE_UPNP=OFF \
     -DENABLE_SDL=OFF -DENABLE_CLI_TOOL=OFF -DENABLE_TESTS=OFF -DENABLE_QT=OFF \
     -DENABLE_AUTOUPDATE=OFF -DENABLE_ANALYTICS=OFF -DUSE_DISCORD_PRESENCE=OFF \
-    -DUSE_RETRO_ACHIEVEMENTS=OFF > "$build/configure.log" ||
+    -DUSE_RETRO_ACHIEVEMENTS=ON > "$build/configure.log" ||
     { tail -30 "$build/configure.log" >&2; exit 1; }
 echo "==> [dolphin] building the libretro target"
 cmake --build "$build/ps5-build" --target dolphin_libretro --parallel "${JOBS:-16}"
@@ -124,6 +124,9 @@ cp -- "$info" "$root/build/cores/stage/info/dolphin_libretro.info"
 rm -rf -- "$root/build/cores/stage/system/dolphin-emu"
 mkdir -p "$root/build/cores/stage/system/dolphin-emu"
 cp -a -- "$source_dir/Data/Sys" "$root/build/cores/stage/system/dolphin-emu/Sys"
+# totaldb.dsy is the debugger's function-signature database; only Dolphin's Qt
+# debugger reads it, so it stays out (the zip must stay under 30 MiB).
+rm -f -- "$root/build/cores/stage/system/dolphin-emu/Sys/totaldb.dsy"
 printf '==> [dolphin] staged Sys: %s files, %s bytes\n' \
     "$(find "$root/build/cores/stage/system/dolphin-emu/Sys" -type f | wc -l)" \
     "$(du -sb "$root/build/cores/stage/system/dolphin-emu/Sys" | cut -f1)"

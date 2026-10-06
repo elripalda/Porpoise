@@ -21,10 +21,19 @@ struct Cheat
     std::string kind; /* OnFrame, ActionReplay or Gecko */
     std::string name; /* with its '$' */
     bool default_on = false; /* Dolphin turns it on by itself */
+    bool own = false;        /* the player's own, from Porpoise's cheats folder: on unless turned off */
 };
 /* The codes for a game (its six-character ID), from <sys>/GameSettings:
- * the ID's first three characters' file, then its own. */
-std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &game_id);
+ * the ID's first three characters' file, then its own; then the player's
+ * own from own_dir, when given. */
+std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &game_id, const std::string &own_dir = "");
+/* Adds the player's own codes for the game (own_dir/<ID>.ini, or its first
+ * four or three letters, in Dolphin's format) to Dolphin's per-game file at
+ * ini_path: their code lines, and each one that isn't turned off (off(code)
+ * true) as enabled. True when one of them is an Action Replay or Gecko cheat,
+ * which needs Dolphin's cheats on. */
+bool add_own_cheats(const std::string &own_dir, const std::string &game_id, const std::string &ini_path,
+                    bool (*off)(const Cheat &cheat, const void *user), const void *user);
 /* The setting a code's switch is kept under for the game. */
 std::string cheat_key(const Cheat &cheat, bool on);
 /* What a code is, from its name and kind, for its row's help. */

@@ -34,7 +34,7 @@ struct Settings
     int filter_strength = 6; /* 1..10 */
     std::string border;      /* "" none, or a border's name (built in, or a PNG in /data/porpoise/borders) */
     bool fps_overlay = false;
-    int output_res = 0;           /* the picture sent to the TV: 0 1080p, 1 1440p, 2 4K (from the next start) */
+    int output_res = 0;           /* the picture sent to the TV: 0 the PS5's own, 1 1080p, 2 1440p, 3 4K (next start) */
     bool vsync = true;            /* frames on the TV's own vblank (porpoise_pacer); off: Porpoise's timer */
     /* Graphics (advanced) */
     int shader_mode = 2;          /* dolphin_shader_compilation_mode 0..3: async ubershaders */
@@ -66,6 +66,11 @@ struct Settings
         {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}, {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15},
         {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}, {0, 2, 1, 3, 5, 6, 7, 10, 12, 13, 14, 15}};
     bool rumble = true;
+    /* The player's own Wii buttons (global only), one table per Wii controller
+     * (porpoise::pad::wii_button_set): which DualSense control does what
+     * Porpoise's layout puts on each control. Each starts as Porpoise's. */
+    static constexpr int kWiiButtonSets = 4;
+    int wii_buttons[kWiiButtonSets][porpoise::pad::CtlCount] = {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
     /* Wii games: how the DualSense plays the Wii Remote (porpoise::pad::WiiConfig). */
     int wii_controller = 0; /* Remote + Nunchuk, Remote, sideways, Classic, two controllers */
     int wii_pointer = 0;    /* gyro, touch pad, right stick */
@@ -127,6 +132,7 @@ struct Settings
     int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes */
     int sc_games = 0;       /* Star Cube's Games page: 0 spinning discs, 1 covers */
     bool ff_buttons = true; /* touch pad + R1 / R2: fast forward in games */
+    bool sandbox_notice = true; /* the "can't reach /data" message at start (PS5) */
     int console = 0;        /* a game's own: 0 as detected, 1 GameCube, 2 Wii (its controls) */
     /* Sound (beta): Dolphin's exact DSP (LLE), the Wii Remote's speaker in the
      * TV's sound, a fuller buffer, stretching through slowdowns. */
@@ -143,6 +149,7 @@ struct Settings
     int sensor_bar = 0;     /* 0 below the TV, 1 above */
     bool wii_menu_boot = false; /* Wii discs start from the player's own Wii Menu */
     bool gc_bios = false;   /* the GameCube's start-up, from the player's own IPL.bin */
+    bool wii_online = false; /* WiiConnect24 through WiiLink (Dolphin.ini: Core/EnableWiiLink) */
     /* Accessibility */
     int text_size = 0;          /* 0 normal, 1 large, 2 larger */
     int colour_filter = 0;      /* 0 off, 1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale */
