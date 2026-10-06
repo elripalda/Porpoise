@@ -48,6 +48,7 @@
 #include "porpoise_aim.hpp"
 #include "porpoise_pad.hpp"
 #include "porpoise_ra.hpp"
+#include "ui_widescreen.hpp"
 #include "porpoise_sound.hpp"
 #include "porpoise_states.hpp"
 #include "porpoise_update.hpp"
@@ -799,9 +800,16 @@ void draw_border()
     g_gfx.image(g_border, 0, 0, 1920, 1080, porpoise::ui::rgba(0xFFFFFF));
 }
 
+/* RetroAchievements' popups drawn over the game, when the console's own don't
+ * reach the screen (porpoise_ra popup): one at a time, top right. */
+porpoise::ra::GameToast g_toast;
+double g_toast_from = -1;
+porpoise::ui::Texture *g_toast_tex = nullptr;
+
 void launch_device_closing(void *)
 {
     forget_border();
+    g_toast_tex = nullptr; /* the device takes it */
     g_app.forget_textures();
     g_gfx.shutdown();
 }
@@ -1010,6 +1018,9 @@ struct Mover
     std::atomic<int> state{0}; /* 1 copying, 2 tidying the old folder, 3 done, 4 failed, 5 stopped */
     std::atomic<bool> stop{false};
     std::string error;
+    /* What the copy made (files, then the folders it had to make), so a
+     * stop takes back only that: the target may hold things of its own. */
+    std::vector<std::string> made_files, made_dirs;
 };
 Mover g_mover;
 
@@ -1038,7 +1049,8 @@ long long tree_bytes(const std::string &dir)
  * pointer file itself (location.txt) stays behind. */
 bool copy_into(const std::string &dir, const std::string &to, bool top, std::vector<char> &buf)
 {
-    mkdir(to.c_str(), 0777);
+    if (mkdir(to.c_str(), 0777) == 0)
+        g_mover.made_dirs.push_back(to);
     DIR *d = opendir(dir.c_str());
     if (!d)
         return false;
@@ -1067,7 +1079,11 @@ bool copy_into(const std::string &dir, const std::string &to, bool top, std::vec
             continue;
         }
         std::FILE *in = std::fopen(src.c_str(), "rb");
+        struct stat before;
+        const bool existed = stat(dst.c_str(), &before) == 0;
         std::FILE *out = in ? std::fopen(dst.c_str(), "wb") : nullptr;
+        if (out && !existed)
+            g_mover.made_files.push_back(dst);
         bool file_ok = in && out;
         while (file_ok && !g_mover.stop.load())
         {
@@ -1122,8 +1138,13 @@ void *mover_worker(void *)
     const bool ok = copy_into(g_mover.from, g_mover.to, true, buf);
     if (!ok)
     {
-        /* Stopped or failed: the half copy goes, the folder stays where it was. */
-        remove_tree(g_mover.to, false);
+        /* Stopped or failed: what the copy made goes (only that: the target
+         * may be a folder of its own, such as /data/porpoise with its
+         * location.txt), and the folder stays where it was. */
+        for (auto it = g_mover.made_files.rbegin(); it != g_mover.made_files.rend(); ++it)
+            std::remove(it->c_str());
+        for (auto it = g_mover.made_dirs.rbegin(); it != g_mover.made_dirs.rend(); ++it)
+            rmdir(it->c_str()); /* only when empty */
         if (g_mover.stop.load())
             g_mover.state = 5;
         else
@@ -1186,6 +1207,8 @@ void move_data(const std::string &to, double hz)
     g_mover.total = tree_bytes(g_data);
     g_mover.stop = false;
     g_mover.error.clear();
+    g_mover.made_files.clear();
+    g_mover.made_dirs.clear();
     g_mover.state = 1;
     porpoise::covers::stop();
     pthread_t thread;
@@ -1320,8 +1343,54 @@ void draw_texture_note()
                    porpoise::ui::Align::Left, text);
 }
 
+void draw_game_toast()
+{
+    using namespace porpoise::ui;
+    if (g_toast_from >= 0 && g_time - g_toast_from > 6.0)
+    {
+        if (g_toast_tex)
+            g_gfx.free_texture(g_toast_tex);
+        g_toast_tex = nullptr;
+        g_toast_from = -1;
+    }
+    if (g_toast_from < 0)
+    {
+        if (!porpoise::ra::take_game_toast(g_toast))
+            return;
+        g_toast_from = g_time;
+    }
+    const double age = g_time - g_toast_from;
+    const float in = float(std::min(1.0, age / 0.35)), out = float(std::min(1.0, std::max(0.0, (6.0 - age) / 0.5)));
+    const float a = std::min(in, out), slide = (1.0f - in) * 60.0f;
+    if (!g_toast_tex && !g_toast.badge_path.empty())
+    {
+        struct stat st;
+        if (stat(g_toast.badge_path.c_str(), &st) == 0 && st.st_size > 0)
+        {
+            bool pending = false;
+            g_toast_tex = g_gfx.texture_file_async(g_toast.badge_path, &pending, 128);
+        }
+    }
+    const float w = 600, h = 116, x = 1920 - 40 - w + slide, y = 40;
+    const Color edge = g_toast.trophy ? rgba(0xFFD45C, 0.95f * a) : rgba(0x5CD3FF, 0.9f * a);
+    g_gfx.panel(x, y, w, h, rgba(0x0A1236, 0.86f * a), 0.95f * a, 18, edge, 2.0f, 10, 0.2f * a);
+    const float bs = 84, bx = x + 16, by = y + (h - bs) * 0.5f;
+    if (g_toast_tex)
+        g_gfx.image(g_toast_tex, bx, by, bs, bs, rgba(0xFFFFFF, a), 12);
+    else
+        g_gfx.panel(bx, by, bs, bs, rgba(0x13308A, 0.8f * a), a, 12, rgba(0x8BD9FF, 0.6f * a), 1.4f);
+    const float tx = bx + bs + 18, tw = x + w - 20 - tx;
+    g_gfx.text_mid(Font::SemiBold, 19, tx, y + 26, g_toast.trophy ? rgba(0xFFD45C, a) : rgba(0x5CD3FF, a), Align::Left,
+                   look::fit(g_gfx, Font::SemiBold, 19, g_toast.caption, tw));
+    g_gfx.text_mid(Font::Bold, 26, tx, y + 58, rgba(0xF4F7FF, a), Align::Left,
+                   look::fit(g_gfx, Font::Bold, 26, g_toast.title, tw));
+    g_gfx.text_mid(Font::Regular, 20, tx, y + 90, rgba(0xC9D3FF, a), Align::Left,
+                   look::fit(g_gfx, Font::Regular, 20, g_toast.text, tw));
+}
+
 void launch_frame(bool core_frame, double fps, void *)
 {
+    porpoise::ra::pump(); /* the game's achievements list and badges, after an unlock */
     g_time += 1.0 / 60.0;
     if (!g_gfx.ready())
         return;
@@ -1377,7 +1446,10 @@ void launch_frame(bool core_frame, double fps, void *)
                    porpoise::ui::Align::Center, text);
     }
     if (!g_menu_open)
+    {
         draw_texture_note();
+        draw_game_toast();
+    }
     if (g_play.motion_readout && g_play.developer && !g_menu_open)
         draw_motion_readout();
     if (!g_menu_open)
@@ -1650,6 +1722,7 @@ int main()
     mark_start("start: library read, ms");
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
     g_app.set_sys_dir(PORPOISE_APP "/system/dolphin-emu/Sys");
+    porpoise::ui::widescreen::set_dir(PORPOISE_APP "/assets/widescreen");
     g_app.set_sound_hook(play_sound);
     g_app.set_jingle_hook([](const std::int16_t *frames, std::size_t count) {
         porpoise::sound::play_jingle(frames, count);
@@ -1672,6 +1745,14 @@ int main()
             return porpoise::ra::begin_login(user, password);
         },
         [] { porpoise::ra::logout(); });
+    g_app.set_achievement_source([](const std::string &disc_id, bool live) {
+        porpoise::ui::AchievementSet set;
+        if (live)
+            porpoise::ra::live_list(set);
+        else
+            porpoise::ra::kept_list(disc_id, set);
+        return set;
+    });
 #endif
     porpoise::banner::set_cache_dir(g_data + "/banners");
     porpoise::sound::load(PORPOISE_APP "/assets");
@@ -1883,6 +1964,19 @@ int main()
         g_play = g_settings;
         if (g_play.load(g_app.game_settings_path(*launch), true))
             ps5::debug::mark("main: the game has its own settings");
+        /* Widescreen: the game's own code or 16:9 option where it has one; the
+         * emulated hack only when asked for (ui_widescreen.hpp). */
+        const bool ws_wii = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
+        const porpoise::ui::widescreen::Plan ws_plan = porpoise::ui::widescreen::plan_for(
+            g_play.wide_mode(),
+            porpoise::ui::widescreen::kind_of(launch->id, PORPOISE_APP "/system/dolphin-emu/Sys", ws_wii),
+            porpoise::ui::widescreen::code_needs_hack(launch->id));
+        static_assert(int(porpoise::ui::widescreen::Plan::Patch) == 1 && int(porpoise::ui::widescreen::Plan::Hack) == 3 &&
+                          int(porpoise::ui::widescreen::Plan::PatchHack) == 4,
+                      "Settings::core_options reads the plan as these numbers");
+        g_play.ws_plan = int(ws_plan);
+        ps5::debug::mark_value("main: widescreen plan (0 4:3, 1 code, 2 the game's own, 3 hack, 4 code with hack)",
+                               g_play.ws_plan);
         porpoise::pacer::set_vsync(g_play.vsync);
         /* The driver reads this when Dolphin makes the game's device
          * (PS5_Mesa's threaded layer); the launcher's own device never has it. */
@@ -1932,7 +2026,16 @@ int main()
             mkdir((g_saves_path + "/User").c_str(), 0777);
             mkdir(dir.c_str(), 0777);
             if (!g_play.write_dolphin_game_ini(dir + "/" + launch->id + ".ini"))
+            {
                 ps5::debug::mark("main: the game's Dolphin settings file is the player's own; left as it is");
+                if (g_play.ws_plan == int(porpoise::ui::widescreen::Plan::Patch) ||
+                    g_play.ws_plan == int(porpoise::ui::widescreen::Plan::PatchHack))
+                {
+                    /* No code can be added there: the game stays 4:3. */
+                    g_play.ws_plan = int(porpoise::ui::widescreen::Plan::Standard);
+                    g_play.write_core_options(g_options_path);
+                }
+            }
             else
             {
                 /* The player's own codes (<data>/cheats/<ID>.ini): on unless
@@ -1951,6 +2054,27 @@ int main()
                         g_play.cheats = true;
                         g_play.write_core_options(g_options_path);
                     }
+                }
+                /* The game's widescreen code (Warped Polygon's collection, or
+                 * Dolphin's own), on when the plan says so. */
+                bool ws_on = false;
+                const bool ws_cheats = porpoise::ui::widescreen::add_codes(
+                    launch->id, PORPOISE_APP "/system/dolphin-emu/Sys", dir + "/" + launch->id + ".ini", ws_plan, off,
+                    &g_play, ws_on);
+                if (ws_on)
+                    ps5::debug::mark("main: the game's widescreen code is on");
+                if (ws_cheats && !g_play.cheats)
+                {
+                    g_play.cheats = true;
+                    g_play.write_core_options(g_options_path);
+                }
+                if ((ws_plan == porpoise::ui::widescreen::Plan::Patch ||
+                     ws_plan == porpoise::ui::widescreen::Plan::PatchHack) &&
+                    !ws_on)
+                {
+                    /* Its code turned off: 4:3 rather than a stretched picture. */
+                    g_play.ws_plan = int(porpoise::ui::widescreen::Plan::Standard);
+                    g_play.write_core_options(g_options_path);
                 }
             }
             for (const auto &[k, v] : g_play.dolphin)
@@ -2045,6 +2169,7 @@ int main()
         }
         playback.load_state = start_state.empty() ? nullptr : start_state.c_str();
         start_texture_note(*launch);
+        porpoise::ra::prepare_game(launch->id);
         porpoise::core::Paths core_paths;
         core_paths.saves = g_saves_path.c_str();
         core_paths.options = g_options_path.c_str();

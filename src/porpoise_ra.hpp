@@ -10,6 +10,8 @@
 
 #include <string>
 
+#include "ui_achievements.hpp"
+
 namespace porpoise::ra
 {
 struct Account
@@ -30,9 +32,28 @@ bool begin_login(const std::string &user, const std::string &password);
 bool take_login_done();
 void logout();
 
+/* The game about to start (its disc ID), for the list kept for the library. */
+void prepare_game(const std::string &disc_id);
 /* Before retro_load_game: the account, the network and the popups go to the
  * core (when signed in, and the core knows how). */
 void start_game(void *core_library);
+/* Each frame of the game (its own thread): keeps the game's list and fetches
+ * its badges after it loads and after each unlock. */
+void pump();
+/* The running game's set (false when none), its badges' files as far as
+ * they're downloaded. */
+bool live_list(porpoise::ui::AchievementSet &out);
+/* A game's set as kept from its last play (false when none). */
+bool kept_list(const std::string &disc_id, porpoise::ui::AchievementSet &out);
+/* A popup Porpoise draws over the game itself, when the console's own rich
+ * notifications don't reach the screen (no ELF loader): the badge, a title
+ * and a line. */
+struct GameToast
+{
+    std::string caption, title, text, badge_path;
+    bool trophy = false; /* an unlock or the game completed: gold */
+};
+bool take_game_toast(GameToast &out);
 /* Before retro_unload_game: up to max_ms for unlocks still being sent. */
 void finish_game(void *core_library, int max_ms);
 /* After it: the game's connection closes. */

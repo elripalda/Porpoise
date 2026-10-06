@@ -22,6 +22,7 @@ struct Cheat
     std::string name; /* with its '$' */
     bool default_on = false; /* Dolphin turns it on by itself */
     bool own = false;        /* the player's own, from Porpoise's cheats folder: on unless turned off */
+    bool pack = false;       /* from the widescreen collection (ui_widescreen) */
 };
 /* The codes for a game (its six-character ID), from <sys>/GameSettings:
  * the ID's first three characters' file, then its own; then the player's

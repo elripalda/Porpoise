@@ -12,6 +12,7 @@
 #include "porpoise_notify.hpp"
 
 #include <arpa/inet.h>
+#include <atomic>
 #include <cerrno>
 #include <chrono>
 #include <condition_variable>
@@ -86,6 +87,7 @@ Shared &S()
     return *s;
 }
 constexpr std::size_t kMaxQueued = 24;
+std::atomic<int> g_rich_state{-1};
 constexpr auto kGap = std::chrono::milliseconds(6500); /* between rich toasts */
 
 std::string quote(const std::string &s)
@@ -273,16 +275,23 @@ void send(const Toast &t)
     const std::string json = payload(t);
     if (SendFn own = own_sender())
     {
-        ps5::debug::mark_value("notify: rich", own(0xFE, true, json.c_str()));
-        return;
+        const int rc = own(0xFE, true, json.c_str());
+        ps5::debug::mark_value("notify: rich", rc);
+        if (rc == 0)
+        {
+            g_rich_state = 1;
+            return;
+        }
     }
 #ifdef PORPOISE_NOTIFY_RELAY
     if (send_relay(json))
     {
         ps5::debug::mark("notify: rich, through the ELF loader");
+        g_rich_state = 1;
         return;
     }
 #endif
+    g_rich_state = 0;
     ps5::debug::mark_value("notify: rich unavailable, plain", send_kernel(t.message + (t.sub.empty() ? "" : "\n" + t.sub)));
 }
 
@@ -362,6 +371,11 @@ void hold(int seconds)
     Shared &s = S();
     std::lock_guard<std::mutex> lock(s.lock);
     s.hold_until = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
+}
+
+int rich_state()
+{
+    return g_rich_state.load();
 }
 
 void flush(int max_ms)

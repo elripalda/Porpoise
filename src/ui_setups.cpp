@@ -30,7 +30,7 @@ void set_dir(const std::string &data_dir)
 const std::vector<std::string> &keys()
 {
     static const std::vector<std::string> k = {
-        "resolution",   "widescreen",     "aspect",      "antialiasing",   "anisotropy",  "texture_filter",
+        "resolution",   "widescreen", "wide", "aspect",      "antialiasing",   "anisotropy",  "texture_filter",
         "resampling",   "screen_filter",  "filter_strength", "border",     "fps_overlay", "shader_mode",
         "texture_cache", "pixel_lighting", "disable_fog", "crop_overscan",  "skip_dupes",  "custom_textures",
     };

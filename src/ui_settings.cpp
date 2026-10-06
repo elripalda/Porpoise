@@ -45,6 +45,7 @@ const Field kFields[] = {
     {"download_info", nullptr, &Settings::download_info, 0, 1},
     {"resolution", &Settings::resolution, nullptr, 1, 6},
     {"widescreen", nullptr, &Settings::widescreen, 0, 1},
+    {"wide", &Settings::wide, nullptr, 0, 2},
     {"aspect", &Settings::aspect, nullptr, 0, 3},
     {"anisotropy", &Settings::anisotropy, nullptr, 0, 4},
     {"texture_filter", &Settings::texture_filter, nullptr, 0, 2},
@@ -210,6 +211,8 @@ bool Settings::load(const std::string &path, bool overlay)
     bool versioned = false;
     int version = 0;
     int legacy_sharp = -1;   /* 1.0's Smooth / Sharp switch */
+    bool saw_wide = false;   /* 2.1.1's Widescreen choice */
+    int legacy_wide = -1;    /* 2.0's widescreen hack switch */
     bool saw_filter = false;
     char line[1024];
     while (std::fgets(line, sizeof line, f))
@@ -330,6 +333,10 @@ bool Settings::load(const std::string &path, bool overlay)
         }
         if (k == "screen_filter")
             saw_filter = true;
+        if (k == "wide")
+            saw_wide = true;
+        if (k == "widescreen")
+            legacy_wide = as_bool(v) ? 1 : 0;
         if (const Field *fd = field(k))
         {
             if (fd->i)
@@ -353,6 +360,11 @@ bool Settings::load(const std::string &path, bool overlay)
         output_res = std::min(output_res + 1, 3);
     if (!overlay && version < 11 && shader_mode == 0)
         shader_mode = 2;
+    /* 2.1.1: the widescreen hack switch became the Widescreen choice; on, it
+     * is On (the hack for games with no code of their own). Per game too. */
+    if (!saw_wide && legacy_wide == 1)
+        wide = 1;
+    widescreen = false;
     /* 1.1: Smooth / Sharp became the first two screen filters. */
     if (legacy_sharp >= 0 && !saw_filter)
         screen_filter = legacy_sharp;
@@ -414,7 +426,10 @@ bool Settings::save_keys(const std::string &path, const std::vector<std::string>
     if (!f)
         return false;
     std::fprintf(f, "# This game's own settings (Porpoise > Details > Game settings)\n");
-    for (const std::string &k : keys)
+    std::vector<std::string> all = keys;
+    if (std::find(all.begin(), all.end(), "widescreen") != all.end() && std::find(all.begin(), all.end(), "wide") == all.end())
+        all.push_back("wide"); /* 2.0's switch, carried into the choice it became */
+    for (const std::string &k : all)
     {
         if (const Field *fd = field(k))
             write_field(f, *this, *fd);
@@ -747,8 +762,10 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
 {
     return {
         {"dolphin_efb_scale", std::to_string(resolution)},
-        {"dolphin_widescreen_hack", on_off(widescreen)},
-        {"dolphin_aspect_ratio", std::to_string(aspect)},
+        /* Widescreen (ui_widescreen): the hack only when the plan says so; a
+         * game's own widescreen code wants the picture at 16:9. */
+        {"dolphin_widescreen_hack", on_off(ws_plan == 3 || ws_plan == 4)},
+        {"dolphin_aspect_ratio", std::to_string(ws_plan == 1 ? 1 : aspect)},
         {"dolphin_max_anisotropy", std::to_string(anisotropy)},
         {"dolphin_force_texture_filtering_mode", std::to_string(texture_filter)},
         {"dolphin_anti_aliasing", std::to_string(antialiasing)},

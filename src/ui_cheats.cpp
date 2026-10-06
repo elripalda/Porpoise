@@ -8,6 +8,7 @@
 #include <cstring>
 
 #include "ui_i18n.hpp"
+#include "ui_widescreen.hpp"
 
 namespace porpoise::ui
 {
@@ -96,6 +97,22 @@ std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &gam
     std::stable_sort(out.begin(), out.end(), [](const Cheat &a, const Cheat &b) {
         return (a.kind == "OnFrame") > (b.kind == "OnFrame");
     });
+    /* The widescreen collection's codes for the game, then the player's own. */
+    if (game_id.size() == 6)
+    {
+        const std::vector<Cheat> pack = widescreen::pack_codes(game_id);
+        bool pack_widescreen = false;
+        for (const Cheat &c : pack)
+            pack_widescreen |= c.default_on;
+        if (!pack_widescreen && !widescreen::has_native(game_id))
+            for (Cheat &c : out)
+                if (!c.default_on && widescreen::is_widescreen_code(c.name))
+                {
+                    c.default_on = true; /* the one Widescreen turns on (ui_widescreen add_codes) */
+                    break;
+                }
+        out.insert(out.end(), pack.begin(), pack.end());
+    }
     /* The player's own after Dolphin's: on unless turned off. */
     const std::size_t dolphin_count = out.size();
     for (const std::string &path : own_files(own_dir, game_id))
@@ -228,6 +245,10 @@ std::string cheat_help(const Cheat &cheat)
     }
     if (cheat.own)
         return tr("Your own code, from Porpoise's cheats folder. On unless you turn it off here.");
+    if (cheat.pack)
+        return cheat.default_on
+                   ? tr("Widescreen code from Warped Polygon's collection. On when Widescreen is Auto or On.")
+                   : tr("A code from Warped Polygon's widescreen collection. Off unless you turn it on.");
     return cheat.kind == "Gecko" ? tr("A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.")
                                  : tr("An Action Replay cheat from Dolphin's list. Turning one on turns this game's "
                                       "cheats on.");

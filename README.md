@@ -88,6 +88,10 @@ BIOS or firmware files.
   or Classic.
 
 ### RetroAchievements (softcore)
+- **Your lists:** the in-game menu's **Achievements** tab shows every
+  achievement for the game you're playing, unlocked or not, with its badge,
+  points and rarity. In the library, **Square** on a game's Details shows its
+  list as of your last play.
 - Earn [RetroAchievements](https://retroachievements.org) as you play. In the
   library, press **L1 + Square** (or go to Settings → Games →
   RetroAchievements) and sign in with your RetroAchievements account; the
@@ -99,7 +103,8 @@ BIOS or firmware files.
   apply). Completing a game plays the platinum sound, and each game starts
   with a popup of how many you've unlocked.
 - The popups go through your jailbreak's **ELF loader** (port 9021, as etaHEN
-  and the ELF loader payloads have); without one they're plain notifications.
+  and the ELF loader payloads have); without one, Porpoise draws them over the
+  game itself.
 - Softcore only: hardcore mode isn't available. Your game has to be a version
   RetroAchievements knows; Porpoise says so when it isn't.
 
@@ -147,7 +152,7 @@ Settings are split into sections:
 
 | Section | What's inside |
 |---|---|
-| **Video** | **Output resolution** (*Match the PS5* by default, or 1080p, 1440p, 4K), internal resolution (1080p by default; 4x and above marked *experimental*), widescreen hack, aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
+| **Video** | **Output resolution** (*Match the PS5* by default, or 1080p, 1440p, 4K), internal resolution (1080p by default; 4x and above marked *experimental*), **Widescreen** (see [Widescreen](#widescreen)), aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
 | **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
 | **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume; and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller), **audio buffer**, **audio stretching** and the **microphone** (see [Sound](#sound-beta)) |
 | **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, **fast forward buttons**, connected controllers; per game, **Console** (Auto, GameCube or Wii) for a game Porpoise detected wrong |
@@ -389,6 +394,20 @@ saves, save states, covers and texture packs, then Porpoise closes; open it
 again. If that drive isn't connected at the next start, Porpoise says so and
 uses the console's storage until it is.
 
+### Widescreen
+
+Settings → Video → **Widescreen** is **Auto** by default:
+
+- **Games with a widescreen code** (over 300 GameCube games, from Warped
+  Polygon's collection, plus Dolphin's own) play in true 16:9: the game itself
+  draws the wider view, with nothing popping in at the edges.
+- **Games with a 16:9 option of their own:** turn it on in the game's options
+  and the picture follows. Wii games follow the Wii's widescreen setting.
+- **Other games stay 4:3.** **On** uses Dolphin's emulated widescreen hack for
+  them, which can glitch: things at the screen edges may pop in and out.
+- A game's Details say which it is. Its codes are also in its **Cheats**, to
+  turn off one by one.
+
 ### Your own cheats
 
 Put a game's codes in **`/data/porpoise/cheats/<game ID>.ini`** (the 6-letter
@@ -466,6 +485,7 @@ becomes the next player, up to four, and can join in the middle of a game.
 | `/data/porpoise/bios/` | Your own GameCube BIOS, as `USA/IPL.bin`, `EUR/IPL.bin` or `JAP/IPL.bin` (optional) |
 | `/data/porpoise/cheats/` | Your own cheat codes, one `<game ID>.ini` per game (optional) |
 | `/data/porpoise/retroachievements.ini` | Your RetroAchievements sign-in token (not your password) |
+| `/data/porpoise/achievements/` | Each game's achievement list as of your last play, and the badges |
 | `/data/porpoise/location.txt` | Where Porpoise's folder is, after you moved it to another drive |
 | `/data/porpoise/cache/` | The menus' lettering, made once at the first start |
 
@@ -588,6 +608,8 @@ It stands on the work of many people. The full list, with licenses, is in
   **[Exo 2](https://github.com/googlefonts/Exo-2.0)**,
   **[Lora](https://github.com/cyrealtype/Lora-Cyrillic)** (as Porpoise Serif) and
   **[M PLUS 1](https://github.com/coz-m/MPLUS_FONTS)** (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
+- **Warped Polygon**, for the GameCube widescreen code collection Porpoise's
+  widescreen uses.
 - **[RetroAchievements](https://retroachievements.org)** and its
   **[rcheevos](https://github.com/RetroAchievements/rcheevos)** library (MIT),
   which Dolphin's achievements are built on.

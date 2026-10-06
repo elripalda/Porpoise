@@ -34,4 +34,7 @@ void plain(const std::string &text);
 void hold(int seconds);
 /* Waits up to max_ms for the queue to be sent (before Porpoise closes). */
 void flush(int max_ms);
+/* Whether rich toasts reach the screen: -1 not tried yet, 1 yes (libSceNotification
+ * or the ELF loader), 0 no (only plain notifications on this console). */
+int rich_state();
 } // namespace porpoise::notify

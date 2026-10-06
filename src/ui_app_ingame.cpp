@@ -11,6 +11,8 @@
  *   Controls  the button layout, Customize buttons (the mapping screen, over
  *             the game), vibration, and the controller with a line out to
  *             every button, saying which GameCube button it is.
+ *   Achievements  with RetroAchievements on and a set for the game: every
+ *             achievement, unlocked or not (ui_app_achievements.cpp).
  * Changes are saved as the game's own settings and take effect at once
  * (main applies them as take_menu_change() reports them). */
 #include <algorithm>
@@ -95,7 +97,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
         r.push_back({Kind::Int, "resolution", "Internal resolution", &p.resolution, nullptr, 1,
                      {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p) \xE2\x80\xA2 exp.", "5x (1800p) \xE2\x80\xA2 exp.",
                       "6x (4K) \xE2\x80\xA2 exp."}});
-        r.push_back({Kind::Bool, "widescreen", "Widescreen hack", nullptr, &p.widescreen, 0, {"Off", "On"}});
+        r.push_back({Kind::Int, "wide", "Widescreen", &p.wide, nullptr, 0, {"Auto", "On", "Off"}});
         r.push_back({Kind::Int, "aspect", "Aspect ratio", &p.aspect, nullptr, 0,
                      {"Auto", "Force 16:9", "Force 4:3", "Stretch to fill"}});
         r.push_back({Kind::Int, "antialiasing", "Anti-aliasing", &p.antialiasing, nullptr, 0,
@@ -179,6 +181,9 @@ const char *help_for(const Row &row, const Settings &p)
         return "Experimental: may slow some games down.";
     if (row.key == std::string("screen_filter"))
         return "Porpoise's own filter on the way to the TV. CRT and Arcade CRT look best at 1080p or above.";
+    if (row.key == std::string("wide"))
+        return "Takes effect the next time the game starts. On, for a game without a widescreen code, uses the "
+               "emulated widescreen hack, which can glitch at the screen edges.";
     if (row.key == std::string("border"))
         return "Fills the bars beside a 4:3 picture (widescreen off). Add your own PNGs to /data/porpoise/borders.";
     if (row.key == std::string("shader_mode"))
@@ -250,6 +255,7 @@ std::string slot_date(long long t)
 
 void App::menu_free_slots()
 {
+    free_badges();
     for (Texture *&t : menu_slot_tex_)
         if (t)
         {
@@ -337,6 +343,9 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_busy_handed_ = false;
     menu_borders_ = porpoise::borders::list();
     load_slots(menu_game_);
+    ach_focus_ = 0;
+    ach_scroll_ = 0;
+    load_achievements(game ? game->id : std::string(), true);
     prev_ = held_ = raw_held_ = raw_prev_ = 0xFFFFFFFFu; /* buttons still down from the shortcut don't count */
     sfx(Sound::DetailsFlip);
 }
@@ -424,19 +433,50 @@ int App::update_game_menu(const Input &in, double dt)
         return 0;
     }
 
-    Settings &p = *menu_play_;
-    std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii");
-    const int count = int(rows.size());
-
-    /* L1 / R1: the tabs. */
+    /* L1 / R1: the tabs (Achievements last, when the game has a set). */
+    const int tabs = kTabCount + (menu_has_achievements() ? 1 : 0);
+    if (menu_tab_ >= tabs)
+        menu_tab_ = kTabGame;
     if (pressed(BtnL1) || pressed(BtnR1))
     {
-        menu_tab_ = (menu_tab_ + (pressed(BtnL1) ? kTabCount - 1 : 1)) % kTabCount;
+        menu_tab_ = (menu_tab_ + (pressed(BtnL1) ? tabs - 1 : 1)) % tabs;
         menu_row_ = 0;
         menu_confirm_ = false;
         sfx(Sound::MovingTab);
         return 0;
     }
+    if (menu_tab_ == kTabCount)
+    {
+        /* Achievements: the list, fresh every couple of seconds. */
+        if (menu_game_ && time_ - ach_loaded_at_ > 2.0)
+            load_achievements(menu_game_->id, true);
+        if (!menu_has_achievements())
+        {
+            menu_tab_ = kTabGame; /* the set went (the core lost it) */
+            menu_row_ = 0;
+            return 0;
+        }
+        if (achievements_nav(up, down))
+            sfx(Sound::MenuScroll);
+        const bool shortcut = (held_ & (BtnOptions | BtnTouch)) == (BtnOptions | BtnTouch) &&
+                              (prev_ & (BtnOptions | BtnTouch)) != (BtnOptions | BtnTouch);
+        if (pressed(BtnCircle) || shortcut)
+        {
+            sfx(Sound::DetailsFlip);
+            menu_closing_ = true;
+            menu_answer_ = 1;
+            if (calm)
+            {
+                menu_anim_ = 0;
+                menu_free_slots();
+                return 1;
+            }
+        }
+        return 0;
+    }
+    Settings &p = *menu_play_;
+    std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii");
+    const int count = int(rows.size());
     if (up || down)
         menu_confirm_ = false; /* "press again to replace" is for the row it was said on */
     if (up)
@@ -632,6 +672,11 @@ int App::update_game_menu(const Input &in, double dt)
         break;
     }
     std::vector<std::string> also;
+    if (key == "wide" && p.widescreen)
+    {
+        p.widescreen = false; /* 2.0's hack switch gives way to the choice */
+        also.push_back("widescreen");
+    }
     if (key == "wii_preset")
     {
         /* A preset brings its whole set-up. */
@@ -807,25 +852,28 @@ void App::draw_game_menu(double time)
     }
 
     /* The tabs, L1 and R1 at their sides. */
+    const int tabs = kTabCount + (menu_has_achievements() ? 1 : 0);
     {
         const float ty = hy + 28, tab_h = 50;
-        float widths[kTabCount], total = 0;
-        for (int i = 0; i < kTabCount; ++i)
+        const float size = tabs > kTabCount ? ts(23) : ts(25), pad = tabs > kTabCount ? 32.0f : 44.0f;
+        const char *names[kTabCount + 1] = {kTabNames[0], kTabNames[1], kTabNames[2], kTabNames[3], "Achievements"};
+        float widths[kTabCount + 1], total = 0;
+        for (int i = 0; i < tabs; ++i)
         {
-            widths[i] = g.measure(Font::Bold, ts(25), tr(kTabNames[i])) + 44;
+            widths[i] = g.measure(Font::Bold, size, tr(names[i])) + pad;
             total += widths[i];
         }
         float tx = x + (w - total) * 0.5f;
         g.glyph(Glyph::L1, tx - 44, ty, 40, rgba(0xE8F0FF));
         g.glyph(Glyph::R1, tx + total + 44, ty, 40, rgba(0xE8F0FF));
-        for (int i = 0; i < kTabCount; ++i)
+        for (int i = 0; i < tabs; ++i)
         {
             const bool on = i == menu_tab_;
             if (on)
                 g.panel(tx, ty - tab_h * 0.5f, widths[i], tab_h, rgba(0x1F63F0), 0.62f, kR, rgba(0x7FD9FF), 1.6f, 6,
                         0.35f);
-            g.text_mid(on ? Font::Bold : Font::SemiBold, ts(25), tx + widths[i] * 0.5f, ty, on ? kWhite : kSoft,
-                       Align::Center, tr(kTabNames[i]));
+            g.text_mid(on ? Font::Bold : Font::SemiBold, size, tx + widths[i] * 0.5f, ty, on ? kWhite : kSoft,
+                       Align::Center, tr(names[i]));
             tx += widths[i];
         }
         hy = ty + tab_h * 0.5f + 16;
@@ -833,8 +881,41 @@ void App::draw_game_menu(double time)
     g.panel(x + 36, hy, w - 72, 1.5f, rgba(0x6F8FE0, 0.5f), 1, 0);
     hy += 10;
 
+    if (menu_tab_ == kTabCount && tabs > kTabCount)
+    {
+        /* Achievements: the list here, the one in focus beside the menu. */
+        draw_achievement_list(x + 48, hy + 18, w - 96, y + h - 84 - (hy + 18));
+        g.set_layer(0, 0, t);
+        draw_achievement_card(1000, 120, 840, 840);
+        g.set_layer(-(w + 80) * (1.0f - t), 0, 0.3f + 0.7f * t);
+        const float py = y + h - 50, size = ts(22);
+        float px = x + 52;
+        for (const auto &pr : std::vector<std::pair<Glyph, std::string>>{{Glyph::DPad, tr("Browse")},
+                                                                         {Glyph::Circle, tr("Resume")}})
+        {
+            g.glyph(pr.first, px + 15, py, 30, kWhite);
+            px += 42;
+            px += g.text_mid(Font::SemiBold, size, px, py, kWhite, Align::Left, pr.second) + 40;
+        }
+        const std::string tabs_label = tr("Tabs");
+        const float tw = g.measure(Font::SemiBold, size, tabs_label), right = x + w - 48;
+        g.text_mid(Font::SemiBold, size, right, py, kWhite, Align::Right, tabs_label);
+        if (g.has_icons())
+        {
+            g.glyph(Glyph::R1, right - tw - 30, py, 30, kWhite);
+            g.glyph(Glyph::L1, right - tw - 76, py, 30, kWhite);
+        }
+        g.set_layer();
+        return;
+    }
+
     /* Rows. */
     const std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii");
+    if (rows.empty())
+    {
+        g.set_layer();
+        return;
+    }
     const float row_h = 56, rx = x + 24, rw = w - 48;
     float ry = hy;
     for (int i = 0; i < int(rows.size()); ++i)
@@ -1070,6 +1151,8 @@ void App::draw_game_menu(double time)
 void App::return_from_game()
 {
     menu_free_slots();
+    details_ach_for_.clear(); /* the game just played may have unlocked some */
+    ach_live_ = false;
     menu_game_ = nullptr;
     menu_play_ = nullptr;
     map_in_game_ = false;

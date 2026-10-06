@@ -21,7 +21,12 @@ struct Settings
 
     /* Video */
     int resolution = 3;      /* dolphin_efb_scale 1..6: 1080p; 4x and up are experimental */
-    bool widescreen = false; /* dolphin_widescreen_hack */
+    bool widescreen = false; /* 2.0's widescreen hack switch: now only read, as Widescreen On (wide_mode) */
+    int wide = 0;            /* Widescreen: 0 Auto, 1 On, 2 Off (ui_widescreen.hpp) */
+    /* How the game being started runs (ui_widescreen Plan, as an int; -1 the
+     * launcher): decides dolphin_widescreen_hack (3, 4) and the aspect (1:
+     * 16:9). Not saved. */
+    int ws_plan = -1;
     int aspect = 3;          /* dolphin_aspect_ratio 0..3: Auto, 16:9, 4:3, Stretch */
     int anisotropy = 2;      /* dolphin_max_anisotropy 0..4 (1x..16x) */
     int texture_filter = 0;  /* dolphin_force_texture_filtering_mode 0..2 */
@@ -175,6 +180,8 @@ struct Settings
     /* Keys present in a settings file. */
     static std::vector<std::string> keys_in(const std::string &path);
     /* Writes the Dolphin keys into options.ini, keeping any other lines. */
+    /* The Widescreen setting (2.0's hack switch is read into it). */
+    int wide_mode() const { return wide; }
     bool write_core_options(const std::string &options_ini) const;
     /* Back to how Porpoise ships, keeping the game folders. */
     void reset();

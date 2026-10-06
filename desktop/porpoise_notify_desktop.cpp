@@ -10,4 +10,5 @@ void rich(const std::string &, const std::string &, const std::string &, Sound, 
 void plain(const std::string &) {}
 void hold(int) {}
 void flush(int) {}
+int rich_state() { return 0; }
 } // namespace porpoise::notify

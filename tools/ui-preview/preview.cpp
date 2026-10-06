@@ -409,6 +409,78 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    /* PREVIEW_ACH=1: a game's achievements on Details, its page, and the
+     * in-game menu's Achievements tab; then stop. */
+    if (std::getenv("PREVIEW_ACH"))
+    {
+        static porpoise::ui::AchievementSet fake;
+        fake.game_id = 11;
+        fake.title = "Garden Critters";
+        fake.badge_url = "https://media.retroachievements.org/Images/000001.png";
+        const char *titles[] = {"First Steps", "Bug Collector", "Night Owl", "Speed Runner", "Perfectionist",
+                                "Secret Garden", "Rainy Day", "Full House", "Long Haul", "Last Bloom"};
+        const char *descs[] = {"Finish the first garden.", "Catch 50 critters in one day.",
+                               "Play through a whole night without resting.", "Clear the meadow in under 3 minutes.",
+                               "Get a perfect score on every garden.", "Find the hidden gate behind the old oak.",
+                               "Catch a critter in the rain.", "Fill every jar on the shelf.",
+                               "Play for 10 hours.", "See the last flower bloom."};
+        mkdir((out + "/achievements").c_str(), 0777);
+        mkdir((out + "/achievements/badges").c_str(), 0777);
+        for (int i = 0; i < 10; ++i)
+        {
+            porpoise::ui::Achievement a;
+            a.id = unsigned(100 + i);
+            a.points = (i % 4 + 1) * 5;
+            a.unlocked = i < 4;
+            a.unlock_time = a.unlocked ? 1759700000LL - i * 86400 : 0;
+            a.type = i == 5 ? 1 : 0;
+            a.rarity = 42.5f - float(i) * 3.7f;
+            a.progress = i == 6 ? "3/10" : "";
+            a.title = titles[i];
+            a.description = descs[i];
+            a.badge_url = "https://media.retroachievements.org/Badge/" + std::to_string(5000 + i) + ".png";
+            fake.list.push_back(a);
+            const std::string from = covers + "/PRVW0" + std::to_string(1 + i % 8) + ".png";
+            const std::string to = out + "/achievements/badges/" + porpoise::ui::badge_file(a.badge_url);
+            std::system(("cp '" + from + "' '" + to + "'").c_str());
+        }
+        std::system(("cp '" + covers + "/PRVW02.png' '" + out + "/achievements/badges/000001.png'").c_str());
+        fake.total = 10;
+        fake.unlocked = 4;
+        fake.points_total = 125;
+        fake.points = 50;
+        ui.set_achievement_source([](const std::string &, bool) { return fake; });
+        settle();
+        press(kSquare); /* Details */
+        settle();
+        render("ach-details", [&] { ui.draw(12.0); });
+        press(kSquare); /* the achievements page */
+        settle();
+        render("ach-page", [&] { ui.draw(12.0); });
+        press(kDown, 5);
+        settle();
+        render("ach-page-locked", [&] { ui.draw(12.0); });
+        press(kCircle);
+        press(kCircle);
+        settle();
+        porpoise::Settings play = settings;
+        ui.open_game_menu(&lib.games()[0], &play);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        Input l1;
+        l1.held = 1u << 8; /* L1: round to the last tab */
+        ui.update_game_menu(l1, 0.016);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        Texture *frame = gfx.texture_file(covers + "/PRVW07.png");
+        render("ach-ingame", [&] {
+            gfx.background();
+            if (frame)
+                gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
+            ui.draw_game_menu(12.0);
+        });
+        return 0;
+    }
     /* PREVIEW_ACCOUNT=1: the RetroAchievements panel signed out, typing, busy
      * with an error, and signed in; then stop. */
     if (std::getenv("PREVIEW_ACCOUNT"))

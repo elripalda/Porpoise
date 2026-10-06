@@ -606,8 +606,12 @@ void App::draw_sc_details(double time)
             g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, y + h * 0.5f, kCyan, Align::Right, tr("Custom"));
     }
     if (screen_ != Screen::States)
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}},
-                     {{kKeyL2R2, "Other games"}, {Glyph::Options, "Favorite"}}, "");
+    {
+        std::vector<std::pair<Glyph, std::string>> right = {{kKeyL2R2, "Other games"}, {Glyph::Options, "Favorite"}};
+        if (details_achievements(game).valid())
+            right.insert(right.begin() + 1, {Glyph::Square, "Achievements"});
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}}, right, "");
+    }
 }
 
 /* ---- calendar ----------------------------------------------------------------------------- */

@@ -127,6 +127,9 @@ cp -a -- "$source_dir/Data/Sys" "$root/build/cores/stage/system/dolphin-emu/Sys"
 # totaldb.dsy is the debugger's function-signature database; only Dolphin's Qt
 # debugger reads it, so it stays out (the zip must stay under 30 MiB).
 rm -f -- "$root/build/cores/stage/system/dolphin-emu/Sys/totaldb.dsy"
+# The game-title lists in other languages than English: Dolphin only names the
+# running game with them (its log); a missing one falls back to English.
+find "$root/build/cores/stage/system/dolphin-emu/Sys" -maxdepth 1 -name 'wiitdb-*.txt' ! -name 'wiitdb-en.txt' -delete
 printf '==> [dolphin] staged Sys: %s files, %s bytes\n' \
     "$(find "$root/build/cores/stage/system/dolphin-emu/Sys" -type f | wc -l)" \
     "$(du -sb "$root/build/cores/stage/system/dolphin-emu/Sys" | cut -f1)"

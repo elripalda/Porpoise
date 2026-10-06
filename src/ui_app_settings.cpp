@@ -21,6 +21,7 @@
 
 #include "porpoise_pad.hpp"
 #include "porpoise_update.hpp"
+#include "ui_widescreen.hpp"
 #include "ui_app.hpp"
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
@@ -385,8 +386,16 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("resolution", "Internal resolution", "How sharp games render. 1080p is the tested default; above it is experimental and can slow games.",
            &t.resolution, 1, {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p) \xE2\x80\xA2 experimental",
             "5x (1800p) \xE2\x80\xA2 experimental", "6x (4K) \xE2\x80\xA2 experimental"});
-    toggle("widescreen", "Widescreen hack", "Draws games in 16:9. Some games show glitches at the screen edges.",
-           &t.widescreen);
+    choice("wide", "Widescreen",
+           "Auto: 16:9 for a game with a widescreen code or a 16:9 option of its own, 4:3 for the rest. On: the same, "
+           "and Dolphin's emulated widescreen hack for a game with neither, which can glitch at the screen edges. "
+           "Off: always 4:3.",
+           &t.wide, 0, {"Auto", "On", "Off"});
+    if (per_game && game_for_)
+    {
+        const widescreen::Kind kind = widescreen::kind_of(game_for_->id, sys_dir_, game_for_->platform == "Wii");
+        rows_.back().help += " " + widescreen::about(kind);
+    }
     choice("aspect", "Aspect ratio", "The picture's shape. Auto follows the game; Stretch fills the screen.",
            &t.aspect, 0, {"Auto", "Force 16:9", "Force 4:3", "Stretch to fill"});
     choice("antialiasing", "Anti-aliasing", "Smooths jagged edges. SSAA is the sharpest and the heaviest.",
@@ -1432,6 +1441,34 @@ void App::change_setting(int dir)
         rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
         return;
     }
+    if (r.key == "wide")
+    {
+        /* 2.0's hack switch gives way to the Widescreen choice. */
+        Settings &t = screen_ == Screen::GameSettings && game_for_ ? game_ : *settings_;
+        if (t.widescreen)
+        {
+            t.widescreen = false;
+            if (screen_ == Screen::GameSettings && std::find(game_keys_.begin(), game_keys_.end(), "widescreen") ==
+                                                       game_keys_.end())
+                game_keys_.push_back("widescreen");
+        }
+        /* On for a game with no widescreen code: say what the hack does. */
+        const bool forced = t.wide == widescreen::ModeOn &&
+                            (screen_ != Screen::GameSettings || !game_for_ ||
+                             widescreen::kind_of(game_for_->id, sys_dir_, game_for_->platform == "Wii") ==
+                                 widescreen::Kind::None);
+        if (forced)
+            open_dialog(DialogKind::Info, tr("Emulated widescreen"),
+                        tr(screen_ == Screen::GameSettings
+                               ? "This game has no widescreen code, so Porpoise uses Dolphin's emulated widescreen "
+                                 "hack. You may see graphical glitches: things at the edges of the screen can pop in "
+                                 "and out or disappear. Auto keeps it in 4:3."
+                               : "Games with a widescreen code or a 16:9 option of their own play in 16:9 either "
+                                 "way. For the rest, On uses Dolphin's emulated widescreen hack, and you may see "
+                                 "graphical glitches: things at the edges of the screen can pop in and out or "
+                                 "disappear. Auto keeps those games in 4:3."),
+                        "");
+    }
     if (screen_ == Screen::GameSettings && game_for_)
     {
         if (!r.key.empty() && std::find(game_keys_.begin(), game_keys_.end(), r.key) == game_keys_.end())
@@ -1468,7 +1505,7 @@ App::Action App::activate_row(const SettingRow &row)
     {
     case kRowAccount:
         open_account();
-        break;
+        return Action::None;
     case kRowMoveData:
         if (row.folder >= 0 && row.folder < int(move_places_.size()))
         {

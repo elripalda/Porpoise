@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.1 — 2026-10-06
+
+- **Achievements lists:** an Achievements tab in the in-game menu, and a
+  game's list from its Details (Square), with badges.
+- **Widescreen done per game:** games with a widescreen code (Warped Polygon's
+  collection, or Dolphin's own) play in true 16:9 by default; the rest stay
+  4:3 unless you choose the emulated hack, which now warns what it does.
+- Achievement popups drawn by Porpoise when the console's own can't show.
+- Faster start when no jailbreak answers.
+- Optimizations and fixes for reported bugs.
+
 ## 2.1 — 2026-10-05
 
 RetroAchievements with PS5-style trophy popups, your own cheats folder,

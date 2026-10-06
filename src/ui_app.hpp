@@ -20,6 +20,7 @@
 
 #include "porpoise_banner.hpp"
 #include "porpoise_borders.hpp"
+#include "ui_achievements.hpp"
 #include "ui_theme.hpp"
 #include "ui_cheats.hpp"
 #include "ui_gfx.hpp"
@@ -215,6 +216,17 @@ public:
     void open_account();
     /* Signed in or out: Settings' row says so. */
     void account_changed() { build_settings(); }
+    /* A game's achievements: live (the game running) or as last kept. */
+    using AchievementSource = std::function<AchievementSet(const std::string &disc_id, bool live)>;
+    void set_achievement_source(AchievementSource source) { ach_source_ = std::move(source); }
+#ifdef PORPOISE_HOST_PREVIEW
+    void preview_achievements(int focus)
+    {
+        ach_focus_ = focus;
+        if (!lib_->games().empty())
+            open_achievements(lib_->games().front());
+    }
+#endif
 #ifdef PORPOISE_HOST_PREVIEW
     void preview_account(bool typing, int field, int kr, int kc)
     {
@@ -249,6 +261,7 @@ private:
         WiiGuide,     /* how to hold the DualSense as each Wii controller */
         WiiSetup,     /* the Wii Remote setup: controller, hold, centre, the screen's corners */
         Welcome,      /* the first start: choose a theme */
+        Achievements, /* a game's RetroAchievements, from its Details (Square) */
     };
     struct SettingRow
     {
@@ -323,6 +336,31 @@ private:
     bool l1_armed_ = false, l1_chord_ = false, l1_tap_ = false;
     Action update_account(bool up, bool down, bool left, bool right);
     void draw_account();
+
+    /* RetroAchievements lists (ui_app_achievements.cpp). */
+    AchievementSource ach_source_;
+    AchievementSet ach_;        /* the set shown */
+    std::string ach_for_;       /* its game's disc ID */
+    bool ach_live_ = false;     /* from the running game */
+    double ach_loaded_at_ = -1;
+    int ach_focus_ = 0;
+    float ach_scroll_ = 0;
+    std::map<std::string, Texture *> ach_tex_; /* badge file -> texture */
+    Screen ach_back_ = Screen::Details;
+    std::string details_ach_for_; /* the Details game its achievements line is for */
+    AchievementSet details_ach_;
+    void load_achievements(const std::string &disc_id, bool live);
+    Texture *badge_tex(const std::string &url);
+    void free_badges();
+    bool achievements_nav(bool up, bool down);
+    void draw_badge(const std::string &url, bool unlocked, float x, float y, float size);
+    void draw_achievement_list(float x, float y, float w, float h);
+    void draw_achievement_card(float x, float y, float w, float h);
+    void open_achievements(const Game &game);
+    Action update_achievements_screen(bool up, bool down);
+    void draw_achievements_screen();
+    bool menu_has_achievements() const { return ach_live_ && ach_.valid(); }
+    const AchievementSet &details_achievements(const Game &game);
     void account_key(int kr, int kc);
 
     std::uint32_t pressed(std::uint32_t bits) const { return (held_ & ~prev_) & bits; }
@@ -605,6 +643,8 @@ private:
     Settings *settings_ = nullptr;
     std::string settings_path_, options_path_, saves_dir_, data_dir_;
     std::string details_tex_for_, details_tex_; /* the Details game's texture pack folder, if any */
+    std::string details_ws_for_; /* the game Details' Widescreen fact is for */
+    int details_ws_ = 0;         /* its ui_widescreen Kind */
 
     Tab tab_ = Tab::Library;
     Screen screen_ = Screen::Main;

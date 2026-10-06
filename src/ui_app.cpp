@@ -6,6 +6,7 @@
  * Settings and the folder browser are in ui_app_settings.cpp; the look they
  * share is in ui_app_common.hpp. */
 #include "porpoise_states.hpp"
+#include "ui_widescreen.hpp"
 #include "ui_app.hpp"
 
 #include <pthread.h>
@@ -51,6 +52,7 @@ void App::init(Gfx *gfx, Library *library, Settings *settings, const std::string
 void App::forget_textures()
 {
     /* The device is gone and its textures with it: only drop the pointers. */
+    ach_tex_.clear();
     for (Game &g : lib_->games())
     {
         g.cover = nullptr;
@@ -417,6 +419,8 @@ App::Action App::update(const Input &in, double dt)
         return update_dialog(left, right);
     if (acct_.open)
         return update_account(up, down, left, right);
+    if (screen_ == Screen::Achievements)
+        return update_achievements_screen(up, down);
     if (screen_ == Screen::Welcome)
         return update_welcome(left, right, dt);
     if (screen_ == Screen::Browse)
@@ -480,6 +484,16 @@ App::Action App::update(const Input &in, double dt)
         l1_chord_ = true;
         open_account();
         return Action::None;
+    }
+    if (screen_ == Screen::Details && pressed(BtnSquare) && lib_->shown() > 0)
+    {
+        /* Square on Details: the game's achievements, as last kept. */
+        const Game &game = games[std::size_t(std::clamp(selected_, 0, lib_->shown() - 1))];
+        if (details_achievements(game).valid())
+        {
+            open_achievements(game);
+            return Action::None;
+        }
     }
     if (starcube())
     {
@@ -987,6 +1001,8 @@ App::Action App::confirm_dialog(DialogKind kind)
 
 void App::draw_dialog()
 {
+    if (screen_ == Screen::Achievements)
+        draw_achievements_screen(); /* over whichever look's library */
     draw_account(); /* under any dialog */
     if (!dialog_.open)
         return;
@@ -1365,8 +1381,8 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
                        const std::vector<std::pair<Glyph, std::string>> &right_in, const std::string &center)
 {
     Gfx &g = *g_;
-    if ((dialog_.open || acct_.open) && !drawing_dialog_)
-        return; /* the dialog (or the account panel) brings its own */
+    if ((dialog_.open || acct_.open || screen_ == Screen::Achievements) && !drawing_dialog_)
+        return; /* the dialog (or the account panel, the achievements page) brings its own */
     /* Every prompt is translated here, so callers write plain English. */
     std::vector<std::pair<Glyph, std::string>> left_tr, right_tr;
     for (const auto &p : left_in)
@@ -1867,6 +1883,22 @@ void App::draw_details(double time)
                                                                              : trf("Found ({id}), turned off",
                                                                                    {{"id", details_tex_}})});
     }
+    if (const AchievementSet &ach = details_achievements(game); ach.valid())
+        facts.push_back({tr("Achievements"), trf("{done} of {total}", {{"done", std::to_string(ach.unlocked)},
+                                                                      {"total", std::to_string(ach.total)}})});
+    if (!game.id.empty() && game.platform != "Wii")
+    {
+        /* How it plays in widescreen (ui_widescreen). */
+        if (details_ws_for_ != game.id)
+        {
+            details_ws_for_ = game.id;
+            details_ws_ = int(widescreen::kind_of(game.id, sys_dir_, false));
+        }
+        const auto kind = widescreen::Kind(details_ws_);
+        facts.push_back({tr("Widescreen"), kind == widescreen::Kind::Patch    ? tr("16:9 code")
+                                           : kind == widescreen::Kind::Native ? tr("In the game's options")
+                                                                              : tr("4:3 only")});
+    }
     /* Nine fit. When there are more (full game info, play time and a texture
      * pack), the least useful go first, so the texture pack and play time stay. */
     for (const char *drop : {"Rating", "Players", "Genre", "Publisher"})
@@ -1935,9 +1967,14 @@ void App::draw_details(double time)
     }
     g.set_layer(layer_dx_, layer_dy_, layer_fade_);
     if (screen_ != Screen::States) /* the save states bring their own */
-        draw_prompts({{Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}},
-                     {{kKeyL2R2, "Other games"}, {Glyph::Triangle, box_back_ ? "Front of box" : "Back of box"}},
+    {
+        std::vector<std::pair<Glyph, std::string>> right = {
+            {kKeyL2R2, "Other games"}, {Glyph::Triangle, box_back_ ? "Front of box" : "Back of box"}};
+        if (details_achievements(game).valid())
+            right.insert(right.begin() + 1, {Glyph::Square, "Achievements"});
+        draw_prompts({{Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}}, right,
                      games.size() > 1 ? "" : tr("Right stick: turn the box"));
+    }
 }
 
 /* ---- memory cards ------------------------------------------------------------------------- */
@@ -2250,6 +2287,8 @@ void App::keep_selection(const std::string &key)
 
 void App::library_changed()
 {
+    details_ach_for_.clear();
+    details_ws_for_.clear();
     auto &games = lib_->games();
     const std::string key = lib_->selected_id();
     selected_ = 0;

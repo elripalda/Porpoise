@@ -6,8 +6,9 @@
  * (ps5/frontend/fe_ps5.cpp) use these libraries. */
 #include "porpoise_http.hpp"
 
+#include <condition_variable>
 #include <cstdio>
-#include <pthread.h>
+#include <mutex>
 
 #include "trace.hpp"
 
@@ -43,12 +44,22 @@ namespace porpoise::http
 {
 namespace
 {
-pthread_mutex_t g_one = PTHREAD_MUTEX_INITIALIZER; /* one session at a time */
+/* One session at a time across Porpoise. A flag, not a mutex: a session may
+ * be closed on another thread than the one that opened it (RetroAchievements:
+ * opened by the core's request thread, closed when the game ends), and a
+ * pthread mutex may only be unlocked by its owner. */
+std::mutex g_one_lock;
+std::condition_variable g_one_free;
+bool g_one_busy = false;
 }
 
 bool Session::init()
 {
-    pthread_mutex_lock(&g_one);
+    {
+        std::unique_lock<std::mutex> lock(g_one_lock);
+        g_one_free.wait(lock, [] { return !g_one_busy; });
+        g_one_busy = true;
+    }
     locked_ = true;
     const int nc = sceNetCtlInit();
     netctl_ = nc == 0;
@@ -88,7 +99,11 @@ void Session::term()
     if (locked_)
     {
         locked_ = false;
-        pthread_mutex_unlock(&g_one);
+        {
+            std::lock_guard<std::mutex> lock(g_one_lock);
+            g_one_busy = false;
+        }
+        g_one_free.notify_one();
     }
 }
 
