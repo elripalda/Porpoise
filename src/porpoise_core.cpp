@@ -32,6 +32,7 @@
 #include <ctime>
 #include <dirent.h>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
@@ -128,6 +129,40 @@ struct Host
 };
 
 Host h;
+
+/* The first alert and the last error Dolphin logged this run, for a game that
+ * doesn't start (core_log, any thread). */
+using porpoise::core::Failure;
+std::mutex g_reason_lock;
+std::string g_first_alert, g_last_error;
+Failure g_failure = Failure::None;
+std::string g_failure_reason;
+
+std::string clean_reason(std::string s)
+{
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' '))
+        s.pop_back();
+    /* Dolphin's lines: "12:34:567 Core/Boot/Boot.cpp:123 E[BOOT]: text". */
+    const std::size_t tag = s.find("]: ");
+    if (tag != std::string::npos && tag < 80)
+        s = s.substr(tag + 3);
+    if (s.size() > 200)
+        s = s.substr(0, 197) + "...";
+    return s;
+}
+
+void fail(Failure what, const std::string &reason)
+{
+    g_failure = what;
+    std::string r = reason;
+    if (r.empty())
+    {
+        std::lock_guard<std::mutex> lock(g_reason_lock);
+        r = !g_first_alert.empty() ? g_first_alert : g_last_error;
+    }
+    g_failure_reason = clean_reason(r);
+    ps5::debug::mark(("core: did not start: " + g_failure_reason).c_str());
+}
 
 /* The Wii Remote's motion (below). */
 bool RETRO_CALLCONV set_sensor_state(unsigned port, enum retro_sensor_action action, unsigned rate);
@@ -283,13 +318,30 @@ void options_defined()
 
 void core_log(enum retro_log_level level, const char *fmt, ...)
 {
-    if (!h.log)
-        return;
-    static const char *const names[] = {"debug", "info", "warn", "error"};
-    std::fprintf(h.log, "[%s] ", names[level <= RETRO_LOG_ERROR ? level : RETRO_LOG_ERROR]);
     va_list args;
     va_start(args, fmt);
-    std::vfprintf(h.log, fmt, args);
+    if (level >= RETRO_LOG_WARN)
+    {
+        /* Kept for a game that doesn't start: Dolphin's errors, and its alerts
+         * (logged as warnings: "Suppressed popup: caption - text"). */
+        va_list copy;
+        va_copy(copy, args);
+        char line[512];
+        std::vsnprintf(line, sizeof line, fmt, copy);
+        va_end(copy);
+        const char *alert = std::strstr(line, "Suppressed popup: ");
+        std::lock_guard<std::mutex> lock(g_reason_lock);
+        if (alert && g_first_alert.empty())
+            g_first_alert = alert + 18;
+        else if (level >= RETRO_LOG_ERROR)
+            g_last_error = line;
+    }
+    if (h.log)
+    {
+        static const char *const names[] = {"debug", "info", "warn", "error"};
+        std::fprintf(h.log, "[%s] ", names[level <= RETRO_LOG_ERROR ? level : RETRO_LOG_ERROR]);
+        std::vfprintf(h.log, fmt, args);
+    }
     va_end(args);
 }
 
@@ -1119,6 +1171,16 @@ void set_picture(int filter, float strength)
     h.strength = strength;
 }
 
+Failure last_failure()
+{
+    return g_failure;
+}
+
+std::string last_failure_reason()
+{
+    return g_failure_reason;
+}
+
 Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, const Playback &playback)
 {
     const long long launch_ns = now_ns(); /* for the trace: how long each step of a launch takes */
@@ -1236,8 +1298,19 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     h.log = std::fopen(paths.log, "w");
 
     ps5::debug::mark(game_path);
+    {
+        std::lock_guard<std::mutex> lock(g_reason_lock);
+        g_first_alert.clear();
+        g_last_error.clear();
+    }
+    g_failure = Failure::None;
+    g_failure_reason.clear();
     if (!load_core())
+    {
+        const char *why = ps5_core_dlerror();
+        fail(Failure::Core, why ? why : "a function Porpoise needs is missing from the core");
         return Exit::Failed;
+    }
 
     h.api.set_environment(environment);
     h.api.set_video_refresh(video_refresh);
@@ -1268,6 +1341,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         if (!read_whole_file(game_path, bytes))
         {
             ps5::debug::mark("core: could not read the game file");
+            fail(Failure::File, std::strerror(errno));
             h.api.deinit();
             unload_core();
             return Exit::Failed;
@@ -1281,6 +1355,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     if (!h.api.load_game(&game))
     {
         ps5::debug::mark("core: retro_load_game refused the game");
+        fail(Failure::Game, "");
         porpoise::ra::end_game();
         h.api.deinit();
         unload_core();
@@ -1326,6 +1401,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     if (!h.hw_requested)
     {
         ps5::debug::mark("core: did not ask for Vulkan; Porpoise needs it");
+        fail(Failure::Graphics, "Dolphin didn't ask for Vulkan");
         porpoise::mic::close_all();
         h.api.unload_game();
         porpoise::ra::end_game();
@@ -1341,6 +1417,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     porpoise::vk::close_device();
     if (!porpoise::vk::open_device(h.negotiation))
     {
+        fail(Failure::Graphics, "");
         porpoise::mic::close_all();
         h.api.unload_game();
         porpoise::ra::end_game();

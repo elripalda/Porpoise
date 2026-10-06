@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Ruben (Project Porpoise)
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Four tabs, L1 / R1 between them:
+ * Five tabs, L1 / R1 between them:
  *   Game      resume, save states (three slots, with a picture each), fast
  *             forward, volume, quit
  *   Video     resolution, widescreen, aspect, the screen filter and border...
@@ -11,6 +11,9 @@
  *   Controls  the button layout, Customize buttons (the mapping screen, over
  *             the game), vibration, and the controller with a line out to
  *             every button, saying which GameCube button it is.
+ *   Patches   how the game plays in widescreen this time (its 16:9 code, its
+ *             own option, the emulated hack or 4:3), and every cheat and patch
+ *             it has, each with its switch: so nothing on screen is a mystery.
  *   Achievements  with RetroAchievements on and a set for the game: every
  *             achievement, unlocked or not (ui_app_achievements.cpp).
  * Changes are saved as the game's own settings and take effect at once
@@ -26,8 +29,10 @@
 #include "porpoise_states.hpp"
 #include "ui_app.hpp"
 #include "ui_app_common.hpp"
+#include "ui_cheats.hpp"
 #include "ui_i18n.hpp"
 #include "ui_setups.hpp"
+#include "ui_widescreen.hpp"
 
 namespace porpoise::ui
 {
@@ -42,9 +47,10 @@ enum TabId
     kTabVideo,
     kTabGraphics,
     kTabControls,
+    kTabPatches,
     kTabCount,
 };
-const char *const kTabNames[kTabCount] = {"Game", "Video", "Graphics", "Controls"};
+const char *const kTabNames[kTabCount] = {"Game", "Video", "Graphics", "Controls", "Patches"};
 
 /* What a row does. */
 enum class Kind
@@ -62,6 +68,8 @@ enum class Kind
     Int,  /* a setting with a list of values */
     Bool, /* a setting that is on or off */
     Border,
+    Info,  /* a fact to read (its help says more) */
+    Cheat, /* one of the game's codes: on or off, from the next start */
 };
 
 struct Row
@@ -74,11 +82,19 @@ struct Row
     int min = 0;
     std::vector<std::string> values = {}; /* English; translated when drawn */
     bool gap_before = false;
+    int index = -1;        /* Cheat: which of the game's codes */
+    std::string text = {}; /* a label as it is (a code's name), when label is null */
+};
+
+/* What the Patches tab shows. */
+struct Patches
+{
+    const std::vector<Cheat> *cheats = nullptr;
 };
 
 const std::vector<std::string> kPercent = {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
 
-std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
+std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches *patches = nullptr)
 {
     std::vector<Row> r;
     switch (tab)
@@ -168,6 +184,21 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false)
         }
         r.push_back({Kind::Bool, "rumble", "Vibration", nullptr, &p.rumble, 0, {"Off", "On"}});
         break;
+    case kTabPatches:
+        r.push_back({Kind::Info, "ws_status", "Widescreen"});
+        if (!patches || !patches->cheats || patches->cheats->empty())
+            r.push_back({Kind::Info, "no_codes", "Cheats and patches"});
+        else
+            for (std::size_t i = 0; i < patches->cheats->size(); ++i)
+            {
+                Row row{Kind::Cheat, "cheat", nullptr};
+                row.index = int(i);
+                const std::string &name = (*patches->cheats)[i].name;
+                row.text = name.size() > 1 && name[0] == '$' ? name.substr(1) : name;
+                row.gap_before = i == 0;
+                r.push_back(row);
+            }
+        break;
     default:
         break;
     }
@@ -209,6 +240,38 @@ const char *help_for(const Row &row, const Settings &p)
     if (row.kind == Kind::Customize)
         return "Your own layouts: change any button on a picture of the DualSense.";
     return "Changes here are saved for this game.";
+}
+
+/* How this run of the game plays in widescreen (Settings::ws_plan, as
+ * ui_widescreen's Plan): the value shown, and what it means. */
+const char *ws_value(int plan, bool wii)
+{
+    if (wii)
+        return "The Wii's setting";
+    switch (plan)
+    {
+    case 1: return "16:9 code";
+    case 4: return "16:9 code + hack";
+    case 2: return "In the game's options";
+    case 3: return "Emulated hack";
+    default: return "Off: 4:3";
+    }
+}
+const char *ws_help(int plan, bool wii)
+{
+    if (wii)
+        return "Wii games are 16:9 when Wii widescreen is on in Porpoise's settings, as on a Wii.";
+    switch (plan)
+    {
+    case 1:
+        return "This game runs in true 16:9 with its widescreen code, so nothing pops in at the edges. The code is "
+               "listed below.";
+    case 4: return "This game's widescreen code needs Dolphin's widescreen hack as well, so both are on.";
+    case 2:
+        return "This game has a 16:9 option of its own: turn it on in the game's options, and the picture follows.";
+    case 3: return "Dolphin's emulated widescreen hack is on. Things at the edges of the screen may pop in and out.";
+    default: return "This game plays in 4:3. Widescreen, in the Video tab, changes that the next time it starts.";
+    }
 }
 
 /* The schematic (assets/ui/controller-lines.png, tools/make-controller-art.py):
@@ -342,6 +405,38 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_busy_ = {};
     menu_busy_handed_ = false;
     menu_borders_ = porpoise::borders::list();
+    if (menu_wide_open_ == -2) /* the first pause of this run */
+        menu_wide_open_ = play ? play->wide : -1;
+    /* The Patches tab: the game's codes and their switches as it has them. */
+    menu_cheats_.clear();
+    menu_cheat_on_.clear();
+    if (game && play && game->id.size() == 6 && !sys_dir_.empty())
+    {
+        menu_cheats_ = cheats_for(sys_dir_, game->id, data_dir_ + "/cheats");
+        if (menu_cheats_.size() > 80)
+            menu_cheats_.resize(80);
+        for (const Cheat &c : menu_cheats_)
+            menu_cheat_on_.push_back(c.default_on ? play->get(cheat_key(c, false)) != "1"
+                                                  : play->get(cheat_key(c, true)) == "1");
+        /* What's on first, the widescreen code in use at the top; the rest in
+         * their lists' order. */
+        std::vector<std::size_t> order(menu_cheats_.size());
+        for (std::size_t i = 0; i < order.size(); ++i)
+            order[i] = i;
+        auto rank = [&](std::size_t i) {
+            return !menu_cheat_on_[i] ? 2 : widescreen::is_widescreen_code(menu_cheats_[i].name) ? 0 : 1;
+        };
+        std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return rank(a) < rank(b); });
+        std::vector<Cheat> cheats;
+        std::vector<char> on;
+        for (std::size_t i : order)
+        {
+            cheats.push_back(menu_cheats_[i]);
+            on.push_back(menu_cheat_on_[i]);
+        }
+        menu_cheats_.swap(cheats);
+        menu_cheat_on_.swap(on);
+    }
     load_slots(menu_game_);
     ach_focus_ = 0;
     ach_scroll_ = 0;
@@ -475,7 +570,9 @@ int App::update_game_menu(const Input &in, double dt)
         return 0;
     }
     Settings &p = *menu_play_;
-    std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii");
+    Patches patches;
+    patches.cheats = &menu_cheats_;
+    std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii", &patches);
     const int count = int(rows.size());
     if (up || down)
         menu_confirm_ = false; /* "press again to replace" is for the row it was said on */
@@ -633,6 +730,43 @@ int App::update_game_menu(const Input &in, double dt)
                     sfx(Sound::LaunchGame);
                 }
             }
+        }
+        break;
+    case Kind::Info:
+        break;
+    case Kind::Cheat:
+        if (dir && menu_game_ && row.index >= 0 && row.index < int(menu_cheats_.size()))
+        {
+            /* As Game settings does it (ui_app_settings): named in
+             * [<kind>_Enabled] when on and Dolphin doesn't turn it on by
+             * itself, in [<kind>_Disabled] when off and Dolphin would. A
+             * cheat (not a patch) needs Dolphin's cheats on for the game. */
+            const Cheat &c = menu_cheats_[std::size_t(row.index)];
+            const bool on = !menu_cheat_on_[std::size_t(row.index)];
+            menu_cheat_on_[std::size_t(row.index)] = on;
+            std::vector<std::string> keys = Settings::keys_in(game_settings_path(*menu_game_));
+            for (const std::string &k : {cheat_key(c, true), cheat_key(c, false)})
+            {
+                p.forget(k);
+                keys.erase(std::remove(keys.begin(), keys.end(), k), keys.end());
+            }
+            const std::string k = on && !c.default_on ? cheat_key(c, true) : !on && c.default_on ? cheat_key(c, false) : "";
+            if (!k.empty())
+            {
+                p.set(k, "1");
+                keys.push_back(k);
+            }
+            if (on && c.kind != "OnFrame" && !p.cheats)
+            {
+                p.cheats = true;
+                if (std::find(keys.begin(), keys.end(), "cheats") == keys.end())
+                    keys.push_back("cheats");
+            }
+            mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+            p.save_keys(game_settings_path(*menu_game_), keys);
+            menu_note_ = tr("Takes effect the next time the game starts.");
+            menu_note_time_ = time_;
+            sfx(Sound::MenuScroll);
         }
         break;
     case Kind::Int:
@@ -855,13 +989,24 @@ void App::draw_game_menu(double time)
     const int tabs = kTabCount + (menu_has_achievements() ? 1 : 0);
     {
         const float ty = hy + 28, tab_h = 50;
-        const float size = tabs > kTabCount ? ts(23) : ts(25), pad = tabs > kTabCount ? 32.0f : 44.0f;
-        const char *names[kTabCount + 1] = {kTabNames[0], kTabNames[1], kTabNames[2], kTabNames[3], "Achievements"};
+        float size = tabs > kTabCount ? ts(22) : ts(24);
+        const float pad = tabs > kTabCount ? 28.0f : 36.0f;
+        const char *names[kTabCount + 1] = {kTabNames[0], kTabNames[1], kTabNames[2], kTabNames[3], kTabNames[4],
+                                            "Achievements"};
         float widths[kTabCount + 1], total = 0;
-        for (int i = 0; i < tabs; ++i)
+        for (int pass = 0; pass < 2; ++pass)
         {
-            widths[i] = g.measure(Font::Bold, size, tr(names[i])) + pad;
-            total += widths[i];
+            total = 0;
+            for (int i = 0; i < tabs; ++i)
+            {
+                widths[i] = g.measure(Font::Bold, size, tr(names[i])) + pad;
+                total += widths[i];
+            }
+            /* Longer names (some languages'): smaller, to fit between L1 and R1. */
+            const float room = w - 150;
+            if (total <= room)
+                break;
+            size *= room / total;
         }
         float tx = x + (w - total) * 0.5f;
         g.glyph(Glyph::L1, tx - 44, ty, 40, rgba(0xE8F0FF));
@@ -910,7 +1055,10 @@ void App::draw_game_menu(double time)
     }
 
     /* Rows. */
-    const std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii");
+    Patches patches;
+    patches.cheats = &menu_cheats_;
+    const bool wii = menu_game_ && menu_game_->platform == "Wii";
+    const std::vector<Row> rows = rows_for(menu_tab_, p, wii, &patches);
     if (rows.empty())
     {
         g.set_layer();
@@ -918,10 +1066,23 @@ void App::draw_game_menu(double time)
     }
     const float row_h = 56, rx = x + 24, rw = w - 48;
     float ry = hy;
-    for (int i = 0; i < int(rows.size()); ++i)
+    /* The Patches tab can be long: a window on its rows, around the focus. */
+    int first = 0, last = int(rows.size());
+    if (menu_tab_ == kTabPatches)
+    {
+        const int visible = std::max(3, int((y + h - 200 - hy) / row_h));
+        if (last > visible)
+        {
+            first = std::clamp(menu_row_ - visible / 2, 0, last - visible);
+            last = first + visible;
+        }
+        if (first > 0)
+            g.glyph(Glyph::Arrow, x + w * 0.5f, hy - 2, 14, kCyan, 0.0f);
+    }
+    for (int i = first; i < last; ++i)
     {
         const Row &row = rows[std::size_t(i)];
-        if (row.gap_before)
+        if (row.gap_before && i > first)
         {
             g.panel(x + 36, ry + 6, w - 72, 1.5f, rgba(0x6F8FE0, 0.5f), 1, 0);
             ry += 14;
@@ -930,12 +1091,22 @@ void App::draw_game_menu(double time)
         const bool on = i == menu_row_;
         if (on)
             g.panel(rx, ry + 4, rw, row_h - 8, rgba(0x1D45B8, 0.9f), 0.7f, kR, kIcy, 2.2f, 8, 0.18f);
+        const std::string label = row.label ? tr(row.label) : row.text;
         g.text_mid(on ? Font::Bold : Font::SemiBold, ts(27), rx + 28, cy, on ? kWhite : kSoft, Align::Left,
-                   tr(row.label));
+                   row.label ? label : fit(g, on ? Font::Bold : Font::SemiBold, ts(27), label, rw * 0.62f));
         std::string value;
         bool arrows = true;
         switch (row.kind)
         {
+        case Kind::Info:
+            arrows = false;
+            value = row.key == std::string("ws_status") ? tr(ws_value(p.ws_plan, wii)) : tr("None");
+            break;
+        case Kind::Cheat:
+            value = tr(row.index >= 0 && row.index < int(menu_cheat_on_.size()) && menu_cheat_on_[std::size_t(row.index)]
+                           ? "On"
+                           : "Off");
+            break;
         case Kind::FastForward:
             value = menu_ff_ == 0 ? tr("Off") : menu_ff_ == 1 ? "2x" : "4x";
             break;
@@ -952,6 +1123,9 @@ void App::draw_game_menu(double time)
         }
         case Kind::Int:
             value = tr(row.values[std::size_t(std::clamp(*row.iv - row.min, 0, int(row.values.size()) - 1))]);
+            /* Widescreen: what the setting gives this game, as it runs now. */
+            if (row.key == std::string("wide") && *row.iv == menu_wide_open_)
+                value += "  \xE2\x80\xA2  " + tr(ws_value(p.ws_plan, wii));
             if (row.key == std::string("button_layout") && *row.iv >= LayoutOwn)
                 value = trf("My layout {n}", {{"n", std::to_string(*row.iv - LayoutOwn + 1)}});
             break;
@@ -984,6 +1158,8 @@ void App::draw_game_menu(double time)
             g.glyph(Glyph::Arrow, rx + rw - 30, cy, 20, kWhite, kPi * 0.5f);
         ry += row_h;
     }
+    if (last < int(rows.size()))
+        g.glyph(Glyph::Arrow, x + w * 0.5f, ry + 2, 14, kCyan, kPi);
 
     const Row &focus = rows[std::size_t(std::clamp(menu_row_, 0, int(rows.size()) - 1))];
     float below = ry + 14;
@@ -1062,7 +1238,18 @@ void App::draw_game_menu(double time)
     {
         const double since = time_ - menu_note_time_;
         bool note = !menu_note_.empty() && since < 4.0;
-        std::string text = note ? menu_note_ : tr(help_for(focus, p));
+        std::string help;
+        if (focus.kind == Kind::Cheat && focus.index >= 0 && focus.index < int(menu_cheats_.size()))
+            help = cheat_help(menu_cheats_[std::size_t(focus.index)]) + "  " +
+                   tr("Takes effect the next time the game starts.");
+        else if (focus.key == std::string("ws_status"))
+            help = tr(ws_help(p.ws_plan, wii));
+        else if (focus.key == std::string("no_codes"))
+            help = trf("Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.",
+                       {{"id", menu_game_ ? menu_game_->id : std::string("<ID>")}});
+        else
+            help = tr(help_for(focus, p));
+        std::string text = note ? menu_note_ : help;
         bool warn = false;
         if (menu_slots_mode_ && !note)
         {
@@ -1081,8 +1268,9 @@ void App::draw_game_menu(double time)
             }
             note = true;
         }
-        const float ny = std::min(below + 10, y + h - 112);
-        const auto lines = wrap(g, Font::Regular, ts(22), text, w - 96, 2);
+        const int max_lines = menu_tab_ == kTabPatches ? 3 : 2;
+        const float ny = std::min(below + 10, y + h - 112 - (max_lines - 2) * 30.0f);
+        const auto lines = wrap(g, Font::Regular, ts(22), text, w - 96, max_lines);
         float ly = ny;
         for (const std::string &l : lines)
         {
@@ -1156,6 +1344,9 @@ void App::return_from_game()
     menu_game_ = nullptr;
     menu_play_ = nullptr;
     map_in_game_ = false;
+    menu_wide_open_ = -2;
+    menu_cheats_.clear();
+    menu_cheat_on_.clear();
     menu_ff_ = 0;
     launch_ = nullptr;
     screen_ = Screen::Main;

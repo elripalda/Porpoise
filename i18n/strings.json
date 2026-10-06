@@ -4634,5 +4634,81 @@
  {
   "en": "This game has no widescreen code. On uses Dolphin's emulated widescreen hack, which can glitch: things at the edges of the screen may pop in and out or disappear.",
   "section": "2.1.1: widescreen codes, achievements list"
+ },
+ {
+  "en": "Dolphin itself didn't load, so no game can start, whatever the file. Share trace.txt and porpoise/core.log from Porpoise's app folder on the Discord, with your firmware and HEN.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Dolphin couldn't start its graphics, so no game can start, whatever the file. Share trace.txt and porpoise/core.log from Porpoise's app folder on the Discord, with your firmware and HEN.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Porpoise couldn't read this game's file. If it's on a USB drive, check that the drive is connected and that the file copied over in full.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Reason: {reason}",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Patches",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "The Wii's setting",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "16:9 code + hack",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Emulated hack",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Off: 4:3",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Wii games are 16:9 when Wii widescreen is on in Porpoise's settings, as on a Wii.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "This game runs in true 16:9 with its widescreen code, so nothing pops in at the edges. The code is listed below.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "This game's widescreen code needs Dolphin's widescreen hack as well, so both are on.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Dolphin's emulated widescreen hack is on. Things at the edges of the screen may pop in and out.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "This game plays in 4:3. Widescreen, in the Video tab, changes that the next time it starts.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Cheats and patches",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Takes effect the next time the game starts.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "None for this game",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
+ },
+ {
+  "en": "A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.",
+  "section": "2.1.1: patches tab, widescreen status, game start reasons"
  }
 ]

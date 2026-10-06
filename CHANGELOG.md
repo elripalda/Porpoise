@@ -8,7 +8,10 @@
   collection, or Dolphin's own) play in true 16:9 by default; the rest stay
   4:3 unless you choose the emulated hack, which now warns what it does.
 - Achievement popups drawn by Porpoise when the console's own can't show.
-- Optimizations and fixes for reported bugs.
+- A **Patches** tab in the in-game menu: the game's widescreen state and its
+  cheats and patches, and a Cheats and patches section in every game's settings.
+- Clearer message when a game doesn't start.
+- RetroAchievements fixes, optimizations and fixes for reported bugs.
 
 ## 2.1 — 2026-10-05
 

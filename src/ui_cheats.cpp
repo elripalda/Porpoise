@@ -233,6 +233,15 @@ std::string cheat_help(const Cheat &cheat)
 {
     std::string lower = cheat.name;
     std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+    if (cheat.own)
+        return tr("Your own code, from Porpoise's cheats folder. On unless you turn it off here.");
+    if (cheat.pack)
+        return cheat.default_on
+                   ? tr("Widescreen code from Warped Polygon's collection. On when Widescreen is Auto or On.")
+                   : tr("A code from Warped Polygon's widescreen collection. Off unless you turn it on.");
+    /* The widescreen code Widescreen turns on for the game (ui_widescreen). */
+    if (cheat.default_on && widescreen::is_widescreen_code(cheat.name))
+        return tr("A widescreen code from Dolphin's list. On when Widescreen is Auto or On, with the picture at 16:9.");
     if (cheat.kind == "OnFrame")
     {
         if (lower.find("widescreen") != std::string::npos || lower.find("16:9") != std::string::npos)
@@ -243,12 +252,6 @@ std::string cheat_help(const Cheat &cheat)
         return cheat.default_on ? tr("A patch Dolphin turns on for this game by itself.")
                                 : tr("A patch from Dolphin's list for this game.");
     }
-    if (cheat.own)
-        return tr("Your own code, from Porpoise's cheats folder. On unless you turn it off here.");
-    if (cheat.pack)
-        return cheat.default_on
-                   ? tr("Widescreen code from Warped Polygon's collection. On when Widescreen is Auto or On.")
-                   : tr("A code from Warped Polygon's widescreen collection. Off unless you turn it on.");
     return cheat.kind == "Gecko" ? tr("A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.")
                                  : tr("An Action Replay cheat from Dolphin's list. Turning one on turns this game's "
                                       "cheats on.");

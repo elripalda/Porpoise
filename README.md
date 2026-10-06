@@ -200,7 +200,8 @@ Settings are split into sections:
 
 ### In-game menu
 Press **Options + touch pad** together while playing. The game pauses and the
-menu opens, with four tabs (**L1 / R1**):
+menu opens, with five tabs (**L1 / R1**), plus **Achievements** when the
+game has a RetroAchievements set:
 
 - **Game:** Resume, **Save state…** and **Load state…** (three slots, with
   pictures: pick a slot with left and right; saving over a used slot asks for a
@@ -214,6 +215,10 @@ menu opens, with four tabs (**L1 / R1**):
 - **Controls:** button layout, **Customize buttons** over the paused game,
   vibration, and the DualSense drawn with a line to every button saying which
   GameCube button it is.
+- **Patches:** how this game plays in widescreen right now (its 16:9 code,
+  its own option, the emulated hack, or 4:3), and every cheat and patch it has,
+  with the ones that are on at the top, each with its own switch. Code changes
+  take effect the next time the game starts.
 
 Changes apply immediately and are saved for that game.
 
@@ -289,7 +294,9 @@ Settings → Audio, for every game or one:
    [latest release](https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases/latest) and
    unzip it on your computer. You get a folder named **`PPSA99764`**.
 2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
-   like FileZilla) or with PS5 Upload.
+   like FileZilla) or with PS5 Upload. With FTP, set binary transfers
+   (FileZilla: **Transfer → Transfer type → Binary**): in text mode some of
+   Porpoise's `.txt` files fail to copy.
 3. Copy the whole **`PPSA99764`** folder into **`/data/homebrew/`**, so you end
    up with `/data/homebrew/PPSA99764/`.
 4. Register it the same way as your other homebrew (for example with
@@ -405,8 +412,10 @@ Settings → Video → **Widescreen** is **Auto** by default:
   and the picture follows. Wii games follow the Wii's widescreen setting.
 - **Other games stay 4:3.** **On** uses Dolphin's emulated widescreen hack for
   them, which can glitch: things at the screen edges may pop in and out.
-- A game's Details say which it is. Its codes are also in its **Cheats**, to
-  turn off one by one.
+- A game's Details say which it is, and so does the in-game menu: the
+  **Patches** tab, and next to Widescreen in the Video tab. Every game's
+  settings have a **Cheats and patches** section listing its codes, to turn
+  off one by one (or saying it has none).
 
 ### Your own cheats
 
@@ -414,7 +423,8 @@ Put a game's codes in **`/data/porpoise/cheats/<game ID>.ini`** (the 6-letter
 ID, such as `GYQE01.ini`; 4 or 3 letters for all regions), in Dolphin's
 format: `[ActionReplay]` or `[Gecko]` sections, as Dolphin writes them. They
 turn on by themselves when the game starts, and each appears in the game's
-settings under **Cheats** with its own switch. Wiimmfi's online patch codes
+settings under **Cheats and patches** (and the in-game **Patches** tab) with
+its own switch. Wiimmfi's online patch codes
 for a Wii game go here too (with **Settings → System → Online** for
 WiiConnect24 channels).
 

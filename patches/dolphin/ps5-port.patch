@@ -435,10 +435,10 @@ index 41afff087b..a5750cca86 100644
  #elif defined(__NetBSD__)
 diff --git a/Source/Core/Core/AchievementHooks.h b/Source/Core/Core/AchievementHooks.h
 new file mode 100644
-index 0000000000..229043f4c6
+index 0000000000..bc4d5fe73d
 --- /dev/null
 +++ b/Source/Core/Core/AchievementHooks.h
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,59 @@
 +// Copyright 2026 Ruben (Project Porpoise)
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -452,6 +452,8 @@ index 0000000000..229043f4c6
 +
 +#include <atomic>
 +#include <cstddef>
++#include <mutex>
++#include <string>
 +
 +namespace AchievementHooks
 +{
@@ -477,6 +479,12 @@ index 0000000000..229043f4c6
 +
 +extern RequestFn request;
 +extern EventFn event;
++// The game's file as the boot opened it: the set is identified from a fresh
++// reader on it (a copy of the boot's own reader is the fallback).
++extern std::string boot_path;
++// rcheevos' last message, for a load that fails: the popup says why.
++extern std::string last_message;
++extern std::mutex message_lock;  // last_message's
 +// Requests queued or under way, so the host can wait for an unlock still
 +// being sent before it closes the game.
 +extern std::atomic<int> pending;
@@ -491,7 +499,7 @@ index 0000000000..229043f4c6
 +
 +#endif  // USE_RETRO_ACHIEVEMENTS
 diff --git a/Source/Core/Core/AchievementManager.cpp b/Source/Core/Core/AchievementManager.cpp
-index ec0fee2059..0b1bb7f1fc 100644
+index ec0fee2059..52925e11c4 100644
 --- a/Source/Core/Core/AchievementManager.cpp
 +++ b/Source/Core/Core/AchievementManager.cpp
 @@ -5,6 +5,7 @@
@@ -510,7 +518,7 @@ index ec0fee2059..0b1bb7f1fc 100644
  #include "Core/ActionReplay.h"
  #include "Core/Config/AchievementSettings.h"
  #include "Core/Config/FreeLookSettings.h"
-@@ -55,6 +57,25 @@ static const Common::HttpRequest::Headers USER_AGENT_HEADER = {
+@@ -55,6 +57,28 @@ static const Common::HttpRequest::Headers USER_AGENT_HEADER = {
      {"User-Agent", Common::GetUserAgentStr()}};
  #endif  // ANDROID
  
@@ -519,6 +527,9 @@ index ec0fee2059..0b1bb7f1fc 100644
 +RequestFn request = nullptr;
 +EventFn event = nullptr;
 +std::atomic<int> pending{0};
++std::string boot_path;
++std::string last_message;
++std::mutex message_lock;
 +}  // namespace AchievementHooks
 +
 +#ifdef __LIBRETRO__
@@ -536,7 +547,50 @@ index ec0fee2059..0b1bb7f1fc 100644
  AchievementManager& AchievementManager::GetInstance()
  {
    static AchievementManager s_instance;
-@@ -714,6 +735,74 @@ u32 AchievementManager::ActivateDevMenuItem(u32 menu_item_id)
+@@ -77,6 +101,14 @@ void AchievementManager::Init(void* hwnd)
+     rc_client_enable_logging(m_client, RC_CLIENT_LOG_LEVEL_VERBOSE,
+                              [](const char* message, const rc_client_t* client) {
+                                INFO_LOG_FMT(ACHIEVEMENTS, "{}", message);
++#ifdef __LIBRETRO__
++                               // The step before "Load failed (...)": the reason.
++                               if (message && std::strncmp(message, "Load failed", 11) != 0)
++                               {
++                                 std::lock_guard lock{AchievementHooks::message_lock};
++                                 AchievementHooks::last_message = message;
++                               }
++#endif
+                              });
+     m_config_changed_callback_id = Config::AddConfigChangedCallback([this] { SetHardcoreMode(); });
+     SetHardcoreMode();
+@@ -196,7 +228,26 @@ void AchievementManager::LoadGame(const DiscIO::Volume* volume)
+ #endif  // RC_CLIENT_SUPPORTS_RAINTEGRATION
+     if (!m_loading_volume)
+     {
+-      m_loading_volume = DiscIO::CreateVolume(volume->GetBlobReader().CopyReader());
++#ifdef __LIBRETRO__
++      // Porpoise: the game's file opened afresh, the way the boot opened it.
++      // The copy of the boot's reader below (a dup of its descriptor) never
++      // gave the hash a disc on PS5: every game said "hash generation failed".
++      if (!AchievementHooks::boot_path.empty())
++      {
++        std::unique_ptr<DiscIO::Volume> fresh = DiscIO::CreateVolume(AchievementHooks::boot_path);
++        if (fresh && fresh->GetGameID() == volume->GetGameID() &&
++            fresh->GetDiscNumber() == volume->GetDiscNumber())
++        {
++          m_loading_volume = std::move(fresh);
++        }
++      }
++      if (!m_loading_volume)
++#endif
++        m_loading_volume = DiscIO::CreateVolume(volume->GetBlobReader().CopyReader());
++#ifdef __LIBRETRO__
++      if (!m_loading_volume)
++        WARN_LOG_FMT(ACHIEVEMENTS, "Porpoise: the game's file could not be opened for its hash");
++#endif
+     }
+   }
+   std::lock_guard lg{m_filereader_lock};
+@@ -714,6 +765,74 @@ u32 AchievementManager::ActivateDevMenuItem(u32 menu_item_id)
  
  void AchievementManager::DoState(PointerWrap& p)
  {
@@ -611,7 +665,7 @@ index ec0fee2059..0b1bb7f1fc 100644
    if (!m_client || !Config::Get(Config::RA_ENABLED))
      return;
    size_t size = 0;
-@@ -755,6 +844,7 @@ void AchievementManager::DoState(PointerWrap& p)
+@@ -755,6 +874,7 @@ void AchievementManager::DoState(PointerWrap& p)
  void AchievementManager::CloseGame()
  {
    m_queue.Cancel();
@@ -619,7 +673,7 @@ index ec0fee2059..0b1bb7f1fc 100644
    m_image_queue.Cancel();
    {
      std::lock_guard lg{m_lock};
-@@ -766,6 +856,9 @@ void AchievementManager::CloseGame()
+@@ -766,6 +886,9 @@ void AchievementManager::CloseGame()
      m_unlocked_badges.clear();
      m_locked_badges.clear();
      m_leaderboard_map.clear();
@@ -629,7 +683,7 @@ index ec0fee2059..0b1bb7f1fc 100644
      m_rich_presence.fill('\0');
      m_system.store(nullptr, std::memory_order_release);
      if (Config::Get(Config::RA_DISCORD_PRESENCE_ENABLED))
-@@ -933,6 +1026,9 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
+@@ -933,6 +1056,9 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
    {
      WARN_LOG_FMT(ACHIEVEMENTS, "Failed to login {} to RetroAchievements server.",
                   Config::Get(Config::RA_USERNAME));
@@ -639,7 +693,7 @@ index ec0fee2059..0b1bb7f1fc 100644
      Config::SetBaseOrCurrent(Config::RA_API_TOKEN, "");
      instance.update_event.Trigger({.failed_login_code = result});
      instance.login_event.Trigger(result);
-@@ -962,6 +1058,15 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
+@@ -962,6 +1088,15 @@ void AchievementManager::LoginCallback(int result, const char* error_message, rc
  
    INFO_LOG_FMT(ACHIEVEMENTS, "Successfully logged in {} to RetroAchievements server.",
                 user->username);
@@ -655,7 +709,7 @@ index ec0fee2059..0b1bb7f1fc 100644
    std::lock_guard lg{instance.GetLock()};
    Config::SetBaseOrCurrent(Config::RA_API_TOKEN, user->token);
    instance.FetchPlayerBadge();
-@@ -1014,6 +1119,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1014,6 +1149,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
    if (result == RC_API_FAILURE)
    {
      WARN_LOG_FMT(ACHIEVEMENTS, "Load data request rejected for old Dolphin version.");
@@ -665,7 +719,7 @@ index ec0fee2059..0b1bb7f1fc 100644
      OSD::AddMessage("RetroAchievements no longer supports this version of Dolphin.",
                      OSD::Duration::VERY_LONG, OSD::Color::RED);
      OSD::AddMessage("Please update Dolphin to a newer version.", OSD::Duration::VERY_LONG,
-@@ -1023,6 +1131,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1023,6 +1161,9 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
    if (result == RC_LOGIN_REQUIRED || result == RC_INVALID_CREDENTIALS || result == RC_EXPIRED_TOKEN)
    {
      WARN_LOG_FMT(ACHIEVEMENTS, "Invalid/expired RetroAchievements API token.");
@@ -675,7 +729,7 @@ index ec0fee2059..0b1bb7f1fc 100644
      OSD::AddMessage(
          "You have been logged out from RetroAchievements due to invalid/expired credentials.",
          OSD::Duration::VERY_LONG, OSD::Color::RED);
-@@ -1046,11 +1157,28 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1046,11 +1187,41 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
      {
        INFO_LOG_FMT(ACHIEVEMENTS, "Loaded data for game ID {}.", game->id);
        instance.m_display_welcome_message = true;
@@ -696,15 +750,28 @@ index ec0fee2059..0b1bb7f1fc 100644
      WARN_LOG_FMT(ACHIEVEMENTS, "Failed to load data for current game.");
 +#ifdef __LIBRETRO__
 +    if (result == RC_NO_GAME_LOADED || result == RC_NOT_FOUND)
++    {
 +      AchievementHooks::Send(AchievementHooks::NoAchievements, "");
++    }
 +    else
-+      AchievementHooks::Send(AchievementHooks::ServerError, "load game",
-+                             error_message ? error_message : rc_error_str(result));
++    {
++      // A failure on this side (the hash) carries rcheevos' own last word
++      // on it ("Could not open file", "Not a Gamecube disc"...).
++      std::string why = error_message ? error_message : rc_error_str(result);
++      {
++        std::lock_guard lock{AchievementHooks::message_lock};
++        if (result == RC_INVALID_STATE && !AchievementHooks::last_message.empty() &&
++            AchievementHooks::last_message != why)
++          why += " (" + AchievementHooks::last_message + ")";
++      }
++      ERROR_LOG_FMT(ACHIEVEMENTS, "Porpoise: the game's set did not load: {}", why);
++      AchievementHooks::Send(AchievementHooks::ServerError, "load game", why.c_str());
++    }
 +#endif
      OSD::AddMessage("Achievements are not supported for this title.", OSD::Duration::VERY_LONG,
                      OSD::Color::RED);
    }
-@@ -1065,6 +1193,15 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
+@@ -1065,6 +1236,15 @@ void AchievementManager::LoadGameCallback(int result, const char* error_message,
    instance.m_last_rp_time = std::chrono::steady_clock::now() - std::chrono::minutes{2};
  
    std::lock_guard lg{instance.GetLock()};
@@ -720,7 +787,7 @@ index ec0fee2059..0b1bb7f1fc 100644
    auto* leaderboard_list =
        rc_client_create_leaderboard_list(client, RC_CLIENT_LEADERBOARD_LIST_GROUPING_NONE);
    for (u32 bucket = 0; bucket < leaderboard_list->num_buckets; bucket++)
-@@ -1141,6 +1278,18 @@ void AchievementManager::DisplayWelcomeMessage()
+@@ -1141,6 +1321,18 @@ void AchievementManager::DisplayWelcomeMessage()
  void AchievementManager::HandleAchievementTriggeredEvent(const rc_client_event_t* client_event)
  {
    auto& instance = AchievementManager::GetInstance();
@@ -739,7 +806,7 @@ index ec0fee2059..0b1bb7f1fc 100644
  
    OSD::AddMessage(fmt::format("Unlocked: {} ({})", client_event->achievement->title,
                                client_event->achievement->points),
-@@ -1286,6 +1435,10 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
+@@ -1286,6 +1478,10 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
      return;
    }
    bool hardcore = rc_client_get_hardcore_enabled(client);
@@ -750,7 +817,7 @@ index ec0fee2059..0b1bb7f1fc 100644
    OSD::AddMessage(fmt::format("Congratulations, {}! You have {} {}", user_info->display_name,
                                hardcore ? "mastered" : "completed", game_info->title),
                    OSD::Duration::VERY_LONG, hardcore ? OSD::Color::YELLOW : OSD::Color::CYAN,
-@@ -1295,13 +1448,21 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
+@@ -1295,13 +1491,21 @@ void AchievementManager::HandleGameCompletedEvent(const rc_client_event_t* clien
  void AchievementManager::HandleResetEvent(const rc_client_event_t* client_event)
  {
    INFO_LOG_FMT(ACHIEVEMENTS, "Reset requested by Achievement Manager");
@@ -772,7 +839,7 @@ index ec0fee2059..0b1bb7f1fc 100644
  }
  
  void AchievementManager::Request(const rc_api_request_t* request,
-@@ -1309,7 +1470,41 @@ void AchievementManager::Request(const rc_api_request_t* request,
+@@ -1309,7 +1513,41 @@ void AchievementManager::Request(const rc_api_request_t* request,
                                   rc_client_t* client)
  {
    std::string url = request->url;
@@ -815,7 +882,7 @@ index ec0fee2059..0b1bb7f1fc 100644
    AchievementManager::GetInstance().m_queue.Push(
        [url = std::move(url), post_data = std::move(post_data), callback, callback_data] {
          Common::HttpRequest http_request;
-@@ -1365,6 +1560,14 @@ void AchievementManager::FetchBadge(AchievementManager::Badge* badge, u32 badge_
+@@ -1365,6 +1603,14 @@ void AchievementManager::FetchBadge(AchievementManager::Badge* badge, u32 badge_
                                      AchievementManager::BadgeNameFunction function,
                                      UpdatedItems callback_data)
  {
@@ -1120,10 +1187,10 @@ index 1248b1ab01..6a796b4834 100644
    CompiledCode pExecAddr = (CompiledCode)asm_routines.enter_code;
 diff --git a/Source/Core/DolphinLibretro/Achievements.cpp b/Source/Core/DolphinLibretro/Achievements.cpp
 new file mode 100644
-index 0000000000..d4476bdfd6
+index 0000000000..db6cdbdacd
 --- /dev/null
 +++ b/Source/Core/DolphinLibretro/Achievements.cpp
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,179 @@
 +// Copyright 2026 Ruben (Project Porpoise)
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
@@ -1140,6 +1207,8 @@ index 0000000000..d4476bdfd6
 +
 +#ifdef USE_RETRO_ACHIEVEMENTS
 +#include "Common/Config/Config.h"
++#include "Common/Logging/Log.h"
++#include "Common/Logging/LogManager.h"
 +#include "Core/AchievementHooks.h"
 +#include "Core/AchievementManager.h"
 +#include "Core/Config/AchievementSettings.h"
@@ -1264,10 +1333,18 @@ index 0000000000..d4476bdfd6
 +
 +namespace Libretro::Achievements
 +{
-+void Start()
++void Start(const std::string& game_path)
 +{
 +#ifdef USE_RETRO_ACHIEVEMENTS
 +  AchievementManager::GetInstance().Shutdown();  // one left by a game that didn't boot
++  AchievementHooks::boot_path = game_path;
++  {
++    std::lock_guard lock{AchievementHooks::message_lock};
++    AchievementHooks::last_message.clear();
++  }
++  // rcheevos' own account of each step goes to core.log (it is off by default).
++  if (s_setup.given)
++    Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::ACHIEVEMENTS, true);
 +  // The current layer: nothing here is written back to RetroAchievements.ini.
 +  Config::SetCurrent(Config::RA_ENABLED, s_setup.given);
 +  Config::SetCurrent(Config::RA_HARDCORE_ENABLED, false);  // softcore only
@@ -1286,6 +1363,7 @@ index 0000000000..d4476bdfd6
 +{
 +#ifdef USE_RETRO_ACHIEVEMENTS
 +  AchievementManager::GetInstance().Shutdown();
++  AchievementHooks::boot_path.clear();
 +  AchievementHooks::request = nullptr;
 +  AchievementHooks::event = nullptr;
 +  s_setup = {};
@@ -1294,18 +1372,21 @@ index 0000000000..d4476bdfd6
 +}  // namespace Libretro::Achievements
 diff --git a/Source/Core/DolphinLibretro/Achievements.h b/Source/Core/DolphinLibretro/Achievements.h
 new file mode 100644
-index 0000000000..cd156a026a
+index 0000000000..ff7129fc3d
 --- /dev/null
 +++ b/Source/Core/DolphinLibretro/Achievements.h
-@@ -0,0 +1,10 @@
+@@ -0,0 +1,13 @@
 +// Copyright 2026 Ruben (Project Porpoise)
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +#pragma once
 +
++#include <string>
++
 +namespace Libretro::Achievements
 +{
-+// As the game boots (after the config is read) and after it has stopped.
-+void Start();
++// As the game boots (after the config is read; game_path: the file booted)
++// and after it has stopped.
++void Start(const std::string& game_path);
 +void Stop();
 +}  // namespace Libretro::Achievements
 diff --git a/Source/Core/DolphinLibretro/Audio.cpp b/Source/Core/DolphinLibretro/Audio.cpp
@@ -1360,7 +1441,7 @@ index a96698067d..a4853c3586 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..bdb3a22294 100644
+index c53281053f..2f87c8a38f 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -25,6 +25,7 @@
@@ -1446,7 +1527,7 @@ index c53281053f..bdb3a22294 100644
      }
    }
  
-+  Libretro::Achievements::Start(); /* Porpoise: before the boot, which loads the game's set */
++  Libretro::Achievements::Start(normalized_game_paths.front()); /* Porpoise: before the boot, which loads the game's set */
    if (!BootManager::BootCore(Core::System::GetInstance(), std::move(boot_params), wsi))
    {
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);

@@ -21,6 +21,7 @@
 #include "ui_recommend.hpp"
 #include "ui_setups.hpp"
 #include "ui_app.hpp"
+#include "ui_widescreen.hpp"
 #include "ui_i18n.hpp"
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
@@ -479,6 +480,55 @@ int main(int argc, char **argv)
                 gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
             ui.draw_game_menu(12.0);
         });
+        return 0;
+    }
+    /* PREVIEW_PATCHES=1: the in-game menu's Patches tab for a game with codes
+     * (Super Mario Sunshine's ID, Dolphin's own lists and the widescreen
+     * collection), scrolled, and the Video tab's Widescreen row; then stop. */
+    if (std::getenv("PREVIEW_PATCHES"))
+    {
+        const char *root = std::getenv("PREVIEW_ROOT");
+        const std::string base = root ? root : "/root/porpoise-release";
+        ui.set_sys_dir(base + "/.deps/dolphin-src/Data/Sys");
+        porpoise::ui::widescreen::set_dir(base + "/assets/widescreen");
+        if (const char *lang = std::getenv("PREVIEW_PLANG"))
+            porpoise::ui::apply_language(std::atoi(lang), "");
+        porpoise::ui::Game &g0 = lib.games()[0];
+        g0.id = std::getenv("PREVIEW_GAMEID") ? std::getenv("PREVIEW_GAMEID") : "GMSE01";
+        g0.platform = "GameCube";
+        porpoise::Settings play = settings;
+        play.ws_plan = 1;
+        ui.open_game_menu(&g0, &play);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        Texture *frame = gfx.texture_file(covers + "/PRVW07.png");
+        auto shot = [&](const char *name) {
+            render(name, [&] {
+                gfx.background();
+                if (frame)
+                    gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
+                ui.draw_game_menu(12.0);
+            });
+        };
+        auto tap = [&](std::uint32_t b, int times = 1) {
+            for (int t = 0; t < times; ++t)
+            {
+                Input in;
+                in.held = b;
+                ui.update_game_menu(in, 0.016);
+                for (int i = 0; i < 12; ++i)
+                    ui.update_game_menu(none, 0.016);
+            }
+        };
+        tap(kR1); /* Video */
+        tap(kDown);
+        shot("patches-video");
+        tap(kR1, 3); /* Patches */
+        shot("patches-tab");
+        tap(kDown, 2);
+        shot("patches-code");
+        tap(kDown, 9);
+        shot("patches-scrolled");
         return 0;
     }
     /* PREVIEW_ACCOUNT=1: the RetroAchievements panel signed out, typing, busy

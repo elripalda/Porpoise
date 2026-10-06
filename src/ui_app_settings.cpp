@@ -1083,20 +1083,49 @@ void App::add_setup_rows(bool per_game)
     }
 }
 
-/* The codes Dolphin lists for this game (ui_cheats.hpp), one switch each. */
+/* Every game's cheats and patches: how it plays in widescreen first, then
+ * the codes Dolphin, the widescreen collection and the player's own folder
+ * have for it (ui_cheats.hpp), one switch each; or that it has none, so
+ * nothing on screen is a mystery. */
 void App::add_cheat_rows()
 {
     cheats_.clear();
     cheat_on_.clear();
-    if (!game_for_ || game_for_->id.size() != 6 || sys_dir_.empty())
+    if (!game_for_)
         return;
-    cheats_ = cheats_for(sys_dir_, game_for_->id, data_dir_ + "/cheats");
-    if (cheats_.empty())
-        return;
+    const std::string section = "Cheats and patches (beta)";
     SettingRow h;
-    h.section = "Cheats and patches (beta)";
+    h.section = section;
     h.header = true;
     rows_.push_back(h);
+    {
+        const bool wii = game_for_->platform == "Wii";
+        const widescreen::Kind kind =
+            wii ? widescreen::Kind::Native : widescreen::kind_of(game_for_->id, sys_dir_, false);
+        SettingRow r;
+        r.section = section;
+        r.label = tr("Widescreen");
+        r.help = wii ? tr("Wii games are 16:9 when Wii widescreen is on in Porpoise's settings, as on a Wii.")
+                     : widescreen::about(kind);
+        r.values = {wii                                 ? tr("The Wii's setting")
+                    : kind == widescreen::Kind::Patch  ? tr("16:9 code")
+                    : kind == widescreen::Kind::Native ? tr("In the game's options")
+                                                       : tr("4:3 only")};
+        rows_.push_back(r);
+    }
+    if (game_for_->id.size() == 6 && !sys_dir_.empty())
+        cheats_ = cheats_for(sys_dir_, game_for_->id, data_dir_ + "/cheats");
+    if (cheats_.empty())
+    {
+        SettingRow r;
+        r.section = section;
+        r.label = tr("None for this game");
+        r.help = trf("Dolphin lists none for this game. Your own codes go in /data/porpoise/cheats/{id}.ini.",
+                     {{"id", game_for_->id.empty() ? std::string("<ID>") : game_for_->id}});
+        r.values = {""};
+        rows_.push_back(r);
+        return;
+    }
     for (std::size_t i = 0; i < cheats_.size() && i < 80; ++i)
     {
         const Cheat &c = cheats_[i];
@@ -1107,7 +1136,7 @@ void App::add_cheat_rows()
     {
         const Cheat &c = cheats_[i];
         SettingRow r;
-        r.section = "Cheats and patches (beta)";
+        r.section = section;
         r.key = "cheat";
         r.folder = int(i);
         r.label = c.name.substr(1);

@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #pragma once
 
+#include <string>
+
 #include "porpoise_pad.hpp"
 #include "porpoise_paths.hpp"
 
@@ -64,6 +66,19 @@ enum class Exit
     Library, /* back to Porpoise's library */
     Home,    /* close Porpoise */
 };
+
+/* Why the last run_game ended in Exit::Failed: which part didn't start, and
+ * the reason in its own words (the loader's, or Dolphin's last error). */
+enum class Failure
+{
+    None,
+    Core,     /* Dolphin itself didn't load (its code, or memory for it) */
+    File,     /* the game's file couldn't be read */
+    Game,     /* Dolphin refused to boot the game */
+    Graphics, /* Dolphin's graphics didn't start */
+};
+Failure last_failure();
+std::string last_failure_reason();
 
 /* While a game runs: a Dolphin option changed from the in-game menu (the core
  * picks it up on its next frame), and Porpoise's own screen filter. */

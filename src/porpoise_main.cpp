@@ -2230,9 +2230,30 @@ int main()
         porpoise::banner::pause(false);
         g_app.return_from_game();
         if (exit == porpoise::core::Exit::Failed)
-            g_app.show_message(porpoise::ui::tr("This game didn't start"),
-                               porpoise::ui::tr("Dolphin could not start it. The file may be damaged or in a format "
-                                                "Porpoise can't read yet. Details are in porpoise/core.log."));
+        {
+            /* Which part didn't start: a file, or Dolphin itself (then no game
+             * would), with the reason in its own words. */
+            using porpoise::core::Failure;
+            const Failure why = porpoise::core::last_failure();
+            std::string text =
+                why == Failure::Core
+                    ? porpoise::ui::tr("Dolphin itself didn't load, so no game can start, whatever the file. Share "
+                                       "trace.txt and porpoise/core.log from Porpoise's app folder on the Discord, "
+                                       "with your firmware and HEN.")
+                : why == Failure::Graphics
+                    ? porpoise::ui::tr("Dolphin couldn't start its graphics, so no game can start, whatever the file. "
+                                       "Share trace.txt and porpoise/core.log from Porpoise's app folder on the "
+                                       "Discord, with your firmware and HEN.")
+                : why == Failure::File
+                    ? porpoise::ui::tr("Porpoise couldn't read this game's file. If it's on a USB drive, check that "
+                                       "the drive is connected and that the file copied over in full.")
+                    : porpoise::ui::tr("Dolphin could not start it. The file may be damaged or in a format "
+                                       "Porpoise can't read yet. Details are in porpoise/core.log.");
+            const std::string reason = porpoise::core::last_failure_reason();
+            if (!reason.empty())
+                text += "\n\n" + porpoise::ui::trf("Reason: {reason}", {{"reason", reason}});
+            g_app.show_message(porpoise::ui::tr("This game didn't start"), text);
+        }
         ps5::debug::mark("main: back in the library");
         start_entrance();
         fetch_covers();

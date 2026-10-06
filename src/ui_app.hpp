@@ -757,6 +757,11 @@ private:
     long long menu_slot_time_[3] = {0, 0, 0};
     bool menu_slot_used_[3] = {false, false, false};
     std::vector<porpoise::borders::Border> menu_borders_;
+    /* The Patches tab: the game's codes (ui_cheats) and each one's switch as
+     * the game has it; changes take effect the next time it starts. */
+    std::vector<Cheat> menu_cheats_;
+    std::vector<char> menu_cheat_on_;
+    int menu_wide_open_ = -2; /* Widescreen as this run started (-2: not yet): its state shows beside it */
     Texture *lines_art_ = nullptr; /* the controller with lines, for the Controls tab */
     bool lines_art_tried_ = false;
     void load_slots(const Game *game); /* menu_slot_* for this game's save states */
