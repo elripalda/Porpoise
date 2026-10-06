@@ -16,3 +16,5 @@ Help and bug reports: **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**.
 **By hand:** download **`Porpoise-2.1.1.zip`**, delete `/data/homebrew/PPSA99764/` on the PS5, and copy the **`PPSA99764`** folder into **`/data/homebrew/`**. Your games, saves and settings in `/data/porpoise/` are kept.
 
 Porpoise contains no games, BIOS or firmware. Play only games you own. Not affiliated with Nintendo, Sony or RetroAchievements. Licenses are in `licenses/README.txt` inside the zip.
+
+`Porpoise-2.1.1.zip` SHA-256: `f875af12e07821f587ed9ad5ede6f1aa475c8c29f784167b0e68dac500167acd`
