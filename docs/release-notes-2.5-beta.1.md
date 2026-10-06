@@ -16,6 +16,8 @@
 > [!NOTE]
 > **Having trouble with PS5 Upload?** As of October 6, 2026, some players couldn't install this update with PS5 Upload. If it doesn't work for you, copy Porpoise over FTP instead (in binary mode, see below). Still stuck? Reach out on the **[Discord](https://discord.gg/GgDE5Vynyu)** and we'll help you out.
 
+**Use ShadowMountPlus 1.7 beta 4 or newer.** With older versions, Porpoise can close the moment it opens on some setups (firmware 12.x with the Lapy JB Daemon or LegacyJB).
+
 **From 2.0 or later:** turn on **Settings → About → Beta updates**, then **Settings → About → Updates**.
 
 **By hand:** download **`Porpoise-2.5-beta.1.zip`**, delete `/data/homebrew/PPSA99764/` on the PS5, and copy the **`PPSA99764`** folder into **`/data/homebrew/`**. With FTP, use binary transfers (FileZilla: Transfer → Transfer type → Binary), or some text files won't copy. Your games, saves and settings in `/data/porpoise/` are kept.

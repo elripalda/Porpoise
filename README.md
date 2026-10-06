@@ -293,7 +293,9 @@ Settings → Audio, for every game or one (and the in-game menu's **Audio** tab)
 ## Requirements
 
 - A PS5 able to run homebrew, with **etaHEN** and **kstuff** loaded and
-  **ShadowMountPlus** (or your usual method) to register homebrew titles.
+  **ShadowMountPlus** (or your usual method) to register homebrew titles. Use
+  **ShadowMountPlus 1.7 beta 4 or newer**: with older versions Porpoise can
+  close as it opens on some setups (see [Troubleshooting](#troubleshooting)).
 - A way to copy files to the console: FTP, or a tool such as PS5 Upload.
 - **Your own games**, as backups you made from discs you own. Porpoise
   includes no games and no system files of any kind.
@@ -301,7 +303,7 @@ Settings → Audio, for every game or one (and the in-game menu's **Audio** tab)
 
 ## Install
 
-1. Download **`Porpoise-2.0.zip`** from the
+1. Download the Porpoise zip (**`Porpoise-<version>.zip`**) from the
    [latest release](https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/releases/latest) and
    unzip it on your computer. You get a folder named **`PPSA99764`**.
 2. Connect to your PS5 with FTP (for example etaHEN's FTP server and a client
@@ -311,7 +313,8 @@ Settings → Audio, for every game or one (and the in-game menu's **Audio** tab)
 3. Copy the whole **`PPSA99764`** folder into **`/data/homebrew/`**, so you end
    up with `/data/homebrew/PPSA99764/`.
 4. Register it the same way as your other homebrew (for example with
-   ShadowMountPlus). The Porpoise tile appears on the home screen.
+   ShadowMountPlus, **1.7 beta 4 or newer**). The Porpoise tile appears on the
+   home screen.
 5. Copy your game backups into **`/data/porpoise/games/`** (Porpoise creates it
    on first launch), into any folder listed under [Adding games](#adding-games),
    or onto a USB drive, then open Porpoise.
@@ -542,6 +545,10 @@ becomes the next player, up to four, and can join in the middle of a game.
   the daemon wasn't up, or running, on the later launch. Until it's freed,
   Porpoise keeps its things in the app's own folder
   (`/data/homebrew/PPSA99764/porpoise/`).
+- **Porpoise closes the moment it opens, every time, on firmware 12.x with the
+  Lapy JB Daemon or LegacyJB** (and opens fine without the daemon)? Update
+  **ShadowMountPlus to 1.7 beta 4 or newer**: that fixed it for a player whose
+  console closed Porpoise on every launch.
 - **Porpoise closes by itself just after it opens** (seen with etaHEN 2.6b's
   jailbreak list on firmware 13.60)? Once freed from the sandbox, Porpoise reads
   every game and banner it can find, and 2.0 reads damaged or unusual files far
