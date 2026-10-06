@@ -16,4 +16,4 @@ Help and bug reports: **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**.
 
 Porpoise contains no games, BIOS or firmware. Play only games you own. Not affiliated with Nintendo, Sony or RetroAchievements. Licenses are in `licenses/README.txt` inside the zip.
 
-`Porpoise-2.1.1.zip` SHA-256: `f875af12e07821f587ed9ad5ede6f1aa475c8c29f784167b0e68dac500167acd`
+`Porpoise-2.1.1.zip` SHA-256: `fc3b7e1d575a8efd2c9c5e2d734db927a1f95ca18396d8276fa15bb0f399178f`
