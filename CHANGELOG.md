@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.2 — 2026-10-06
+## 2.5 Beta 1 — 2026-10-06
 
 - **Smoother sound:** when a game runs below full speed, its sound now comes
   through Dolphin's own mixer, as Dolphin plays it on a PC, which covers the
