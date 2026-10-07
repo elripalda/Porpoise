@@ -30,6 +30,7 @@
 #include <time.h>
 #include <typeinfo>
 #include <unistd.h>
+#include <utility>
 
 #include <ps5platform/libc.h>
 
@@ -41,6 +42,7 @@
 #include "porpoise_atomic.hpp"
 #include "porpoise_core.hpp"
 #include "porpoise_disc.hpp"
+#include "porpoise_forward.hpp"
 #ifdef PORPOISE_DESKTOP
 #include "porpoise_platform.hpp"
 #endif
@@ -1873,15 +1875,14 @@ void mark_start(const char *what)
     ps5::debug::mark_value(what, (now_ns() - g_main_ns) / 1000000);
 }
 
-#ifdef PORPOISE_DESKTOP
+/* argc and argv: a forwarder's --rom and --exit-after-game (porpoise_forward.hpp;
+ * on the PS5, app_crt passes the launch arguments). */
 int main(int argc, char **argv)
 {
+#ifdef PORPOISE_DESKTOP
     /* The window first: it also makes the program's folder the working one. */
     if (!porpoise::platform::init(argc, argv))
         return 1;
-#else
-int main()
-{
 #endif
     g_main_ns = now_ns();
     ps5::debug::mark("Porpoise: main() entered");
@@ -1997,6 +1998,24 @@ int main()
     g_library.scan(library_paths());
     ps5::debug::mark_value("main: games in the library", static_cast<long long>(g_library.games().size()));
     mark_start("start: library read, ms");
+    /* A home screen forwarder's game (--rom): found now that Porpoise's folder
+     * and the drives can be read, and started once instead of the library.
+     * Before g_app.init: open_file() may add it to the library's games. */
+    const porpoise::forward::Args forwarded = porpoise::forward::parse(argc, argv);
+    porpoise::ui::Game *forwarded_game = nullptr;
+    bool forwarded_session = false;
+    std::string forwarded_missing;
+    if (!forwarded.rom.empty())
+    {
+        const std::string path = porpoise::forward::resolve(forwarded.rom, g_data + "/games");
+        if (!path.empty())
+            forwarded_game = g_library.open_file(path);
+        if (!forwarded_game)
+            forwarded_missing = path.empty() ? forwarded.rom : path;
+        ps5::debug::mark(("main: forwarded game " + (path.empty() ? forwarded.rom : path) +
+                          (forwarded_game ? ": found" : ": not found"))
+                             .c_str());
+    }
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
     g_app.set_sys_dir(PORPOISE_APP "/system/dolphin-emu/Sys");
     porpoise::ui::widescreen::set_dir(PORPOISE_APP "/assets/widescreen");
@@ -2075,6 +2094,10 @@ int main()
                                             "\xE2\x80\xA2 Or run a standalone daemon such as Lapy.\n"
                                             "Then open Porpoise again; if a launch still lands here, try once more. "
                                             "Until then, games go in /app0/porpoise/games."));
+    else if (!forwarded_missing.empty())
+        g_app.show_message(porpoise::ui::tr("Forwarded game not found"),
+                           porpoise::ui::trf("Porpoise was asked to start {path}, but can't find that file.",
+                                             {{"path", forwarded_missing}}));
     start_entrance(); /* the music comes up with the menus */
     fetch_covers();
 
@@ -2085,6 +2108,15 @@ int main()
         porpoise::ui::Game *launch = nullptr;
         for (;;)
         {
+            if (forwarded_game)
+            {
+                /* The forwarder's game, straight away (no Resume or Wii
+                 * setup question: its own settings and quick resume apply). */
+                launch = std::exchange(forwarded_game, nullptr);
+                forwarded_session = true;
+                ps5::debug::mark("main: starting the forwarded game");
+                break;
+            }
             const porpoise::pad::State &pad = porpoise::pad::poll();
 #ifdef PORPOISE_DESKTOP
             if (porpoise::platform::quit_requested())
@@ -2511,6 +2543,14 @@ int main()
         g_menu_open = false;
         if (exit == porpoise::core::Exit::Home)
             leave(0);
+        /* --exit-after-game: the forwarded game ended normally, so back to the
+         * home screen; one that didn't start says why in the library. */
+        if (std::exchange(forwarded_session, false) && forwarded.exit_after_game &&
+            exit == porpoise::core::Exit::Library)
+        {
+            ps5::debug::mark("main: the forwarded game ended; closing (--exit-after-game)");
+            leave(0);
+        }
 
         /* Back to the library: Porpoise's own device again (a game that
          * failed early never took it away). */
