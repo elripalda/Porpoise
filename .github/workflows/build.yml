@@ -94,12 +94,20 @@ jobs:
             clang-18 lld-18 llvm-18 libclang-rt-18-dev \
             llvm-22-dev clang-22 libclang-22-dev libclang-cpp22-dev libclc-22 libclc-22-dev \
             libllvmspirvlib-22-dev spirv-tools-dev spirv-headers libexpat1-dev zlib1g-dev
-          # The unversioned names are Clang 18: build-porpoise.sh runs /usr/bin/clang (its
-          # builtins go into eboot.bin) and the other scripts look for clang, lld, llvm-ar.
-          for tool in clang clang++ lld ld.lld llvm-ar llvm-ranlib llvm-nm llvm-strip llvm-objcopy; do
-            [[ -x /usr/bin/$tool-18 ]] && ln -sfn "/usr/bin/$tool-18" "/usr/bin/$tool"
+          # The unversioned names are LLVM 18's: build-porpoise.sh runs /usr/bin/clang (its
+          # builtins go into eboot.bin), and the scripts call clang, lld, llvm-ar and
+          # llvm-objdump (tools/check-core.py) by name. Every tool LLVM 18 has, except
+          # llvm-config: RADV's host build finds LLVM 22 by that name (its PATH has 22 first).
+          for path in /usr/lib/llvm-18/bin/*; do
+            tool=${path##*/}
+            [[ $tool == llvm-config ]] && continue
+            [[ -e /usr/bin/$tool && ! -L /usr/bin/$tool ]] || ln -sfn "$path" "/usr/bin/$tool"
+          done
+          for tool in clang clang++ ld.lld llvm-ar llvm-ranlib llvm-objdump; do
+            command -v "$tool" >/dev/null || { echo "missing $tool" >&2; exit 2; }
           done
           clang --version | head -n 1
+          llvm-objdump --version | head -n 2
           llvm-config-18 --version
           /usr/lib/llvm-22/bin/llvm-config --version
           git config --global --add safe.directory '*'
