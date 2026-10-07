@@ -63,6 +63,11 @@ class Library
 {
 public:
     void scan(const LibraryPaths &paths);
+    /* The game in this file: the one the search found, else read now and
+     * added (a game started with --rom from outside the library's folders).
+     * nullptr if it isn't a file. Moves games_: no Game pointer held before
+     * the call stays good. */
+    Game *open_file(const std::string &path);
     std::vector<Game> &games() { return games_; }
     const LibraryPaths &paths() const { return paths_; }
 
