@@ -1,0 +1,252 @@
+# Porpoise - build the title (BUILDING.md) on a GitHub-hosted runner.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# BUILDING.md's layout, inside the workspace:
+#
+#   $GITHUB_WORKSPACE/
+#   ├── Porpoise/          this repository
+#   ├── PS5_PayloadSDK/    mihawk-99/PS5_PayloadSDK at the revisions Porpoise and PS5_Vulkan pin
+#   ├── PS5_Vulkan/        mihawk-99/PS5_Vulkan at PS5_VULKAN_REVISION, RADV built (release)
+#   └── PS5_Mesa/          mihawk-99/PS5_Mesa at the revision PS5_Vulkan's build-radv.sh pins
+#
+# Each sibling is fetched at its pinned commit only (git fetch --depth 1 <sha>): the build
+# scripts check the pinned commits with git cat-file and export them with git archive, and
+# the licence notices read their working trees. The SDK and Mesa pins are read from the
+# scripts that own them, so they never drift from what the build checks.
+#
+# Runs in an Ubuntu 26.04 container: RADV's host tools (mesa_clc, vtn_bindgen2) need LLVM and
+# Clang 22 with libclc and the SPIR-V translator, while the PS5 toolchain is Clang 18.
+# The RADV driver, downloads and ccache (the Dolphin core) are cached between runs.
+#
+# A run keeps dist/ (dist/PPSA99764/ and Porpoise-PPSA99764.zip) as an artifact. A v* tag
+# builds with PORPOISE_RELEASE_TAG set, so the tag is recorded in licenses/README.txt.
+name: Build
+
+on:
+  push:
+    branches: [Main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ps5_vulkan_revision:
+        description: PS5_Vulkan commit to build RADV from (empty = the pinned one)
+        required: false
+        default: ''
+      force_cores:
+        description: Rebuild the Dolphin core even if its stamp is current
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # PS5_Vulkan main after "Pins: the new ids of my rewritten commits" (2026-10-05): RADV from
+  # PS5 Mesa 7b59ef2 (the rewritten dc82d01 Porpoise 2.x ships).
+  PS5_VULKAN_REVISION: ${{ inputs.ps5_vulkan_revision || '5b5e4fc2d80fdb67a4f61ba9e6a8a424026bb8a5' }}
+  PS5_FORCE_CORES: ${{ inputs.force_cores && '1' || '0' }}
+
+jobs:
+  build:
+    name: Build Porpoise
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    container:
+      image: ubuntu:26.04
+      # SDKs preinstalled on the runner, mounted so the job can delete them: Dolphin with its
+      # submodules, Mesa and the build trees need the disk space.
+      volumes:
+        - /usr/share/dotnet:/host-free/dotnet
+        - /usr/local/lib/android:/host-free/android
+        - /opt/ghc:/host-free/ghc
+        - /usr/local/.ghcup:/host-free/ghcup
+        - /opt/hostedtoolcache:/host-free/toolcache
+        - /usr/local/share/boost:/host-free/boost
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      CCACHE_MAXSIZE: 3G
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Free disk space
+        run: |
+          df -h "$GITHUB_WORKSPACE"
+          find /host-free -mindepth 2 -maxdepth 2 -exec rm -rf {} + 2>/dev/null || true
+          df -h "$GITHUB_WORKSPACE"
+
+      - name: Install the build tools
+        run: |
+          apt-get update
+          # Basics, downloads and archives; rev (bsdextrautils) for the SDK's wrappers.
+          # Clang 18 is the PS5 toolchain (BUILDING.md); LLVM/Clang 22, libclc and the SPIR-V
+          # translator build RADV's host tools (PS5_Vulkan docs/RADV_GS_COMPUTE.md).
+          apt-get install --yes --no-install-recommends \
+            ca-certificates git curl wget unzip zip xz-utils file make build-essential pkgconf \
+            bsdextrautils patch rsync util-linux zstd \
+            cmake ninja-build meson ccache bison flex glslang-tools spirv-tools \
+            python3 python3-pil python3-mako python3-yaml python3-packaging python3-ply \
+            clang-18 lld-18 llvm-18 libclang-rt-18-dev \
+            llvm-22-dev clang-22 libclang-22-dev libclang-cpp22-dev libclc-22 libclc-22-dev \
+            libllvmspirvlib-22-dev spirv-tools-dev spirv-headers libexpat1-dev zlib1g-dev
+          # The unversioned names are Clang 18: build-porpoise.sh runs /usr/bin/clang (its
+          # builtins go into eboot.bin) and the other scripts look for clang, lld, llvm-ar.
+          for tool in clang clang++ lld ld.lld llvm-ar llvm-ranlib llvm-nm llvm-strip llvm-objcopy; do
+            [[ -x /usr/bin/$tool-18 ]] && ln -sfn "/usr/bin/$tool-18" "/usr/bin/$tool"
+          done
+          clang --version | head -n 1
+          llvm-config-18 --version
+          /usr/lib/llvm-22/bin/llvm-config --version
+          git config --global --add safe.directory '*'
+
+      - uses: actions/checkout@v7
+        with:
+          path: Porpoise
+
+      - name: Locate the caches
+        run: |
+          cache_root="$GITHUB_WORKSPACE/ci-cache"
+          mkdir -p "$cache_root"
+          {
+            echo "CACHE_ROOT=$cache_root"
+            echo "CCACHE_DIR=$cache_root/ccache"
+            echo "JOBS=$(nproc)"
+            echo "PS5_VULKAN_DIR=$GITHUB_WORKSPACE/PS5_Vulkan"
+            echo "PS5_PAYLOAD_SDK_FORK=$GITHUB_WORKSPACE/PS5_PayloadSDK"
+          } >> "$GITHUB_ENV"
+          # The pins, from the scripts that check them.
+          porpoise_sdk=$(sed -n 's/^sdk_revision=\([0-9a-f]\{40\}\).*/\1/p' Porpoise/tools/setup-native-dependencies.sh)
+          [[ -n $porpoise_sdk ]] || { echo "no sdk_revision in Porpoise's setup-native-dependencies.sh" >&2; exit 2; }
+          echo "PORPOISE_SDK_REVISION=$porpoise_sdk" >> "$GITHUB_ENV"
+
+      - name: Fetch PS5_Vulkan
+        run: |
+          fetch_at() { # fetch_at <dir> <url> <commit>: just that commit, checked out
+            git init --quiet "$1"
+            git -C "$1" remote add origin "$2" 2>/dev/null || git -C "$1" remote set-url origin "$2"
+            git -C "$1" fetch --quiet --depth 1 origin "$3"
+            git -C "$1" checkout --quiet --force --detach FETCH_HEAD
+          }
+          fetch_at PS5_Vulkan https://github.com/mihawk-99/PS5_Vulkan.git "$PS5_VULKAN_REVISION"
+          vulkan_sdk=$(sed -n 's/^sdk_revision=\([0-9a-f]\{40\}\).*/\1/p' PS5_Vulkan/tools/setup-native-dependencies.sh)
+          mesa=$(sed -n 's/^mesa_revision=\([0-9a-f]\{40\}\).*/\1/p' PS5_Vulkan/tools/build-radv.sh)
+          [[ -n $vulkan_sdk && -n $mesa ]] || { echo "PS5_Vulkan's SDK or Mesa pin was not found" >&2; exit 2; }
+          {
+            echo "VULKAN_SDK_REVISION=$vulkan_sdk"
+            echo "MESA_REVISION=$mesa"
+          } >> "$GITHUB_ENV"
+          echo "PS5_Vulkan $PS5_VULKAN_REVISION: SDK $vulkan_sdk, Mesa $mesa; Porpoise's SDK $PORPOISE_SDK_REVISION"
+
+      - name: Fetch PS5_PayloadSDK and PS5_Mesa
+        run: |
+          # Both SDK pins in one checkout (each project exports its own with git archive);
+          # the working tree is Porpoise's, whose licence texts its notices copy.
+          git init --quiet PS5_PayloadSDK
+          git -C PS5_PayloadSDK remote add origin https://github.com/mihawk-99/PS5_PayloadSDK.git
+          git -C PS5_PayloadSDK fetch --quiet --depth 1 origin "$VULKAN_SDK_REVISION" "$PORPOISE_SDK_REVISION"
+          git -C PS5_PayloadSDK checkout --quiet --force --detach "$PORPOISE_SDK_REVISION"
+          # Mesa: RADV's source (unless the driver is cached) and its licence texts.
+          git init --quiet PS5_Mesa
+          git -C PS5_Mesa remote add origin https://github.com/mihawk-99/PS5_Mesa.git
+          git -C PS5_Mesa fetch --quiet --depth 1 origin "$MESA_REVISION"
+          git -C PS5_Mesa checkout --quiet --force --detach FETCH_HEAD
+          df -h "$GITHUB_WORKSPACE"
+
+      - name: Restore downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            Porpoise/.deps/downloads
+            Porpoise/.deps/native/ps5-payload-sdk.zip
+            Porpoise/.deps/native/zlib/zlib-*.tar.gz
+            PS5_Vulkan/.deps/native/ps5-payload-sdk.zip
+            PS5_Vulkan/.deps/native/zlib/zlib-*.tar.gz
+          key: downloads-${{ hashFiles('Porpoise/tools/build-dolphin.sh', 'Porpoise/tools/setup-native-dependencies.sh') }}-${{ env.VULKAN_SDK_REVISION }}
+          restore-keys: downloads-
+
+      - name: Install the payload SDK (PS5_Vulkan's and Porpoise's)
+        run: |
+          bash PS5_Vulkan/tools/setup-native-dependencies.sh
+          bash Porpoise/tools/setup-native-dependencies.sh
+
+      - name: Restore the RADV driver
+        id: radv
+        uses: actions/cache/restore@v5
+        with:
+          path: PS5_Vulkan/.deps/native/radv-release
+          key: radv-release-${{ env.MESA_REVISION }}-${{ env.VULKAN_SDK_REVISION }}-${{ env.PS5_VULKAN_REVISION }}
+
+      - name: Build RADV (PS5_Vulkan tools/build-radv.sh release)
+        run: |
+          # Host LLVM 22 first on PATH for mesa_clc and vtn_bindgen2; the cross build itself goes
+          # through the SDK's wrappers, which pick LLVM 18 by its versioned name.
+          export PATH="/usr/lib/llvm-22/bin:$PATH"
+          if ! bash PS5_Vulkan/tools/build-radv.sh release; then
+            for log in PS5_Vulkan/.deps/work/*.log; do
+              [[ -f $log ]] && { echo "::group::$log"; tail -n 60 "$log"; echo "::endgroup::"; }
+            done
+            exit 1
+          fi
+          cat PS5_Vulkan/.deps/native/radv-release/PROVENANCE.txt
+
+      - name: Save the RADV driver
+        if: steps.radv.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: PS5_Vulkan/.deps/native/radv-release
+          key: radv-release-${{ env.MESA_REVISION }}-${{ env.VULKAN_SDK_REVISION }}-${{ env.PS5_VULKAN_REVISION }}
+
+      - name: Restore ccache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.CACHE_ROOT }}/ccache
+          key: ccache-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-
+
+      - name: LLVM licence text for the notices
+        run: |
+          # stage-notices.py copies LLVM's licence (the SDK's libc++ and builtins are linked into
+          # eboot.bin) from .deps/llvm-project, which nothing else here checks out.
+          mkdir -p Porpoise/.deps/llvm-project/llvm
+          curl --fail --location --retry 3 -o Porpoise/.deps/llvm-project/llvm/LICENSE.TXT \
+            https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-18.1.8/llvm/LICENSE.TXT
+
+      - name: Build Porpoise (make)
+        working-directory: Porpoise
+        run: |
+          ccache --zero-stats
+          if [[ $GITHUB_REF_TYPE == tag ]]; then
+            export PORPOISE_RELEASE_TAG="$GITHUB_REF_NAME"
+          fi
+          make
+
+      - name: Report disk and ccache
+        if: always()
+        run: |
+          df -h "$GITHUB_WORKSPACE"
+          ccache --show-stats || true
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.CACHE_ROOT }}/ccache
+          key: ccache-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Checksum
+        working-directory: Porpoise/dist
+        run: |
+          sha256sum Porpoise-*.zip | tee SHA256SUMS
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Porpoise-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+          path: |
+            Porpoise/dist/Porpoise-*.zip
+            Porpoise/dist/SHA256SUMS
+          retention-days: 14
