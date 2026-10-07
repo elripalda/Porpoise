@@ -23,3 +23,5 @@
 **By hand:** download **`Porpoise-2.5.zip`**, delete `/data/homebrew/PPSA99764/` on the PS5, and copy the **`PPSA99764`** folder into **`/data/homebrew/`**. With FTP, use binary transfers (FileZilla: Transfer → Transfer type → Binary), or some text files won't copy. Your games, saves and settings in `/data/porpoise/` are kept.
 
 Porpoise contains no games, BIOS or firmware. Play only games you own. Not affiliated with Nintendo, Sony or RetroAchievements. Licenses are in `licenses/README.txt` inside the zip.
+
+`Porpoise-2.5.zip` SHA-256: `a6de0af1d2b427cad5f69a32203407115d91b71e8291f92acf2545a5850a7600`
