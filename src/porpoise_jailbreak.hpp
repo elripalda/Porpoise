@@ -16,4 +16,8 @@ void prepare();
  * OnionHEN or a Lapy-style one) to free this process (a few seconds at most).
  * True when /data is reachable afterwards. */
 bool ensure();
+/* The daemon freed Porpoise by making the console's root its own, where
+ * Porpoise's folder (/app0) isn't, and Porpoise put the sandbox back as its
+ * root to keep running (ensure() then says whether /data is reachable). */
+bool root_put_back();
 } // namespace porpoise::jailbreak

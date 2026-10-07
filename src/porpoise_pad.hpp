@@ -106,6 +106,7 @@ enum WiiController : int
     WiiSideways = 2,      /* the Remote held sideways (NES-style, steering by tilting) */
     WiiClassic = 3,       /* the Classic Controller */
     WiiTwoControllers = 4, /* beta: controller 1 the Remote, controller 2 the Nunchuk */
+    WiiGameCube = 5,      /* a GameCube controller in a Wii game that takes one (Brawl, Mario Kart Wii) */
     WiiControllerCount,
 };
 /* Where the Remote's pointer comes from. */
@@ -255,6 +256,8 @@ struct State
     bool ps_menu_combo = false; /* Options + touch pad: open the Porpoise menu */
     bool ff_step = false;       /* touch pad + R1 pressed: fast forward's next speed */
     bool ff_hold = false;       /* touch pad + R2 held: fast forward while held */
+    bool quick_save = false;    /* touch pad + L1 pressed: save to the quick slot (set_quick_buttons) */
+    bool quick_load = false;    /* touch pad + L2 pressed: load the quick slot */
     std::uint32_t buttons = 0;  /* Button bits */
 };
 
@@ -265,6 +268,19 @@ void set_rumble_enabled(bool enabled);
 /* Touch pad + R1 / R2 for fast forward in games (Settings > Controls). Off:
  * the touch pad, R1 and R2 go to the game as they are. */
 void set_fast_forward_buttons(bool enabled);
+/* Touch pad + L1 saves to a quick slot, touch pad + L2 loads it (State::quick_save,
+ * quick_load). Off: the touch pad, L1 and L2 go to the game as they are. */
+void set_quick_buttons(bool enabled);
+/* Turbo: while this control (Control, -1 none) is held, it presses and lets go
+ * about fifteen times a second. Only in games. */
+void set_turbo(int control);
+/* The light bar's colour for each player: an index into kLightColours. */
+constexpr int kLightColourCount = 10;
+void set_light_colours(const int *colours /* kMaxPlayers */);
+/* The DualSense's adaptive triggers on L2 / R2 where they are the GameCube's
+ * L and R (the current mapping): 0 off, 1 a light click near the bottom, 2 a
+ * firm one, as the GameCube's triggers click at the end of their travel. */
+void set_trigger_feel(int feel);
 /* Read every controller. Call once a frame; returns player 1. */
 const State &poll();
 const State &state(int player = 0);

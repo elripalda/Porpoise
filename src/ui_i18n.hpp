@@ -58,6 +58,9 @@ const char *cjk_font();
  * them: the characters every CJK font must find somewhere. */
 std::string language_names();
 
+/* Where Porpoise's folder is: texts that name /data/porpoise name this
+ * instead when it's elsewhere. */
+void set_folder(const std::string &dir);
 /* The text in the current language (the English itself when there is none). */
 const std::string &tr(const std::string &english);
 /* tr for a word that means different things in different places: looks up

@@ -36,6 +36,7 @@
 #include "../build/title_build_identity.h"
 #include "memory_diagnostics.hpp"
 #include "porpoise_audio.hpp"
+#include "porpoise_gfxmods.hpp"
 #include "porpoise_borders.hpp"
 #include "porpoise_atomic.hpp"
 #include "porpoise_core.hpp"
@@ -95,6 +96,9 @@ int g_freed = -1;         /* the HEN's answer, asked once at the very start (-1:
 /* Porpoise's folder can live on another drive (Settings > Games > Move
  * Porpoise's folder): /data/porpoise/location.txt names it. */
 std::string g_location_missing; /* named there but not connected */
+/* A first start (nothing in /data/porpoise, no pointer) that finds a Porpoise
+ * folder on extended storage or a USB drive: offered, never taken unasked. */
+std::string g_found_folder, g_found_place;
 
 bool writable_dir(const std::string &dir)
 {
@@ -171,12 +175,72 @@ void bring_over_app_folder_data()
     }
 }
 
+/* The drives a moved Porpoise folder can be on (Settings > Games > Move
+ * Porpoise's folder puts it in <drive>/porpoise). */
+std::vector<std::pair<std::string, std::string>> folder_drives()
+{
+    std::vector<std::pair<std::string, std::string>> drives = {{"/mnt/ext0", "extended storage"},
+                                                               {"/mnt/ext1", "extended storage 2"}};
+    for (int i = 0; i < 8; ++i)
+        drives.emplace_back("/mnt/usb" + std::to_string(i), "a USB drive");
+    return drives;
+}
+
+bool has_porpoise_folder(const std::string &dir)
+{
+    struct stat st;
+    return stat((dir + "/settings.ini").c_str(), &st) == 0 && writable_dir(dir);
+}
+
+/* The pointer names a drive that isn't there. A drive can be slow to appear
+ * after rest mode, and a USB drive plugged into another port shows up under
+ * another number: both are looked for before giving up on it. Only runs when
+ * the folder would otherwise be missing. */
+std::string find_moved_folder(const std::string &where)
+{
+    for (int i = 0; i < 8; ++i)
+    {
+        const timespec quarter = {0, 250 * 1000 * 1000};
+        nanosleep(&quarter, nullptr);
+        if (writable_dir(where))
+        {
+            ps5::debug::mark("main: Porpoise's folder appeared after a moment");
+            return where;
+        }
+    }
+    if (where.rfind("/mnt/usb", 0) != 0)
+        return "";
+    std::string found;
+    int count = 0;
+    for (int i = 0; i < 8; ++i)
+    {
+        const std::string dir = "/mnt/usb" + std::to_string(i) + "/porpoise";
+        if (has_porpoise_folder(dir))
+        {
+            found = dir;
+            ++count;
+        }
+    }
+    if (count != 1)
+        return ""; /* none, or more than one: which is theirs isn't clear */
+    ps5::debug::mark(("main: Porpoise's folder is on another USB port now: " + found).c_str());
+    const std::string pointer = std::string(PORPOISE_DATA) + "/location.txt";
+    if (std::FILE *f = porpoise::open_atomic(pointer))
+    {
+        std::fprintf(f, "%s\n", found.c_str());
+        porpoise::finish_atomic(f, pointer);
+    }
+    return found;
+}
+
 void choose_data_dir()
 {
     if (g_freed >= 0 ? g_freed == 1 : porpoise::jailbreak::ensure())
     {
         g_data = PORPOISE_DATA;
         bring_over_app_folder_data();
+        struct stat st;
+        const bool fresh = stat((g_data + "/settings.ini").c_str(), &st) != 0;
         if (std::FILE *f = std::fopen((g_data + "/location.txt").c_str(), "r"))
         {
             char line[512] = {0};
@@ -187,9 +251,24 @@ void choose_data_dir()
             if (!where.empty() && writable_dir(where))
                 g_data = where;
             else if (!where.empty())
-                g_location_missing = where;
+            {
+                const std::string found = find_moved_folder(where);
+                if (!found.empty())
+                    g_data = found;
+                else
+                    g_location_missing = where;
+            }
             ps5::debug::mark(("main: Porpoise's folder is set to " + where).c_str());
         }
+        else if (fresh)
+            for (const auto &drive : folder_drives())
+                if (has_porpoise_folder(drive.first + "/porpoise"))
+                {
+                    g_found_folder = drive.first + "/porpoise";
+                    g_found_place = drive.second;
+                    ps5::debug::mark(("main: a first start, and a Porpoise folder is on " + g_found_folder).c_str());
+                    break;
+                }
     }
     else
         g_sandboxed = true;
@@ -204,6 +283,7 @@ void choose_data_dir()
     g_saves_path = g_data + "/saves";
     g_options_reference = g_data + "/options-reference.txt";
     g_core_log = PORPOISE_APP "/porpoise/core.log";
+    porpoise::ui::set_folder(g_data); /* help texts name the folder in use */
     ps5::debug::mark(("main: player data in " + g_data).c_str());
     /* Test files the Dolphin core still reads: worth knowing about when a
      * setting doesn't seem to take. */
@@ -718,6 +798,18 @@ void rescan_library()
     fetch_covers();
 }
 
+/* The game's own controller extras: fast forward and quick save buttons,
+ * turbo, and the trigger click where L2 / R2 are the GameCube's L and R. In
+ * Porpoise's menus they are all off (apply_settings). */
+void apply_game_controls(bool wii_game)
+{
+    porpoise::pad::set_fast_forward_buttons(g_play.ff_buttons);
+    porpoise::pad::set_quick_buttons(g_play.quick_slot > 0);
+    porpoise::pad::set_turbo(g_play.turbo_control());
+    const bool gamecube_triggers = !wii_game || g_play.wii_controller == porpoise::pad::WiiGameCube;
+    porpoise::pad::set_trigger_feel(gamecube_triggers ? g_play.trigger_feel : 0);
+}
+
 void apply_settings()
 {
     porpoise::sound::set_music(g_settings.menu_music, g_settings.music_volume / 10.0f);
@@ -726,6 +818,14 @@ void apply_settings()
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
     porpoise::pad::set_fast_forward_buttons(g_settings.ff_buttons);
     porpoise::pad::set_wii_buttons(g_settings.wii_buttons);
+    {
+        const int lights[4] = {g_settings.light_1, g_settings.light_2, g_settings.light_3, g_settings.light_4};
+        porpoise::pad::set_light_colours(lights);
+    }
+    /* The game's extras are a game's only. */
+    porpoise::pad::set_quick_buttons(false);
+    porpoise::pad::set_turbo(-1);
+    porpoise::pad::set_trigger_feel(0);
     porpoise::pacer::set_vsync(g_settings.vsync);
     {
         /* Settings > Video > Output resolution: porpoise_vk reads it when the
@@ -856,6 +956,7 @@ int menu_paused(void *)
     in.held = pad.buttons;
     in.stick_x = pad.left_x / 32768.0f;
     in.stick_y = pad.left_y / 32768.0f;
+    g_app.set_sound_pulled(porpoise::audio::pulling());
     const int answer = g_app.update_game_menu(in, 1.0 / 60.0);
     /* Settings take effect right away. */
     const std::string key = g_app.take_menu_change();
@@ -896,6 +997,7 @@ int menu_paused(void *)
         /* The Wii Remote: the pad and the core's ports; the pointer's source
          * is also a Dolphin option. */
         porpoise::core::set_wii(g_play.wii_config(true));
+        apply_game_controls(true); /* the GameCube controller gets the trigger click */
         if (key == "wii_pointer" || key == "wii_setup")
             for (const auto &[k, v] : g_play.core_options())
                 porpoise::core::set_option(k.c_str(), v.c_str());
@@ -908,7 +1010,7 @@ int menu_paused(void *)
             porpoise::core::set_option(k.c_str(), v.c_str());
         if (key == "rumble")
             porpoise::pad::set_rumble_enabled(g_play.rumble);
-        porpoise::pad::set_fast_forward_buttons(g_play.ff_buttons);
+        apply_game_controls(porpoise::pad::wii().active);
     }
     /* Save states, asked for in the menu, done here on the core's thread. */
     const porpoise::ui::App::MenuRequest request = g_app.take_menu_request();
@@ -959,7 +1061,8 @@ void draw_wii_hint()
 {
     using namespace porpoise::ui;
     const porpoise::pad::WiiConfig wii = porpoise::pad::wii();
-    const bool held = wii.controller != porpoise::pad::WiiSideways && wii.controller != porpoise::pad::WiiClassic;
+    const bool held = wii.controller != porpoise::pad::WiiSideways && wii.controller != porpoise::pad::WiiClassic &&
+                      wii.controller != porpoise::pad::WiiGameCube;
     if (!wii.active || !held || wii.pointer != porpoise::pad::PointerGyro)
         return;
     const porpoise::pad::Motion m = porpoise::pad::snapshot(0).motion;
@@ -1259,6 +1362,24 @@ void draw_mover(double hz)
     g_pacer.frame_done();
 }
 
+/* Porpoise's folder changed: a note, then Porpoise closes so it opens from there. */
+[[noreturn]] void close_for_folder(const std::string &title, double hz)
+{
+    for (int frame = 0; frame < int(hz * 2.5); ++frame)
+    {
+        begin_ui_frame(0.6f);
+        g_app.draw(g_time);
+        using namespace porpoise::ui;
+        g_gfx.panel(560, 400, 800, 260, rgba(0x0F1F63, 0.92f), 0.9f, 28, rgba(0x6BE3A8, 0.9f), 2.0f, 12, 0.15f);
+        g_gfx.text_mid(Font::Bold, 38, 960, 480, rgba(0xFFFFFF), Align::Center, title);
+        g_gfx.text_mid(Font::Regular, 26, 960, 560, rgba(0xC9D6FF), Align::Center,
+                       tr("Porpoise closes now. Open it again."));
+        porpoise::vk::present_clear(0, 0, 0);
+        g_pacer.frame_done();
+    }
+    leave(0);
+}
+
 /* Settings > Games > Move Porpoise's folder: everything copied to the drive,
  * the pointer written, the old copy removed; then Porpoise closes so it opens
  * from there. */
@@ -1291,23 +1412,35 @@ void move_data(const std::string &to, double hz)
     const int state = g_mover.state.load();
     ps5::debug::mark_value("main: the move ended, state", state);
     if (state == 3)
-    {
-        for (int frame = 0; frame < int(hz * 2.5); ++frame)
-        {
-            begin_ui_frame(0.6f);
-            g_app.draw(g_time);
-            using namespace porpoise::ui;
-            g_gfx.panel(560, 400, 800, 260, rgba(0x0F1F63, 0.92f), 0.9f, 28, rgba(0x6BE3A8, 0.9f), 2.0f, 12, 0.15f);
-            g_gfx.text_mid(Font::Bold, 38, 960, 480, rgba(0xFFFFFF), Align::Center, tr("Porpoise's folder moved"));
-            g_gfx.text_mid(Font::Regular, 26, 960, 560, rgba(0xC9D6FF), Align::Center,
-                           tr("Porpoise closes now. Open it again."));
-            porpoise::vk::present_clear(0, 0, 0);
-            g_pacer.frame_done();
-        }
-        leave(0);
-    }
+        close_for_folder(porpoise::ui::tr("Porpoise's folder moved"), hz);
     if (state == 4)
         g_app.show_message(porpoise::ui::tr("The move didn't finish"), porpoise::ui::tr(g_mover.error));
+}
+
+/* A Porpoise folder that's already on a drive becomes the one in use
+ * (Settings > Games, or a first start that found it): only the pointer
+ * changes. Nothing is copied or removed, so both folders stay as they are. */
+void use_data(const std::string &to, double hz)
+{
+    ps5::debug::mark(("main: using the Porpoise folder at " + to).c_str());
+    const std::string pointer = std::string(PORPOISE_DATA) + "/location.txt";
+    mkdir(PORPOISE_DATA, 0777);
+    bool pointed = false;
+    if (to == PORPOISE_DATA)
+        pointed = std::remove(pointer.c_str()) == 0 || errno == ENOENT;
+    else if (std::FILE *f = porpoise::open_atomic(pointer))
+    {
+        std::fprintf(f, "%s\n", to.c_str());
+        pointed = porpoise::finish_atomic(f, pointer);
+    }
+    if (!pointed)
+    {
+        g_app.show_message(porpoise::ui::tr("Porpoise couldn't switch folders"),
+                           porpoise::ui::tr("Writing the note that says where Porpoise's folder is didn't work, so "
+                                            "nothing changed."));
+        return;
+    }
+    close_for_folder(porpoise::ui::tr("Porpoise will use that folder"), hz);
 }
 
 /* The game's texture pack, counted as it starts (in the background: a pack
@@ -1407,6 +1540,70 @@ void draw_texture_note()
                    porpoise::ui::Align::Left, text);
 }
 
+/* Quick save buttons (touch pad + L1 / L2): a short note over the game. */
+std::string g_quick_note;
+double g_quick_note_from = -100;
+
+void quick_note(const std::string &text)
+{
+    g_quick_note = text;
+    g_quick_note_from = g_time;
+}
+
+/* Touch pad + L1: the game's state into its quick slot (written in the
+ * background, as the menu's saves are); touch pad + L2: that slot back. Here,
+ * on the game's own thread between two of its frames. */
+void quick_states(const porpoise::pad::State &pad)
+{
+    using porpoise::ui::trf;
+    if (!g_playing || g_play.quick_slot <= 0)
+        return;
+    const std::string game = porpoise::ui::Library::key_of(*g_playing);
+    const int slot = std::clamp(g_play.quick_slot, 1, porpoise::states::kSlots) - 1;
+    const std::string n = std::to_string(slot + 1);
+    if (pad.quick_save)
+    {
+        if (porpoise::states::busy())
+            quick_note(porpoise::ui::tr("Still saving\xE2\x80\xA6"));
+        else if (porpoise::states::save(game, slot))
+            quick_note(trf("Saving to slot {n}\xE2\x80\xA6", {{"n", n}}));
+        else
+            quick_note(trf("Couldn't save to slot {n}", {{"n", n}}));
+    }
+    else if (pad.quick_load)
+    {
+        porpoise::states::wait(); /* a save still being written goes first */
+        if (!porpoise::states::slot(game, slot).exists)
+            quick_note(trf("Slot {n} is empty", {{"n", n}}));
+        else
+        {
+            const bool ok = porpoise::states::load(game, slot);
+            ps5::debug::mark_value("main: quick load from slot", ok ? slot + 1 : -(slot + 1));
+            quick_note(ok ? trf("Loaded slot {n}", {{"n", n}}) : trf("Couldn't load slot {n}", {{"n", n}}));
+        }
+    }
+    int done = 0;
+    bool ok = false;
+    if (porpoise::states::take_finished(done, ok))
+    {
+        ps5::debug::mark_value("main: quick save to slot", ok ? done + 1 : -(done + 1));
+        quick_note(ok ? trf("Saved to slot {n}", {{"n", std::to_string(done + 1)}})
+                      : trf("Couldn't save to slot {n}", {{"n", std::to_string(done + 1)}}));
+    }
+}
+
+void draw_quick_note()
+{
+    using namespace porpoise::ui;
+    const double age = g_time - g_quick_note_from;
+    if (age > 2.5 || g_quick_note.empty())
+        return;
+    const float a = float(std::min(1.0, std::min(age / 0.2, (2.5 - age) / 0.4)));
+    const float w = g_gfx.measure(Font::Bold, 28, g_quick_note) + 60;
+    g_gfx.panel(40, 1080 - 40 - 56, w, 56, rgba(0x0A1236, 0.82f * a), 0.9f * a, 16, rgba(0x6BE3A8, 0.9f * a), 1.6f);
+    g_gfx.text_mid(Font::Bold, 28, 70, 1080 - 40 - 28, rgba(0xF4F7FF, a), Align::Left, g_quick_note);
+}
+
 void draw_game_toast()
 {
     using namespace porpoise::ui;
@@ -1486,6 +1683,7 @@ void launch_frame(bool core_frame, double fps, void *)
             holding = pad.ff_hold;
             porpoise::core::set_fast_forward(holding ? 4 : g_app.menu_fast_forward());
         }
+        quick_states(pad);
     }
     draw_border();
     if ((g_app.menu_fast_forward() > 1 || porpoise::core::fast_forward() > 1) && !g_menu_open)
@@ -1513,6 +1711,7 @@ void launch_frame(bool core_frame, double fps, void *)
     {
         draw_texture_note();
         draw_game_toast();
+        draw_quick_note();
     }
     if (g_play.motion_readout && g_play.developer && !g_menu_open)
         draw_motion_readout();
@@ -1845,8 +2044,12 @@ int main()
     if (!g_sandboxed && !g_settings.setup_checked)
     {
         /* The first start: a look to begin with, then the welcome and what
-         * Porpoise can see (setup_checked is saved once a look is chosen). */
-        g_app.start_welcome();
+         * Porpoise can see (setup_checked is saved once a look is chosen).
+         * A Porpoise folder found on a drive is offered first. */
+        if (!g_found_folder.empty())
+            g_app.offer_found_folder(g_found_folder, g_found_place);
+        else
+            g_app.start_welcome();
     }
     if (!g_location_missing.empty())
         g_app.show_message(porpoise::ui::tr("Porpoise's folder isn't connected"),
@@ -1854,6 +2057,12 @@ int main()
                                              "Connect it and open Porpoise again. Until then, Porpoise uses the "
                                              "console's storage.",
                                              {{"path", g_location_missing}}));
+    else if (g_sandboxed && porpoise::jailbreak::root_put_back())
+        g_app.show_message(porpoise::ui::tr("Your jailbreak hid Porpoise's files"),
+                           porpoise::ui::tr("The jailbreak daemon freed Porpoise in a way that hides Porpoise's own "
+                                            "folder, so Porpoise stayed in the app sandbox to keep running: it can't "
+                                            "see /data or USB drives this time. Updating ShadowMountPlus to 1.7 beta "
+                                            "4 or newer fixes this for most players."));
     else if (g_sandboxed && g_settings.sandbox_notice)
         g_app.show_sandbox_notice(porpoise::ui::tr("Porpoise can't reach /data"),
                            porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
@@ -1986,6 +2195,8 @@ int main()
                 fetch_covers(true);
             if (action == porpoise::ui::App::Action::MoveData && !g_app.move_target().empty())
                 move_data(g_app.move_target(), hz);
+            if (action == porpoise::ui::App::Action::UseFolder && !g_app.move_target().empty())
+                use_data(g_app.move_target(), hz);
             if (action == porpoise::ui::App::Action::CheckUpdate)
             {
                 porpoise::covers::stop(); /* one download at a time: let the check go first */
@@ -2072,6 +2283,17 @@ int main()
         setenv("RADV_THREADED_RECORDING", g_play.threaded_gpu ? "1" : "0", 1);
         keep_cores(g_play.own_cores);
         ps5::debug::mark(g_play.threaded_gpu ? "main: threaded GPU recording on" : "main: threaded GPU recording off");
+        {
+            /* Dolphin's built-in graphics mods: its list of the game's mods,
+             * with the chosen ones on, and its mods switch only then. */
+            const porpoise::gfxmods::Choice mods{g_play.gfx_bloom, g_play.gfx_dof, g_play.gfx_hud, g_play.gfx_extra};
+            g_play.gfx_mods_on = porpoise::gfxmods::wanted(launch->id, mods);
+            if (g_play.gfx_mods_on)
+            {
+                porpoise::gfxmods::write_profile(g_saves_path + "/User/Config", launch->id, mods);
+                ps5::debug::mark("main: graphics mods on for this game");
+            }
+        }
         g_play.write_core_options(g_options_path);
         /* Fast save states: Dolphin leaves its GPU texture cache out of them
          * (Dolphin.ini's base layer, read when the core starts). */
@@ -2185,6 +2407,7 @@ int main()
         }
         porpoise::pad::set_mapping(g_play.mapping());
         porpoise::pad::set_rumble_enabled(g_play.rumble);
+        apply_game_controls(g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii"));
         g_app.begin_launch(launch);
         /* The music fades as the screen dims; the Play sound finishes. */
         porpoise::sound::fade_music(0.0f, 0.5f);

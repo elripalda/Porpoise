@@ -9,6 +9,7 @@
 #ifdef PORPOISE_DESKTOP
 #include "porpoise_platform.hpp"
 #endif
+#include "porpoise_gfxmods.hpp"
 #include "porpoise_paths.hpp"
 #include <algorithm>
 #include <atomic>
@@ -466,6 +467,22 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.custom_textures);
     toggle("skip_dupes", "Skip duplicate frames", "Saves work when a game shows the same frame twice.",
            &t.skip_dupes);
+    if (per_game && game_for_)
+    {
+        /* Dolphin's built-in graphics mods, for the games that have them. */
+        const porpoise::gfxmods::Offer mods = porpoise::gfxmods::offer(game_for_->id);
+        if (mods.bloom)
+            choice("gfx_bloom", "Bloom", kGfxBloomHelp, &t.gfx_bloom, 0,
+                   mods.own_bloom ? std::vector<std::string>{"Game's own", "Off", "Blurred"}
+                                  : std::vector<std::string>{"Game's own", "Off", "Blurred", "Native resolution"});
+        if (mods.dof)
+            choice("gfx_dof", "Depth of field", kGfxDofHelp, &t.gfx_dof, 0,
+                   {"Game's own", "Off", "Blurred", "Native resolution"});
+        if (mods.hud)
+            toggle("gfx_hud", "Hide the HUD", kGfxHudHelp, &t.gfx_hud);
+        if (!mods.extra_title.empty())
+            toggle("gfx_extra", "Native resolution goop", kGfxGoopHelp, &t.gfx_extra);
+    }
     toggle("quick_resume", "Quick resume (beta)",
            "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next "
            "time you start it. Start over (in the in-game menu) boots it fresh.",
@@ -569,6 +586,18 @@ void App::add_game_rows(Settings &t, bool per_game)
            "In a game, touch pad + R1 steps fast forward (off, 2x, 4x) and touch pad + R2 fast-forwards while held. "
            "On a Wii Remote, the touch pad's Minus then goes when you let go of it.",
            &t.ff_buttons);
+    choice("quick_slot", "Quick save buttons", kQuickSlotHelp, &t.quick_slot, 0, kQuickSlotValues);
+    choice("turbo", "Turbo button", kTurboHelp, &t.turbo, 0, kTurboValues);
+    choice("trigger_feel", "Trigger click (beta)", kTriggerFeelHelp, &t.trigger_feel, 0, kTriggerFeelValues);
+    if (!per_game)
+    {
+        static const char *const kLightRows[4] = {"Light bar, player 1", "Light bar, player 2", "Light bar, player 3",
+                                                  "Light bar, player 4"};
+        int *const lights[4] = {&t.light_1, &t.light_2, &t.light_3, &t.light_4};
+        for (int i = 0; i < 4; ++i)
+            choice(i == 0 ? "light_1" : i == 1 ? "light_2" : i == 2 ? "light_3" : "light_4", kLightRows[i],
+                   kLightHelp, lights[i], 0, kLightValues);
+    }
     if (!per_game)
     {
         SettingRow r;
@@ -629,7 +658,8 @@ void App::add_game_rows(Settings &t, bool per_game)
            "controllers (beta): the second DualSense is the Nunchuk. Otherwise every other controller is another "
            "player's own Wii Remote, with its own pointer and motion.",
            &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
-                                  "Two controllers (alpha)"});
+                                  "Two controllers (alpha)", "GameCube controller"});
+    rows_.back().help += " " + tr(kGameCubeOnWiiHelp);
     choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to center it.",
            &t.wii_pointer, 0, {"Gyro", "Touch pad", "Right stick"});
     choice("wii_speed", "Pointer speed",
@@ -1471,7 +1501,7 @@ void App::change_setting(int dir)
         {
             const auto at = std::find(r.order.begin(), r.order.end(), *r.int_value);
             const int i = at == r.order.end() ? 0 : int(at - r.order.begin());
-            *r.int_value = r.order[std::size_t(std::clamp(i + dir, 0, n - 1))];
+            *r.int_value = r.order[std::size_t(std::clamp(i + dir, 0, int(r.order.size()) - 1))];
         }
         else
             *r.int_value = std::clamp(*r.int_value + dir, r.min, r.min + n - 1);
@@ -1605,6 +1635,21 @@ App::Action App::activate_row(const SettingRow &row)
         if (row.folder >= 0 && row.folder < int(move_places_.size()))
         {
             move_pick_ = row.folder;
+            const auto &place = move_places_[std::size_t(row.folder)];
+            struct stat st;
+            if (place.second != PORPOISE_DATA && stat((place.second + "/settings.ini").c_str(), &st) == 0)
+            {
+                /* A Porpoise folder is there already (from before a reset, or
+                 * copied over): moving would write over it, using it doesn't. */
+                move_target_ = place.second;
+                open_dialog(DialogKind::UseFolder,
+                            trf("There's a Porpoise folder on {place}", {{"place", place.first}}),
+                            tr("Porpoise can use that folder, with its own settings and saves, instead of moving "
+                               "this one there. The folder in use now stays as it is. Porpoise closes; open it "
+                               "again."),
+                            tr("Use it"));
+                return Action::None;
+            }
             open_dialog(DialogKind::MoveData,
                         trf("Move Porpoise's folder to {place}?", {{"place", move_places_[std::size_t(row.folder)].first}}),
                         tr("Everything in Porpoise's folder moves there: settings, saves, save states, covers and "

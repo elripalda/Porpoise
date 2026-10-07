@@ -71,8 +71,10 @@ BIOS or firmware files.
 
 ### Wii Remote on the DualSense (beta)
 - Each Wii game gets a Wii controller: **Remote + Nunchuk** (the default),
-  **Remote**, **Remote sideways**, **Classic Controller**, or **two
-  controllers** (alpha: a second DualSense is the Nunchuk).
+  **Remote**, **Remote sideways**, **Classic Controller**, **two
+  controllers** (alpha: a second DualSense is the Nunchuk), or the **GameCube
+  controller**, for Wii games that take one, such as Super Smash Bros. Brawl
+  and Mario Kart Wii. The GameCube controller uses your GameCube button layout.
 - The Remote's pointer comes from the gyro (hold R1 a moment to center it),
   the touch pad or the right stick. The DualSense's motion is the Remote's,
   and a quick flick shakes it.
@@ -145,7 +147,16 @@ BIOS or firmware files.
   control plays. Pick a GameCube button, press the DualSense button you want,
   and the two swap. It also works from the in-game menu.
 - Any game can use any layout. Analog L and R follow the triggers.
-- The light bar shows each player's color.
+- The light bar shows each player's color: blue, red, green and pink to begin
+  with, or any of ten colors (**Settings → Controls → Light bar**).
+- **Turbo button:** pick one button, and while you hold it, it presses again
+  and again by itself (about fifteen times a second), for games that make you
+  mash.
+- **Quick save buttons:** pick a slot, and **touch pad + L1** saves to it and
+  **touch pad + L2** loads it, without opening the menu. Off until you pick one.
+- **Trigger click (beta):** the DualSense's adaptive triggers click near the
+  bottom of L2 and R2, as the GameCube's L and R do. Light or Firm, off by
+  default.
 
 ### Settings
 Settings are split into sections:
@@ -153,10 +164,10 @@ Settings are split into sections:
 | Section | What's inside |
 |---|---|
 | **Video** | **Output resolution** (*Match the PS5* by default, or 1080p, 1440p, 4K), internal resolution (1080p by default; 4x and above marked *experimental*), **Widescreen** (see [Widescreen](#widescreen)), aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
-| **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames |
+| **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames; per game, **graphics mods** (see [Graphics mods](#graphics-mods)) |
 | **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume; the **sound preset**, **audio buffer** and **fill audio gaps** (see [Sound](#sound)); and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller) and the **microphone** |
-| **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, **fast forward buttons**, connected controllers; per game, **Console** (Auto, GameCube or Wii) for a game Porpoise detected wrong |
-| **Wii Remote** | Wii Remote setup, presets, setup before each Wii game, How to hold it, Wii controller, pointer, pointer speed, grip, motion, flick to shake |
+| **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, **fast forward buttons**, **quick save buttons**, **turbo button**, **trigger click** (beta), each player's **light bar** color, connected controllers; per game, **Console** (Auto, GameCube or Wii) for a game Porpoise detected wrong |
+| **Wii Remote** | Wii Remote setup, presets, setup before each Wii game, How to hold it, Wii controller (including the **GameCube controller**, for Wii games that take one), pointer, pointer speed, grip, motion, flick to shake |
 | **System** | Emulated CPU clock (50–300%), dual core, emulator on its own cores, exact multiply-add, fast disc loading, cheats, console language, progressive scan; and, in beta, **Wii widescreen**, **PAL games at 60 Hz**, **sensor bar** position, **start Wii discs in the Wii Menu**, the **GameCube boot animation** (see [Your own BIOS and Wii Menu](#your-own-bios-and-wii-menu-beta)) and **Online** (WiiConnect24 channels through WiiLink) |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info, **move Porpoise's folder** to extended storage or a USB drive, **RetroAchievements** |
 | **Interface** | Menu language, **Theme** (fifteen, among them Porpoise, Star Cube and Revolution), **Colors**, **Font**, library and Memory Cards views, Revolution's home screen and pointer, **reset all settings**, **Reinitialize Porpoise** |
@@ -210,13 +221,14 @@ game has a RetroAchievements set:
 - **Video:** resolution, widescreen, aspect ratio, anti-aliasing, anisotropic
   filtering, screen filter and strength, border, FPS counter.
 - **Graphics:** shader compilation, texture cache, texture filtering, output
-  resampling, per-pixel lighting, fog, overscan, duplicate frames, and **Save
-  as a setup / Use a setup**.
+  resampling, per-pixel lighting, fog, overscan, duplicate frames, the game's
+  **graphics mods** when it has any, and **Save as a setup / Use a setup**.
 - **Audio:** volume, mute, the **sound preset**, audio buffer, fill audio
   gaps, accurate audio, and the Wii Remote speaker in Wii games.
 - **Controls:** button layout, **Customize buttons** over the paused game,
-  vibration, and the DualSense drawn with a line to every button saying which
-  GameCube button it is.
+  vibration, turbo, quick save buttons, trigger click, and the DualSense drawn
+  with a line to every button saying which GameCube button it is. In a Wii
+  game: the Wii controller and its pointer, grip and motion.
 - **Patches:** how this game plays in widescreen right now (its 16:9 code,
   its own option, the emulated hack, or 4:3), and every cheat and patch it has,
   with the ones that are on at the top, each with its own switch. Code changes
@@ -412,9 +424,12 @@ format, so copy games to it over FTP instead (for example into
 **Porpoise's own folder can live there too:** Settings → Games → *Move
 Porpoise's folder to extended storage* (or a USB drive) moves your settings,
 saves, save states, covers and texture packs, then Porpoise closes; open it
-again. If that drive isn't connected at the next start, Porpoise says so and
-uses the console's storage until it is. A place that already has a Porpoise
-folder is left alone: move or rename that folder first.
+again. If that drive isn't connected at the next start, Porpoise waits a
+moment for it (and finds a USB drive in another port), then says so and uses
+the console's storage until it is. A drive that already has a Porpoise folder
+is offered as it is: *Use it* switches to that folder, and the one in use stays
+untouched. After a reinstall or on a fresh console storage, Porpoise finds its
+folder on extended storage or a USB drive by itself and asks whether to use it.
 
 ### Widescreen
 
@@ -431,6 +446,23 @@ Settings → Video → **Widescreen** is **Auto** by default:
   **Patches** tab, and next to Widescreen in the Video tab. Every game's
   settings have a **Cheats and patches** section listing its codes, to turn
   off one by one (or saying it has none).
+
+### Graphics mods
+
+Dolphin's built-in graphics mods are in the Graphics settings of the games
+that have them (about fifty), and in the in-game menu's Graphics tab:
+
+- **Bloom** (the glow around lights) and **Depth of field** (the blur on
+  faraway things), which can look blocky at high resolutions: *Off* removes
+  them, *Blurred* softens them, *Native resolution* draws them as the console
+  did. Among others: Mario Kart Wii, Super Mario Galaxy 1 and 2, Twilight
+  Princess, Metroid Prime 3 and Trilogy, Xenoblade Chronicles, Okami, Donkey
+  Kong Country Returns, Pandora's Tower and The Last Story.
+- **Hide the HUD**, for clean screenshots, in the games Dolphin has it for.
+- **Native resolution goop** in Super Mario Sunshine.
+
+They're off until you choose them, and take effect the next time the game
+starts.
 
 ### Your own cheats
 
@@ -467,9 +499,11 @@ WiiConnect24 channels).
 | **Options + touch pad** | Pause and open the in-game menu |
 | **Touch pad + R1** | Fast forward: off, 2x, 4x |
 | **Touch pad + R2** (hold) | Fast forward while held |
+| **Touch pad + L1** | Save to the quick slot (with Quick save buttons on) |
+| **Touch pad + L2** | Load the quick slot (with Quick save buttons on) |
 | **R3** (hold) | Talk into the GameCube Microphone (with Microphone on) |
 | **Circle** (in the menu) | Resume |
-| **L1 / R1** (in the menu) | Switch tabs: Game, Video, Graphics, Controls |
+| **L1 / R1** (in the menu) | Switch tabs: Game, Video, Graphics, Audio, Controls, Patches |
 
 With the default **PlayStation** layout:
 

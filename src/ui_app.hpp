@@ -31,6 +31,39 @@
 
 namespace porpoise::ui
 {
+/* The GameCube controller as a Wii game's controller (porpoise::pad::WiiGameCube). */
+/* Dolphin's built-in graphics mods (porpoise_gfxmods): the rows' texts. */
+inline constexpr const char *kGfxBloomHelp =
+    "Dolphin's graphics mod for this game's glow, which can look blocky at high resolutions. Off removes it, "
+    "Blurred softens it, Native resolution draws it as the console did. Applies the next time the game starts.";
+inline constexpr const char *kGfxDofHelp =
+    "Dolphin's graphics mod for this game's depth of field (the blur on faraway things). Off removes it, Blurred "
+    "softens it, Native resolution draws it as the console did. Applies the next time the game starts.";
+inline constexpr const char *kGfxHudHelp =
+    "Hides the game's HUD, for clean screenshots. Applies the next time the game starts.";
+inline constexpr const char *kGfxGoopHelp =
+    "Dolphin's graphics mod for Super Mario Sunshine: the goop is drawn at the game's own resolution, with round "
+    "edges instead of blocky ones at high resolutions. Applies the next time the game starts.";
+/* Settings > Controls' extras: the rows' texts and choices. */
+inline constexpr const char *kQuickSlotHelp =
+    "In a game, touch pad + L1 saves to this slot and touch pad + L2 loads it, without opening the menu.";
+inline constexpr const char *kTurboHelp =
+    "While you hold this button, it presses again and again by itself, about fifteen times a second: for games "
+    "that make you mash a button.";
+inline constexpr const char *kTriggerFeelHelp =
+    "The DualSense's adaptive triggers click near the bottom of L2 and R2, as the GameCube's L and R do at the end "
+    "of their press. In GameCube games, and Wii games played with the GameCube controller.";
+inline constexpr const char *kLightHelp =
+    "The color of this player's controller light bar, so everyone knows which controller is theirs.";
+inline const std::vector<std::string> kQuickSlotValues = {"Off", "Slot 1", "Slot 2", "Slot 3"};
+inline const std::vector<std::string> kTurboValues = {"Off", "Cross", "Circle", "Square", "Triangle",
+                                                      "L1",  "R1",    "L2",     "R2"};
+inline const std::vector<std::string> kTriggerFeelValues = {"Off", "Light", "Firm"};
+inline const std::vector<std::string> kLightValues = {"Blue",   "Red",    "Green", "Pink",  "Purple",
+                                                      "Orange", "Yellow", "Cyan",  "White", "Off"};
+inline constexpr const char *kGameCubeOnWiiHelp =
+    "GameCube controller: for Wii games that take one, like Super Smash Bros. Brawl and Mario Kart Wii, with your "
+    "GameCube buttons.";
 /* Physical buttons, as porpoise::pad::Button bits. */
 struct Input
 {
@@ -66,6 +99,7 @@ public:
         Quit,        /* close Porpoise (after an update) */
         Reinitialize, /* settings wiped: Porpoise starts again as at its first start */
         MoveData,     /* Porpoise's folder moves to move_target() */
+        UseFolder,    /* the Porpoise folder already at move_target() becomes the one in use */
     };
     const std::string &move_target() const { return move_target_; }
 
@@ -298,6 +332,7 @@ private:
         Reinitialize,
         SandboxNotice, /* OK, or Don't show again (the other button) */
         MoveData,      /* Porpoise's folder to another drive */
+        UseFolder,     /* a Porpoise folder already on a drive: use it (move_target_) */
     };
     struct Dialog
     {
@@ -473,6 +508,11 @@ public:
     /* The first start (and after Reinitialize): a theme to begin with, then
      * the welcome and setup check (ui_app_welcome.cpp). */
     void start_welcome();
+    /* The game's sound as it is running: pulled from Dolphin's mixer, or Classic. */
+    void set_sound_pulled(bool pulled);
+    /* A first start found a Porpoise folder on a drive (path, the drive's
+     * English name): asks to use it; otherwise the welcome goes on. */
+    void offer_found_folder(const std::string &path, const std::string &place);
     /* After Reinitialize: the menus as at the first start. */
     void restart_fresh();
 private:
@@ -878,6 +918,7 @@ private:
      * path), the one picked, and the one confirmed. */
     std::vector<std::pair<std::string, std::string>> move_places_;
     int move_pick_ = -1;
+    bool welcome_after_dialog_ = false; /* offer_found_folder: Start fresh goes on to the welcome */
     std::string move_target_; /* 0 GameCube; 1..4 a Wii controller's buttons (porpoise::pad::wii_button_set + 1) */
 
     /* Details: L2 / R2 swipe to the previous / next game. */

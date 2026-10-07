@@ -4774,5 +4774,221 @@
  {
   "en": "Sounds from the Wii Remote's own speaker: in the TV's sound, or from the controller. Takes effect the next time the game starts.",
   "section": "2.1.2: sound presets and the Audio tab"
+ },
+ {
+  "en": "Porpoise's folder is on {place}",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Porpoise found its folder there, with settings and saves. Use it to pick up where you left off. Porpoise closes; open it again.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Use it",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Start fresh",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "There's a Porpoise folder on {place}",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Porpoise can use that folder, with its own settings and saves, instead of moving this one there. The folder in use now stays as it is. Porpoise closes; open it again.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Porpoise couldn't switch folders",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Writing the note that says where Porpoise's folder is didn't work, so nothing changed.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Porpoise will use that folder",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Your jailbreak hid Porpoise's files",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "The jailbreak daemon freed Porpoise in a way that hides Porpoise's own folder, so Porpoise stayed in the app sandbox to keep running: it can't see /data or USB drives this time. Updating ShadowMountPlus to 1.7 beta 4 or newer fixes this for most players.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "GameCube controller",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "GameCube controller: for Wii games that take one, like Super Smash Bros. Brawl and Mario Kart Wii, with your GameCube buttons.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Super Smash Bros. Brawl: the GameCube controller (or the Classic Controller).",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Bloom",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Depth of field",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Hide the HUD",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Native resolution goop",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Blurred",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Native resolution",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Dolphin's graphics mod for this game's glow, which can look blocky at high resolutions. Off removes it, Blurred softens it, Native resolution draws it as the console did. Applies the next time the game starts.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Dolphin's graphics mod for this game's depth of field (the blur on faraway things). Off removes it, Blurred softens it, Native resolution draws it as the console did. Applies the next time the game starts.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Hides the game's HUD, for clean screenshots. Applies the next time the game starts.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Dolphin's graphics mod for Super Mario Sunshine: the goop is drawn at the game's own resolution, with round edges instead of blocky ones at high resolutions. Applies the next time the game starts.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Still saving…",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Couldn't save to slot {n}",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Slot {n} is empty",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Loaded slot {n}",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Couldn't load slot {n}",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Saved to slot {n}",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Quick save buttons",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Turbo button",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Trigger click",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Light bar, player 1",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Light bar, player 2",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Light bar, player 3",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Light bar, player 4",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "In a game, touch pad + L1 saves to this slot and touch pad + L2 loads it, without opening the menu.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "While you hold this button, it presses again and again by itself, about fifteen times a second: for games that make you mash a button.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "The DualSense's adaptive triggers click near the bottom of L2 and R2, as the GameCube's L and R do at the end of their press. In GameCube games, and Wii games played with the GameCube controller.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "The color of this player's controller light bar, so everyone knows which controller is theirs.",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Slot 1",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Slot 2",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Slot 3",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Firm",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Blue",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Red",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Green",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Pink",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Purple",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Orange",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Yellow",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Cyan",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "White",
+  "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  }
 ]

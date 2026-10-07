@@ -66,6 +66,26 @@ const char *const kCodes[kLanguages] = {"en", "es", "fr", "pt", "it", "ja", "es-
 int g_system = 1; /* the PS5's language id */
 Language g_lang = Language::English;
 std::unordered_map<std::string, std::string> g_map; /* English -> current language */
+/* Texts name Porpoise's folder as /data/porpoise; when it is somewhere else
+ * (moved to another drive, or the app's own folder in the sandbox) they name
+ * where it really is. The rewritten texts are kept here (node-based, so a
+ * reference to one stays good). */
+const std::string kUsualFolder = "/data/porpoise";
+std::string g_folder;
+std::unordered_map<std::string, std::string> g_folder_texts;
+
+const std::string &with_folder(const std::string &text)
+{
+    if (g_folder.empty() || text.find(kUsualFolder) == std::string::npos)
+        return text;
+    const auto it = g_folder_texts.find(text);
+    if (it != g_folder_texts.end())
+        return it->second;
+    std::string out = text;
+    for (std::size_t at = out.find(kUsualFolder); at != std::string::npos; at = out.find(kUsualFolder, at + g_folder.size()))
+        out.replace(at, kUsualFolder.size(), g_folder);
+    return g_folder_texts.emplace(text, std::move(out)).first->second;
+}
 std::string g_empty;
 
 const char *pick(const Entry &e, Language l)
@@ -214,20 +234,29 @@ std::string language_names()
     return all;
 }
 
+void set_folder(const std::string &dir)
+{
+    std::string d = dir;
+    while (d.size() > 1 && d.back() == '/')
+        d.pop_back();
+    g_folder = d == kUsualFolder ? std::string() : d;
+    g_folder_texts.clear();
+}
+
 const std::string &tr(const std::string &english)
 {
     if (g_lang == Language::English)
-        return english;
+        return with_folder(english);
     const auto it = g_map.find(english);
-    return it == g_map.end() ? english : it->second;
+    return with_folder(it == g_map.end() ? english : it->second);
 }
 
 const std::string &trc(const char *context, const std::string &english)
 {
     if (g_lang == Language::English)
-        return english;
+        return with_folder(english);
     const auto it = g_map.find(std::string(context) + "|" + english);
-    return it == g_map.end() ? tr(english) : it->second;
+    return it == g_map.end() ? tr(english) : with_folder(it->second);
 }
 
 std::string trf(const std::string &english, std::initializer_list<std::pair<const char *, std::string>> values)

@@ -793,6 +793,18 @@ void App::draw_check_mark(float cx, float cy, float size, bool ok)
     bar(cx - size * 0.06f, cy + size * 0.17f, cx + size * 0.23f, cy - size * 0.15f);
 }
 
+void App::offer_found_folder(const std::string &path, const std::string &place)
+{
+    move_target_ = path;
+    open_dialog(DialogKind::UseFolder, trf("Porpoise's folder is on {place}", {{"place", tr(place)}}),
+                tr("Porpoise found its folder there, with settings and saves. Use it to pick up where you left "
+                   "off. Porpoise closes; open it again."),
+                tr("Use it"));
+    dialog_.no = tr("Start fresh");
+    dialog_.choice = 1; /* Use it first */
+    welcome_after_dialog_ = true;
+}
+
 void App::show_sandbox_notice(const std::string &title, const std::string &message)
 {
     open_dialog(DialogKind::SandboxNotice, title, message, tr("OK"));
@@ -828,6 +840,11 @@ App::Action App::update_dialog(bool left, bool right)
     if (pressed(BtnCircle))
     {
         close_dialog();
+        if (welcome_after_dialog_)
+        {
+            welcome_after_dialog_ = false;
+            start_welcome();
+        }
         return Action::None;
     }
     if (pressed(BtnCross))
@@ -835,6 +852,15 @@ App::Action App::update_dialog(bool left, bool right)
         const DialogKind kind = dialog_.kind;
         const int choice = dialog_.choice;
         close_dialog();
+        if (kind == DialogKind::UseFolder && welcome_after_dialog_)
+        {
+            welcome_after_dialog_ = false;
+            if (choice != 1)
+            {
+                start_welcome(); /* Start fresh */
+                return Action::None;
+            }
+        }
         if (kind == DialogKind::SandboxNotice)
         {
             if (choice == 0)
@@ -883,6 +909,8 @@ App::Action App::confirm_dialog(DialogKind kind)
             return Action::MoveData;
         }
         return Action::None;
+    case DialogKind::UseFolder:
+        return move_target_.empty() ? Action::None : Action::UseFolder;
     case DialogKind::Reinitialize:
     {
         /* Settings wiped (games' own too); games, folders, saves and states

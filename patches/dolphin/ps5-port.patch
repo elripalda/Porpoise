@@ -264,6 +264,32 @@ index a9737c1e0e..b1b57502bc 100644
    void SetVerifyMode() { m_mode = Mode::Verify; }
    bool IsReadMode() const { return m_mode == Mode::Read; }
    bool IsWriteMode() const { return m_mode == Mode::Write; }
+diff --git a/Source/Core/Common/FilesystemWatcher.cpp b/Source/Core/Common/FilesystemWatcher.cpp
+index fbb5e216b1..514abe9426 100644
+--- a/Source/Core/Common/FilesystemWatcher.cpp
++++ b/Source/Core/Common/FilesystemWatcher.cpp
+@@ -17,7 +17,11 @@ FilesystemWatcher::~FilesystemWatcher() = default;
+ 
+ void FilesystemWatcher::Watch(const std::string& path)
+ {
+-#ifndef IPHONEOS
++  // Porpoise: the PS5 has no change notices, so the watcher would look through
++  // the whole folder (a texture pack: tens of thousands of files) sixty times a
++  // second on a thread of its own, taking a core from the game. Nothing is
++  // edited mid-game on the console: no watching there.
++#if !defined(IPHONEOS) && !defined(__PROSPERO__)
+   const auto [iter, inserted] = m_watched_paths.try_emplace(path, nullptr);
+   if (inserted)
+   {
+@@ -66,7 +70,7 @@ void FilesystemWatcher::Watch(const std::string& path)
+ 
+ void FilesystemWatcher::Unwatch(const std::string& path)
+ {
+-#ifndef IPHONEOS
++#if !defined(IPHONEOS) && !defined(__PROSPERO__)
+   m_watched_paths.erase(path);
+ #endif
+ }
 diff --git a/Source/Core/Common/MemArena.h b/Source/Core/Common/MemArena.h
 index 1a3093cc4d..22a59f7a47 100644
 --- a/Source/Core/Common/MemArena.h
@@ -1280,6 +1306,39 @@ index f0c62d4e3f..bbb4cb7791 100644
    }
  
    if (m_FileLoadedCb)
+diff --git a/Source/Core/Core/HW/GCMemcard/GCMemcardDirectory.cpp b/Source/Core/Core/HW/GCMemcard/GCMemcardDirectory.cpp
+index 1228b2a94f..76f34d0008 100644
+--- a/Source/Core/Core/HW/GCMemcard/GCMemcardDirectory.cpp
++++ b/Source/Core/Core/HW/GCMemcard/GCMemcardDirectory.cpp
+@@ -670,19 +670,26 @@ void GCMemcardDirectory::FlushToFile()
+           }
+           save.m_filename = default_save_name;
+         }
+-        File::IOFile gci(save.m_filename, "wb");
++        // Porpoise: written beside the save, then put in its place, so a game
++        // closed while the save is being written keeps the old save whole
++        // instead of half of the new one.
++        const std::string staged = save.m_filename + ".tmp";
++        File::IOFile gci(staged, "wb");
+         if (gci)
+         {
+           gci.WriteBytes(&save.m_gci_header, Memcard::DENTRY_SIZE);
+           for (const Memcard::GCMBlock& block : save.m_save_data)
+             gci.WriteBytes(block.m_block.data(), Memcard::BLOCK_SIZE);
+ 
+-          if (gci.IsGood())
++          const bool written = gci.IsGood() && gci.Close();
++          if (written && File::Rename(staged, save.m_filename))
+           {
+             Core::DisplayMessage("Wrote save contents to GCI Folder", 4000);
+           }
+           else
+           {
++            File::Delete(staged);
++            save.m_dirty = true; // tried again at the next flush
+             Core::DisplayMessage(
+                 fmt::format("Failed to write save contents to {}", save.m_filename), 10000);
+             ERROR_LOG_FMT(EXPANSIONINTERFACE, "Failed to save data to {}", save.m_filename);
 diff --git a/Source/Core/Core/IOS/Network/Socket.cpp b/Source/Core/Core/IOS/Network/Socket.cpp
 index feb2579afb..2fc09c5e03 100644
 --- a/Source/Core/Core/IOS/Network/Socket.cpp

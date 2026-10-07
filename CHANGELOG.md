@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.5 — 2026-10-06
+
+Everything in 2.5 Beta 1 (smoother sound, sound presets, the in-game Audio
+tab), and:
+
+- **GameCube controller for Wii games** that take one, such as Super Smash
+  Bros. Brawl and Mario Kart Wii (Settings → Wii Remote → Wii controller, or
+  the in-game menu's Controls tab).
+- **Graphics mods:** Dolphin's built-in bloom, depth of field and HUD mods for
+  about fifty games, in each game's Graphics settings.
+- **Controller extras** in Settings → Controls: each player's light bar color,
+  a turbo button, quick save buttons (touch pad + L1 saves, touch pad + L2
+  loads) and, in beta, a trigger click on L2 and R2 like the GameCube's.
+- Porpoise finds its folder on extended storage or a USB drive after a
+  reinstall, and can switch to a Porpoise folder that's already on a drive.
+- Optimizations and fixes for reported bugs.
+
 ## 2.5 Beta 1 — 2026-10-06
 
 - **Smoother sound:** when a game runs below full speed, its sound now comes

@@ -50,6 +50,15 @@ struct Settings
     bool crop_overscan = false;   /* dolphin_crop_overscan */
     bool custom_textures = false; /* dolphin_load_custom_textures (+ prefetch) */
     bool skip_dupes = true;       /* dolphin_skip_dupe_frames */
+    /* Dolphin's built-in graphics mods (porpoise_gfxmods), per game: bloom and
+     * depth of field 0 the game's own, 1 off, 2 blurred, 3 native resolution;
+     * hide the HUD; the game's own mod. */
+    int gfx_bloom = 0;
+    int gfx_dof = 0;
+    bool gfx_hud = false;
+    bool gfx_extra = false;
+    /* Whether the game being started has a mod on: dolphin_mods_enabled. Not saved. */
+    bool gfx_mods_on = false;
     bool fast_states = true;      /* save states leave out Dolphin's GPU texture cache (GFX.ini) */
     bool quick_resume = false;     /* leaving a game keeps where it was; it picks up there next time (beta) */
     /* Audio */
@@ -77,7 +86,7 @@ struct Settings
     static constexpr int kWiiButtonSets = 4;
     int wii_buttons[kWiiButtonSets][porpoise::pad::CtlCount] = {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
     /* Wii games: how the DualSense plays the Wii Remote (porpoise::pad::WiiConfig). */
-    int wii_controller = 0; /* Remote + Nunchuk, Remote, sideways, Classic, two controllers */
+    int wii_controller = 0; /* Remote + Nunchuk, Remote, sideways, Classic, two controllers, GameCube */
     int wii_pointer = 0;    /* gyro, touch pad, right stick */
     int wii_speed = 5;      /* the gyro pointer's speed, 1..10; 0: as measured for the screen (wii_screen_x/y) */
     int wii_grip = 0;       /* auto; both hands; upright, trigger to the TV; upright, facing you (pad::WiiGrip) */
@@ -137,6 +146,17 @@ struct Settings
     int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes */
     int sc_games = 0;       /* Star Cube's Games page: 0 spinning discs, 1 covers */
     bool ff_buttons = true; /* touch pad + R1 / R2: fast forward in games */
+    int quick_slot = 0;     /* touch pad + L1 saves to this slot, + L2 loads it: 0 off, 1..3 */
+    int turbo = 0;          /* the turbo button: 0 none, then kTurboControls */
+    int trigger_feel = 0;   /* adaptive triggers as the GameCube's L and R: 0 off, 1 light, 2 firm */
+    /* Each player's light bar colour (porpoise::pad::kLightColours): blue, red, green, pink. */
+    int light_1 = 0, light_2 = 1, light_3 = 2, light_4 = 3;
+    /* The controls turbo can be on, after "none" (porpoise::pad::Control). */
+    static constexpr int kTurboControls[8] = {porpoise::pad::CtlCross, porpoise::pad::CtlCircle,
+                                              porpoise::pad::CtlSquare, porpoise::pad::CtlTriangle,
+                                              porpoise::pad::CtlL1, porpoise::pad::CtlR1,
+                                              porpoise::pad::CtlL2, porpoise::pad::CtlR2};
+    int turbo_control() const { return turbo > 0 && turbo <= 8 ? kTurboControls[turbo - 1] : -1; }
     bool sandbox_notice = true; /* the "can't reach /data" message at start (PS5) */
     int console = 0;        /* a game's own: 0 as detected, 1 GameCube, 2 Wii (its controls) */
     /* Sound (beta): Dolphin's exact DSP (LLE), the Wii Remote's speaker in the

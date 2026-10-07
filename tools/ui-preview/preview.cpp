@@ -536,6 +536,65 @@ int main(int argc, char **argv)
         shot("patches-scrolled");
         return 0;
     }
+    /* PREVIEW_25=1: 2.5's rows: a game's graphics mods (Super Mario Sunshine),
+     * the Controls tab's extras, a Wii game with the GameCube controller, and
+     * Settings > Controls; then stop. */
+    if (std::getenv("PREVIEW_25"))
+    {
+        if (const char *lang = std::getenv("PREVIEW_PLANG"))
+            porpoise::ui::apply_language(std::atoi(lang), "");
+        porpoise::ui::Game &g0 = lib.games()[0];
+        Texture *frame = gfx.texture_file(covers + "/PRVW07.png");
+        auto shot = [&](const char *name) {
+            render(name, [&] {
+                gfx.background();
+                if (frame)
+                    gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
+                ui.draw_game_menu(12.0);
+            });
+        };
+        auto tap = [&](std::uint32_t b, int times = 1) {
+            for (int t = 0; t < times; ++t)
+            {
+                Input in;
+                in.held = b;
+                ui.update_game_menu(in, 0.016);
+                for (int i = 0; i < 12; ++i)
+                    ui.update_game_menu(none, 0.016);
+            }
+        };
+        g0.id = "GMSE01";
+        g0.platform = "GameCube";
+        porpoise::Settings play = settings;
+        play.ws_plan = 1;
+        ui.open_game_menu(&g0, &play);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        tap(kR1, 2); /* Graphics */
+        tap(kDown, 12);
+        shot("v25-graphics-sunshine");
+        tap(kR1, 2); /* Controls */
+        tap(kDown, 4);
+        shot("v25-controls-gamecube");
+        g0.id = "RSBE01";
+        g0.platform = "Wii";
+        porpoise::Settings wii_play = settings;
+        wii_play.wii_controller = porpoise::pad::WiiGameCube;
+        ui.open_game_menu(&g0, &wii_play);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        tap(kR1, 4); /* Controls */
+        shot("v25-controls-brawl-gamecube");
+        g0.id = "SX3P01";
+        porpoise::Settings tower = settings;
+        ui.open_game_menu(&g0, &tower);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        tap(kR1, 2); /* Graphics */
+        tap(kDown, 12);
+        shot("v25-graphics-pandoras-tower");
+        return 0;
+    }
     /* PREVIEW_ACCOUNT=1: the RetroAchievements panel signed out, typing, busy
      * with an error, and signed in; then stop. */
     if (std::getenv("PREVIEW_ACCOUNT"))

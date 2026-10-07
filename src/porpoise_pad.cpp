@@ -43,6 +43,22 @@ struct ScePadLightBarParam
 {
     std::uint8_t r, g, b;
 };
+/* The adaptive triggers (scePadSetTriggerEffect): one command per trigger,
+ * the mode's parameters in data (ProsperoEden's ps5_pad.hpp has the layout). */
+struct ScePadTriggerEffectCommand
+{
+    std::int32_t mode; /* 0 off, 1 feedback, 2 weapon, 3 vibration */
+    std::int32_t reserved;
+    std::uint8_t data[48];
+};
+struct ScePadTriggerEffectParam
+{
+    std::uint8_t trigger_mask; /* 1 L2, 2 R2 */
+    std::uint8_t reserved[7];
+    ScePadTriggerEffectCommand l2, r2;
+};
+static_assert(sizeof(ScePadTriggerEffectCommand) == 56 && sizeof(ScePadTriggerEffectParam) == 120,
+              "the console's trigger effect layout");
 } // namespace
 
 extern "C"
@@ -58,6 +74,7 @@ extern "C"
     std::int32_t scePadSetLightBar(std::int32_t handle, const ScePadLightBarParam *param);
     std::int32_t scePadResetLightBar(std::int32_t handle);
     std::int32_t scePadSetMotionSensorState(std::int32_t handle, bool enable);
+    std::int32_t scePadSetTriggerEffect(std::int32_t handle, const ScePadTriggerEffectParam *param);
     std::int32_t sceUserServiceInitialize(const void *params);
     std::int32_t sceUserServiceGetInitialUser(std::int32_t *user_id);
     /* The signed-in users: four ids, -1 for none (room to spare is kept). */
@@ -179,6 +196,8 @@ struct Slot
     std::uint32_t raw_prev = 0;
     bool touch_combo = false;
     int touch_pulse = 0;
+    unsigned turbo_tick = 0; /* turbo: polls since the turbo control went down */
+    int triggers = -1;       /* the trigger feel this controller has (-1 not set yet) */
 };
 
 /* ---- the Wii Remote ---- */
@@ -300,7 +319,8 @@ const aim::Basis &pose_basis(int pose)
  * the setting doesn't allow what is seen). */
 int classify_pose(const float accel[3], const WiiConfig &c, bool second)
 {
-    if (c.controller == WiiSideways || c.controller == WiiClassic || c.grip == GripBothHands)
+    if (c.controller == WiiSideways || c.controller == WiiClassic || c.controller == WiiGameCube ||
+        c.grip == GripBothHands)
         return PoseFlat; /* always held in both hands (Dolphin turns a sideways Remote itself) */
     const float n = std::sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
     if (n < 0.6f || n > 1.4f)
@@ -326,6 +346,14 @@ std::atomic<bool> g_rumble_enabled{true};
 unsigned g_polls_since_scan = 0;
 bool g_ready = false;
 std::int32_t g_initial_user = -1; /* player 1, always */
+/* Each player's light bar (set_light_colours): blue, red, green, pink to begin with. */
+constexpr ScePadLightBarParam kLightColours[kLightColourCount] = {
+    {0, 96, 255}, {255, 36, 48}, {0, 210, 80}, {255, 60, 190}, {140, 60, 255},
+    {255, 120, 0}, {255, 200, 0}, {0, 200, 255}, {255, 255, 255}, {0, 0, 0}};
+int g_light[kMaxPlayers] = {0, 1, 2, 3};
+std::atomic<int> g_trigger_feel{0}; /* set_trigger_feel */
+std::atomic<int> g_turbo{-1};       /* set_turbo: the control, or -1 */
+std::atomic<bool> g_quick_buttons{false};
 /* Dolphin reads input and sets rumble from its own CPU thread while the main
  * thread polls and players come and go: slots change under this lock. */
 std::recursive_mutex g_lock;
@@ -334,6 +362,39 @@ std::int16_t stick(std::uint8_t value)
 {
     int v = (static_cast<int>(value) - 128) * 256;
     return static_cast<std::int16_t>(std::clamp(v, -32768, 32767));
+}
+
+/* The trigger feel (set_trigger_feel) on this controller, where L2 / R2 are
+ * the GameCube's L and R: Dolphin presses L or R all the way at about nine
+ * tenths of the travel, so the click (the "weapon" effect: resistance that
+ * gives way) comes just before it. */
+void push_triggers(Slot &slot)
+{
+    if (slot.handle < 0)
+        return;
+    const int feel = g_trigger_feel.load(std::memory_order_relaxed);
+    const bool l2 = g_mapping.control[GcL] == CtlL2 || g_mapping.control[GcR] == CtlL2;
+    const bool r2 = g_mapping.control[GcL] == CtlR2 || g_mapping.control[GcR] == CtlR2;
+    const int want = feel > 0 ? feel * 4 + (l2 ? 1 : 0) + (r2 ? 2 : 0) : 0;
+    if (want == slot.triggers)
+        return;
+    slot.triggers = want;
+    ScePadTriggerEffectParam p{};
+    p.trigger_mask = 1 | 2;
+    auto click = [&](ScePadTriggerEffectCommand &c, bool on) {
+        if (!on || feel <= 0)
+            return; /* mode 0: off */
+        c.mode = 2;
+        c.data[0] = 6;                    /* the resistance starts six tenths down */
+        c.data[1] = 8;                    /* and gives way at eight */
+        c.data[2] = feel >= 2 ? 6 : 3;    /* strength 0..8 */
+    };
+    click(p.l2, l2);
+    click(p.r2, r2);
+    const std::int32_t result = scePadSetTriggerEffect(slot.handle, &p);
+    char line[96];
+    std::snprintf(line, sizeof line, "pad: trigger feel %d (L2 %d, R2 %d): %#x", feel, l2, r2, unsigned(result));
+    ps5::debug::mark(line);
 }
 
 void push_rumble(Slot &slot)
@@ -378,9 +439,9 @@ void open_slot(int player, std::int32_t user, int attempts)
     /* The gyroscope and accelerometer, for the Wii Remote. */
     const std::int32_t motion = scePadSetMotionSensorState(handle, true);
     /* Each player's light bar has their colour, so everyone knows which
-     * controller is theirs: blue, red, green, pink. */
-    static const ScePadLightBarParam kColours[kMaxPlayers] = {{0, 96, 255}, {255, 36, 48}, {0, 210, 80}, {255, 60, 190}};
-    (void)scePadSetLightBar(handle, &kColours[player]);
+     * controller is theirs (Settings > Controls): blue, red, green, pink. */
+    (void)scePadSetLightBar(handle, &kLightColours[std::clamp(g_light[player], 0, kLightColourCount - 1)]);
+    push_triggers(slot);
     std::snprintf(line, sizeof line, "pad: player %d is user %d, handle %d, motion %#x", player + 1, int(user),
                   int(handle), unsigned(motion));
     ps5::debug::mark(line);
@@ -394,6 +455,11 @@ void close_slot(int player)
     slot.motor_large = slot.motor_small = 0;
     push_rumble(slot);
     (void)scePadResetLightBar(slot.handle);
+    if (slot.triggers > 0)
+    {
+        const ScePadTriggerEffectParam off{1 | 2, {}, {}, {}};
+        (void)scePadSetTriggerEffect(slot.handle, &off);
+    }
     (void)scePadClose(slot.handle);
     char line[64];
     std::snprintf(line, sizeof line, "pad: player %d left", player + 1);
@@ -521,8 +587,8 @@ Motion read_motion(Slot &slot, std::int32_t count)
     /* R1 has to be held a moment with the controller fairly still: a squeeze
      * of the grip mid-swing (R1 sits just above R2) never centres. */
     const bool centre_held = (last.buttons & (pose_left_hand(slot.pose) ? pad_l1 : pad_r1)) != 0;
-    const bool centre_button =
-        g_wii.controller != WiiSideways && g_wii.controller != WiiClassic && !second && !g_wii.menu;
+    const bool centre_button = g_wii.controller != WiiSideways && g_wii.controller != WiiClassic &&
+                               g_wii.controller != WiiGameCube && !second && !g_wii.menu;
     bool pressed_centre = false;
     if (!centre_held || !centre_button)
     {
@@ -652,6 +718,7 @@ State read_slot(Slot &slot)
     if (count == 0)
     {
         slot.state.ff_step = false; /* a press counts once, not again on every repeat of the state */
+        slot.state.quick_save = slot.state.quick_load = false;
         return slot.state; /* nothing new: keep the last state */
     }
     if (count < 0 || count > sample_capacity)
@@ -670,33 +737,56 @@ State read_slot(Slot &slot)
      * Remote) goes on its release, unless it was a combo. */
     std::uint32_t b = newest->buttons;
     std::uint8_t right_trigger = newest->right_trigger;
+    std::uint8_t left_trigger = newest->left_trigger;
     State next;
-    if (g_ff_buttons && (b & pad_options) && (b & pad_touch_pad))
+    const bool quick = g_quick_buttons.load(std::memory_order_relaxed);
+    const bool touch_shortcuts = g_ff_buttons || quick;
+    if (touch_shortcuts && (b & pad_options) && (b & pad_touch_pad))
     {
         /* Options + touch pad (the menu): the touch pad's own press doesn't
          * follow when it's let go, whichever is let go first. */
         slot.touch_combo = true;
         b &= ~pad_touch_pad;
     }
-    else if (g_ff_buttons)
+    else if (touch_shortcuts)
     {
         const bool touch = (b & pad_touch_pad) != 0, was = (slot.raw_prev & pad_touch_pad) != 0;
         if (touch)
         {
             if (!was)
                 slot.touch_combo = false;
-            if ((b & pad_r1) && !(slot.raw_prev & pad_r1))
+            if (g_ff_buttons)
             {
-                next.ff_step = true;
-                slot.touch_combo = true;
+                if ((b & pad_r1) && !(slot.raw_prev & pad_r1))
+                {
+                    next.ff_step = true;
+                    slot.touch_combo = true;
+                }
+                if (b & pad_r2)
+                {
+                    next.ff_hold = true;
+                    slot.touch_combo = true;
+                }
+                b &= ~(pad_r1 | pad_r2);
+                right_trigger = 0;
             }
-            if (b & pad_r2)
+            if (quick)
             {
-                next.ff_hold = true;
-                slot.touch_combo = true;
+                /* Touch pad + L1 saves to the quick slot, touch pad + L2 loads it. */
+                if ((b & pad_l1) && !(slot.raw_prev & pad_l1))
+                {
+                    next.quick_save = true;
+                    slot.touch_combo = true;
+                }
+                if ((b & pad_l2) && !(slot.raw_prev & pad_l2))
+                {
+                    next.quick_load = true;
+                    slot.touch_combo = true;
+                }
+                b &= ~(pad_l1 | pad_l2);
+                left_trigger = 0;
             }
-            b &= ~(pad_r1 | pad_r2 | pad_touch_pad);
-            right_trigger = 0;
+            b &= ~pad_touch_pad;
         }
         else if (was && !slot.touch_combo)
             slot.touch_pulse = 4; /* a plain press: the touch pad's own button now, for a few frames */
@@ -707,6 +797,22 @@ State read_slot(Slot &slot)
         }
     }
     slot.raw_prev = newest->buttons;
+    /* Turbo: the chosen control, while held, presses for two polls and lets
+     * go for two (about fifteen presses a second at 60 frames). */
+    const int turbo = g_turbo.load(std::memory_order_relaxed);
+    if (turbo >= 0 && turbo < CtlCount && (b & kControlPadBit[turbo]))
+    {
+        if ((slot.turbo_tick++ / 2) % 2 == 1)
+        {
+            b &= ~kControlPadBit[turbo];
+            if (turbo == CtlL2)
+                left_trigger = 0;
+            if (turbo == CtlR2)
+                right_trigger = 0;
+        }
+    }
+    else
+        slot.turbo_tick = 0;
     next.connected = true;
     for (int c = 0; c < CtlCount; ++c)
         if (b & kControlPadBit[c])
@@ -745,7 +851,7 @@ State read_slot(Slot &slot)
     auto analog = [&](int gc) -> std::int16_t {
         const int c = g_mapping.control[gc];
         if (c == CtlL2)
-            return static_cast<std::int16_t>(newest->left_trigger * 0x7fff / 255);
+            return static_cast<std::int16_t>(left_trigger * 0x7fff / 255);
         if (c == CtlR2)
             return static_cast<std::int16_t>(right_trigger * 0x7fff / 255);
         return (c >= 0 && c < CtlCount && (b & kControlPadBit[c])) ? 0x7fff : 0;
@@ -754,9 +860,10 @@ State read_slot(Slot &slot)
     next.r2 = analog(GcR);
     next.ps_menu_combo = (newest->buttons & (pad_options | pad_touch_pad)) == (pad_options | pad_touch_pad);
     next.motion = motion;
-    if (g_wii.active)
+    if (g_wii.active && g_wii.controller != WiiGameCube)
     {
-        /* A Wii game: the Wii controller's buttons instead of the GameCube's. */
+        /* A Wii game: the Wii controller's buttons instead of the GameCube's
+         * (a GameCube controller in a Wii game keeps the GameCube's). */
         auto bits = [&](const WiiLayout &lay, const int *retro) {
             std::uint16_t out = 0;
             for (int k = 0; k < lay.count; ++k)
@@ -781,7 +888,7 @@ State read_slot(Slot &slot)
             next.joypad |= static_cast<std::uint16_t>(1u << RETRO_DEVICE_ID_JOYPAD_R2);
         if (g_wii.controller == WiiClassic)
         {
-            next.l2 = static_cast<std::int16_t>(newest->left_trigger * 0x7fff / 255);
+            next.l2 = static_cast<std::int16_t>(left_trigger * 0x7fff / 255);
             next.r2 = static_cast<std::int16_t>(right_trigger * 0x7fff / 255);
         }
         if (g_wii.controller == WiiTwoControllers)
@@ -867,6 +974,37 @@ void set_mapping(const Mapping &mapping)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     g_mapping = mapping;
+    for (Slot &slot : g_slots)
+        push_triggers(slot); /* L2 / R2 may be other buttons now */
+}
+
+void set_trigger_feel(int feel)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    g_trigger_feel.store(std::clamp(feel, 0, 2), std::memory_order_relaxed);
+    for (Slot &slot : g_slots)
+        push_triggers(slot);
+}
+
+void set_light_colours(const int *colours)
+{
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    for (int player = 0; player < kMaxPlayers; ++player)
+    {
+        g_light[player] = std::clamp(colours[player], 0, kLightColourCount - 1);
+        if (g_slots[player].handle >= 0)
+            (void)scePadSetLightBar(g_slots[player].handle, &kLightColours[g_light[player]]);
+    }
+}
+
+void set_turbo(int control)
+{
+    g_turbo.store(control >= 0 && control < CtlCount ? control : -1, std::memory_order_relaxed);
+}
+
+void set_quick_buttons(bool enabled)
+{
+    g_quick_buttons.store(enabled, std::memory_order_relaxed);
 }
 
 std::int32_t user_of(int player)
@@ -949,7 +1087,7 @@ void set_wii(const WiiConfig &config)
 
 int expected_pose(const WiiConfig &config, bool second)
 {
-    if (config.controller == WiiSideways || config.controller == WiiClassic)
+    if (config.controller == WiiSideways || config.controller == WiiClassic || config.controller == WiiGameCube)
         return PoseFlat;
     switch (config.grip)
     {
@@ -964,6 +1102,29 @@ int expected_pose(const WiiConfig &config, bool second)
 }
 
 WiiLayout wii_layout_plain(const WiiConfig &config, bool second, int pose);
+
+/* The control in the same place on the DualSense's other half. */
+int mirror_control(int c)
+{
+    switch (c)
+    {
+    case CtlCross: return CtlDown;
+    case CtlDown: return CtlCross;
+    case CtlCircle: return CtlLeft;
+    case CtlLeft: return CtlCircle;
+    case CtlSquare: return CtlRight;
+    case CtlRight: return CtlSquare;
+    case CtlTriangle: return CtlUp;
+    case CtlUp: return CtlTriangle;
+    case CtlL1: return CtlR1;
+    case CtlR1: return CtlL1;
+    case CtlL2: return CtlR2;
+    case CtlR2: return CtlL2;
+    case CtlL3: return CtlR3;
+    case CtlR3: return CtlL3;
+    default: return c; /* Options and the touch pad stay as they are */
+    }
+}
 
 int g_wii_buttons[4][CtlCount] = {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
 
@@ -997,9 +1158,19 @@ WiiLayout wii_layout(const WiiConfig &config, bool second, int pose)
     {
         std::lock_guard<std::recursive_mutex> lock(g_lock);
         const int *perm = g_wii_buttons[wii_button_set(config.controller)];
+        /* The Remote held in the left hand is the right hand's layout in a
+         * mirror (Cross <-> down, R2 <-> L2, ...), and the player's buttons
+         * were set on the right hand's: they go through the same mirror, so
+         * a button moved to R1 is on L1 in the left hand. */
+        const bool mirrored = (config.controller == WiiRemote || config.controller == WiiTwoControllers) &&
+                              pose_left_hand(pose < 0 ? expected_pose(config, second) : pose);
         for (int i = 0; i < lay.count; ++i)
-            if (lay.binds[i].control >= 0 && lay.binds[i].control < CtlCount)
-                lay.binds[i].control = perm[lay.binds[i].control];
+        {
+            const int c = lay.binds[i].control;
+            if (c < 0 || c >= CtlCount)
+                continue;
+            lay.binds[i].control = mirrored ? mirror_control(perm[mirror_control(c)]) : perm[c];
+        }
     }
     return lay;
 }
@@ -1047,6 +1218,8 @@ WiiLayout wii_layout_plain(const WiiConfig &config, bool second, int pose)
         lay.left_stick = StickClassicLeft;
         lay.right_stick = StickClassicRight;
         break;
+    case WiiGameCube:
+        break; /* no Wii layout: the GameCube buttons (Settings > Controls) */
     default:
         add(kLayNunchuk, std::size(kLayNunchuk));
         add(kDPadAsDPad, std::size(kDPadAsDPad));
@@ -1095,6 +1268,7 @@ unsigned wii_device(int controller)
     case WiiRemote: return RETRO_DEVICE_JOYPAD;
     case WiiSideways: return (2 << 8) | RETRO_DEVICE_JOYPAD;
     case WiiClassic: return (4 << 8) | RETRO_DEVICE_JOYPAD;
+    case WiiGameCube: return (6 << 8) | RETRO_DEVICE_JOYPAD; /* the core's GameCube Controller in Wii mode */
     default: return (3 << 8) | RETRO_DEVICE_JOYPAD; /* with the Nunchuk */
     }
 }

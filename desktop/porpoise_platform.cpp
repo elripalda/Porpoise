@@ -620,6 +620,7 @@ extern "C"
         return 0;
     }
     std::int32_t scePadResetLightBar(std::int32_t) { return 0; }
+    std::int32_t scePadSetTriggerEffect(std::int32_t, const void *) { return 0; } /* the PS5's adaptive triggers */
     std::int32_t scePadSetMotionSensorState(std::int32_t, bool) { return 0; }
 
     std::int32_t sceKernelUsleep(std::uint32_t us)

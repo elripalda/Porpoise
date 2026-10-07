@@ -28,6 +28,7 @@
 #include "porpoise_pad.hpp"
 #include "porpoise_states.hpp"
 #include "ui_app.hpp"
+#include "porpoise_gfxmods.hpp"
 #include "ui_app_common.hpp"
 #include "ui_cheats.hpp"
 #include "ui_i18n.hpp"
@@ -56,6 +57,12 @@ const char *const kTabNames[kTabCount] = {"Game", "Video", "Graphics", "Audio", 
 /* The Audio tab's Sound preset row (Settings::audio_preset), worked out from
  * the game's settings each time its rows are. */
 int g_audio_preset = 0;
+/* How the game's sound is running (pulled from Dolphin's mixer, or Classic):
+ * the rows under the preset are that way's, since a change between the two
+ * only takes at the next start. */
+bool g_sound_pulled = true;
+/* The game in the menu's ID: its graphics mods (porpoise_gfxmods). */
+std::string g_menu_game_id;
 
 /* What a row does. */
 enum class Kind
@@ -145,6 +152,23 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         r.push_back({Kind::Bool, "disable_fog", "Disable fog", nullptr, &p.disable_fog, 0, {"Off", "On"}});
         r.push_back({Kind::Bool, "crop_overscan", "Crop overscan", nullptr, &p.crop_overscan, 0, {"Off", "On"}});
         r.push_back({Kind::Bool, "skip_dupes", "Skip duplicate frames", nullptr, &p.skip_dupes, 0, {"Off", "On"}});
+        {
+            /* Dolphin's built-in graphics mods, for the games that have them. */
+            const porpoise::gfxmods::Offer mods = porpoise::gfxmods::offer(g_menu_game_id);
+            if (mods.bloom)
+                r.push_back({Kind::Int, "gfx_bloom", "Bloom", &p.gfx_bloom, nullptr, 0,
+                             mods.own_bloom ? std::vector<std::string>{"Game's own", "Off", "Blurred"}
+                                            : std::vector<std::string>{"Game's own", "Off", "Blurred",
+                                                                       "Native resolution"}});
+            if (mods.dof)
+                r.push_back({Kind::Int, "gfx_dof", "Depth of field", &p.gfx_dof, nullptr, 0,
+                             {"Game's own", "Off", "Blurred", "Native resolution"}});
+            if (mods.hud)
+                r.push_back({Kind::Bool, "gfx_hud", "Hide the HUD", nullptr, &p.gfx_hud, 0, {"Off", "On"}});
+            if (!mods.extra_title.empty())
+                r.push_back({Kind::Bool, "gfx_extra", "Native resolution goop", nullptr, &p.gfx_extra, 0,
+                             {"Off", "On"}});
+        }
         r.push_back({Kind::SaveSetup, "", "Save as a setup", nullptr, nullptr, 0, {}, true});
         r.push_back({Kind::UseSetup, "", "Use a setup"});
         break;
@@ -157,7 +181,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         if (g_audio_preset == Settings::kAudioCustom)
             presets.push_back("Custom");
         r.push_back({Kind::Int, "audio_preset", "Sound preset", &g_audio_preset, nullptr, 0, presets, true});
-        if (p.audio_pull)
+        if (g_sound_pulled)
         {
             r.push_back({Kind::Int, "audio_buffer", "Audio buffer", &p.audio_buffer, nullptr, 0,
                          {"40 ms", "80 ms", "160 ms"}});
@@ -177,6 +201,15 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         break;
     }
     case kTabControls:
+        if (wii && p.wii_controller == porpoise::pad::WiiGameCube)
+        {
+            /* A GameCube controller in a Wii game: the GameCube's buttons, no
+             * pointer or motion. */
+            r.push_back({Kind::Int, "wii_controller", "Wii controller", &p.wii_controller, nullptr, 0,
+                         {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
+                          "Two controllers (alpha)", "GameCube controller"}});
+            wii = false; /* then the GameCube's rows */
+        }
         if (!wii)
         {
             r.push_back({Kind::Int, "button_layout", "Button layout", &p.button_layout, nullptr, 0,
@@ -201,7 +234,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
             }
             r.push_back({Kind::Int, "wii_controller", "Wii controller", &p.wii_controller, nullptr, 0,
                          {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
-                          "Two controllers (alpha)"}});
+                          "Two controllers (alpha)", "GameCube controller"}});
             r.push_back({Kind::Int, "wii_pointer", "Pointer", &p.wii_pointer, nullptr, 0,
                          {"Gyro", "Touch pad", "Right stick"}});
             r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 0,
@@ -215,6 +248,10 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
                              {"Off", "On"}});
         }
         r.push_back({Kind::Bool, "rumble", "Vibration", nullptr, &p.rumble, 0, {"Off", "On"}});
+        r.push_back({Kind::Int, "turbo", "Turbo button", &p.turbo, nullptr, 0, kTurboValues});
+        r.push_back({Kind::Int, "quick_slot", "Quick save buttons", &p.quick_slot, nullptr, 0, kQuickSlotValues});
+        if (!wii) /* the GameCube's L and R (also the GameCube controller in a Wii game) */
+            r.push_back({Kind::Int, "trigger_feel", "Trigger click", &p.trigger_feel, nullptr, 0, kTriggerFeelValues});
         break;
     case kTabPatches:
         r.push_back({Kind::Info, "ws_status", "Widescreen"});
@@ -270,11 +307,25 @@ const char *help_for(const Row &row, const Settings &p)
     if (row.key == std::string("wii_preset"))
         return "A Wii Remote set-up kept under a name (made in the setup's Fine-tune page, Advanced).";
     if (row.key == std::string("audio_preset"))
-        return p.audio_pull ? "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: "
+        return g_sound_pulled ? "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: "
                               "less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from "
                               "the next start."
                             : "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the "
                               "game runs slow; they apply the next time the game starts.";
+    if (row.key == std::string("turbo"))
+        return kTurboHelp;
+    if (row.key == std::string("quick_slot"))
+        return kQuickSlotHelp;
+    if (row.key == std::string("trigger_feel"))
+        return kTriggerFeelHelp;
+    if (row.key == std::string("gfx_bloom"))
+        return kGfxBloomHelp;
+    if (row.key == std::string("gfx_dof"))
+        return kGfxDofHelp;
+    if (row.key == std::string("gfx_hud"))
+        return kGfxHudHelp;
+    if (row.key == std::string("gfx_extra"))
+        return kGfxGoopHelp;
     if (row.key == std::string("audio_buffer"))
         return "How much sound is kept ready. More holds off crackling when a game slows down, for a little delay.";
     if (row.key == std::string("audio_fill"))
@@ -629,6 +680,7 @@ int App::update_game_menu(const Input &in, double dt)
     Settings &p = *menu_play_;
     Patches patches;
     patches.cheats = &menu_cheats_;
+    g_menu_game_id = menu_game_ ? menu_game_->id : std::string();
     std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii", &patches);
     const int count = int(rows.size());
     if (up || down)
@@ -902,6 +954,11 @@ int App::update_game_menu(const Input &in, double dt)
     return 0;
 }
 
+void App::set_sound_pulled(bool pulled)
+{
+    g_sound_pulled = pulled;
+}
+
 /* ---- drawing ---------------------------------------------------------------------------- */
 
 /* The controller with a line out to each button, and at each line's end the
@@ -1125,6 +1182,7 @@ void App::draw_game_menu(double time)
     Patches patches;
     patches.cheats = &menu_cheats_;
     const bool wii = menu_game_ && menu_game_->platform == "Wii";
+    g_menu_game_id = menu_game_ ? menu_game_->id : std::string();
     const std::vector<Row> rows = rows_for(menu_tab_, p, wii, &patches);
     if (rows.empty())
     {
@@ -1133,11 +1191,11 @@ void App::draw_game_menu(double time)
     }
     const float row_h = 56, rx = x + 24, rw = w - 48;
     float ry = hy;
-    /* The Patches tab can be long: a window on its rows, around the focus. */
+    /* A long tab (Patches; Graphics or Controls with a game's extra rows): a
+     * window on its rows, around the focus. */
     int first = 0, last = int(rows.size());
-    if (menu_tab_ == kTabPatches)
     {
-        const int visible = std::max(3, int((y + h - 200 - hy) / row_h));
+        const int visible = std::max(3, int((y + h - (menu_tab_ == kTabPatches ? 200 : 150) - hy) / row_h));
         if (last > visible)
         {
             first = std::clamp(menu_row_ - visible / 2, 0, last - visible);
@@ -1282,7 +1340,8 @@ void App::draw_game_menu(double time)
         }
         below += sh + 44;
     }
-    if (menu_tab_ == kTabControls && menu_game_ && menu_game_->platform == "Wii")
+    if (menu_tab_ == kTabControls && menu_game_ && menu_game_->platform == "Wii" &&
+        p.wii_controller != porpoise::pad::WiiGameCube)
     {
         /* Beside the menu: how the DualSense is the Wii controller, as set. */
         g.set_layer();
@@ -1294,10 +1353,15 @@ void App::draw_game_menu(double time)
     }
     else if (menu_tab_ == kTabControls)
     {
-        /* The controller and its buttons, as this game has them. */
-        const float aw = 560;
-        draw_controller_lines(x + (w - aw) * 0.5f, below + 36, aw, p.mapping());
-        below += 36 + kLinesH * aw / kLinesW;
+        /* The controller and its buttons, as this game has them: smaller
+         * when the rows leave less room above the help line. */
+        const float room = (y + h - 112 - 10) - (below + 36);
+        const float aw = std::min(560.0f, room * kLinesW / kLinesH);
+        if (aw > 200)
+        {
+            draw_controller_lines(x + (w - aw) * 0.5f, below + 36, aw, p.mapping());
+            below += 36 + kLinesH * aw / kLinesW;
+        }
     }
 
     /* A note after a save or load, what Cross will do while picking a slot,

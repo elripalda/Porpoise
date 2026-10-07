@@ -30,10 +30,13 @@
  * Every step goes to trace.txt. Nothing here runs when /data is reachable.
  *
  * A player's trace (12.40, the Lapy daemon and LegacyJB) stops right after
- * "asking the HEN" on every launch: these daemons may set the process's root
- * to the console's, where /app0 doesn't exist. Being looked into; finding
- * Porpoise's files from the working directory instead didn't boot (2.5 Beta
- * 1's first build). */
+ * "asking the HEN" on every launch: these daemons seem to set the process's
+ * root to the console's, where /app0 doesn't exist, so trace.txt (in /app0)
+ * stops and Porpoise can't load anything of its own. When that happens -
+ * /app0 there before the daemon acted and gone after - Porpoise makes the
+ * sandbox it started in its root again (the "/" it held open from before),
+ * which brings /app0 back. Setups where /app0 stays (every one that works
+ * today) never reach that code. */
 #include "porpoise_jailbreak.hpp"
 
 #include <arpa/inet.h>
@@ -52,6 +55,8 @@
 #include "trace.hpp"
 
 extern "C" int sceKernelUsleep(unsigned microseconds);
+extern "C" int chroot(const char *path);
+extern "C" int fchdir(int fd);
 
 namespace porpoise::jailbreak
 {
@@ -66,6 +71,16 @@ const char *const kRequests[] = {
     "/download0/elevate_proc",       /* Lapy owned-root daemon */
 };
 constexpr int kRequestCount = int(sizeof kRequests / sizeof kRequests[0]);
+
+int g_sandbox_root = -1; /* "/" as the console started Porpoise: the sandbox, /app0 in it */
+bool g_app_before = false; /* /app0 was there before asking the HEN */
+bool g_put_back = false;
+
+bool app_folder_here()
+{
+    struct stat st;
+    return stat("/app0/eboot.bin", &st) == 0;
+}
 
 void note(const char *fmt, int a = 0, int b = 0, int c = 0)
 {
@@ -216,11 +231,26 @@ bool data_reachable()
     return true;
 }
 
+/* The daemon made the console's root Porpoise's root, so /app0 is gone:
+ * the sandbox Porpoise started in becomes its root again. */
+bool put_root_back()
+{
+    if (g_sandbox_root < 0 || fchdir(g_sandbox_root) != 0 || chroot(".") != 0)
+        return false;
+    chdir("/");
+    g_put_back = true;
+    return app_folder_here();
+}
+
 bool ensure()
 {
     if (data_reachable())
         return true;
     note("jailbreak: /data isn't reachable (uid %d); asking the HEN", int(geteuid()));
+    /* Held for put_root_back(), in case the daemon takes /app0 away. */
+    g_app_before = app_folder_here();
+    if (g_sandbox_root < 0)
+        g_sandbox_root = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
     /* A daemon may not be up the instant Porpoise starts (a cold launch from
      * the home screen, or the daemon still loading), and the first bump can
      * lose a timing race, so Porpoise keeps asking for a while rather than
@@ -240,11 +270,19 @@ bool ensure()
         {
             if (data_reachable())
             {
-                /* Whether Porpoise's own folder is still where it looks (a
-                 * daemon that moves the root to the console's may leave no
-                 * /app0); this line itself only lands if it is. */
-                note("jailbreak: /data is reachable now (round %d); /app0 %d, the working directory's eboot %d",
-                     round, access("/app0/eboot.bin", F_OK) == 0, access("eboot.bin", F_OK) == 0);
+                if (g_app_before && !app_folder_here())
+                {
+                    /* Freed, but Porpoise's own folder went with the old
+                     * root: without it Porpoise would close. */
+                    const bool back = put_root_back();
+                    const bool data = back && data_reachable();
+                    note("jailbreak: freed with the console's root (no /app0); sandbox root back %d, /data %d (round %d)",
+                         back, data, round);
+                    return data;
+                }
+                note("jailbreak: /data is reachable now (round %d); /app0 %d", round, app_folder_here());
+                close(g_sandbox_root);
+                g_sandbox_root = -1;
                 return true;
             }
             sceKernelUsleep(16667);
@@ -252,5 +290,10 @@ bool ensure()
     }
     note("jailbreak: still sandboxed; using the app's own folder");
     return false;
+}
+
+bool root_put_back()
+{
+    return g_put_back;
 }
 } // namespace porpoise::jailbreak

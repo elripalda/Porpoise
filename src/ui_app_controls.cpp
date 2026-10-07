@@ -713,6 +713,7 @@ const char *wii_controller_name(int controller)
     case WiiSideways: return "Remote sideways";
     case WiiClassic: return "Classic Controller";
     case WiiTwoControllers: return "Two controllers (alpha)";
+    case WiiGameCube: return "GameCube controller";
     default: return "Remote + Nunchuk";
     }
 }
@@ -968,6 +969,23 @@ void App::draw_wii_controls(float x, float y, float w, float h, const WiiConfig 
         return;
     g.panel(x, y, w, h, rgba(0x0A1236, 0.86f * alpha), 0.85f, kR, with_alpha(rgba(0x3D4F9E), 0.9f * alpha), 1.6f, 0,
             0.10f);
+    if (wii.controller == WiiGameCube)
+    {
+        /* The GameCube's own layout, as in a GameCube game. */
+        g.text_mid(Font::Bold, ts(40), x + 40, y + 52, with_alpha(kWhite, alpha), Align::Left,
+                   tr(wii_controller_name(wii.controller)));
+        const auto lines = wrap(g, Font::Regular, ts(23), tr(kGameCubeOnWiiHelp), w - 80, 3);
+        float ly = y + 96;
+        for (const std::string &l : lines)
+        {
+            g.text_mid(Font::Regular, ts(23), x + 40, ly, with_alpha(kLavender, alpha), Align::Left, l);
+            ly += 32;
+        }
+        const float aw = std::min(w - 80.0f, 760.0f);
+        const Settings *buttons = ws_in_game_ && menu_play_ ? menu_play_ : settings_;
+        draw_controller_lines(x + (w - aw) * 0.5f, ly + 30, aw, buttons->mapping());
+        return;
+    }
     const bool two = wii.controller == WiiTwoControllers;
     const int pose = live_pose >= 0 ? live_pose : expected_pose(wii, false);
     const std::string auto_word = wii.grip == GripAuto ? tr("Auto: ") : "";
@@ -1021,7 +1039,7 @@ void App::draw_wii_controls(float x, float y, float w, float h, const WiiConfig 
 
     /* How the motion works. */
     std::string how;
-    const bool held = wii.controller != WiiSideways && wii.controller != WiiClassic;
+    const bool held = wii.controller != WiiSideways && wii.controller != WiiClassic && wii.controller != WiiGameCube;
     if (wii.pointer == PointerGyro && held)
         how = pose_left_hand(pose) ? tr("Point at the screen to aim. Hold L1 a moment to center the pointer and level the hold.")
                                    : tr("Point at the screen to aim. Hold R1 a moment to center the pointer and level the hold.");
@@ -1057,6 +1075,8 @@ const char *wii_howto(int controller)
                "are Square and Cross.";
     case WiiClassic:
         return "Hold it as a normal pad: the buttons are where a Classic Controller has them.";
+    case WiiGameCube:
+        return kGameCubeOnWiiHelp;
     case WiiTwoControllers:
         return "One DualSense in each hand, both stood on end with their faces toward you. The right one is the "
                "Remote (its grips pointing right): aim with its back. Holding R1 a moment centers the pointer and levels both controllers as you hold them. The left one is the Nunchuk (its "
@@ -1182,7 +1202,7 @@ constexpr Advice kAdvice[] = {
     {"SB4", WiiRemoteNunchuk, "Super Mario Galaxy 2: the Remote with the Nunchuk."},
     {"RZD", WiiRemoteNunchuk, "Twilight Princess: the Remote with the Nunchuk."},
     {"SOU", WiiRemoteNunchuk, "Skyward Sword: the Remote with the Nunchuk."},
-    {"RSB", WiiClassic, "Super Smash Bros. Brawl: the Classic Controller."},
+    {"RSB", WiiGameCube, "Super Smash Bros. Brawl: the GameCube controller (or the Classic Controller)."},
     {"SX4", WiiClassic, "Xenoblade Chronicles: the Classic Controller."},
 };
 const Advice *advice_for(const Game *g)
@@ -1200,7 +1220,7 @@ constexpr float kDeg = 57.2957795f;
 
 bool points(int controller)
 {
-    return controller != WiiSideways && controller != WiiClassic;
+    return controller != WiiSideways && controller != WiiClassic && controller != WiiGameCube;
 }
 } // namespace
 
@@ -1453,6 +1473,8 @@ App::Action App::update_wii_setup(bool up, bool down, bool left, bool right)
                 settings_->save(settings_path_);
             }
             wii_setup_apply_pad();
+            if (ws_controller_ == WiiGameCube)
+                return finish(); /* nothing to hold, point or measure */
             ws_step_ = kWsHold;
             ws_row_ = 0;
             sfx(Sound::MenuScroll);
