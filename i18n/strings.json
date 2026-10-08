@@ -4990,5 +4990,285 @@
  {
   "en": "White",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
+ },
+ {
+  "en": "Porpoise stayed in the sandbox",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Last time, Porpoise closed while your jailbreak was freeing it from the app sandbox, so this time it didn't ask. It can't see /data or USB drives, but games in /app0/porpoise/games work. Stay in the sandbox to always start this way (change it in Settings > Games), or try again.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Stay in the sandbox",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Try again",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "On: Porpoise doesn't ask your jailbreak to free it from the app sandbox. For jailbreaks that close Porpoise when they free it. Porpoise then can't see /data or USB drives; games in /app0/porpoise/games work. Takes effect the next time Porpoise starts.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Searching…",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Diagnostic test",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Cross checks what Porpoise can see and do on this console - the jailbreak, its folder, drives, games, the last game's speed - and saves the results with the logs, to share on the Discord.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Run…",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Dolphin is in place.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Dolphin's file is missing from Porpoise's folder: install Porpoise again.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "The results couldn't be saved.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Saved with the logs in {path}. Share them on the Discord.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Saved with the logs in {path}, and on your USB drive as {usb}. Share them on the Discord.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Last time, Porpoise closed while your jailbreak freed it (it got to: {stage}).",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Stay in the sandbox is on: Porpoise doesn't ask your jailbreak to free it.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Your jailbreak freed Porpoise in a way that hid its own files, so it stayed in the sandbox.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Your jailbreak freed Porpoise, but it can't write /data/porpoise, so its settings and saves are in its app folder.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Porpoise's folder: {path}.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Porpoise can't write to its folder ({path}).",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "The search for games took {s} s.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "The search gave up on {place} (too slow). Turn off Find games automatically and add your game folder instead.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "The last game ran at about {n}% speed.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Forwarded game not found",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Porpoise was asked to start {path}, but can't find that file.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Scanlines",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Shadow mask",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "LCD",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor, a worn or a soft VHS tape, 8-bit pixels, a green handheld screen, scanlines, a TV's shadow mask, or a sharp LCD.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. Online play in games uses the game's own patch for its server (Wiimmfi, a custom server, or a mod's own), not this switch. Needs the console online.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Download covers again",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Gets every game's cover, box and disc art from GameTDB.com again, in place of what Porpoise has (your own art too). For art that downloaded wrong or cut short. Needs the console online.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Download…",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Download cover again",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Gets this game's cover, box and disc art from GameTDB.com again, in place of what Porpoise has. Needs the console online.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Download",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Downloading this game's art again…",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Download every cover again?",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Porpoise gets each game's cover, box and disc art from GameTDB.com again, in place of what it has, your own art too. It runs in the background.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Apply",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Discard",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Later",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Restart now",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Apply your changes?",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Settings applied.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Applied.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Applied: from the next time this game starts.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Restart Porpoise to finish?",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "These take effect when Porpoise starts again:",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "You changed 1 setting. Apply it, or leave it as it was? Circle keeps editing.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "You changed {n} settings. Apply them, or leave them as they were? Circle keeps editing.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "1 change waiting • Square applies it",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "{n} changes waiting • Square applies them",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "1 change waiting: Square applies it.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "{n} changes waiting: Square applies them.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "You changed 1 setting. Circle keeps editing.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "You changed {n} settings. Circle keeps editing.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Restart the game to finish?",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Some of the changes take effect when the game starts again. Quick resume brings you back to this moment.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Some of the changes take effect when the game starts again. Unsaved progress is lost; a save state keeps it.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Setup {n} is ready: Square applies it.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Set up Porpoise • {n} of {all}",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Porpoise started inside the app sandbox: it can't see /data or USB drives, and it asks your jailbreak to free it each time it starts. If your jailbreak closes Porpoise when it does, stay in the sandbox: games in /app0/porpoise/games still work.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Free it each start",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Find your games by itself? Porpoise looks in /data/porpoise/games, /data/games, /data/roms, /data/iso and on USB drives. With a big drive full of other things, choose your own folders instead (Settings > Games > Add a game folder).",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Find them",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "I'll choose folders",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Download box art and game info from GameTDB.com while the console is online?",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Not now",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "Which buttons? PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B, as on the GameCube controller. Change it any time in Settings > Controls.",
+  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  }
 ]
