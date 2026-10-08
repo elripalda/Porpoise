@@ -10,16 +10,17 @@
 
 #include <string>
 
+#include "porpoise_tile_art.hpp"
+
 namespace porpoise::forwarders
 {
 struct Options
 {
     std::string title;      /* the tile's name */
-    std::string game_id;    /* the disc ID, for the player's own art's names */
+    std::string game_id;    /* the disc ID: its art and choices go by it */
     std::string game_path;  /* the game's file */
     std::string cover_path; /* its cover, "" when it has none */
-    int icon = 0;           /* 0 the cover, 1 the player's own */
-    int background = 0;     /* 0 Porpoise's, 1 the cover, 2 the player's own */
+    porpoise::tileart::Spec art; /* the icon and background (the tile art editor's) */
     bool exit_after_game = true;
 };
 struct Result
@@ -30,8 +31,6 @@ struct Result
 /* Where the player's own art goes: <data>/home-art, as <ID>-icon and
  * <ID>-background (.png or .jpg). */
 std::string art_dir(const std::string &data_dir);
-std::string own_icon(const std::string &data_dir, const std::string &game_id);
-std::string own_background(const std::string &data_dir, const std::string &game_id);
 /* The title ID of the forwarder already made for this game, or "". */
 std::string existing(const std::string &data_dir, const std::string &game_path);
 /* Makes (or remakes) the game's forwarder. Slow-ish (its art): a second or two. */

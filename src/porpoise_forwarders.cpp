@@ -26,6 +26,7 @@
 #include "porpoise_atomic.hpp"
 #include "porpoise_image.hpp"
 #include "porpoise_paths.hpp"
+#include "porpoise_tile_art.hpp"
 #include "trace.hpp"
 
 namespace porpoise::forwarders
@@ -35,13 +36,7 @@ namespace
 constexpr const char *kHomebrew = "/data/homebrew";
 constexpr int kFirst = 98001, kLast = 98999;
 
-struct Picture
-{
-    int w = 0, h = 0;
-    std::vector<std::uint8_t> px; /* RGBA */
-    std::uint8_t *at(int x, int y) { return &px[(std::size_t(y) * w + x) * 4]; }
-    const std::uint8_t *at(int x, int y) const { return &px[(std::size_t(y) * w + x) * 4]; }
-};
+using porpoise::tileart::Picture;
 
 bool exists(const std::string &path)
 {
@@ -49,152 +44,9 @@ bool exists(const std::string &path)
     return stat(path.c_str(), &st) == 0;
 }
 
-std::string first_of(const std::string &base)
+std::uint8_t *at(Picture &p, int x, int y)
 {
-    for (const char *ext : {".png", ".jpg", ".jpeg", ".PNG", ".JPG"})
-        if (exists(base + ext))
-            return base + ext;
-    return "";
-}
-
-bool load(const std::string &path, Picture &p)
-{
-    return !path.empty() && porpoise::image::load_rgba(path, p.px, p.w, p.h) && p.w > 0 && p.h > 0;
-}
-
-/* Scaled to w x h: each output pixel the average of the source pixels under
- * it (smooth when shrinking), or the nearest four mixed (when growing). */
-Picture scaled(const Picture &src, int w, int h)
-{
-    Picture out;
-    out.w = w;
-    out.h = h;
-    out.px.assign(std::size_t(w) * h * 4, 0);
-    const float sx = float(src.w) / float(w), sy = float(src.h) / float(h);
-    for (int y = 0; y < h; ++y)
-        for (int x = 0; x < w; ++x)
-        {
-            std::uint8_t *o = out.at(x, y);
-            if (sx > 1.0f || sy > 1.0f)
-            {
-                const int x0 = int(x * sx), x1 = std::max(x0 + 1, std::min(src.w, int((x + 1) * sx)));
-                const int y0 = int(y * sy), y1 = std::max(y0 + 1, std::min(src.h, int((y + 1) * sy)));
-                const int step_x = std::max(1, (x1 - x0) / 4), step_y = std::max(1, (y1 - y0) / 4);
-                unsigned sum[4] = {0, 0, 0, 0}, n = 0;
-                for (int yy = y0; yy < y1; yy += step_y)
-                    for (int xx = x0; xx < x1; xx += step_x)
-                    {
-                        const std::uint8_t *s = src.at(std::min(xx, src.w - 1), std::min(yy, src.h - 1));
-                        for (int c = 0; c < 4; ++c)
-                            sum[c] += s[c];
-                        ++n;
-                    }
-                for (int c = 0; c < 4; ++c)
-                    o[c] = std::uint8_t(sum[c] / n);
-            }
-            else
-            {
-                const float fx = std::max(0.0f, (x + 0.5f) * sx - 0.5f), fy = std::max(0.0f, (y + 0.5f) * sy - 0.5f);
-                const int ix = std::min(int(fx), src.w - 1), iy = std::min(int(fy), src.h - 1);
-                const int jx = std::min(ix + 1, src.w - 1), jy = std::min(iy + 1, src.h - 1);
-                const float ax = fx - ix, ay = fy - iy;
-                for (int c = 0; c < 4; ++c)
-                {
-                    const float top = src.at(ix, iy)[c] * (1 - ax) + src.at(jx, iy)[c] * ax;
-                    const float bottom = src.at(ix, jy)[c] * (1 - ax) + src.at(jx, jy)[c] * ax;
-                    o[c] = std::uint8_t(std::lround(top * (1 - ay) + bottom * ay));
-                }
-            }
-        }
-    return out;
-}
-
-/* The part of src with the w:h shape, from its middle (filling, not fitting). */
-Picture filled(const Picture &src, int w, int h)
-{
-    const float want = float(w) / float(h), have = float(src.w) / float(src.h);
-    Picture crop;
-    int cw = src.w, ch = src.h;
-    if (have > want)
-        cw = std::max(1, int(src.h * want));
-    else
-        ch = std::max(1, int(src.w / want));
-    crop.w = cw;
-    crop.h = ch;
-    crop.px.resize(std::size_t(cw) * ch * 4);
-    const int ox = (src.w - cw) / 2, oy = (src.h - ch) / 2;
-    for (int y = 0; y < ch; ++y)
-        std::memcpy(crop.at(0, y), src.at(ox, oy + y), std::size_t(cw) * 4);
-    return scaled(crop, w, h);
-}
-
-/* A soft, dark copy to sit behind: blurred at a small size, then grown. */
-Picture backdrop(const Picture &src, int w, int h, float darken)
-{
-    Picture small = filled(src, std::max(8, w / 24), std::max(8, h / 24));
-    for (int pass = 0; pass < 3; ++pass)
-    {
-        Picture blurred = small;
-        for (int y = 0; y < small.h; ++y)
-            for (int x = 0; x < small.w; ++x)
-            {
-                unsigned sum[3] = {0, 0, 0}, n = 0;
-                for (int dy = -1; dy <= 1; ++dy)
-                    for (int dx = -1; dx <= 1; ++dx)
-                    {
-                        const int xx = std::clamp(x + dx, 0, small.w - 1), yy = std::clamp(y + dy, 0, small.h - 1);
-                        for (int c = 0; c < 3; ++c)
-                            sum[c] += small.at(xx, yy)[c];
-                        ++n;
-                    }
-                for (int c = 0; c < 3; ++c)
-                    blurred.at(x, y)[c] = std::uint8_t(sum[c] / n);
-            }
-        small = blurred;
-    }
-    Picture out = scaled(small, w, h);
-    for (std::size_t i = 0; i < out.px.size(); i += 4)
-    {
-        for (int c = 0; c < 3; ++c)
-            out.px[i + c] = std::uint8_t(out.px[i + c] * darken);
-        out.px[i + 3] = 255;
-    }
-    return out;
-}
-
-/* src fitted inside w x h at (cx, cy), over dst, with a soft shadow. */
-void place(Picture &dst, const Picture &src, int fit_w, int fit_h, int cx, int cy)
-{
-    const float k = std::min(float(fit_w) / src.w, float(fit_h) / src.h);
-    const int w = std::max(1, int(src.w * k)), h = std::max(1, int(src.h * k));
-    const Picture p = scaled(src, w, h);
-    const int x0 = cx - w / 2, y0 = cy - h / 2;
-    const int shadow = std::max(4, h / 30);
-    for (int y = -shadow; y < h + shadow * 2; ++y)
-        for (int x = -shadow; x < w + shadow; ++x)
-        {
-            const int dx = x0 + x, dy = y0 + y + shadow / 2;
-            if (dx < 0 || dy < 0 || dx >= dst.w || dy >= dst.h)
-                continue;
-            const float ox = std::max({0.0f, float(-x), float(x - w + 1)}) / shadow;
-            const float oy = std::max({0.0f, float(-y), float(y - h + 1)}) / shadow;
-            const float a = 0.55f * std::max(0.0f, 1.0f - std::sqrt(ox * ox + oy * oy));
-            std::uint8_t *d = dst.at(dx, dy);
-            for (int c = 0; c < 3; ++c)
-                d[c] = std::uint8_t(d[c] * (1.0f - a));
-        }
-    for (int y = 0; y < h; ++y)
-        for (int x = 0; x < w; ++x)
-        {
-            const int dx = x0 + x, dy = y0 + y;
-            if (dx < 0 || dy < 0 || dx >= dst.w || dy >= dst.h)
-                continue;
-            const std::uint8_t *s = p.at(x, y);
-            std::uint8_t *d = dst.at(dx, dy);
-            const unsigned a = s[3];
-            for (int c = 0; c < 3; ++c)
-                d[c] = std::uint8_t((s[c] * a + d[c] * (255 - a)) / 255);
-        }
+    return &p.px[(std::size_t(y) * p.w + x) * 4];
 }
 
 /* ---- BC7 (mode 6: one subset, RGBA, 4-bit indices) ---------------------- */
@@ -360,7 +212,7 @@ bool write_dds_bc7(const std::string &path, const Picture &pic)
         {
             for (int y = 0; y < 4; ++y)
                 for (int x = 0; x < 4; ++x)
-                    std::memcpy(block[y * 4 + x], pic.at(bx * 4 + x, by * 4 + y), 4);
+                    std::memcpy(block[y * 4 + x], at(const_cast<Picture &>(pic), bx * 4 + x, by * 4 + y), 4);
             bc7_block(block, &file[148 + (std::size_t(by) * bw + bx) * 16]);
         }
     return porpoise::write_whole(path, file.data(), file.size());
@@ -440,16 +292,6 @@ std::vector<std::pair<std::string, std::string>> read_list(const std::string &da
 std::string art_dir(const std::string &data_dir)
 {
     return data_dir + "/home-art";
-}
-
-std::string own_icon(const std::string &data_dir, const std::string &game_id)
-{
-    return first_of(art_dir(data_dir) + "/" + game_id + "-icon");
-}
-
-std::string own_background(const std::string &data_dir, const std::string &game_id)
-{
-    return first_of(art_dir(data_dir) + "/" + game_id + "-background");
 }
 
 std::string existing(const std::string &data_dir, const std::string &game_path)
@@ -553,32 +395,20 @@ Result make(const std::string &data_dir, const Options &o)
                      r.title_id.c_str());
         porpoise::finish_atomic(f, r.folder + "/sce_sys/param.json");
     }
-    /* The tile. */
-    Picture cover, icon_src, bg_src;
-    const bool have_cover = load(o.cover_path, cover);
-    if (o.icon == 1 && load(own_icon(data_dir, o.game_id), icon_src))
-    {
-        const Picture icon = filled(icon_src, 512, 512);
-        porpoise::image::write_png(r.folder + "/sce_sys/icon0.png", icon.px, 512, 512);
-    }
-    else if (have_cover)
-    {
-        Picture icon = backdrop(cover, 512, 512, 0.55f);
-        place(icon, cover, 452, 452, 256, 256);
-        porpoise::image::write_png(r.folder + "/sce_sys/icon0.png", icon.px, 512, 512);
-    }
+    /* The tile: its icon and the background behind it, as the player set
+     * them in the tile art editor (porpoise_tile_art). */
+    namespace art = porpoise::tileart;
+    Picture src, made;
+    if (art::load_picture(art::picture_path(o.art.icon, data_dir, o.game_id, o.cover_path), src, 2048) &&
+        art::compose(o.art.icon, src, 512, 512, false, made))
+        porpoise::image::write_png(r.folder + "/sce_sys/icon0.png", made.px, 512, 512);
     else
         copy_file(PORPOISE_APP "/sce_sys/icon0.png", r.folder + "/sce_sys/icon0.png");
-    /* The background behind it. */
     bool background = false;
-    if (o.background == 2 && load(own_background(data_dir, o.game_id), bg_src))
-        background = write_dds_bc7(r.folder + "/sce_sys/pic0.dds", filled(bg_src, 3840, 2160));
-    else if (o.background == 1 && have_cover)
-    {
-        Picture bg = backdrop(cover, 3840, 2160, 0.45f);
-        place(bg, cover, 1500, 1500, 2700, 1080);
-        background = write_dds_bc7(r.folder + "/sce_sys/pic0.dds", bg);
-    }
+    if (o.art.bg.source != art::Porpoise &&
+        art::load_picture(art::picture_path(o.art.bg, data_dir, o.game_id, o.cover_path), src, 4096) &&
+        art::compose(o.art.bg, src, 3840, 2160, true, made))
+        background = write_dds_bc7(r.folder + "/sce_sys/pic0.dds", made);
     if (background)
         copy_file(r.folder + "/sce_sys/pic0.dds", r.folder + "/sce_sys/pic1.dds");
     else

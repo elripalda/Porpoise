@@ -23,6 +23,7 @@
 #include "ui_achievements.hpp"
 #include "ui_theme.hpp"
 #include "ui_cheats.hpp"
+#include "porpoise_tile_art.hpp"
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
 #include "ui_memcard.hpp"
@@ -145,6 +146,13 @@ public:
     void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
     void preview_launch_start(double t) { launch_start_ = t; } /* tools/ui-preview: the entrance's clock */
     void preview_game_settings(int i) { open_game_settings(lib_->games()[std::size_t(i)]); } /* tools/ui-preview */
+    void preview_tile_art(int part, int row, const porpoise::tileart::Layer &l) /* tools/ui-preview */
+    {
+        art_.part = part;
+        art_.row = row;
+        (part ? art_.spec.bg : art_.spec.icon) = l;
+        art_.dirty[part] = true;
+    }
     void preview_mapping(int kind, int row) /* tools/ui-preview: Customize buttons on a controller's tab */
     {
         map_target_ = settings_;
@@ -335,6 +343,7 @@ private:
         WiiSetup,     /* the Wii Remote setup: controller, hold, centre, the screen's corners */
         Welcome,      /* the first start: choose a theme */
         Achievements, /* a game's RetroAchievements, from its Details (Square) */
+        TileArt,      /* a game's home screen tile art (its settings > Home screen) */
     };
     struct SettingRow
     {
@@ -1010,8 +1019,33 @@ private:
     /* A game's home screen tile (Game settings > Home screen): its icon (0 the
      * cover, 1 the player's own), background (0 Porpoise's, 1 the cover, 2 the
      * player's own), and whether Porpoise closes after the game. */
-    int fwd_icon_ = 0, fwd_bg_ = 1;
     bool fwd_exit_ = true;
+
+    /* The tile art editor (ui_app_tileart.cpp): the icon and the background
+     * a game's home screen tile is made with, seen as they will be. */
+    struct TileArtEditor
+    {
+        porpoise::tileart::Spec spec;
+        int part = 0; /* 0 the icon, 1 the background */
+        int row = 0;  /* 0 the picture, 1 how it fits, 2 what's behind it */
+        Texture *tex[2] = {nullptr, nullptr};
+        porpoise::tileart::Picture src[2]; /* each part's picture, small for the preview */
+        std::string src_from[2];          /* the file it was read from */
+        bool dirty[2] = {true, true};
+        bool shown[2] = {false, false}; /* the preview has a picture */
+        int waiting = -1;               /* the source being downloaded, -1 none */
+        std::string note;               /* what the preview can't show, and why */
+        bool picking = false;           /* the folder browser is choosing a picture */
+    };
+    TileArtEditor art_;
+    std::string tile_key() const; /* the game's art goes by this: its disc ID */
+    void open_tile_art();
+    void close_tile_art();
+    Action update_tile_art(double dt);
+    void draw_tile_art(double time);
+    void tile_art_refresh();
+    float stick_x_ = 0, stick_y_ = 0; /* the left stick as it is */
+    bool browse_images_ = false;      /* the folder browser lists pictures, for the tile art */
     void make_forwarder();
     int audio_preset_ = 0; /* Settings > Audio's Sound preset row (Settings::audio_preset) */
     Game *map_game_ = nullptr;       /* the game whose settings those are, if any */
@@ -1085,6 +1119,7 @@ private:
             Folder,
             Game,
             Place,
+            Picture, /* browse_images_: a .png or .jpg */
         } kind = Folder;
         std::string label, path;
         long long size = 0; /* a game's, in bytes */

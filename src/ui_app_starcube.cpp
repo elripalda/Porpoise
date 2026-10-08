@@ -807,6 +807,8 @@ void App::draw_starcube(double time)
         }
         else if (screen_ == Screen::Browse)
             draw_browser();
+        else if (screen_ == Screen::TileArt)
+            draw_tile_art(time);
         else if (screen_ == Screen::GameSettings)
             draw_settings();
         else if (screen_ == Screen::Mapping)

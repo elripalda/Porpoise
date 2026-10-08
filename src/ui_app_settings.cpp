@@ -163,11 +163,10 @@ void App::make_forwarder()
         return;
     porpoise::forwarders::Options o;
     o.title = game_for_->title;
-    o.game_id = game_for_->id;
     o.game_path = game_for_->path;
     o.cover_path = lib_->cover_path(*game_for_);
-    o.icon = fwd_icon_;
-    o.background = fwd_bg_;
+    o.game_id = tile_key();
+    o.art = porpoise::tileart::load(data_dir_, o.game_id);
     o.exit_after_game = fwd_exit_;
     const porpoise::forwarders::Result r = porpoise::forwarders::make(data_dir_, o);
     if (r.ok)
@@ -1237,32 +1236,19 @@ void App::build_game_settings()
     {
         /* Its own home screen tile (porpoise_forwarders): no settings of the
          * game's, so no key (they wait for nothing). */
-        const std::string id = game_for_->id.empty() ? std::string("<ID>") : game_for_->id;
         SettingRow hh;
         hh.section = "Home screen";
         hh.header = true;
         rows_.push_back(hh);
-        const bool own_icon = !porpoise::forwarders::own_icon(data_dir_, id).empty();
-        const bool own_bg = !porpoise::forwarders::own_background(data_dir_, id).empty();
-        SettingRow icon;
-        icon.section = "Home screen";
-        icon.label = tr("Tile icon");
-        icon.help = trf("The cover, or your own picture: {file} (.png or .jpg) in /data/porpoise/home-art. {found}",
-                        {{"file", id + "-icon"},
-                         {"found", own_icon ? tr("Yours is there.") : tr("None there yet.")}});
-        icon.values = {tr("The cover"), tr("Your own")};
-        icon.int_value = &fwd_icon_;
-        rows_.push_back(icon);
-        SettingRow bg;
-        bg.section = "Home screen";
-        bg.label = tr("Tile background");
-        bg.help = trf("What shows behind the tile when it's chosen: Porpoise's, the cover, or your own picture: {file} "
-                      "(.png or .jpg, 16:9) in /data/porpoise/home-art. {found}",
-                      {{"file", id + "-background"},
-                       {"found", own_bg ? tr("Yours is there.") : tr("None there yet.")}});
-        bg.values = {tr("Porpoise's"), tr("The cover"), tr("Your own")};
-        bg.int_value = &fwd_bg_;
-        rows_.push_back(bg);
+        SettingRow artrow;
+        artrow.section = "Home screen";
+        artrow.label = tr("Tile art");
+        artrow.help = tr("The tile's icon and the background behind it, seen as the home screen shows them: the "
+                         "cover, a screenshot, a title screen or your own picture, cropped and zoomed, or whole "
+                         "over a blur, white, black or Porpoise's pattern.");
+        artrow.values = {tr("Edit\xE2\x80\xA6")};
+        artrow.action = kRowTileArt;
+        rows_.push_back(artrow);
         SettingRow ex;
         ex.section = "Home screen";
         ex.label = tr("Close Porpoise after the game");
@@ -1985,6 +1971,9 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowForwarder:
         sfx(Sound::LaunchGame);
         make_forwarder();
+        return Action::None;
+    case kRowTileArt:
+        open_tile_art();
         return Action::None;
     case kRowCoversAgain:
         if (screen_ == Screen::GameSettings && game_for_)
@@ -2788,6 +2777,8 @@ std::vector<App::BrowseEntry> App::browse_places() const
         e.path = path;
         out.push_back(e);
     };
+    if (browse_images_)
+        add(tr("Porpoise's tile art folder"), data_dir_ + "/home-art");
 #ifdef PORPOISE_DESKTOP
     /* A computer: Porpoise's own games folder, the player's folders, and
      * every drive. */
@@ -2875,6 +2866,18 @@ void App::open_browser(std::string path)
                 b.kind = BrowseEntry::Folder;
                 folders.push_back(b);
             }
+            else if (browse_images_)
+            {
+                std::string ext = name.substr(name.find_last_of('.') == std::string::npos ? name.size()
+                                                                                         : name.find_last_of('.'));
+                ext = lower_copy(ext);
+                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg")
+                {
+                    b.kind = BrowseEntry::Picture;
+                    b.size = stat_ok ? (long long)st.st_size : 0;
+                    games.push_back(b);
+                }
+            }
             else if (is_game_name(name))
             {
                 b.kind = BrowseEntry::Game;
@@ -2891,7 +2894,7 @@ void App::open_browser(std::string path)
     std::sort(games.begin(), games.end(), by_name);
     /* How many games each folder holds right inside it (not on "/", where
      * the folders are the system's own). */
-    if (path != "/")
+    if (path != "/" && !browse_images_)
         for (BrowseEntry &f : folders)
             f.games = count_games(f.path, 0);
     browse_games_ = int(games.size());
@@ -2961,6 +2964,22 @@ App::Action App::update_browser(bool up, bool down)
     if (pressed(BtnCross) && browse_row_ < n)
     {
         const BrowseEntry &e = browse_entries_[std::size_t(browse_row_)];
+        if (e.kind == BrowseEntry::Picture)
+        {
+            /* The tile art editor's picture: this one. */
+            porpoise::tileart::Layer &l = art_.part == 0 ? art_.spec.icon : art_.spec.bg;
+            l.source = porpoise::tileart::File;
+            l.file = e.path;
+            if (l.fit == porpoise::tileart::Whole && art_.part == 1)
+                l.fit = porpoise::tileart::Fill; /* a picture of their own fills the background */
+            porpoise::tileart::reset_position(l, art_.part == 1);
+            art_.dirty[art_.part] = true;
+            art_.note.clear();
+            browse_images_ = false;
+            open_screen(Screen::TileArt);
+            sfx(Sound::LaunchGame);
+            return Action::None;
+        }
         if (e.kind != BrowseEntry::Game)
         {
             open_browser(e.path);
@@ -2988,7 +3007,7 @@ App::Action App::update_browser(bool up, bool down)
         open_browser(browse_path_.empty() ? "/" : "");
         return Action::None;
     }
-    if (pressed(BtnSquare) && !browse_path_.empty() && browse_path_ != "/")
+    if (pressed(BtnSquare) && !browse_images_ && !browse_path_.empty() && browse_path_ != "/")
     {
         std::string folder = browse_path_;
         while (folder.size() > 1 && folder.back() == '/')
@@ -3008,6 +3027,13 @@ App::Action App::update_browser(bool up, bool down)
     if (pressed(BtnCircle))
     {
         /* Up a level; from "/" or the shortcuts, out. */
+        if (browse_images_ && (browse_path_.empty() || browse_path_ == "/" ||
+                               browse_path_ == data_dir_ + "/home-art"))
+        {
+            browse_images_ = false;
+            open_screen(Screen::TileArt);
+            return Action::None;
+        }
         if (browse_path_.empty() || browse_path_ == "/")
         {
             open_screen(Screen::Main);
@@ -3037,13 +3063,18 @@ void App::draw_browser()
     Gfx &g = *g_;
     const float x = 190, y = 136, w = 1540, h = 800;
     g.panel(x, y, w, h, rgba(0x0F1F63, 0.66f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-    g.text_mid(Font::Bold, ts(44), x + 50, y + 62, kWhite, Align::Left, tr("Choose a game folder"));
+    g.text_mid(Font::Bold, ts(44), x + 50, y + 62, kWhite, Align::Left,
+               tr(browse_images_ ? "Choose a picture" : "Choose a game folder"));
     const std::string where = browse_path_.empty() ? tr("Drives and shortcuts") : browse_path_;
     g.text_mid(Font::SemiBold, ts(26), x + 50, y + 110, kIcy, Align::Left, fit(g, Font::SemiBold, ts(26), where, w - 520));
     if (!browse_path_.empty() && browse_path_ != "/")
     {
-        const std::string count = browse_games_ == 0 ? tr("No games right here")
-                                  : plural(browse_games_, "1 game right here", "{n} games right here");
+        const std::string count =
+            browse_images_ ? (browse_games_ == 0 ? tr("No pictures right here")
+                                                 : plural(browse_games_, "1 picture right here",
+                                                          "{n} pictures right here"))
+            : browse_games_ == 0 ? tr("No games right here")
+                                 : plural(browse_games_, "1 game right here", "{n} games right here");
         g.text_mid(Font::SemiBold, ts(26), x + w - 50, y + 110, browse_games_ ? kCyan : kLavender, Align::Right, count);
     }
     g.panel(x + 50, y + 146, w - 100, 1.5f, rgba(0x3D4F9E, 0.7f), 1, 0);
@@ -3057,17 +3088,33 @@ void App::draw_browser()
     const float row_h = 72, rx = x + 26, rw = w - 52;
     float ry = y + 166;
     if (n == 0)
+    {
         g.text_mid(Font::SemiBold, ts(30), x + w * 0.5f, y + 380, kSoft, Align::Center,
                    browse_unreadable_ ? tr("Porpoise can't open this folder") : tr("This folder is empty"));
+        if (browse_images_ && !browse_unreadable_)
+            g.text_mid(Font::Regular, ts(24), x + w * 0.5f, y + 440, kLavender, Align::Center,
+                       fit(g, Font::Regular, ts(24),
+                           tr("Put .png or .jpg pictures here (over FTP, for example), or press Triangle for a "
+                              "USB drive."),
+                           w - 160));
+    }
     for (int i = browse_first_; i < n && i < browse_first_ + kVisible; ++i)
     {
         const BrowseEntry &e = browse_entries_[std::size_t(i)];
         const bool on = i == browse_row_;
-        const bool game = e.kind == BrowseEntry::Game;
+        const bool game = e.kind == BrowseEntry::Game || e.kind == BrowseEntry::Picture;
         const float cy = ry + row_h * 0.5f;
         if (on)
             g.panel(rx, ry + 4, rw, row_h - 8, rgba(game ? 0x0E5A8A : 0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
-        if (game)
+        if (e.kind == BrowseEntry::Picture)
+        {
+            /* A little picture: a frame and a hill. */
+            const Color pc = on ? kWhite : kCyan;
+            g.panel(rx + 30, cy - 16, 40, 32, with_alpha(pc, 0.9f), 1, 5);
+            g.panel(rx + 34, cy - 12, 32, 24, rgba(0x0F1F63), 1, 3);
+            g.panel(rx + 38, cy + 1, 24, 8, with_alpha(pc, 0.9f), 1, 4);
+        }
+        else if (game)
         {
             /* A little disc. */
             const Color dc = on ? kWhite : kCyan;
@@ -3122,6 +3169,14 @@ void App::draw_browser()
     }
 
     std::vector<std::pair<Glyph, std::string>> right;
+    if (browse_images_)
+    {
+        const bool on_picture =
+            browse_row_ < n && browse_entries_[std::size_t(browse_row_)].kind == BrowseEntry::Picture;
+        right.push_back({Glyph::Triangle, browse_path_.empty() ? "Whole system" : "Drives"});
+        draw_prompts({{Glyph::Cross, on_picture ? "Use this picture" : "Open"}, {Glyph::Circle, "Back"}}, right, "");
+        return;
+    }
     if (!browse_path_.empty() && browse_path_ != "/")
         right.push_back({Glyph::Square, "Use this folder"});
     right.push_back({Glyph::Triangle, browse_path_.empty() ? "Whole system" : "Drives"});

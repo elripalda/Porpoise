@@ -514,6 +514,51 @@ int main(int argc, char **argv)
         render("v27-home-screen-add", [&] { ui.draw(12.0); });
         return 0;
     }
+    /* PREVIEW_TILE=1: the tile art editor: the cover whole over its blur, the
+     * background's pattern, a screenshot filling it, the picture picker. */
+    if (std::getenv("PREVIEW_TILE"))
+    {
+        namespace art = porpoise::tileart;
+        art::set_asset_dir(argv[1]);
+        if (const char *lang = std::getenv("PREVIEW_PLANG"))
+            porpoise::ui::apply_language(std::atoi(lang), "");
+        settle();
+        ui.preview_game_settings(3);
+        settle();
+        press(kDown, 2); /* Home screen */
+        press(kRight);
+        settle();
+        press(kCross); /* Tile art: Edit */
+        settle();
+        render("tile-1-icon", [&] { ui.draw(12.0); });
+        art::Spec d = art::defaults();
+        art::Layer l = d.bg;
+        l.behind = art::Pattern;
+        l.x = 0.5f;
+        ui.preview_tile_art(1, 2, l);
+        settle();
+        render("tile-2-bg-pattern", [&] { ui.draw(12.0); });
+        const char *snap = std::getenv("PREVIEW_SNAP");
+        l = d.bg;
+        l.source = art::File;
+        l.file = snap ? snap : "";
+        l.fit = art::Fill;
+        art::reset_position(l, true);
+        ui.preview_tile_art(1, 1, l);
+        art::Layer i = d.icon;
+        i.fit = art::Fill;
+        i.source = art::File;
+        i.file = l.file;
+        i.zoom = 1.5f;
+        ui.preview_tile_art(0, 1, i);
+        settle();
+        render("tile-3-fill", [&] { ui.draw(12.0); });
+        ui.preview_tile_art(1, 0, l);
+        press(kCross); /* the picture picker */
+        settle();
+        render("tile-4-picker", [&] { ui.draw(12.0); });
+        return 0;
+    }
     /* PREVIEW_ACH=1: a game's achievements on Details, its page, and the
      * in-game menu's Achievements tab; then stop. */
     if (std::getenv("PREVIEW_ACH"))

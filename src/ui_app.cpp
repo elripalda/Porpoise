@@ -368,6 +368,8 @@ App::Action App::update(const Input &in, double dt)
     held_ = in.held;
     raw_prev_ = raw_held_;
     raw_held_ = in.held;
+    stick_x_ = in.stick_x;
+    stick_y_ = in.stick_y;
     if (in.stick_x < -0.55f) held_ |= BtnLeft;
     if (in.stick_x > 0.55f) held_ |= BtnRight;
     if (in.stick_y < -0.55f) held_ |= BtnUp;
@@ -441,6 +443,8 @@ App::Action App::update(const Input &in, double dt)
         return update_welcome(left, right, dt);
     if (screen_ == Screen::Browse)
         return update_browser(up, down);
+    if (screen_ == Screen::TileArt)
+        return update_tile_art(dt);
     if (screen_ == Screen::GameSettings)
         return update_settings(up, down, left, right);
     if (screen_ == Screen::Mapping)
@@ -2517,6 +2521,8 @@ void App::draw(double time)
     }
     else if (screen_ == Screen::Browse)
         draw_browser();
+    else if (screen_ == Screen::TileArt)
+        draw_tile_art(time);
     else if (screen_ == Screen::GameSettings)
         draw_settings();
     else if (screen_ == Screen::Mapping)
@@ -2566,7 +2572,8 @@ void App::draw_revolution(double time)
         draw_rev_details(time);
     /* The full-screen pages (the setups, the guide, a folder) have headings of their own. */
     const bool full_page = screen_ == Screen::WiiSetup || screen_ == Screen::WiiGuide || screen_ == Screen::Mapping ||
-                           screen_ == Screen::Browse || screen_ == Screen::GameSettings;
+                           screen_ == Screen::Browse || screen_ == Screen::GameSettings ||
+                           screen_ == Screen::TileArt;
     if (!full_page)
         draw_rev_top_bar(!home);
     draw_zoom(time);
@@ -2593,6 +2600,8 @@ void App::draw_revolution(double time)
         draw_states();
     else if (screen_ == Screen::Browse)
         draw_browser();
+    else if (screen_ == Screen::TileArt)
+        draw_tile_art(time);
     else if (screen_ == Screen::GameSettings)
         draw_settings();
     else if (screen_ == Screen::Mapping)

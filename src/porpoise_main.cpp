@@ -2711,7 +2711,9 @@ int main(int argc, char **argv)
         g_app.begin_launch(launch);
         /* The music fades as the screen dims; the Play sound finishes. */
         porpoise::sound::fade_music(0.0f, 0.5f);
-        const int launch_frames = std::max(36, int(hz * 0.6));
+        /* From a home screen tile there is no library to fade from: the game
+         * starts loading at once, under the launch screen. */
+        const int launch_frames = forwarded_session ? 2 : std::max(36, int(hz * 0.6));
         for (int frame = 0; frame < launch_frames; ++frame)
         {
             g_time += 1.0 / hz;

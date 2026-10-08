@@ -5276,35 +5276,11 @@
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Tile icon",
-  "section": "2.7: home screen tiles, inverted sticks"
- },
- {
-  "en": "The cover, or your own picture: {file} (.png or .jpg) in /data/porpoise/home-art. {found}",
-  "section": "2.7: home screen tiles, inverted sticks"
- },
- {
-  "en": "Yours is there.",
-  "section": "2.7: home screen tiles, inverted sticks"
- },
- {
-  "en": "None there yet.",
-  "section": "2.7: home screen tiles, inverted sticks"
- },
- {
   "en": "The cover",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
   "en": "Your own",
-  "section": "2.7: home screen tiles, inverted sticks"
- },
- {
-  "en": "Tile background",
-  "section": "2.7: home screen tiles, inverted sticks"
- },
- {
-  "en": "What shows behind the tile when it's chosen: Porpoise's, the cover, or your own picture: {file} (.png or .jpg, 16:9) in /data/porpoise/home-art. {found}",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
@@ -5378,5 +5354,161 @@
  {
   "en": "Turns the right stick (the C-stick) around: for a game whose camera goes the other way. Best set for one game (its own settings).",
   "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Tile art",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "The tile's icon and the background behind it, seen as the home screen shows them: the cover, a screenshot, a title screen or your own picture, cropped and zoomed, or whole over a blur, white, black or Porpoise's pattern.",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Icon",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Background",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Background, as the home screen shows it",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Picture",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Fit",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Behind it",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "The back of the box",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "A screenshot",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "The title screen",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Your picture",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Whole",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Fill (cropped)",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Nothing: it fills the space",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "The picture, blurred",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Black",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Porpoise pattern",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Porpoise's own background",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Move the picture",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Zoom in (L2: out)",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Choose your own picture",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Reset position",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Save and make the tile",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Downloading from libretro…",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "This game has no cover yet",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "GameTDB has no back of the box for this game",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Press Cross to choose a picture",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "libretro has no screenshot of this game",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "libretro has no title screen of this game",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "It couldn't be downloaded. Is the console online?",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "The tile art couldn't be saved",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Choose a picture",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Porpoise's tile art folder",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "No pictures right here",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "1 picture right here",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "{n} pictures right here",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Use this picture",
+  "section": "2.7: tile art editor"
+ },
+ {
+  "en": "Put .png or .jpg pictures here (over FTP, for example), or press Triangle for a USB drive.",
+  "section": "2.7: tile art editor"
  }
 ]
