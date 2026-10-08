@@ -990,6 +990,7 @@ void start_library()
  * Porpoise's menus they are all off (apply_settings). */
 void apply_game_controls(bool wii_game)
 {
+    porpoise::core::set_stick_invert(g_play.invert_main, g_play.invert_c);
     porpoise::pad::set_fast_forward_buttons(g_play.ff_buttons);
     porpoise::pad::set_quick_buttons(g_play.quick_slot > 0);
     porpoise::pad::set_turbo(g_play.turbo_control());
@@ -1177,6 +1178,8 @@ int menu_paused(void *)
     }
     else if (key == "button_layout")
         porpoise::pad::set_mapping(g_play.mapping());
+    else if (key == "invert_main" || key == "invert_c")
+        porpoise::core::set_stick_invert(g_play.invert_main, g_play.invert_c);
     else if (key == "fast_forward")
         porpoise::core::set_fast_forward(g_app.menu_fast_forward());
     else if (key == "border" || key == "fps_overlay" || key == "motion_readout")
@@ -2075,6 +2078,9 @@ int main(int argc, char **argv)
 #endif
     g_main_ns = now_ns();
     ps5::debug::mark("Porpoise: main() entered");
+    /* A home screen forwarder's game (--rom; porpoise_forward.hpp): started
+     * straight away once the library is read, with no logo or menus first. */
+    const porpoise::forward::Args forwarded = porpoise::forward::parse(argc, argv);
     /* Before any thread is started: clone this process's credential, so a Lapy
      * owned-root daemon will free it later (choose_data_dir -> jailbreak). */
     porpoise::jailbreak::prepare();
@@ -2176,6 +2182,9 @@ int main(int argc, char **argv)
     }
     g_settings.write_core_options(g_options_path);
     apply_settings();
+    /* Performance report on, but its file was only made now (a fresh copy of
+     * Porpoise): the sampler starts here instead of at the next start. */
+    ps5_sampler_start();
     {
         /* The menus speak the PS5's language unless Settings says otherwise. */
         int language = 1;
@@ -2194,7 +2203,14 @@ int main(int argc, char **argv)
     }
     porpoise::vk::set_overlay(overlay, nullptr);
     porpoise::vk::set_prepass(prepass, nullptr);
-    show_boot_mark();
+    if (forwarded.rom.empty())
+        show_boot_mark();
+    else
+    {
+        /* Straight to the game: the launch screen is the first thing seen. */
+        ps5::debug::mark_value("main: splash hidden", sceSystemServiceHideSplashScreen());
+        g_pacer.start(porpoise::vk::refresh_hz(), "boot");
+    }
     mark_start("start: Porpoise's mark on screen, ms");
 
     start_library();
@@ -2211,7 +2227,6 @@ int main(int argc, char **argv)
     /* A home screen forwarder's game (--rom): found now that Porpoise's folder
      * and the drives can be read, and started once instead of the library.
      * Before g_app.init: open_file() may add it to the library's games. */
-    const porpoise::forward::Args forwarded = porpoise::forward::parse(argc, argv);
     porpoise::ui::Game *forwarded_game = nullptr;
     bool forwarded_session = false;
     std::string forwarded_missing;
@@ -2700,7 +2715,7 @@ int main(int argc, char **argv)
             g_time += 1.0 / hz;
             const float t = std::min(1.0f, float(frame + 1) / float(launch_frames * 2 / 3));
             begin_ui_frame(0.6f * t);
-            if (g_app.launch_intro(g_time) < 1.0f)
+            if (g_app.launch_intro(g_time) < 1.0f && !forwarded_session)
                 g_app.draw(g_time); /* the library, fading under the launch screen */
             g_app.draw_launch(g_time);
             porpoise::vk::present_clear(0, 0, 0);

@@ -107,6 +107,7 @@ struct Host
     std::atomic<unsigned long long> samples_in{0}; /* audio frames the core has pushed (any thread) */
     bool presented = false;
     unsigned last_width = 0, last_height = 0;
+    int invert_main = 0, invert_c = 0; /* set_stick_invert */
     int filter = 0;        /* the screen filter (porpoise_vk.hpp) */
     int fast_forward = 1;  /* frames run per frame shown */
     std::string pending_state; /* a save state to load once the game shows its first pictures */
@@ -964,10 +965,18 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
     case RETRO_DEVICE_ANALOG:
         if (index == RETRO_DEVICE_INDEX_ANALOG_LEFT && two)
             return id == RETRO_DEVICE_ID_ANALOG_X ? nunchuk_pad.left_x : nunchuk_pad.left_y;
-        if (index == RETRO_DEVICE_INDEX_ANALOG_LEFT)
-            return id == RETRO_DEVICE_ID_ANALOG_X ? pad.left_x : pad.left_y;
-        if (index == RETRO_DEVICE_INDEX_ANALOG_RIGHT)
-            return id == RETRO_DEVICE_ID_ANALOG_X ? pad.right_x : pad.right_y;
+        {
+            /* A stick turned around, for a game that moves the other way. */
+            auto turned = [](std::int16_t v, int invert, bool x) -> std::int16_t {
+                const bool flip = x ? (invert & 2) != 0 : (invert & 1) != 0;
+                return !flip ? v : v == -32768 ? std::int16_t(32767) : std::int16_t(-v);
+            };
+            const bool x = id == RETRO_DEVICE_ID_ANALOG_X;
+            if (index == RETRO_DEVICE_INDEX_ANALOG_LEFT)
+                return turned(x ? pad.left_x : pad.left_y, h.invert_main, x);
+            if (index == RETRO_DEVICE_INDEX_ANALOG_RIGHT)
+                return turned(x ? pad.right_x : pad.right_y, h.invert_c, x);
+        }
         if (index == RETRO_DEVICE_INDEX_ANALOG_BUTTON)
         {
             if (id == RETRO_DEVICE_ID_JOYPAD_L2)
@@ -1163,6 +1172,12 @@ bool capture_picture(std::vector<unsigned char> &rgba, unsigned &width, unsigned
 float picture_aspect()
 {
     return h.aspect;
+}
+
+void set_stick_invert(int main_stick, int c_stick)
+{
+    h.invert_main = main_stick;
+    h.invert_c = c_stick;
 }
 
 void set_picture(int filter, float strength)

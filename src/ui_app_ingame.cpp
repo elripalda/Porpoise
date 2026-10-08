@@ -216,6 +216,10 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
             r.push_back({Kind::Int, "button_layout", "Button layout", &p.button_layout, nullptr, 0,
                          {"GameCube", "PlayStation", "My layout 1", "My layout 2", "My layout 3", "My layout 4"}});
             r.push_back({Kind::Customize, "", "Customize buttons"});
+            r.push_back({Kind::Int, "invert_main", "Invert the control stick", &p.invert_main, nullptr, 0,
+                         {"Off", "Up and down", "Left and right", "Both"}});
+            r.push_back({Kind::Int, "invert_c", "Invert the C-stick", &p.invert_c, nullptr, 0,
+                         {"Off", "Up and down", "Left and right", "Both"}});
         }
         if (wii)
         {

@@ -500,6 +500,18 @@ int main(int argc, char **argv)
         shot("v27-ingame-ask");
         tap(kCross); /* Apply: the shaders take effect at the next start */
         shot("v27-ingame-restart");
+        /* A game's settings: its home screen tile. */
+        ui.return_from_game();
+        settle();
+        ui.preview_game_settings(3);
+        settle();
+        press(kDown, 2); /* Home screen (after Recommended) */
+        press(kRight);
+        settle();
+        render("v27-home-screen", [&] { ui.draw(12.0); });
+        press(kDown, 3);
+        settle();
+        render("v27-home-screen-add", [&] { ui.draw(12.0); });
         return 0;
     }
     /* PREVIEW_ACH=1: a game's achievements on Details, its page, and the

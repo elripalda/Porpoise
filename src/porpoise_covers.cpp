@@ -537,3 +537,27 @@ void stop()
     g.stopping = true;
 }
 } // namespace porpoise::covers
+
+/* Pictures for other parts (porpoise_image.hpp), from this file's own stb. */
+#include "porpoise_image.hpp"
+namespace porpoise::image
+{
+bool load_rgba(const std::string &path, std::vector<std::uint8_t> &rgba, int &width, int &height)
+{
+    int channels = 0;
+    unsigned char *px = stbi_load(path.c_str(), &width, &height, &channels, 4);
+    if (!px)
+        return false;
+    rgba.assign(px, px + std::size_t(width) * std::size_t(height) * 4);
+    stbi_image_free(px);
+    return true;
+}
+
+bool write_png(const std::string &path, const std::vector<std::uint8_t> &rgba, int width, int height)
+{
+    const std::string part = path + ".part";
+    if (!stbi_write_png(part.c_str(), width, height, 4, rgba.data(), width * 4))
+        return false;
+    return std::rename(part.c_str(), path.c_str()) == 0;
+}
+} // namespace porpoise::image

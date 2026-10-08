@@ -144,6 +144,7 @@ public:
 #ifdef PORPOISE_HOST_PREVIEW
     void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
     void preview_launch_start(double t) { launch_start_ = t; } /* tools/ui-preview: the entrance's clock */
+    void preview_game_settings(int i) { open_game_settings(lib_->games()[std::size_t(i)]); } /* tools/ui-preview */
     void preview_mapping(int kind, int row) /* tools/ui-preview: Customize buttons on a controller's tab */
     {
         map_target_ = settings_;
@@ -1006,6 +1007,12 @@ private:
     bool qr_tried_ = false;
     std::vector<std::string> border_names_; /* the Border row's choices */
     int border_choice_ = 0;
+    /* A game's home screen tile (Game settings > Home screen): its icon (0 the
+     * cover, 1 the player's own), background (0 Porpoise's, 1 the cover, 2 the
+     * player's own), and whether Porpoise closes after the game. */
+    int fwd_icon_ = 0, fwd_bg_ = 1;
+    bool fwd_exit_ = true;
+    void make_forwarder();
     int audio_preset_ = 0; /* Settings > Audio's Sound preset row (Settings::audio_preset) */
     Game *map_game_ = nullptr;       /* the game whose settings those are, if any */
     bool map_in_game_ = false;       /* opened from the in-game menu */

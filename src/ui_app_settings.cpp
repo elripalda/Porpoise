@@ -10,6 +10,7 @@
 #include "porpoise_platform.hpp"
 #endif
 #include "porpoise_gfxmods.hpp"
+#include "porpoise_forwarders.hpp"
 #include "porpoise_paths.hpp"
 #include <algorithm>
 #include <atomic>
@@ -154,6 +155,34 @@ void App::show_setup_check(bool first_start)
                                                                  : tr("Cover downloads are off (Settings > Games)."));
     open_dialog(DialogKind::Info, first_start ? tr("Welcome to Porpoise") : tr("Your setup"), "", "");
     dialog_.checks = std::move(checks);
+}
+
+void App::make_forwarder()
+{
+    if (!game_for_)
+        return;
+    porpoise::forwarders::Options o;
+    o.title = game_for_->title;
+    o.game_id = game_for_->id;
+    o.game_path = game_for_->path;
+    o.cover_path = lib_->cover_path(*game_for_);
+    o.icon = fwd_icon_;
+    o.background = fwd_bg_;
+    o.exit_after_game = fwd_exit_;
+    const porpoise::forwarders::Result r = porpoise::forwarders::make(data_dir_, o);
+    if (r.ok)
+        open_dialog(DialogKind::Info, tr("Home screen tile made"),
+                    trf("It's in {folder}. Install it with ShadowMountPlus (or the way you install homebrew) to see "
+                        "it on the home screen; it opens Porpoise straight into {game}. Close Porpoise before you open "
+                        "the tile. Made it again later? Install it again to see the new art.",
+                        {{"folder", r.folder}, {"game", game_for_->title}}),
+                    "");
+    else
+        open_dialog(DialogKind::Info, tr("The tile couldn't be made"), trf("Reason: {reason}", {{"reason", r.error}}),
+                    "");
+    const int row = settings_row_;
+    build_game_settings();
+    settings_row_ = std::clamp(row, 0, int(rows_.size()) - 1);
 }
 
 void App::run_diagnostic()
@@ -615,6 +644,14 @@ void App::add_game_rows(Settings &t, bool per_game)
                "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made "
                "in Customize buttons.",
                &t.button_layout, 0, layouts);
+        choice("invert_main", "Invert the control stick",
+               "Turns the left stick around, up-down, left-right or both: for a game that moves the other way. "
+               "Best set for one game (its own settings).",
+               &t.invert_main, 0, {"Off", "Up and down", "Left and right", "Both"});
+        choice("invert_c", "Invert the C-stick",
+               "Turns the right stick (the C-stick) around: for a game whose camera goes the other way. Best set for "
+               "one game (its own settings).",
+               &t.invert_c, 0, {"Off", "Up and down", "Left and right", "Both"});
     }
     {
         SettingRow r;
@@ -1195,6 +1232,56 @@ void App::build_game_settings()
         art.action = kRowCoversAgain;
         rows_.push_back(art);
     }
+#ifndef PORPOISE_DESKTOP
+    if (game_for_ && !sandboxed_)
+    {
+        /* Its own home screen tile (porpoise_forwarders): no settings of the
+         * game's, so no key (they wait for nothing). */
+        const std::string id = game_for_->id.empty() ? std::string("<ID>") : game_for_->id;
+        SettingRow hh;
+        hh.section = "Home screen";
+        hh.header = true;
+        rows_.push_back(hh);
+        const bool own_icon = !porpoise::forwarders::own_icon(data_dir_, id).empty();
+        const bool own_bg = !porpoise::forwarders::own_background(data_dir_, id).empty();
+        SettingRow icon;
+        icon.section = "Home screen";
+        icon.label = tr("Tile icon");
+        icon.help = trf("The cover, or your own picture: {file} (.png or .jpg) in /data/porpoise/home-art. {found}",
+                        {{"file", id + "-icon"},
+                         {"found", own_icon ? tr("Yours is there.") : tr("None there yet.")}});
+        icon.values = {tr("The cover"), tr("Your own")};
+        icon.int_value = &fwd_icon_;
+        rows_.push_back(icon);
+        SettingRow bg;
+        bg.section = "Home screen";
+        bg.label = tr("Tile background");
+        bg.help = trf("What shows behind the tile when it's chosen: Porpoise's, the cover, or your own picture: {file} "
+                      "(.png or .jpg, 16:9) in /data/porpoise/home-art. {found}",
+                      {{"file", id + "-background"},
+                       {"found", own_bg ? tr("Yours is there.") : tr("None there yet.")}});
+        bg.values = {tr("Porpoise's"), tr("The cover"), tr("Your own")};
+        bg.int_value = &fwd_bg_;
+        rows_.push_back(bg);
+        SettingRow ex;
+        ex.section = "Home screen";
+        ex.label = tr("Close Porpoise after the game");
+        ex.help = tr("On: leaving the game from its tile goes back to the home screen. Off: to Porpoise's library.");
+        ex.values = {tr("Off"), tr("On")};
+        ex.bool_value = &fwd_exit_;
+        rows_.push_back(ex);
+        const bool made = !porpoise::forwarders::existing(data_dir_, game_for_->path).empty();
+        SettingRow add;
+        add.section = "Home screen";
+        add.label = tr(made ? "Update its home screen tile" : "Add to home screen");
+        add.help = tr("Makes an app with this game's own tile in /data/homebrew. Install it with ShadowMountPlus (or "
+                      "the way you install homebrew) to see it on the home screen; it opens Porpoise straight into "
+                      "the game. Close Porpoise before you open the tile.");
+        add.values = {tr(made ? "Update\xE2\x80\xA6" : "Add\xE2\x80\xA6")};
+        add.action = kRowForwarder;
+        rows_.push_back(add);
+    }
+#endif
     add_setup_rows(true);
     add_game_rows(game_, true);
     add_recommended_rows();
@@ -1895,6 +1982,10 @@ App::Action App::activate_row(const SettingRow &row)
         rail_ = std::min(rail_, section_count() - 1);
         sfx(Sound::MovingTab);
         return Action::SettingsChanged;
+    case kRowForwarder:
+        sfx(Sound::LaunchGame);
+        make_forwarder();
+        return Action::None;
     case kRowCoversAgain:
         if (screen_ == Screen::GameSettings && game_for_)
         {
@@ -2278,6 +2369,8 @@ void App::draw_settings()
         subtitle = tr("Easier to see, read and follow");
     else if (current == "Developer")
         subtitle = tr("For tuning the Wii Remote; nothing here is needed to play");
+    else if (current == "Home screen")
+        subtitle = tr("This game's own tile on the PS5's home screen");
     else if (current == "Recommended")
         subtitle = tr("Green is on for this game \xE2\x80\xA2 changes apply the next time it starts");
     else if (game)

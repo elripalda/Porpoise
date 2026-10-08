@@ -106,6 +106,8 @@ dist="$root/dist/$title_id"
 [[ -f $dist/eboot.bin ]] || { echo "error: no eboot.bin under $dist" >&2; exit 2; }
 
 echo "==> [porpoise] step 3/3: staging"
+# The home screen forwarder Porpoise copies into each tile it makes.
+bash "$root/tools/build-forwarder.sh" "$dist/assets/forwarder"
 cp -a -- "$root/config/LEGAL.txt" "$dist/LEGAL.txt"
 mkdir -p "$dist/cores" "$dist/info" "$dist/system" "$dist/content" "$dist/porpoise"
 cp -- "$root/build/cores/stage/cores/dolphin_libretro.so" "$dist/cores/"

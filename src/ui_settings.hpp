@@ -72,6 +72,9 @@ struct Settings
     /* Controls */
     /* 0 GameCube, 1 PlayStation, 2..5 the player's own layouts 1..4. */
     int button_layout = 1; /* PlayStation by default (1.1 build 14) */
+    /* Sticks turned around (0 no, 1 up-down, 2 left-right, 3 both): for games
+     * whose camera goes the other way. */
+    int invert_main = 0, invert_c = 0;
     /* The player's own layouts, kept with the global settings (a game only
      * picks one): a porpoise::pad::Control for each GameCube input, in
      * porpoise::pad::GcInput order. Each starts as the GameCube layout. */

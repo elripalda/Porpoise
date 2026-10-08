@@ -50,6 +50,7 @@ enum RowAction
     kRowReinitialize, /* Interface > Reinitialize Porpoise: settings wiped, the first start again */
     kRowCoversAgain,  /* Games > Download covers again (every game), or a game's own in its settings */
     kRowDiagnostic,   /* About > Diagnostic test: what Porpoise can see and do, saved with the logs */
+    kRowForwarder,    /* a game's settings > Home screen: make (or remake) its home screen tile */
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

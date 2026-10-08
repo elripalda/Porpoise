@@ -5270,5 +5270,113 @@
  {
   "en": "Which buttons? PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B, as on the GameCube controller. Change it any time in Settings > Controls.",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
+ },
+ {
+  "en": "This game's own tile on the PS5's home screen",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Tile icon",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "The cover, or your own picture: {file} (.png or .jpg) in /data/porpoise/home-art. {found}",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Yours is there.",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "None there yet.",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "The cover",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Your own",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Tile background",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "What shows behind the tile when it's chosen: Porpoise's, the cover, or your own picture: {file} (.png or .jpg, 16:9) in /data/porpoise/home-art. {found}",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Porpoise's",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Close Porpoise after the game",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "On: leaving the game from its tile goes back to the home screen. Off: to Porpoise's library.",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Update its home screen tile",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Add to home screen",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Makes an app with this game's own tile in /data/homebrew. Install it with ShadowMountPlus (or the way you install homebrew) to see it on the home screen; it opens Porpoise straight into the game. Close Porpoise before you open the tile.",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Update…",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Add…",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Home screen tile made",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "It's in {folder}. Install it with ShadowMountPlus (or the way you install homebrew) to see it on the home screen; it opens Porpoise straight into {game}. Close Porpoise before you open the tile. Made it again later? Install it again to see the new art.",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "The tile couldn't be made",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Invert the control stick",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Invert the C-stick",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Up and down",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Left and right",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Both",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Turns the left stick around, up-down, left-right or both: for a game that moves the other way. Best set for one game (its own settings).",
+  "section": "2.7: home screen tiles, inverted sticks"
+ },
+ {
+  "en": "Turns the right stick (the C-stick) around: for a game whose camera goes the other way. Best set for one game (its own settings).",
+  "section": "2.7: home screen tiles, inverted sticks"
  }
 ]

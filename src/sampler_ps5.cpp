@@ -492,6 +492,8 @@ static std::uint64_t stack_top(pthread_t thread)
 /* Starts the sampler on the calling thread when /app0/ps5-sampler.txt exists. */
 extern "C" void ps5_sampler_start()
 {
+    if (g_running.load(std::memory_order_acquire))
+        return; /* already sampling (main asks again once the settings are read) */
     std::FILE *const flag = std::fopen(PORPOISE_APP "/ps5-sampler.txt", "rb");
     if (flag == nullptr)
         return;
