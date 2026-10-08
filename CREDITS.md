@@ -8,6 +8,12 @@ Porpoise would not exist without the people and projects below. Thank you.
 design direction, the logo and artwork, the menu music and every sound effect,
 and all of the testing on real hardware.
 
+### Contributors
+
+**[Martin Pham (MartinPham)](https://github.com/MartinPham)**: home screen
+forwarders, starting a game straight from its own tile (`--rom`,
+[docs/FORWARDER.md](docs/FORWARDER.md)).
+
 ## Dolphin on PS5
 
 **[Mihawk (mihawk-99)](https://github.com/mihawk-99)** brought the Dolphin core

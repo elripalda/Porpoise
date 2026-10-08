@@ -384,6 +384,35 @@ std::string play_time_text(long long seconds)
     return trf("{h} h {m} min", {{"h", std::to_string(h)}, {"m", std::to_string(m % 60)}});
 }
 
+namespace
+{
+/* One game file as the library knows it: its header (or WAD, or app) read. */
+Game game_from_file(const std::string &path)
+{
+    Game g;
+    g.path = path;
+    g.file = path.substr(path.rfind('/') + 1);
+    struct stat st;
+    if (stat(path.c_str(), &st) == 0)
+        g.bytes = std::uint64_t(st.st_size);
+    const std::string ext = extension(g.file);
+    if (ext == "wad")
+        read_wad_header(path, g);
+    else if (ext == "dol" || ext == "elf")
+        read_app_meta(path, g);
+    else
+        read_disc_header(path, g);
+    if (ext == "tgc")
+        g.format = "TGC";
+    if (g.title.empty())
+        g.title = title_from_file(g.file);
+    if (g.platform.empty())
+        g.platform = "GameCube";
+    return g;
+}
+} // namespace
+
+
 std::vector<std::string> find_game_files(const std::vector<std::string> &roots, int limit_ms,
                                          std::vector<std::string> *cut)
 {
@@ -415,31 +444,35 @@ void Library::scan_files(const LibraryPaths &paths, std::vector<std::string> fil
     std::sort(files.begin(), files.end());
     files.erase(std::unique(files.begin(), files.end()), files.end());
     for (const std::string &path : files)
-    {
-        Game g;
-        g.path = path;
-        g.file = path.substr(path.rfind('/') + 1);
-        struct stat st;
-        if (stat(path.c_str(), &st) == 0)
-            g.bytes = std::uint64_t(st.st_size);
-        const std::string ext = extension(g.file);
-        if (ext == "wad")
-            read_wad_header(path, g);
-        else if (ext == "dol" || ext == "elf")
-            read_app_meta(path, g);
-        else
-            read_disc_header(path, g);
-        if (ext == "tgc")
-            g.format = "TGC";
-        if (g.title.empty())
-            g.title = title_from_file(g.file);
-        if (g.platform.empty())
-            g.platform = "GameCube";
-        games_.push_back(std::move(g));
-    }
+        games_.push_back(game_from_file(path));
     load_state();
     load_info();
     sort(sort_);
+}
+
+Game *Library::open_file(const std::string &path)
+{
+    struct stat wanted;
+    if (stat(path.c_str(), &wanted) != 0 || !S_ISREG(wanted.st_mode))
+        return nullptr;
+    /* The same file as one the search found, however its path is spelled. */
+    for (Game &g : games_)
+    {
+        struct stat st;
+        if (g.path == path ||
+            (stat(g.path.c_str(), &st) == 0 && st.st_dev == wanted.st_dev && st.st_ino == wanted.st_ino))
+            return &g;
+    }
+    /* Outside every folder searched: in the library until the next search,
+     * with its play history from library.txt like any other game. */
+    games_.push_back(game_from_file(path));
+    load_state();
+    load_info();
+    sort(sort_);
+    for (Game &g : games_)
+        if (g.path == path)
+            return &g;
+    return nullptr;
 }
 
 std::string Library::disc_path(const Game &g) const
