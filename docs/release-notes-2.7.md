@@ -1,12 +1,27 @@
 <p align="center"><img src="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/raw/Main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
-**Porpoise 2.7** is out:
+**Porpoise 2.7** is a big one:
 
-- **Home screen tiles:** give any game its own tile on the PS5 home screen that opens straight into it (a game's settings → **Home screen**), with **Tile art** to make the icon and background your own.
-- **Settings wait for Apply** (Square), in the menus and in-game.
-- **Inverted sticks**, per game, and **Scanlines, Shadow mask and LCD** screen filters.
-- **First-start setup**, a **Diagnostic test**, faster save states and **Download covers again**.
-- Optimizations and fixes for reported bugs.
+- **Home screen tiles:** give any game its own tile on the PS5 home screen that opens straight into it (a game's settings → **Home screen**).
+- **Tile art editor:** see the tile's icon and background as the home screen shows them. Use the cover, the back of the box, a screenshot, the title screen or your own picture; crop and zoom it, or set it whole over a blur, white, black or a Porpoise pattern.
+- **Settings wait for Apply** (Square), ask before you leave with changes, and offer a restart for the few that need one, in the menus and in-game.
+- **Inverted sticks:** the control stick and the C-stick, up-down, left-right or both, for each game.
+- **Scanlines, Shadow mask and LCD** screen filters.
+- **First-start setup** questions, and a **Diagnostic test** in Settings → About.
+- **Optimizations and fixes for reported bugs.**
+
+### Also in 2.7
+- **Faster save states** (about half a second to save), with pictures of the whole image at any resolution.
+- **Download covers again**, for every game or just one, and the cover glides into the launch screen.
+- **Faster start:** games are found in the background, and system folders are skipped.
+- **PAL games** that switch to 60 Hz are followed.
+- **Stay in the sandbox** (Settings → Games) for consoles where freeing Porpoise closes it, and Porpoise asks what to do if it closed last time.
+- **Revolution** shows every game, GameCube and Wii.
+- Other apps can start a game in Porpoise (`--rom`, thanks to MartinPham).
+
+### Catching up from an older version?
+- **2.5:** smoother sound and sound presets, an Audio tab in-game, the GameCube controller for Wii games, Dolphin's graphics mods, and controller extras (light bar colors, turbo, quick save buttons).
+- **2.1 and 2.1.1:** RetroAchievements with PS5-style trophy popups and achievement lists, your own cheats folder, custom buttons for every Wii controller, true widescreen per game, Porpoise's folder on extended storage or USB, and Online (beta) for WiiLink.
 
 > [!TIP]
 > ### 💙 Enjoying Porpoise?
