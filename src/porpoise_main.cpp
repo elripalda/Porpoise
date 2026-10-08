@@ -40,6 +40,7 @@
 #include "porpoise_gfxmods.hpp"
 #include "porpoise_borders.hpp"
 #include "porpoise_atomic.hpp"
+#include "porpoise_forwarders.hpp"
 #include "porpoise_core.hpp"
 #include "porpoise_disc.hpp"
 #include "porpoise_forward.hpp"
@@ -2214,6 +2215,7 @@ int main(int argc, char **argv)
     mark_start("start: Porpoise's mark on screen, ms");
 
     start_library();
+    porpoise::forwarders::repair(g_data);
     ps5::debug::mark_value("main: games in the library", static_cast<long long>(g_library.games().size()));
     mark_start("start: library read, ms");
     /* 2.7: Revolution shows GameCube games too; its old Wii-only filter goes. */

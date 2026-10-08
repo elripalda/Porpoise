@@ -19,6 +19,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <vector>
 
@@ -365,6 +366,31 @@ bool write_dds_bc7(const std::string &path, const Picture &pic)
     return porpoise::write_whole(path, file.data(), file.size());
 }
 
+/* The console starts an app only if its files can be read and run by everyone,
+ * as an app copied to the console arrives (folders and files 0777; the mode
+ * is what decides, not the owner).
+ * Written 0644 it answers "Can't start the game or app" (CE-107750-0): making
+ * the process fails with EACCES (found by ProsperoStore on a console). */
+void open_to_all(const std::string &path, int depth = 0)
+{
+    struct stat st;
+    if (depth > 8 || stat(path.c_str(), &st) != 0 || !(S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)))
+        return;
+    chmod(path.c_str(), 0777);
+    if (!S_ISDIR(st.st_mode))
+        return;
+    std::vector<std::string> names;
+    if (DIR *d = opendir(path.c_str()))
+    {
+        while (const dirent *e = readdir(d))
+            if (std::strcmp(e->d_name, ".") != 0 && std::strcmp(e->d_name, "..") != 0)
+                names.emplace_back(e->d_name);
+        closedir(d);
+    }
+    for (const auto &name : names)
+        open_to_all(path + "/" + name, depth + 1);
+}
+
 bool copy_file(const std::string &from, const std::string &to)
 {
     std::vector<unsigned char> data;
@@ -432,6 +458,20 @@ std::string existing(const std::string &data_dir, const std::string &game_path)
         if (path == game_path && exists(std::string(kHomebrew) + "/" + id))
             return id;
     return "";
+}
+
+void repair(const std::string &data_dir)
+{
+    for (const auto &e : read_list(data_dir))
+    {
+        const std::string folder = std::string(kHomebrew) + "/" + e.first;
+        struct stat st;
+        if (stat((folder + "/eboot.bin").c_str(), &st) == 0 && (st.st_mode & 0777) != 0777)
+        {
+            open_to_all(folder);
+            ps5::debug::mark(("forwarders: opened up " + folder).c_str());
+        }
+    }
 }
 
 Result make(const std::string &data_dir, const Options &o)
@@ -542,6 +582,7 @@ Result make(const std::string &data_dir, const Options &o)
             std::fprintf(f, "%s\t%s\n", e.first.c_str(), e.second.c_str());
         porpoise::finish_atomic(f, list_path(data_dir));
     }
+    open_to_all(r.folder);
     ps5::debug::mark(("forwarders: made " + r.folder + " for " + o.game_path).c_str());
     r.ok = true;
     return r;
