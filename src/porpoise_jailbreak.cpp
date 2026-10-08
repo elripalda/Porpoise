@@ -52,6 +52,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "porpoise_paths.hpp"
 #include "trace.hpp"
 
 extern "C" int sceKernelUsleep(unsigned microseconds);
@@ -61,6 +62,7 @@ extern "C" int fchdir(int fd);
 namespace porpoise::jailbreak
 {
 bool data_reachable();
+bool data_visible();
 
 namespace
 {
@@ -75,6 +77,23 @@ constexpr int kRequestCount = int(sizeof kRequests / sizeof kRequests[0]);
 int g_sandbox_root = -1; /* "/" as the console started Porpoise: the sandbox, /app0 in it */
 bool g_app_before = false; /* /app0 was there before asking the HEN */
 bool g_put_back = false;
+bool g_attempt = false; /* the note below is out: an attempt in flight */
+
+constexpr const char *kAttempt = PORPOISE_APP "/porpoise/.jailbreak-attempt";
+constexpr const char *kStay = PORPOISE_APP "/porpoise/stay-in-sandbox";
+
+/* Written straight to the disk: a close is exactly when it has to survive. */
+void write_note(const char *path, const char *text)
+{
+    mkdir(PORPOISE_APP "/porpoise", 0777);
+    const int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666);
+    if (fd < 0)
+        return;
+    const std::size_t n = std::strlen(text);
+    if (write(fd, text, n) == ssize_t(n))
+        fsync(fd);
+    close(fd);
+}
 
 bool app_folder_here()
 {
@@ -225,10 +244,29 @@ bool data_reachable()
     const char probe[] = "/data/porpoise/.write-test";
     const int fd = open(probe, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
+    {
+        static bool told = false;
+        if (!told && data_visible())
+        {
+            told = true;
+            note("jailbreak: the console's /data is there but Porpoise can't write /data/porpoise (errno %d, uid %d)",
+                 errno, int(geteuid()));
+        }
         return false;
+    }
     close(fd);
     unlink(probe);
     return true;
+}
+
+bool data_visible()
+{
+    /* Folders only the console's own /data has (the sandbox's has none). */
+    struct stat st;
+    for (const char *path : {"/data/homebrew", "/data/etaHEN", "/data/OnionHEN", "/data/games", "/data/porpoise"})
+        if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
+            return true;
+    return false;
 }
 
 /* The daemon made the console's root Porpoise's root, so /app0 is gone:
@@ -247,6 +285,8 @@ bool ensure()
     if (data_reachable())
         return true;
     note("jailbreak: /data isn't reachable (uid %d); asking the HEN", int(geteuid()));
+    write_note(kAttempt, "asking the jailbreak");
+    g_attempt = true;
     /* Held for put_root_back(), in case the daemon takes /app0 away. */
     g_app_before = app_folder_here();
     if (g_sandbox_root < 0)
@@ -266,9 +306,16 @@ bool ensure()
             request_port();
         /* Up to ~1.5 s for /data to open after a daemon acts (not every one
          * makes the app root the same instant). */
+        int visible_polls = 0;
         for (int grace = 0; grace < 90; ++grace)
         {
-            if (data_reachable())
+            /* Freed, but /data/porpoise can't be written (a fresh install
+             * where the jailbreak didn't make Porpoise root): Porpoise still
+             * sees /data and USB drives and keeps its things in its own
+             * folder. Given half a second to become writable first. */
+            const bool writable = data_reachable();
+            const bool visible_only = !writable && data_visible() && ++visible_polls >= 30;
+            if (writable || visible_only)
             {
                 if (g_app_before && !app_folder_here())
                 {
@@ -278,22 +325,78 @@ bool ensure()
                     const bool data = back && data_reachable();
                     note("jailbreak: freed with the console's root (no /app0); sandbox root back %d, /data %d (round %d)",
                          back, data, round);
+                    if (back)
+                        stage("freed (root put back)");
                     return data;
                 }
                 note("jailbreak: /data is reachable now (round %d); /app0 %d", round, app_folder_here());
                 close(g_sandbox_root);
                 g_sandbox_root = -1;
+                stage("freed");
                 return true;
             }
             sceKernelUsleep(16667);
         }
     }
     note("jailbreak: still sandboxed; using the app's own folder");
+    /* No daemon acted: nothing to blame a close on. */
+    unlink(kAttempt);
+    g_attempt = false;
     return false;
 }
 
 bool root_put_back()
 {
     return g_put_back;
+}
+
+bool stay_wanted()
+{
+    return access(kStay, F_OK) == 0;
+}
+
+void set_stay(bool stay)
+{
+    if (stay == stay_wanted())
+        return;
+    if (stay)
+        write_note(kStay, "Porpoise doesn't ask the jailbreak to free it (Settings > Games > Stay in the sandbox)\n");
+    else
+        unlink(kStay);
+    note("jailbreak: stay in the sandbox %d", stay);
+}
+
+std::string closed_last()
+{
+    const int fd = open(kAttempt, O_RDONLY | O_CLOEXEC);
+    if (fd < 0)
+        return "";
+    char text[128] = {0};
+    const ssize_t n = read(fd, text, sizeof text - 1);
+    close(fd);
+    std::string what = n > 0 ? std::string(text, std::size_t(n)) : std::string("asking the jailbreak");
+    while (!what.empty() && (what.back() == '\n' || what.back() == ' '))
+        what.pop_back();
+    return what.empty() ? std::string("asking the jailbreak") : what;
+}
+
+void forget_closed()
+{
+    unlink(kAttempt);
+}
+
+void stage(const char *what)
+{
+    if (g_attempt)
+        write_note(kAttempt, what);
+}
+
+void survived()
+{
+    if (!g_attempt)
+        return;
+    g_attempt = false;
+    unlink(kAttempt);
+    note("jailbreak: Porpoise is up after being freed");
 }
 } // namespace porpoise::jailbreak

@@ -853,6 +853,11 @@ void App::build_settings()
                 rows_.push_back(r);
             }
     }
+    toggle("stay_sandboxed", "Stay in the sandbox",
+           "On: Porpoise doesn't ask your jailbreak to free it from the app sandbox. For jailbreaks that close "
+           "Porpoise when they free it. Porpoise then can't see /data or USB drives; games in "
+           "/app0/porpoise/games work. Takes effect the next time Porpoise starts.",
+           &settings_->stay_sandboxed);
     toggle("sandbox_notice", "Sandbox message at start",
            "When the console starts Porpoise inside the app sandbox, says so and how to free it. Off: Porpoise "
            "just uses its own folder (games in /app0/porpoise/games).",

@@ -158,6 +158,7 @@ struct Settings
                                               porpoise::pad::CtlL2, porpoise::pad::CtlR2};
     int turbo_control() const { return turbo > 0 && turbo <= 8 ? kTurboControls[turbo - 1] : -1; }
     bool sandbox_notice = true; /* the "can't reach /data" message at start (PS5) */
+    bool stay_sandboxed = false; /* don't ask the jailbreak to free Porpoise (a file in /app0, not settings.ini) */
     int console = 0;        /* a game's own: 0 as detected, 1 GameCube, 2 Wii (its controls) */
     /* Sound (beta): Dolphin's exact DSP (LLE), the Wii Remote's speaker in the
      * TV's sound, a fuller buffer, stretching through slowdowns. */

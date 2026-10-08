@@ -812,6 +812,17 @@ void App::show_sandbox_notice(const std::string &title, const std::string &messa
     dialog_.choice = 1; /* OK first */
 }
 
+void App::offer_jailbreak_retry()
+{
+    open_dialog(DialogKind::JailbreakClosed, tr("Porpoise stayed in the sandbox"),
+                tr("Last time, Porpoise closed while your jailbreak was freeing it from the app sandbox, so this "
+                   "time it didn't ask. It can't see /data or USB drives, but games in /app0/porpoise/games work. "
+                   "Stay in the sandbox to always start this way (change it in Settings > Games), or try again."),
+                tr("Stay in the sandbox"));
+    dialog_.no = tr("Try again");
+    dialog_.choice = 1;
+}
+
 void App::close_dialog()
 {
     dialog_.open = false;
@@ -860,6 +871,16 @@ App::Action App::update_dialog(bool left, bool right)
                 start_welcome(); /* Start fresh */
                 return Action::None;
             }
+        }
+        if (kind == DialogKind::JailbreakClosed)
+        {
+            if (choice == 1)
+            {
+                settings_->stay_sandboxed = true;
+                build_settings();
+                return Action::StayInSandbox;
+            }
+            return Action::RetryJailbreak;
         }
         if (kind == DialogKind::SandboxNotice)
         {

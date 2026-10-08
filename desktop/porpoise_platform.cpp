@@ -785,4 +785,20 @@ bool ensure()
 {
     return true;
 }
+bool data_visible()
+{
+    return true;
+}
+bool stay_wanted()
+{
+    return false;
+}
+void set_stay(bool) {}
+std::string closed_last()
+{
+    return "";
+}
+void forget_closed() {}
+void stage(const char *) {}
+void survived() {}
 } // namespace porpoise::jailbreak

@@ -100,6 +100,8 @@ public:
         Reinitialize, /* settings wiped: Porpoise starts again as at its first start */
         MoveData,     /* Porpoise's folder moves to move_target() */
         UseFolder,    /* the Porpoise folder already at move_target() becomes the one in use */
+        StayInSandbox,  /* freeing Porpoise closed it: don't ask again (Stay in the sandbox on) */
+        RetryJailbreak, /* freeing Porpoise closed it: ask again, restarting Porpoise */
     };
     const std::string &move_target() const { return move_target_; }
 
@@ -231,6 +233,8 @@ public:
     }
     /* The sandbox message at start, which the player can turn off. */
     void show_sandbox_notice(const std::string &title, const std::string &message);
+    /* Freeing Porpoise from the sandbox closed it last time, so it didn't ask. */
+    void offer_jailbreak_retry();
     /* RetroAchievements: the account the panel shows, and signing in and out
      * (porpoise_ra, given by the host). Without them there is no panel. */
     struct RaState
@@ -333,6 +337,7 @@ private:
         SandboxNotice, /* OK, or Don't show again (the other button) */
         MoveData,      /* Porpoise's folder to another drive */
         UseFolder,     /* a Porpoise folder already on a drive: use it (move_target_) */
+        JailbreakClosed, /* freeing Porpoise closed it last time: Stay in the sandbox, or Try again */
     };
     struct Dialog
     {

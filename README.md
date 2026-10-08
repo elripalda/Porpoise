@@ -309,6 +309,20 @@ Settings → Audio, for every game or one (and the in-game menu's **Audio** tab)
   **ShadowMountPlus 1.7 beta 4 or newer**: with older versions Porpoise can
   close as it opens on some setups (see [Troubleshooting](#troubleshooting)).
 - A way to copy files to the console: FTP, or a tool such as PS5 Upload.
+
+### Jailbreaks on firmware 13.60 (Relapse)
+
+What players have reported so far. Porpoise needs a jailbreak daemon to free
+it from the app sandbox so it can see `/data` and USB drives; without one it
+still runs games from its own folder (`/app0/porpoise/games`).
+
+| Jailbreak | Porpoise | What to do |
+| --- | --- | --- |
+| etaHEN | Works | If Porpoise says it can't reach `/data`, turn on **Legacy Command Server** in etaHEN's Toolbox settings. |
+| OnionHEN | Works after one change | Add `PPSA99764` to `exact_title_ids` in `/data/OnionHEN/config.ini`, then reload OnionHEN. |
+| Lapy | Closes Porpoise as it frees it | Since 2.7 Porpoise notices and starts in the sandbox the next time. Turn on **Settings → Games → Stay in the sandbox** to always start that way. |
+
+Tried another one? Tell us how it went on the Discord.
 - **Your own games**, as backups you made from discs you own. Porpoise
   includes no games and no system files of any kind.
 - Optional: an internet connection on the console, for box art and game info.
@@ -579,6 +593,10 @@ becomes the next player, up to four, and can join in the middle of a game.
   the daemon wasn't up, or running, on the later launch. Until it's freed,
   Porpoise keeps its things in the app's own folder
   (`/data/homebrew/PPSA99764/porpoise/`).
+- **Porpoise closes as your jailbreak frees it** (reported with Lapy on 13.60)?
+  Porpoise notices, and the next time it opens it stays in the sandbox and
+  asks whether to keep doing that (**Stay in the sandbox**) or try again. You
+  can change it any time in **Settings → Games → Stay in the sandbox**.
 - **Porpoise closes the moment it opens, every time, on firmware 12.x with the
   Lapy JB Daemon or LegacyJB** (and opens fine without the daemon)? Update
   **ShadowMountPlus to 1.7 beta 4 or newer**: that fixed it for a player whose

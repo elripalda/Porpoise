@@ -93,6 +93,10 @@ std::string g_settings_path, g_options_path, g_saves_path, g_options_reference, 
 
 bool g_sandboxed = false; /* /data out of reach even after asking the HEN */
 int g_freed = -1;         /* the HEN's answer, asked once at the very start (-1: not asked) */
+/* Freeing Porpoise closed it last time (how far it got), so it didn't ask this time. */
+std::string g_jailbreak_closed;
+bool g_stay_sandboxed = false; /* Settings > Games > Stay in the sandbox */
+bool g_data_readonly = false;  /* freed, but /data/porpoise can't be written */
 /* Porpoise's folder can live on another drive (Settings > Games > Move
  * Porpoise's folder): /data/porpoise/location.txt names it. */
 std::string g_location_missing; /* named there but not connected */
@@ -235,7 +239,16 @@ std::string find_moved_folder(const std::string &where)
 
 void choose_data_dir()
 {
-    if (g_freed >= 0 ? g_freed == 1 : porpoise::jailbreak::ensure())
+    const bool freed = g_freed >= 0 ? g_freed == 1 : porpoise::jailbreak::ensure();
+    if (freed && !porpoise::jailbreak::data_reachable())
+    {
+        /* Freed, but /data/porpoise can't be written (seen on fresh installs):
+         * the console's folders and USB drives are there, and Porpoise's own
+         * things stay in its app folder. */
+        g_data_readonly = true;
+        ps5::debug::mark("main: /data is there but /data/porpoise can't be written; using the app's folder");
+    }
+    if (freed && !g_data_readonly)
     {
         g_data = PORPOISE_DATA;
         bring_over_app_folder_data();
@@ -270,7 +283,7 @@ void choose_data_dir()
                     break;
                 }
     }
-    else
+    else if (!freed)
         g_sandboxed = true;
     mkdir(g_data.c_str(), 0777);
     mkdir((g_data + "/covers").c_str(), 0777);
@@ -356,6 +369,24 @@ void on_terminate()
     ps5::debug::mark_value("main: LoadExec result", result);
     for (;;)
         usleep(100000); /* the shell ends the process asynchronously */
+}
+
+/* Closes Porpoise and opens it again (a setting that takes effect at the
+ * start). Where the shell won't load Porpoise's own executable again,
+ * Porpoise just closes and the player opens it. */
+[[noreturn]] void restart_porpoise()
+{
+    ps5::debug::mark("main: restarting");
+    porpoise::audio::close();
+    porpoise::pad::close();
+    ps5::memory::finish();
+    std::fflush(nullptr);
+    const int result = sceSystemServiceLoadExec(PORPOISE_APP "/eboot.bin", nullptr);
+    ps5::debug::mark_value("main: LoadExec (restart) result", result);
+    if (result < 0)
+        sceSystemServiceLoadExec("exit", nullptr);
+    for (;;)
+        usleep(100000);
 }
 
 long long now_ns()
@@ -1871,6 +1902,7 @@ void keep_cores(bool on)
 void mark_start(const char *what)
 {
     ps5::debug::mark_value(what, (now_ns() - g_main_ns) / 1000000);
+    porpoise::jailbreak::stage(what); /* how far a start after being freed got */
 }
 
 #ifdef PORPOISE_DESKTOP
@@ -1892,7 +1924,14 @@ int main()
     /* Ask to be freed now, while Porpoise is still one thread: the Lapy
      * owned-root daemon frees only a single-threaded process, and one freed
      * after Porpoise's threads had started could close. */
-    g_freed = porpoise::jailbreak::ensure() ? 1 : 0;
+    g_stay_sandboxed = porpoise::jailbreak::stay_wanted();
+    g_jailbreak_closed = porpoise::jailbreak::closed_last();
+    if (g_stay_sandboxed || !g_jailbreak_closed.empty())
+        g_freed = porpoise::jailbreak::data_reachable() || porpoise::jailbreak::data_visible()
+                      ? 1
+                      : 0; /* the console's own way only */
+    else
+        g_freed = porpoise::jailbreak::ensure() ? 1 : 0;
 #endif
     ps5_open_permissions();
     if (std::freopen(PORPOISE_APP "/trace.txt", "a", stderr))
@@ -1903,6 +1942,11 @@ int main()
     }
     std::set_terminate(on_terminate);
     ps5::debug::mark(PS5_RETROARCH_BUILD_ID);
+    if (!g_jailbreak_closed.empty())
+        ps5::debug::mark(("jailbreak: Porpoise closed after being freed last time (it got to: " + g_jailbreak_closed +
+                          "), so it didn't ask this time").c_str());
+    if (g_stay_sandboxed)
+        ps5::debug::mark("jailbreak: Stay in the sandbox is on: not asking");
 #ifndef PORPOISE_DESKTOP
     {
         /* The console's firmware, for reports (0x04500000 is 4.50). */
@@ -1955,6 +1999,7 @@ int main()
     choose_data_dir();
     mark_start("start: player data found, ms");
     g_settings.load(g_settings_path);
+    g_settings.stay_sandboxed = g_stay_sandboxed; /* kept in /app0/porpoise, not settings.ini */
     {
         /* Games' own settings from 1.0, brought up to date once. */
         bool changed = false;
@@ -2051,19 +2096,23 @@ int main()
         else
             g_app.start_welcome();
     }
+    if (!g_jailbreak_closed.empty() && !g_sandboxed)
+        porpoise::jailbreak::forget_closed(); /* /data is there without asking: nothing to choose */
     if (!g_location_missing.empty())
         g_app.show_message(porpoise::ui::tr("Porpoise's folder isn't connected"),
                            porpoise::ui::trf("Porpoise's folder is on a drive that isn't connected now ({path}). "
                                              "Connect it and open Porpoise again. Until then, Porpoise uses the "
                                              "console's storage.",
                                              {{"path", g_location_missing}}));
+    else if (g_sandboxed && !g_jailbreak_closed.empty())
+        g_app.offer_jailbreak_retry();
     else if (g_sandboxed && porpoise::jailbreak::root_put_back())
         g_app.show_message(porpoise::ui::tr("Your jailbreak hid Porpoise's files"),
                            porpoise::ui::tr("The jailbreak daemon freed Porpoise in a way that hides Porpoise's own "
                                             "folder, so Porpoise stayed in the app sandbox to keep running: it can't "
                                             "see /data or USB drives this time. Updating ShadowMountPlus to 1.7 beta "
                                             "4 or newer fixes this for most players."));
-    else if (g_sandboxed && g_settings.sandbox_notice)
+    else if (g_sandboxed && g_settings.sandbox_notice && !g_stay_sandboxed)
         g_app.show_sandbox_notice(porpoise::ui::tr("Porpoise can't reach /data"),
                            porpoise::ui::tr("The console started Porpoise inside the app sandbox, so it can't see "
                                             "/data or USB drives, and no jailbreak daemon freed it. A daemon that "
@@ -2148,6 +2197,9 @@ int main()
             const auto action = g_app.update(in, dt);
             if (action == porpoise::ui::App::Action::SettingsChanged)
             {
+#ifndef PORPOISE_DESKTOP
+                porpoise::jailbreak::set_stay(g_settings.stay_sandboxed);
+#endif
                 apply_settings();
                 read_latest_release(); /* Beta updates may have changed what counts as newer */
                 if (g_library.paths().info != shown_info_path())
@@ -2160,6 +2212,18 @@ int main()
             }
             if (action == porpoise::ui::App::Action::Rescan)
                 rescan_library();
+#ifndef PORPOISE_DESKTOP
+            if (action == porpoise::ui::App::Action::StayInSandbox)
+            {
+                porpoise::jailbreak::set_stay(true);
+                porpoise::jailbreak::forget_closed();
+            }
+            if (action == porpoise::ui::App::Action::RetryJailbreak)
+            {
+                porpoise::jailbreak::forget_closed();
+                restart_porpoise();
+            }
+#endif
             if (action == porpoise::ui::App::Action::Reinitialize)
             {
                 /* A fresh start: the screen goes to Porpoise's mark, everything
@@ -2239,6 +2303,11 @@ int main()
                 first_menu_frame = false;
                 mark_start("start: first menu frame, ms");
             }
+            /* Up a few seconds in the menus: whatever freed Porpoise didn't
+             * close it, so the next start asks again. */
+            static int menu_frames = 0;
+            if (++menu_frames == int(hz * 5))
+                porpoise::jailbreak::survived();
             porpoise::sound::pump();
             g_pacer.frame_done();
         }
