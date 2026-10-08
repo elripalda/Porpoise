@@ -52,17 +52,25 @@ bool is_game_name(const std::string &name);
 
 struct LibraryPaths
 {
-    std::vector<std::string> roots;   /* folders searched for games, two levels down */
+    std::vector<std::string> roots;   /* folders searched for games, four levels down */
     std::vector<std::string> deep;    /* folders the player chose, searched four levels down */
     std::string covers;               /* <covers>/<ID>.png|.jpg */
     std::string state;                /* small text file: last played, selection */
     std::string info;                 /* GameTDB details, one game per line (info.tsv) */
 };
 
+/* The game files in roots, four folders deep: the slow part of a search,
+ * safe on any thread. limit_ms > 0: each root gives up after that long, and
+ * cut lists the roots that did. */
+std::vector<std::string> find_game_files(const std::vector<std::string> &roots, int limit_ms,
+                                         std::vector<std::string> *cut);
+
 class Library
 {
 public:
-    void scan(const LibraryPaths &paths);
+    void scan(const LibraryPaths &paths); /* find_game_files on every root, then scan_files */
+    /* The library made from files found (a search in the background). */
+    void scan_files(const LibraryPaths &paths, std::vector<std::string> files);
     std::vector<Game> &games() { return games_; }
     const LibraryPaths &paths() const { return paths_; }
 

@@ -508,6 +508,22 @@ private:
 public:
     /* Whether Porpoise was left in the app sandbox (porpoise_main). */
     void set_sandboxed(bool sandboxed) { sandboxed_ = sandboxed; }
+    /* A search for games is running (Search for games now says so). */
+    void set_searching(bool searching)
+    {
+        if (searching != searching_)
+        {
+            searching_ = searching;
+            build_settings();
+        }
+    }
+    /* Whether the library can be rebuilt now (a search ended): nothing on
+     * screen holds one of its games. */
+    bool library_free() const
+    {
+        return (screen_ == Screen::Main || screen_ == Screen::Sort || screen_ == Screen::Browse) && !dialog_.open &&
+               !launch_;
+    }
     /* The setup check: a title and what Porpoise can see, with what to do. */
     void show_setup_check(bool first_start);
     /* The first start (and after Reinitialize): a theme to begin with, then
@@ -522,6 +538,7 @@ public:
     void restart_fresh();
 private:
     bool sandboxed_ = false;
+    bool searching_ = false;
     std::vector<std::string> version_tags_, version_labels_;
     std::vector<std::size_t> version_sizes_;
     std::vector<int> version_builds_;

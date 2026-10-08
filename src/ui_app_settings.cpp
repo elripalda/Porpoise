@@ -867,7 +867,7 @@ void App::build_settings()
            "Choose\xE2\x80\xA6", kRowAddFolder);
     const std::size_t n = lib_ ? lib_->games().size() : 0;
     action("Search for games now", "Looks through every folder again, for games you have just copied over.",
-           plural((long long)n, "1 game", "{n} games"), kRowRescan);
+           searching_ ? std::string("Searching\xE2\x80\xA6") : plural((long long)n, "1 game", "{n} games"), kRowRescan);
 #ifndef PORPOISE_DESKTOP /* the PS5's own */
     action("Check my setup", "What Porpoise can see on this console - /data, USB drives, games - and what to do "
            "about anything missing.",

@@ -99,45 +99,99 @@ std::string region_of(char code)
     }
 }
 
-void find_games(const std::string &dir, int depth, std::vector<std::string> &out)
+long long now_ms()
 {
+    timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+/* Folders never searched: Porpoise's and the console's own, a PC's system
+ * folders on a drive, and PS4 / PS5 game folders (a title ID: CUSA12345). */
+bool skipped_folder(const std::string &name)
+{
+    static const char *const skip[] = {"system", "cores", "info", "sce_sys", "sce_module", "licenses",
+                                       "savefiles", "porpoise", "dolphin-emu", "homebrew", "Sys"};
+    for (const char *k : skip)
+        if (name == k)
+            return true;
+    const std::string low = lower(name);
+    for (const char *k : {"system volume information", "$recycle.bin", "recycler", "lost.dir", "found.000"})
+        if (low == k)
+            return true;
+    if (name.size() >= 9)
+    {
+        const std::string head = name.substr(0, 4);
+        bool digits = true;
+        for (std::size_t i = 4; i < 9; ++i)
+            digits &= std::isdigit((unsigned char)name[i]) != 0;
+        if (digits && (name.size() == 9 || name[9] == '-' || name[9] == '_' || name[9] == ' ') &&
+            (head == "CUSA" || head == "PPSA" || head == "PCSA" || head == "PCSE" || head == "PLAS" ||
+             head == "NPXS"))
+            return true;
+    }
+    return false;
+}
+
+/* deadline: 0 for none, else the clock (now_ms) at which a search gives up. */
+void find_games(const std::string &dir, int depth, std::vector<std::string> &out, long long deadline = 0,
+                bool *cut = nullptr)
+{
+    if (deadline && now_ms() > deadline)
+    {
+        if (cut)
+            *cut = true;
+        return;
+    }
     DIR *d = opendir(dir.c_str());
     if (!d)
         return;
     std::vector<std::string> subdirs;
+    bool has_meta = false;
+    std::vector<std::string> apps; /* boot.dol / .elf: a Homebrew Channel app when meta.xml is beside it */
     while (dirent *entry = readdir(d))
     {
         const std::string name = entry->d_name;
         if (name.empty() || name[0] == '.')
             continue;
         const std::string path = dir + "/" + name;
-        struct stat st;
-        if (stat(path.c_str(), &st) != 0)
-            continue;
-        if (S_ISDIR(st.st_mode))
+        /* The folder listing says what most entries are; a stat (slow on a
+         * big exFAT drive) only for those it doesn't. */
+        bool is_dir = false, is_file = false;
+#ifdef DT_DIR
+        if (entry->d_type == DT_DIR)
+            is_dir = true;
+        else if (entry->d_type == DT_REG)
+            is_file = true;
+        else
+#endif
         {
-            static const char *const skip[] = {"system", "cores", "info", "sce_sys", "sce_module", "licenses",
-                                               "savefiles", "porpoise", "dolphin-emu", "homebrew", "Sys"};
-            bool skipped = false;
-            for (const char *k : skip)
-                skipped |= name == k;
-            if (!skipped)
+            struct stat st;
+            if (stat(path.c_str(), &st) != 0)
+                continue;
+            is_dir = S_ISDIR(st.st_mode);
+            is_file = !is_dir;
+        }
+        if (is_dir)
+        {
+            if (!skipped_folder(name))
                 subdirs.push_back(path);
         }
+        else if (!is_file)
+            continue;
         else if (is_game_file(name))
             out.push_back(path);
         else if (extension(name) == "dol" || extension(name) == "elf")
-        {
-            /* A Homebrew Channel app: boot.dol (or .elf) beside its meta.xml. */
-            struct stat meta;
-            if (stat((dir + "/meta.xml").c_str(), &meta) == 0)
-                out.push_back(path);
-        }
+            apps.push_back(path);
+        else if (name == "meta.xml")
+            has_meta = true;
     }
     closedir(d);
+    if (has_meta)
+        out.insert(out.end(), apps.begin(), apps.end());
     if (depth > 0)
         for (const std::string &sub : subdirs)
-            find_games(sub, depth - 1, out);
+            find_games(sub, depth - 1, out, deadline, cut);
 }
 } // namespace
 
@@ -330,18 +384,34 @@ std::string play_time_text(long long seconds)
     return trf("{h} h {m} min", {{"h", std::to_string(h)}, {"m", std::to_string(m % 60)}});
 }
 
-void Library::scan(const LibraryPaths &paths)
+std::vector<std::string> find_game_files(const std::vector<std::string> &roots, int limit_ms,
+                                         std::vector<std::string> *cut)
 {
-    paths_ = paths;
-    games_.clear();
     std::vector<std::string> files;
     /* Every place searched goes four folders deep, the usual ones and the
      * drives as much as the folders the player adds, so games sorted into
      * subfolders on a USB drive (games/Wii/Series/...) are found by themselves. */
-    for (const std::string &root : paths.roots)
-        find_games(root, 4, files);
-    for (const std::string &root : paths.deep)
-        find_games(root, 4, files);
+    for (const std::string &root : roots)
+    {
+        bool was_cut = false;
+        find_games(root, 4, files, limit_ms > 0 ? now_ms() + limit_ms : 0, &was_cut);
+        if (was_cut && cut)
+            cut->push_back(root);
+    }
+    return files;
+}
+
+void Library::scan(const LibraryPaths &paths)
+{
+    std::vector<std::string> roots = paths.roots;
+    roots.insert(roots.end(), paths.deep.begin(), paths.deep.end());
+    scan_files(paths, find_game_files(roots, 0, nullptr));
+}
+
+void Library::scan_files(const LibraryPaths &paths, std::vector<std::string> files)
+{
+    paths_ = paths;
+    games_.clear();
     std::sort(files.begin(), files.end());
     files.erase(std::unique(files.begin(), files.end()), files.end());
     for (const std::string &path : files)

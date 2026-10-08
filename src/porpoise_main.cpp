@@ -820,13 +820,91 @@ bool install_ipl(const porpoise::ui::Game &game)
     return ok;
 }
 
+/* The search for games runs on its own thread: a big or slow drive (a
+ * large exFAT USB drive) once held Porpoise at its start for minutes. The
+ * console's own folders are read before the menus (start_library); the
+ * drives' games join the library when the search ends, and each place
+ * searched gives up after kSearchLimitMs. */
+constexpr int kSearchLimitMs = 15000;
+struct Search
+{
+    std::atomic<int> state{0}; /* 0 idle, 1 searching, 2 found (for the menu loop to take) */
+    bool again = false;        /* asked again while searching */
+    porpoise::ui::LibraryPaths paths;
+    std::vector<std::string> files, cut;
+    long long started_ns = 0;
+} g_search;
+
+std::vector<std::string> search_roots(const porpoise::ui::LibraryPaths &paths)
+{
+    std::vector<std::string> roots = paths.roots;
+    roots.insert(roots.end(), paths.deep.begin(), paths.deep.end());
+    return roots;
+}
+
+void *search_worker(void *)
+{
+    g_search.files = porpoise::ui::find_game_files(search_roots(g_search.paths), kSearchLimitMs, &g_search.cut);
+    g_search.state.store(2, std::memory_order_release);
+    return nullptr;
+}
+
 void rescan_library()
 {
+    if (g_search.state.load(std::memory_order_acquire) != 0)
+    {
+        g_search.again = true;
+        return;
+    }
+    g_search.paths = library_paths();
+    g_search.files.clear();
+    g_search.cut.clear();
+    g_search.started_ns = now_ns();
+    g_search.state.store(1, std::memory_order_release);
+    pthread_t thread;
+    if (create_title_thread(&thread, search_worker, nullptr) == 0)
+        pthread_detach(thread);
+    else
+        search_worker(nullptr); /* no thread: search here, as before */
+}
+
+/* From the menu loop: a search that has ended joins the library. */
+void take_search()
+{
+    if (g_search.state.load(std::memory_order_acquire) != 2 || !g_app.library_free())
+        return;
     g_app.release_covers();
-    g_library.scan(library_paths());
+    g_library.scan_files(g_search.paths, std::move(g_search.files));
+    g_search.files.clear();
     g_app.library_changed();
-    ps5::debug::mark_value("main: games after a new search", static_cast<long long>(g_library.games().size()));
+    ps5::debug::mark_value("main: games after the search", static_cast<long long>(g_library.games().size()));
+    ps5::debug::mark_value("main: the search took, ms", (now_ns() - g_search.started_ns) / 1000000);
+    for (const std::string &root : g_search.cut)
+        ps5::debug::mark(("main: the search gave up on " + root + " (too slow)").c_str());
+    g_search.state.store(0, std::memory_order_release);
     fetch_covers();
+    if (g_search.again)
+    {
+        g_search.again = false;
+        rescan_library();
+    }
+}
+
+/* At the start: the console's own folders now, for the first menus; the
+ * drives (and anything else slow) in the background. */
+void start_library()
+{
+    const porpoise::ui::LibraryPaths paths = library_paths();
+    std::vector<std::string> local;
+    for (const std::string &root : search_roots(paths))
+        if (root.rfind("/mnt/", 0) != 0)
+            local.push_back(root);
+    std::vector<std::string> cut;
+    g_library.scan_files(paths, porpoise::ui::find_game_files(local, kSearchLimitMs, &cut));
+    for (const std::string &root : cut)
+        ps5::debug::mark(("main: the search gave up on " + root + " (too slow)").c_str());
+    if (local.size() != search_roots(paths).size())
+        rescan_library();
 }
 
 /* The game's own controller extras: fast forward and quick save buttons,
@@ -2039,7 +2117,7 @@ int main()
     show_boot_mark();
     mark_start("start: Porpoise's mark on screen, ms");
 
-    g_library.scan(library_paths());
+    start_library();
     ps5::debug::mark_value("main: games in the library", static_cast<long long>(g_library.games().size()));
     mark_start("start: library read, ms");
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
@@ -2194,6 +2272,8 @@ int main()
             last_frame_ns = frame_now;
             if (entrance_frame(dt, frame_ms))
                 in = porpoise::ui::Input{}; /* the menus aren't on screen yet */
+            take_search();
+            g_app.set_searching(g_search.state.load(std::memory_order_relaxed) != 0);
             const auto action = g_app.update(in, dt);
             if (action == porpoise::ui::App::Action::SettingsChanged)
             {
