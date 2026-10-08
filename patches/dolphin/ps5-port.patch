@@ -1752,10 +1752,24 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..4651edce57 100644
+index c53281053f..6881d71e58 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
-@@ -25,6 +25,7 @@
+@@ -1,4 +1,5 @@
+ #include <cstdio>
++#include "Common/CPUDetect.h"
+ #include <libretro.h>
+ #include <string>
+ #include <functional>
+@@ -14,6 +15,7 @@
+ #include "Core/BootManager.h"
+ #include "Core/Config/GraphicsSettings.h"
+ #include "Core/Config/MainSettings.h"
++#include "Core/Config/SessionSettings.h"
+ #include "Core/Config/SYSCONFSettings.h"
+ #include "Core/ConfigManager.h"
+ #include "Core/Core.h"
+@@ -25,6 +27,7 @@
  #include "Core/HW/WiimoteReal/WiimoteReal.h"
  #include "Core/PowerPC/PowerPC.h"
  #include "Core/System.h"
@@ -1763,7 +1777,7 @@ index c53281053f..4651edce57 100644
  #include "DolphinLibretro/Audio.h"
  #include "DolphinLibretro/Input.h"
  #include "DolphinLibretro/Log.h"
-@@ -280,6 +281,8 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -280,6 +283,8 @@ bool retro_load_game(const struct retro_game_info* game)
    UICommon::Init();
    Libretro::Log::Init();
  
@@ -1772,7 +1786,7 @@ index c53281053f..4651edce57 100644
    if (Libretro::GBPlayer_active)
    {
      Config::SetBase(Config::MAIN_GBA_ROM_PATHS[Config::GBPLAYER_GBA_INDEX], Libretro::GBPlayer_rom_path);
-@@ -294,7 +297,31 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -294,7 +299,31 @@ bool retro_load_game(const struct retro_game_info* game)
    {
      Config::SetBase(Config::MAIN_GBA_ROM_PATHS[Config::GBPLAYER_GBA_INDEX], std::string{});
    }
@@ -1804,7 +1818,7 @@ index c53281053f..4651edce57 100644
    Discord::SetDiscordPresenceEnabled(false);
    Common::SetEnableAlert(false);
    Common::SetAbortOnPanicAlert(false);
-@@ -303,6 +330,18 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -303,6 +332,18 @@ bool retro_load_game(const struct retro_game_info* game)
    {
      // Log the message instead of showing a popup
      WARN_LOG_FMT(COMMON, "Suppressed popup: {} - {}", caption, text);
@@ -1823,7 +1837,7 @@ index c53281053f..4651edce57 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +396,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,10 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -1834,7 +1848,18 @@ index c53281053f..4651edce57 100644
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -737,6 +780,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +691,10 @@ bool retro_load_game(const struct retro_game_info* game)
+   NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
+   NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
+   NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
++  // Porpoise: what the JIT may use of this CPU (FMA and AVX make the game's
++  // paired-single maths shorter).
++  NOTICE_LOG_FMT(BOOT, "CPU: {} | FMA used = {}", cpu_info.Summarize(),
++                 Config::Get(Config::SESSION_USE_FMA) ? "Yes" : "No");
+ 
+   Libretro::FrameTiming::Init();
+   Libretro::Audio::Init();
+@@ -737,6 +786,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -1847,7 +1872,7 @@ index c53281053f..4651edce57 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +853,7 @@ void retro_unload_game(void)
+@@ -804,6 +859,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
