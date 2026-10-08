@@ -8,7 +8,7 @@
 - **Inverted sticks:** the control stick and the C-stick, up-down, left-right or both, for each game.
 - **Scanlines, Shadow mask and LCD** screen filters.
 - **First-start setup** questions, and a **Diagnostic test** in Settings → About.
-- **Optimizations and fixes for reported bugs.**
+- **Optimizations, stability improvements and fixes for reported bugs.**
 
 ### Also in 2.7
 - **Faster save states** (about half a second to save), with pictures of the whole image at any resolution.
@@ -22,6 +22,9 @@
 ### Catching up from an older version?
 - **2.5:** smoother sound and sound presets, an Audio tab in-game, the GameCube controller for Wii games, Dolphin's graphics mods, and controller extras (light bar colors, turbo, quick save buttons).
 - **2.1 and 2.1.1:** RetroAchievements with PS5-style trophy popups and achievement lists, your own cheats folder, custom buttons for every Wii controller, true widescreen per game, Porpoise's folder on extended storage or USB, and Online (beta) for WiiLink.
+
+### What's next 👀
+**Triforce** arcade support is in the works: the GameCube-based arcade board behind games like **Mario Kart Arcade GP 1 and 2**. Stay tuned on the **[Discord](https://discord.gg/GgDE5Vynyu)**.
 
 > [!TIP]
 > ### 💙 Enjoying Porpoise?

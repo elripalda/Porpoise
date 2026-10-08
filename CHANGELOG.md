@@ -20,7 +20,7 @@
 - **Download covers again**, for every game or just one.
 - **Stay in the sandbox** (Settings → Games) for consoles where freeing
   Porpoise closes it.
-- Optimizations and fixes for reported bugs.
+- Optimizations, stability improvements and fixes for reported bugs.
 
 ## 2.5 — 2026-10-06
 
