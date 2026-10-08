@@ -156,6 +156,53 @@ void App::show_setup_check(bool first_start)
     dialog_.checks = std::move(checks);
 }
 
+void App::run_diagnostic()
+{
+    /* What Porpoise can see (as Check my setup), the host's own checks, and
+     * a few of Porpoise's: then all of it saved with the logs. */
+    show_setup_check(false);
+    std::vector<std::pair<bool, std::string>> checks = std::move(dialog_.checks);
+    close_dialog();
+    if (diagnostics_)
+        for (auto &c : diagnostics_())
+            checks.push_back(std::move(c));
+    {
+        struct stat st;
+        const bool core = stat(PORPOISE_APP "/cores/dolphin_libretro.so", &st) == 0 && st.st_size > 0;
+        checks.emplace_back(core, core ? tr("Dolphin is in place.")
+                                       : tr("Dolphin's file is missing from Porpoise's folder: install Porpoise again."));
+    }
+    std::string usb;
+    const std::string where = save_report(usb);
+    if (!where.empty())
+        if (std::FILE *f = std::fopen((where + "/diagnostic.txt").c_str(), "w"))
+        {
+            std::fprintf(f, "Porpoise %s diagnostic test\n\n", build_label().c_str());
+            for (const auto &c : checks)
+                std::fprintf(f, "[%s] %s\n", c.first ? "ok" : "!!", c.second.c_str());
+            std::fclose(f);
+            if (!usb.empty())
+                for (int i = 0; i < 8; ++i)
+                {
+                    const std::string to = "/mnt/usb" + std::to_string(i) + "/" + usb;
+                    struct stat st;
+                    if (stat(to.c_str(), &st) == 0)
+                    {
+                        copy_file(where + "/diagnostic.txt", to + "/diagnostic.txt");
+                        break;
+                    }
+                }
+        }
+    open_dialog(DialogKind::Info, tr("Diagnostic test"),
+                where.empty() ? tr("The results couldn't be saved.")
+                : usb.empty() ? trf("Saved with the logs in {path}. Share them on the Discord.", {{"path", where}})
+                              : trf("Saved with the logs in {path}, and on your USB drive as {usb}. Share them on "
+                                    "the Discord.",
+                                    {{"path", where}, {"usb", usb}}),
+                "");
+    dialog_.checks = std::move(checks);
+}
+
 std::string App::save_report(std::string &usb)
 {
     usb.clear();
@@ -1062,6 +1109,10 @@ void App::build_settings()
     info("Discord", "discord.gg/GgDE5Vynyu",
          "Help, bug reports, news and the community, on the RIPALDA Discord. Scan the code with your phone to join.");
     rows_.back().key = "discord";
+    action("Diagnostic test",
+           "Cross checks what Porpoise can see and do on this console - the jailbreak, its folder, drives, games, "
+           "the last game's speed - and saves the results with the logs, to share on the Discord.",
+           "Run\xE2\x80\xA6", kRowDiagnostic);
     {
         SettingRow r;
         r.section = section;
@@ -1735,6 +1786,10 @@ App::Action App::activate_row(const SettingRow &row)
         open_dialog(DialogKind::Info, tr("Saves from the USB drive"), text, "");
         return Action::None;
     }
+    case kRowDiagnostic:
+        sfx(Sound::MenuScroll);
+        run_diagnostic();
+        return Action::None;
     case kRowSendReport:
     {
         sfx(Sound::MenuScroll);

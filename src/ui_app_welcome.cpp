@@ -90,10 +90,74 @@ App::Action App::update_welcome(bool left, bool right, double dt)
         settings_->save(settings_path_);
         restart_fresh();
         sfx(Sound::LaunchGame);
-        show_setup_check(true); /* the welcome and what Porpoise can see */
+        /* A few questions, then the welcome and what Porpoise can see. */
+        wizard_step_ = -1;
+        wizard_rescan_ = false;
+        wizard_next();
         return Action::SettingsChanged;
     }
     return Action::None;
+}
+
+/* The next question of the first start's setup (each a dialog with two
+ * answers; Circle keeps what is set). After the last, the setup check. */
+void App::wizard_next()
+{
+    ++wizard_step_;
+    const bool in_sandbox = sandboxed_;
+    const int steps = in_sandbox ? 4 : 3;
+    int step = wizard_step_;
+    if (!in_sandbox && step == 0)
+        step = wizard_step_ = 1; /* the sandbox question is only for a sandboxed start */
+#ifdef PORPOISE_DESKTOP
+    if (step <= 2)
+        step = wizard_step_ = 3; /* a computer: no sandbox, its own folders */
+#endif
+    const int shown = in_sandbox ? step + 1 : step;
+    const std::string title = trf("Set up Porpoise \xE2\x80\xA2 {n} of {all}",
+                                  {{"n", std::to_string(shown)}, {"all", std::to_string(steps)}});
+    switch (step)
+    {
+    case 0:
+        open_dialog(DialogKind::Wizard, title,
+                    tr("Porpoise started inside the app sandbox: it can't see /data or USB drives, and it asks your "
+                       "jailbreak to free it each time it starts. If your jailbreak closes Porpoise when it does, "
+                       "stay in the sandbox: games in /app0/porpoise/games still work."),
+                    tr("Free it each start"));
+        dialog_.no = tr("Stay in the sandbox");
+        dialog_.choice = settings_->stay_sandboxed ? 0 : 1;
+        return;
+    case 1:
+        open_dialog(DialogKind::Wizard, title,
+                    tr("Find your games by itself? Porpoise looks in /data/porpoise/games, /data/games, /data/roms, "
+                       "/data/iso and on USB drives. With a big drive full of other things, choose your own folders "
+                       "instead (Settings > Games > Add a game folder)."),
+                    tr("Find them"));
+        dialog_.no = tr("I'll choose folders");
+        dialog_.choice = settings_->auto_search ? 1 : 0;
+        return;
+    case 2:
+        open_dialog(DialogKind::Wizard, title,
+                    tr("Download box art and game info from GameTDB.com while the console is online?"),
+                    tr("Download"));
+        dialog_.no = tr("Not now");
+        dialog_.choice = settings_->download_covers ? 1 : 0;
+        return;
+    case 3:
+        open_dialog(DialogKind::Wizard, title,
+                    tr("Which buttons? PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B, as "
+                       "on the GameCube controller. Change it any time in Settings > Controls."),
+                    tr("PlayStation"));
+        dialog_.no = tr("GameCube");
+        dialog_.choice = settings_->button_layout == porpoise::pad::LayoutGameCube ? 0 : 1;
+        return;
+    default:
+        wizard_step_ = -1;
+        settings_->save(settings_path_);
+        build_settings();
+        show_setup_check(true); /* the welcome and what Porpoise can see */
+        return;
+    }
 }
 
 /* One look's card: a little picture of it, its name and what it is. */

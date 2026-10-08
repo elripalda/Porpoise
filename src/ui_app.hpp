@@ -376,6 +376,7 @@ private:
         RestartPorpoise, /* applied changes that need Porpoise started again: Restart now, or Later */
         RestartGame,     /* in a game: applied changes that need the game started again */
         CoversAgain,     /* every game's art downloaded again: Download, or Cancel */
+        Wizard,          /* the first start's setup, one question a step (wizard_step_) */
     };
     struct Dialog
     {
@@ -407,6 +408,10 @@ private:
     };
     AccountPanel acct_;
     std::function<RaState()> ra_state_;
+    /* The host's own checks for the diagnostic test (the jailbreak, the
+     * folder, the search, the last game's speed): ok and what was found. */
+    std::function<std::vector<std::pair<bool, std::string>>()> diagnostics_;
+    void run_diagnostic();
     std::function<bool(const std::string &, const std::string &)> ra_login_;
     std::function<void()> ra_logout_;
     /* L1 changes tab when it's let go, unless Square came while it was held
@@ -546,6 +551,10 @@ private:
 public:
     /* Whether Porpoise was left in the app sandbox (porpoise_main). */
     void set_sandboxed(bool sandboxed) { sandboxed_ = sandboxed; }
+    void set_diagnostics(std::function<std::vector<std::pair<bool, std::string>>()> checks)
+    {
+        diagnostics_ = std::move(checks);
+    }
     /* A search for games is running (Search for games now says so). */
     void set_searching(bool searching)
     {
@@ -818,6 +827,11 @@ private:
     Settings menu_draft_, menu_base_;
     std::vector<std::string> menu_changes_; /* applied in-game changes for the host, in turn */
     bool rescan_after_apply_ = false;
+    /* The first start's setup, after the look: the sandbox (when Porpoise is
+     * in it), finding games, covers, the buttons; then the setup check. */
+    int wizard_step_ = -1;
+    void wizard_next();
+    bool wizard_rescan_ = false;
     std::vector<std::string> covers_again_;
     std::string applied_note_; /* "Settings applied", for a moment in the help line */
     double applied_note_time_ = -100;

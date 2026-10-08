@@ -839,7 +839,73 @@ struct Search
     porpoise::ui::LibraryPaths paths;
     std::vector<std::string> files, cut;
     long long started_ns = 0;
+    long long last_ms = -1;             /* the last search's time, for the diagnostic test */
+    std::vector<std::string> last_cut;  /* and the places it gave up on */
 } g_search;
+
+/* The host's part of Settings > About > Diagnostic test. */
+std::vector<std::pair<bool, std::string>> diagnostics()
+{
+    using porpoise::ui::tr;
+    using porpoise::ui::trf;
+    std::vector<std::pair<bool, std::string>> out;
+#ifndef PORPOISE_DESKTOP
+    if (!g_jailbreak_closed.empty())
+    {
+        std::string stage = g_jailbreak_closed; /* "start: display open, ms" -> "display open" */
+        if (stage.rfind("start: ", 0) == 0)
+            stage = stage.substr(7);
+        if (stage.size() > 4 && stage.compare(stage.size() - 4, 4, ", ms") == 0)
+            stage.resize(stage.size() - 4);
+        out.emplace_back(false, trf("Last time, Porpoise closed while your jailbreak freed it (it got to: {stage}).",
+                                    {{"stage", stage}}));
+    }
+    if (g_sandboxed && g_stay_sandboxed)
+        out.emplace_back(true, tr("Stay in the sandbox is on: Porpoise doesn't ask your jailbreak to free it."));
+    else if (g_sandboxed && porpoise::jailbreak::root_put_back())
+        out.emplace_back(false, tr("Your jailbreak freed Porpoise in a way that hid its own files, so it stayed in "
+                                   "the sandbox."));
+    if (g_data_readonly)
+        out.emplace_back(false, tr("Your jailbreak freed Porpoise, but it can't write /data/porpoise, so its "
+                                   "settings and saves are in its app folder."));
+#endif
+    out.emplace_back(writable_dir(g_data), writable_dir(g_data)
+                                               ? trf("Porpoise's folder: {path}.", {{"path", g_data}})
+                                               : trf("Porpoise can't write to its folder ({path}).", {{"path", g_data}}));
+    if (g_search.last_ms >= 0)
+        out.emplace_back(g_search.last_ms < 10000,
+                         trf("The search for games took {s} s.",
+                             {{"s", std::to_string(g_search.last_ms / 1000) + "." +
+                                        std::to_string(g_search.last_ms / 100 % 10)}}));
+    for (const std::string &root : g_search.last_cut)
+        out.emplace_back(false, trf("The search gave up on {place} (too slow). Turn off Find games automatically "
+                                    "and add your game folder instead.",
+                                    {{"place", root}}));
+    /* The last game's speed, from its core.log: the middle of its speed lines. */
+    if (std::FILE *f = std::fopen(g_core_log.c_str(), "r"))
+    {
+        std::vector<int> speeds;
+        char line[512];
+        while (std::fgets(line, sizeof line, f))
+            if (const char *at = std::strstr(line, "% speed"))
+            {
+                const char *p = at;
+                while (p > line && p[-1] >= '0' && p[-1] <= '9')
+                    --p;
+                if (p < at)
+                    speeds.push_back(std::atoi(p));
+            }
+        std::fclose(f);
+        if (speeds.size() > 3)
+        {
+            speeds.erase(speeds.begin(), speeds.begin() + 2); /* its loading */
+            std::sort(speeds.begin(), speeds.end());
+            const int mid = speeds[speeds.size() / 2];
+            out.emplace_back(mid >= 95, trf("The last game ran at about {n}% speed.", {{"n", std::to_string(mid)}}));
+        }
+    }
+    return out;
+}
 
 std::vector<std::string> search_roots(const porpoise::ui::LibraryPaths &paths)
 {
@@ -887,6 +953,8 @@ void take_search()
     ps5::debug::mark_value("main: the search took, ms", (now_ns() - g_search.started_ns) / 1000000);
     for (const std::string &root : g_search.cut)
         ps5::debug::mark(("main: the search gave up on " + root + " (too slow)").c_str());
+    g_search.last_ms = (now_ns() - g_search.started_ns) / 1000000;
+    g_search.last_cut = g_search.cut;
     g_search.state.store(0, std::memory_order_release);
     fetch_covers();
     if (g_search.again)
@@ -2181,6 +2249,7 @@ int main()
     read_latest_release();
     apply_settings();
     g_app.set_sandboxed(g_sandboxed);
+    g_app.set_diagnostics(diagnostics);
     if (!g_sandboxed && !g_settings.setup_checked)
     {
         /* The first start: a look to begin with, then the welcome and what

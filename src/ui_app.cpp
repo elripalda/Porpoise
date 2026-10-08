@@ -880,6 +880,18 @@ App::Action App::update_dialog(bool left, bool right)
             leave_tab_ = -1; /* keep editing */
             leave_game_settings_ = false;
         }
+        if (dialog_.kind == DialogKind::Wizard && wizard_step_ >= 0)
+        {
+            /* Circle: what is set stays; on to the next question. */
+            close_dialog();
+            wizard_next();
+            if (wizard_step_ < 0)
+            {
+                rescan_after_apply_ = wizard_rescan_;
+                return Action::SettingsChanged;
+            }
+            return Action::None;
+        }
         close_dialog();
         if (welcome_after_dialog_)
         {
@@ -901,6 +913,36 @@ App::Action App::update_dialog(bool left, bool right)
                 start_welcome(); /* Start fresh */
                 return Action::None;
             }
+        }
+        if (kind == DialogKind::Wizard && wizard_step_ >= 0)
+        {
+            /* The answer is kept at once (the first start's own settings). */
+            const bool yes = choice == 1;
+            switch (wizard_step_)
+            {
+            case 0:
+                settings_->stay_sandboxed = !yes;
+                break;
+            case 1:
+                wizard_rescan_ |= settings_->auto_search != yes;
+                settings_->auto_search = yes;
+                break;
+            case 2:
+                settings_->download_covers = settings_->download_info = yes;
+                break;
+            case 3:
+                settings_->button_layout = yes ? porpoise::pad::LayoutPlayStation : porpoise::pad::LayoutGameCube;
+                break;
+            }
+            settings_->save(settings_path_);
+            const bool rescan = wizard_rescan_;
+            wizard_next();
+            if (wizard_step_ < 0)
+            {
+                rescan_after_apply_ = rescan;
+                return Action::SettingsChanged; /* main: stay in the sandbox, buttons, covers, the search */
+            }
+            return Action::None;
         }
         if (kind == DialogKind::ApplyChanges)
         {
