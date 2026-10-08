@@ -3,7 +3,8 @@
  * filter. Copyright (C) 2026 Ruben (Project Porpoise), GPL-3.0-or-later.
  *
  * params: x filter (0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS,
- *           6 soft VHS, 7 8-bit, 8 pocket LCD),
+ *           6 soft VHS, 7 8-bit, 8 pocket LCD, 9 scanlines, 10 shadow mask,
+ *           11 LCD),
  *         y strength 0..1, z time in seconds, w colour filter (0 off,
  *         1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale: Accessibility).
  * size:   x, y the picture's texture size in texels; z, w its size on screen
@@ -156,6 +157,49 @@ vec3 pocket(vec2 uv, float amount)
     return mix(col * 0.82, col, grid) * mix(1.0, 0.95, amount);
 }
 
+/* Plain scanlines, as on a 240-line set: dark gaps between the game's lines
+ * and nothing else (no glow, no mask). */
+vec3 scanlines(vec2 uv, float amount)
+{
+    vec3 c = sample_rgb(uv);
+    float beam = 0.5 + 0.5 * cos(6.2831853 * uv.y * 240.0); /* 1 on a line, 0 between */
+    float lum = luma(c);
+    float line = smoothstep(0.0, mix(0.45, 0.8, lum), beam);
+    return clamp(c * mix(1.0, 0.25 + 0.75 * line, amount) * (1.0 + 0.3 * amount), 0.0, 1.0);
+}
+
+/* A TV's shadow mask: phosphor dots in staggered triads, the beam's lines, and
+ * a glow round the bright parts. Finer than Arcade CRT, with no bend. */
+vec3 shadow_mask(vec2 uv, float amount)
+{
+    vec3 col = crt(uv, amount * 0.7, 480.0, 0.0);
+    ivec2 px = ivec2(gl_FragCoord.xy);
+    int row = (px.y / 2) % 2;
+    int column = (px.x + row * 2) % 3; /* every other pair of rows shifts: the triads stagger */
+    vec3 dots = column == 0 ? vec3(1.0, 0.45, 0.45) : column == 1 ? vec3(0.45, 1.0, 0.45) : vec3(0.45, 0.45, 1.0);
+    float gap = (px.y % 2 == 1) ? mix(1.0, 0.82, amount) : 1.0; /* the dark between dot rows */
+    col *= mix(vec3(1.0), dots, 0.65 * amount) * gap;
+    return clamp(col * (1.0 + 0.45 * amount), 0.0, 1.0);
+}
+
+/* A sharp LCD: the game's own pixels (about 640 across) kept crisp, each made
+ * of red, green and blue stripes with a thin dark gap round it. */
+vec3 lcd(vec2 uv, float amount)
+{
+    vec2 cells = vec2(640.0, 640.0 * p.size.w / max(p.size.z, 1.0));
+    vec2 cell = floor(uv * cells);
+    vec2 f = fract(uv * cells);
+    vec3 c = sample_rgb((cell + 0.5) / cells); /* sharp: each cell one colour */
+    float sub = f.x * 3.0;
+    vec3 stripe = sub < 1.0 ? vec3(1.0, 0.55, 0.55) : sub < 2.0 ? vec3(0.55, 1.0, 0.55) : vec3(0.55, 0.55, 1.0);
+    float pixel_px = p.size.z / cells.x; /* screen pixels per cell */
+    float stripes = smoothstep(2.0, 5.0, pixel_px); /* only where the stripes can be seen */
+    float grid = smoothstep(0.0, 0.1, f.x) * smoothstep(0.0, 0.1, f.y) * smoothstep(1.0, 0.92, f.y);
+    vec3 col = c * mix(vec3(1.0), stripe, 0.5 * amount * stripes);
+    col *= mix(1.0, mix(0.55, 1.0, grid), amount * smoothstep(1.5, 3.0, pixel_px));
+    return clamp(col * (1.0 + 0.3 * amount), 0.0, 1.0);
+}
+
 /* As the menus' (shaders/ui.frag): daltonising after Fidaner et al. */
 vec3 colour_filter(vec3 c, int mode)
 {
@@ -210,6 +254,12 @@ void main()
         col = eight_bit(uv, amount);
     else if (filter_id == 8)
         col = pocket(uv, amount);
+    else if (filter_id == 9)
+        col = scanlines(uv, amount);
+    else if (filter_id == 10)
+        col = shadow_mask(uv, amount);
+    else if (filter_id == 11)
+        col = lcd(uv, amount);
     else
         col = texture(tex, uv).rgb;
     col = colour_filter(col, int(p.params.w + 0.5));

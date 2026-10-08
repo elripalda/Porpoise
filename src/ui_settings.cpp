@@ -53,7 +53,7 @@ const Field kFields[] = {
     {"texture_filter", &Settings::texture_filter, nullptr, 0, 2},
     {"antialiasing", &Settings::antialiasing, nullptr, 0, 6},
     {"resampling", &Settings::resampling, nullptr, 0, 6},
-    {"screen_filter", &Settings::screen_filter, nullptr, 0, 8},
+    {"screen_filter", &Settings::screen_filter, nullptr, 0, 11},
     {"filter_strength", &Settings::filter_strength, nullptr, 1, 10},
     {"fps_overlay", nullptr, &Settings::fps_overlay, 0, 1},
     {"shader_mode", &Settings::shader_mode, nullptr, 0, 3},
