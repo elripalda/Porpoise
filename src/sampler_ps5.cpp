@@ -171,6 +171,12 @@ Count g_counts[4096];
 
 /* Folds one window's stall samples into address counts and prints the most
  * frequent. Linear probing in a fixed table: the sampler allocates nothing. */
+constexpr int kHotMax = 48;
+pthread_mutex_t g_hot_mutex = PTHREAD_MUTEX_INITIALIZER;
+unsigned long long g_hot_rips[kHotMax];
+unsigned g_hot_counts[kHotMax];
+int g_hot_n = 0;
+
 void report(std::uint32_t from, std::uint32_t to, std::uint32_t stall_samples)
 {
     std::memset(g_counts, 0, sizeof(g_counts));
@@ -295,6 +301,15 @@ void report(std::uint32_t from, std::uint32_t to, std::uint32_t stall_samples)
     }
     if (!g_leaves)
         return;
+    /* The busiest thread's hottest places are kept for ps5_sampler_hot (the
+     * emulated CPU's, which Porpoise has the core tell as the game's code). */
+    std::uint32_t busiest = kMaxThreads;
+    for (std::uint32_t thread = 0; thread < kMaxThreads; ++thread)
+        if (busy[thread] >= 100 && (busiest == kMaxThreads || busy[thread] > busy[busiest]))
+            busiest = thread;
+    unsigned long long hot_rips[kHotMax];
+    unsigned hot_counts[kHotMax];
+    int hot_n = 0;
     for (std::uint32_t thread = 0; thread < kMaxThreads; ++thread)
     {
         if (busy[thread] < 100)
@@ -330,8 +345,22 @@ void report(std::uint32_t from, std::uint32_t to, std::uint32_t stall_samples)
             std::fprintf(stderr, "sampler: leaf thread=%u rip=0x%llx n=%u\n", thread,
                          static_cast<unsigned long long>(g_counts[best].rip << 4),
                          g_counts[best].samples);
+            if (thread == busiest && hot_n < kHotMax)
+            {
+                hot_rips[hot_n] = static_cast<unsigned long long>(g_counts[best].rip << 4);
+                hot_counts[hot_n] = g_counts[best].samples;
+                ++hot_n;
+            }
             g_counts[best].samples = 0;
         }
+    }
+    if (hot_n > 0)
+    {
+        pthread_mutex_lock(&g_hot_mutex);
+        std::memcpy(g_hot_rips, hot_rips, sizeof hot_rips);
+        std::memcpy(g_hot_counts, hot_counts, sizeof hot_counts);
+        g_hot_n = hot_n;
+        pthread_mutex_unlock(&g_hot_mutex);
     }
 }
 
@@ -543,4 +572,19 @@ extern "C" void ps5_sampler_add_thread(pthread_t thread, const void *start)
     g_thread_count.store(index + 1, std::memory_order_release);
     std::fprintf(stderr, "sampler: thread %u added, start=%p stack top=0x%llx\n", index, start,
                  static_cast<unsigned long long>(g_stack_top[index]));
+}
+
+/* The busiest thread's hottest places in the last report window (0 when the
+ * sampler isn't running): for the core to tell as the game's own code. */
+extern "C" int ps5_sampler_hot(unsigned long long *rips, unsigned *counts, int max)
+{
+    pthread_mutex_lock(&g_hot_mutex);
+    const int n = g_hot_n < max ? g_hot_n : max;
+    for (int i = 0; i < n; ++i)
+    {
+        rips[i] = g_hot_rips[i];
+        counts[i] = g_hot_counts[i];
+    }
+    pthread_mutex_unlock(&g_hot_mutex);
+    return n;
 }

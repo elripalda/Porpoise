@@ -2015,7 +2015,7 @@ index 1a1915cd1d..c6ee649d84 100644
    }
  #if defined(ANDROID) && defined(_DEBUG)
 diff --git a/Source/Core/DolphinLibretro/Main.cpp b/Source/Core/DolphinLibretro/Main.cpp
-index cd8753b666..d44103edeb 100644
+index cd8753b666..0fcf1f6456 100644
 --- a/Source/Core/DolphinLibretro/Main.cpp
 +++ b/Source/Core/DolphinLibretro/Main.cpp
 @@ -1,4 +1,5 @@
@@ -2190,6 +2190,78 @@ index cd8753b666..d44103edeb 100644
  
    RETRO_PERFORMANCE_STOP(dolphin_main_func);
  
+@@ -714,3 +840,71 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
+   }, true);
+ }
+ } // extern "C"
++
++// Porpoise's Performance report: the host addresses the sampler found busiest
++// on the emulated CPU's thread, told as the game's own code (PowerPC) - which
++// JIT block each falls in, its address and its instructions - so a slow game's
++// hot loop can be read. Called from the frontend's thread between frames; the
++// CPU thread is held while the block table is read.
++#include <algorithm>
++#include "Common/GekkoDisassembler.h"
++#include "Core/PowerPC/JitCommon/JitCache.h"
++#include "Core/PowerPC/JitInterface.h"
++#include "Core/PowerPC/MMU.h"
++
++extern "C" __attribute__((visibility("default"))) void
++porpoise_jit_describe(const unsigned long long* rips, const unsigned* counts, int n)
++{
++  if (!rips || !counts || n <= 0 || !Core::IsRunning(Core::System::GetInstance()))
++    return;
++  Core::System& system = Core::System::GetInstance();
++  Core::CPUThreadGuard guard(system);
++  struct Hot
++  {
++    u32 address = 0, size = 0;
++    unsigned samples = 0;
++    const u8* begin = nullptr;
++    const u8* end = nullptr;
++  };
++  std::vector<Hot> hot;
++  unsigned outside = 0;
++  for (int i = 0; i < n; ++i)
++  {
++    const u8* const rip = reinterpret_cast<const u8*>(static_cast<uintptr_t>(rips[i]));
++    bool found = false;
++    system.GetJitInterface().RunOnBlocks(guard, [&](const JitBlock& b) {
++      if (found)
++        return;
++      if ((rip >= b.near_begin && rip < b.near_end) || (rip >= b.far_begin && rip < b.far_end))
++      {
++        found = true;
++        for (Hot& h : hot)
++          if (h.address == b.effectiveAddress)
++          {
++            h.samples += counts[i];
++            return;
++          }
++        hot.push_back({b.effectiveAddress, b.originalSize, counts[i], b.near_begin, b.near_end});
++      }
++    });
++    if (!found)
++      outside += counts[i];
++  }
++  std::sort(hot.begin(), hot.end(), [](const Hot& a, const Hot& b) { return a.samples > b.samples; });
++  std::fprintf(stderr, "jit: %zu hot blocks; %u samples outside any block\n", hot.size(), outside);
++  for (std::size_t k = 0; k < hot.size() && k < 8; ++k)
++  {
++    const Hot& h = hot[k];
++    std::fprintf(stderr, "jit: block %08x, %u instructions, host %p..%p, samples %u\n", h.address,
++                 h.size, static_cast<const void*>(h.begin), static_cast<const void*>(h.end),
++                 h.samples);
++    for (u32 i = 0; i < h.size && i < 64; ++i)
++    {
++      const u32 at = h.address + i * 4;
++      const u32 op = PowerPC::MMU::HostRead_Instruction(guard, at);
++      std::fprintf(stderr, "jit:   %08x  %08x  %s\n", at, op,
++                   Common::GekkoDisassembler::Disassemble(op, at).c_str());
++    }
++  }
++  std::fflush(stderr);
++}
 diff --git a/Source/Core/DolphinLibretro/Video.cpp b/Source/Core/DolphinLibretro/Video.cpp
 index b4003b25b1..0275157ec2 100644
 --- a/Source/Core/DolphinLibretro/Video.cpp

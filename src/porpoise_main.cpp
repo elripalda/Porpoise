@@ -841,6 +841,7 @@ struct Search
     porpoise::ui::LibraryPaths paths;
     std::vector<std::string> files, cut;
     long long started_ns = 0;
+    long long took_ms = 0;              /* set by the worker as it ends */
     long long last_ms = -1;             /* the last search's time, for the diagnostic test */
     std::vector<std::string> last_cut;  /* and the places it gave up on */
 } g_search;
@@ -919,6 +920,7 @@ std::vector<std::string> search_roots(const porpoise::ui::LibraryPaths &paths)
 void *search_worker(void *)
 {
     g_search.files = porpoise::ui::find_game_files(search_roots(g_search.paths), kSearchLimitMs, &g_search.cut);
+    g_search.took_ms = (now_ns() - g_search.started_ns) / 1000000;
     g_search.state.store(2, std::memory_order_release);
     return nullptr;
 }
@@ -952,10 +954,10 @@ void take_search()
     g_search.files.clear();
     g_app.library_changed();
     ps5::debug::mark_value("main: games after the search", static_cast<long long>(g_library.games().size()));
-    ps5::debug::mark_value("main: the search took, ms", (now_ns() - g_search.started_ns) / 1000000);
+    ps5::debug::mark_value("main: the search took, ms", g_search.took_ms);
     for (const std::string &root : g_search.cut)
         ps5::debug::mark(("main: the search gave up on " + root + " (too slow)").c_str());
-    g_search.last_ms = (now_ns() - g_search.started_ns) / 1000000;
+    g_search.last_ms = g_search.took_ms; /* the search itself, not how long the menus kept it waiting */
     g_search.last_cut = g_search.cut;
     g_search.state.store(0, std::memory_order_release);
     fetch_covers();

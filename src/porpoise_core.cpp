@@ -1046,6 +1046,10 @@ bool read_whole_file(const char *path, std::vector<unsigned char> &out)
 
 /* libretro-common's rtime_localtime, which the core imports from its host
  * (RetroArch provided it): a thread-safe localtime. */
+#ifndef PORPOISE_DESKTOP
+extern "C" int ps5_sampler_hot(unsigned long long *rips, unsigned *counts, int max);
+#endif
+
 extern "C" struct tm *rtime_localtime(const time_t *timep, struct tm *result)
 {
     return localtime_r(timep, result);
@@ -1539,6 +1543,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     unsigned fps_frames = 0;
     bool rate_checked = false;
     int rate_frames = 0; /* since the core's rate was last looked at */
+    int jit_frames = 0, jit_described = 0; /* Performance report: the hot code, told now and then */
     Exit exit = Exit::Home;
     bool paused = false, combo_was = false;
     for (;;)
@@ -1725,6 +1730,25 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             /* Judge the vblank on the game itself, not on its boot. */
             pacer.start(content_hz(), "game");
         }
+#ifndef PORPOISE_DESKTOP
+        /* Performance report: a few times a game, the emulated CPU's busiest
+         * places told as the game's own code (the core's porpoise_jit_describe). */
+        if (rate_checked && jit_described < 4 && ++jit_frames >= (jit_described == 0 ? 1800 : 1200))
+        {
+            jit_frames = 0;
+            unsigned long long rips[48];
+            unsigned counts[48];
+            const int n = ps5_sampler_hot(rips, counts, 48);
+            using DescribeFn = void (*)(const unsigned long long *, const unsigned *, int);
+            const DescribeFn describe =
+                n > 0 ? reinterpret_cast<DescribeFn>(ps5_core_dlsym(h.library, "porpoise_jit_describe")) : nullptr;
+            if (n > 0 && describe)
+            {
+                ++jit_described;
+                describe(rips, counts, n);
+            }
+        }
+#endif
         /* A PAL game switched to 60 Hz in its own menu (Metroid Prime, Wind
          * Waker, F-Zero GX), or back: the core doesn't always say so, so its
          * rate is looked at every second and the pacing follows it. Paced at
