@@ -4,6 +4,8 @@
  *
  * The folder, as the console wants a homebrew title:
  *   eboot.bin                the forwarder (assets/forwarder/eboot.bin)
+ *   home-launcher.elf        what it hands the jailbreak's ELF loader to open
+ *                            Porpoise (an app can't start another itself)
  *   sce_module/libc.prx      Porpoise's own runtime, which it needs
  *   sce_sys/param.json       its title ID (PPSA98001...), name and version
  *   sce_sys/icon0.png        512x512, the tile
@@ -465,6 +467,7 @@ Result make(const std::string &data_dir, const Options &o)
     mkdir((r.folder + "/sce_sys").c_str(), 0777);
     mkdir((r.folder + "/sce_module").c_str(), 0777);
     if (!copy_file(PORPOISE_APP "/assets/forwarder/eboot.bin", r.folder + "/eboot.bin") ||
+        !copy_file(PORPOISE_APP "/assets/forwarder/home-launcher.elf", r.folder + "/home-launcher.elf") ||
         !copy_file(PORPOISE_APP "/sce_module/libc.prx", r.folder + "/sce_module/libc.prx"))
     {
         r.error = "couldn't copy the forwarder into " + r.folder;

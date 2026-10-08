@@ -28,3 +28,10 @@ PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
 "$tool" self --sign --in "$build/eboot.elf" --out "$out/eboot.bin" --magic 0x1D3D154F
 "$tool" self --inspect --file "$out/eboot.bin" >/dev/null
 printf '==> [forwarder] %s (%s bytes)\n' "$out/eboot.bin" "$(stat -c %s "$out/eboot.bin")"
+# The home launcher: a payload for the jailbreak's ELF loader (an app can't
+# start another app), built as the notification relay is.
+PS5_PAYLOAD_SDK="$sdk_root" "$sdk_root/bin/prospero-clang" -Wall -Werror -O2 \
+    -o "$build/home-launcher.elf" "$root/tools/home-launcher/home_launcher.c" -lSceSystemService -lSceUserService
+PS5_PAYLOAD_SDK="$sdk_root" "$sdk_root/bin/prospero-strip" "$build/home-launcher.elf"
+cp "$build/home-launcher.elf" "$out/home-launcher.elf"
+printf '==> [forwarder] %s (%s bytes)\n' "$out/home-launcher.elf" "$(stat -c %s "$out/home-launcher.elf")"
