@@ -2305,11 +2305,9 @@ void App::look_changed(int was)
     }
     if ((was == 1) == (settings_->ui_theme == 1) && was >= 0)
         return; /* only Revolution brings its own library filter and saves view */
-    int want = int(Library::Show::All);
-    if (settings_->ui_theme == 1)
-        for (const Game &g : lib_->games())
-            if (g.platform == "Wii")
-                want = int(Library::Show::Wii);
+    /* Every game, GameCube and Wii, in every look (Revolution once showed
+     * only Wii games when there were any). */
+    const int want = int(Library::Show::All);
     mc_wii_ = settings_->ui_theme == 1;
     wii_sel_ = 0;
     wii_scroll_ = 0;

@@ -514,6 +514,7 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_cheat_on_.clear();
     if (game && play && game->id.size() == 6 && !sys_dir_.empty())
     {
+        mkdir((data_dir_ + "/cheats").c_str(), 0777); /* where the player's own codes go */
         menu_cheats_ = cheats_for(sys_dir_, game->id, data_dir_ + "/cheats", game->platform == "Wii");
         for (const Cheat &c : menu_cheats_)
             menu_cheat_on_.push_back(c.default_on ? play->get(cheat_key(c, false)) != "1"

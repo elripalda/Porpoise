@@ -708,8 +708,9 @@ void App::add_game_rows(Settings &t, bool per_game)
            "/data/porpoise/bios/USA, EUR or JAP. Porpoise includes none.",
            &t.gc_bios);
     toggle("wii_online", "Online (beta)",
-           "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. For online play in "
-           "games, put a Wiimmfi patch code in Porpoise's cheats folder. Needs the console online.",
+           "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. Online play in games "
+           "uses the game's own patch for its server (Wiimmfi, a custom server, or a mod's own), not this switch. "
+           "Needs the console online.",
            &t.wii_online);
     if (!per_game)
         toggle("debug_logs", "Debug logs",
@@ -1182,6 +1183,7 @@ void App::add_cheat_rows()
     }
     if (game_for_->id.size() == 6 && !sys_dir_.empty())
     {
+        mkdir((data_dir_ + "/cheats").c_str(), 0777); /* where the player's own codes go */
         cheats_ = cheats_for(sys_dir_, game_for_->id, data_dir_ + "/cheats", game_for_->platform == "Wii");
         /* What Porpoise or the player turns on first (the widescreen code, the
          * player's own), so the 80 shown always hold them. */

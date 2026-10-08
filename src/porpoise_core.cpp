@@ -1560,6 +1560,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     long long fps_start = window_start;
     unsigned fps_frames = 0;
     bool rate_checked = false;
+    int rate_frames = 0; /* since the core's rate was last looked at */
     Exit exit = Exit::Home;
     bool paused = false, combo_was = false;
     for (;;)
@@ -1745,6 +1746,31 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 h.fps = now_av.timing.fps; /* a PAL game shows its 50 Hz only now */
             /* Judge the vblank on the game itself, not on its boot. */
             pacer.start(content_hz(), "game");
+        }
+        /* A PAL game switched to 60 Hz in its own menu (Metroid Prime, Wind
+         * Waker, F-Zero GX), or back: the core doesn't always say so, so its
+         * rate is looked at every second and the pacing follows it. Paced at
+         * the old 50, such a game ran slow with crackling sound. */
+        if (rate_checked && ++rate_frames >= 60)
+        {
+            rate_frames = 0;
+            retro_system_av_info now_av{};
+            h.api.get_system_av_info(&now_av);
+            /* Asking also marks the core's widescreen as told: its shape
+             * change is taken from the answer, then. */
+            if (now_av.geometry.aspect_ratio > 0.0f && std::fabs(now_av.geometry.aspect_ratio - h.aspect) > 0.01f)
+                h.aspect = now_av.geometry.aspect_ratio;
+            if (now_av.timing.fps > 10.0 && now_av.timing.fps < 200.0 && std::fabs(now_av.timing.fps - h.fps) > 0.5)
+            {
+                char line[120];
+                std::snprintf(line, sizeof line, "core: the game's rate changed: %.3f -> %.3f fps", h.fps,
+                              now_av.timing.fps);
+                ps5::debug::mark(line);
+                if (h.log)
+                    std::fprintf(h.log, "[porpoise] %s\n", line);
+                h.fps = now_av.timing.fps;
+                pacer.start(content_hz(), "game");
+            }
         }
 
         const long long hook_start = monotonic_ns();

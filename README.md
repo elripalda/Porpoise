@@ -485,9 +485,11 @@ ID, such as `GYQE01.ini`; 4 or 3 letters for all regions), in Dolphin's
 format: `[ActionReplay]` or `[Gecko]` sections, as Dolphin writes them. They
 turn on by themselves when the game starts, and each appears in the game's
 settings under **Cheats and patches** (and the in-game **Patches** tab) with
-its own switch. Wiimmfi's online patch codes
-for a Wii game go here too (with **Settings → System → Online** for
-WiiConnect24 channels).
+its own switch. Porpoise makes the `cheats` folder the first time you open a
+game's cheats; you can also make it yourself. A Wii game's online patch codes
+(Wiimmfi, or one for a custom server) go here too. **Settings → System →
+Online** is only for the WiiConnect24 channels; it doesn't look for or need
+any code.
 
 ## Controls
 

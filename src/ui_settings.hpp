@@ -139,6 +139,7 @@ struct Settings
     /* Interface */
     bool reduced_motion = false;
     bool large_text = false; /* 2.0's Larger text: read once into text_size */
+    int loaded_version = 0; /* settings.ini's settings_version when read (not saved): for one-time changes */
     int ui_theme = 0;  /* the theme: porpoise::ui::ThemeId (0 Porpoise, 1 Revolution, ...) */
     int ui_palette = 0; /* the theme's colours: 0 its own, n palette n - 1 (ui_theme.hpp) */
     int ui_font = 0;    /* the menus' font: 0 the theme's own, n font_set(n - 1) */

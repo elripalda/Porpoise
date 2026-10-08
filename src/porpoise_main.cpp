@@ -290,7 +290,8 @@ void choose_data_dir()
     mkdir((g_data + "/games").c_str(), 0777);
     mkdir((g_data + "/saves").c_str(), 0777);
     mkdir((g_data + "/bios").c_str(), 0777); /* the player's own GameCube BIOS, if they have one */
-    mkdir((g_data + "/cheats").c_str(), 0777); /* the player's own codes, <game ID>.ini */
+    /* <data>/cheats (the player's own codes) is made when a game's cheats are
+     * first opened, not at every start. */
     g_settings_path = g_data + "/settings.ini";
     g_options_path = g_data + "/options.ini";
     g_saves_path = g_data + "/saves";
@@ -2120,6 +2121,14 @@ int main()
     start_library();
     ps5::debug::mark_value("main: games in the library", static_cast<long long>(g_library.games().size()));
     mark_start("start: library read, ms");
+    /* 2.7: Revolution shows GameCube games too; its old Wii-only filter goes. */
+    if (g_settings.loaded_version > 0 && g_settings.loaded_version < 14 && g_settings.ui_theme == 1 &&
+        g_library.show() == porpoise::ui::Library::Show::Wii)
+    {
+        g_library.set_show(porpoise::ui::Library::Show::All);
+        g_library.save();
+        g_settings.save(g_settings_path); /* settings_version 14: once */
+    }
     g_app.init(&g_gfx, &g_library, &g_settings, g_settings_path, g_options_path, g_saves_path);
     g_app.set_sys_dir(PORPOISE_APP "/system/dolphin-emu/Sys");
     porpoise::ui::widescreen::set_dir(PORPOISE_APP "/assets/widescreen");

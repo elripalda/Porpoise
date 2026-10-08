@@ -371,6 +371,8 @@ bool Settings::load(const std::string &path, bool overlay)
      * on the GameCube layout, PlayStation and Custom are a choice away. */
     /* 13: Output resolution gained "Match the PS5" first (and the default):
      * a chosen 1440p or 4K moves up one; 1080p, the old default, matches. */
+    if (!overlay)
+        loaded_version = version;
     if (!overlay && version < 13 && output_res > 0)
         output_res = std::min(output_res + 1, 3);
     if (!overlay && version < 11 && shader_mode == 0)
@@ -398,7 +400,7 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = open_atomic(path);
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 13\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 14\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     std::fprintf(f, "border = %s\n", border.c_str());
