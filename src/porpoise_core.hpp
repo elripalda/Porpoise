@@ -57,6 +57,7 @@ enum Menu
     kMenuLibrary = 2,
     kMenuHome = 3,   /* close Porpoise */
     kMenuRestart = 4, /* start the game over (and forget its quick-resume state) */
+    kMenuRelaunch = 5, /* back to the library, and the host starts the game afresh (settings read at its start) */
 };
 
 /* How a game ended. */

@@ -737,7 +737,14 @@ int App::update_game_menu(const Input &in, double dt)
         const int prompt = menu_prompt_;
         menu_prompt_ = 0;
         if (prompt == 2)
-            return menu_prompt_choice_ == 1 ? close(4) : 0; /* start the game over now, or Later */
+        {
+            if (menu_prompt_choice_ != 1)
+                return 0; /* Later */
+            /* Start the game afresh: back to the library for a moment, and
+             * straight in again with the new settings read at its start. */
+            menu_relaunch_ = true;
+            return close(5);
+        }
         const int answer = menu_prompt_answer_;
         if (menu_prompt_choice_ == 1)
         {
@@ -1575,13 +1582,17 @@ void App::draw_game_menu(double time)
     if (menu_prompt_)
     {
         g.panel(x + 8, y + 8, w - 16, h - 16, rgba(0x050A24, 0.72f), 1, kR);
-        const float bw = w - 120, bh = 380, bx = x + 60, by = y + h * 0.5f - bh * 0.5f;
+        const float bw = w - 120, bh = 310, bx = x + 60, by = y + h * 0.5f - bh * 0.5f;
         g.panel(bx, by, bw, bh, rgba(0x0F1F63, 0.96f), 0.9f, kR, rgba(0x8BD9FF), 2.0f, 12, 0.2f);
         const bool restart = menu_prompt_ == 2;
         g.text_mid(Font::Bold, ts(32), bx + bw * 0.5f, by + 60, kWhite, Align::Center,
-                   tr(restart ? "Start the game over to finish?" : "Apply your changes?"));
+                   tr(restart ? "Restart the game to finish?" : "Apply your changes?"));
         const std::string message =
-            restart ? tr("Some of the changes take effect when the game starts again. Unsaved progress is lost.")
+            restart ? (menu_play_->quick_resume
+                           ? tr("Some of the changes take effect when the game starts again. Quick resume brings you "
+                                "back to this moment.")
+                           : tr("Some of the changes take effect when the game starts again. Unsaved progress is lost; "
+                                "a save state keeps it."))
                     : plural((long long)waiting.size(), "You changed 1 setting. Circle keeps editing.",
                              "You changed {n} settings. Circle keeps editing.");
         float ly = by + 120;
@@ -1590,7 +1601,7 @@ void App::draw_game_menu(double time)
             g.text_mid(Font::Regular, ts(24), bx + bw * 0.5f, ly, kLavender, Align::Center, l);
             ly += 34;
         }
-        const std::string names[2] = {tr(restart ? "Start over now" : "Apply"), tr(restart ? "Later" : "Discard")};
+        const std::string names[2] = {tr(restart ? "Restart now" : "Apply"), tr(restart ? "Later" : "Discard")};
         const float cw = (bw - 90) * 0.5f, ch = 64, cyb = by + bh - 70;
         for (int b = 0; b < 2; ++b)
         {

@@ -120,6 +120,13 @@ public:
     /* The launch screen's entrance (0..1, about half a second): the library
      * still shows under it until it is 1. */
     float launch_intro(double time) const;
+    /* The game was left to start it afresh (applied changes that need it). */
+    bool take_relaunch()
+    {
+        const bool r = menu_relaunch_;
+        menu_relaunch_ = false;
+        return r;
+    }
     /* After CoversAgain: the games (IDs) whose art is downloaded again. */
     std::vector<std::string> take_covers_again()
     {
@@ -136,6 +143,7 @@ public:
     }
 #ifdef PORPOISE_HOST_PREVIEW
     void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
+    void preview_launch_start(double t) { launch_start_ = t; } /* tools/ui-preview: the entrance's clock */
     void preview_mapping(int kind, int row) /* tools/ui-preview: Customize buttons on a controller's tab */
     {
         map_target_ = settings_;
@@ -860,7 +868,7 @@ private:
      * (menu_prompt_answer_ is how it was closing), 2 start the game over for
      * applied changes that need it. menu_prompt_choice_: 1 the first button. */
     int menu_prompt_ = 0, menu_prompt_choice_ = 1, menu_prompt_answer_ = 1;
-    std::string menu_prompt_list_; /* the changes that need the game started again */
+    bool menu_relaunch_ = false;   /* the game left to start afresh */
     std::string menu_change_;
     int menu_tab_ = 0;   /* Game, Video, Graphics, Audio, Controls, Patches (and Achievements) */
     int menu_slot_ = 0;  /* the save-state slot under focus */

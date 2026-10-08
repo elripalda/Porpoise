@@ -410,6 +410,98 @@ int main(int argc, char **argv)
     const std::uint32_t kDown = 1u << 1, kRight = 1u << 3, kCross = 1u << 4, kCircle = 1u << 5,
                         kSquare = 1u << 6, kTriangle = 1u << 7, kR1 = 1u << 9;
 
+    /* PREVIEW_27=1: 2.7's Apply: Settings with changes waiting, the question
+     * on leaving, the restart question; the in-game menu the same way; the
+     * cover's glide into the launch screen; then stop. */
+    if (std::getenv("PREVIEW_27"))
+    {
+        if (const char *lang = std::getenv("PREVIEW_PLANG"))
+            porpoise::ui::apply_language(std::atoi(lang), "");
+        /* The glide: the library, then the entrance at a few moments. */
+        settle();
+        render("v27-glide-0", [&] { ui.draw(12.0); });
+        porpoise::ui::Game *sel = nullptr;
+        for (auto &gm : lib.games())
+            if (gm.cover && !sel)
+                sel = &gm;
+        bool begun = false;
+        for (double at : {0.08, 0.2, 0.32, 0.45, 0.7})
+        {
+            char name[32];
+            std::snprintf(name, sizeof name, "v27-glide-%03d", int(at * 1000));
+            render(name, [&] {
+                if (!begun)
+                {
+                    begun = true;
+                    ui.begin_launch(sel ? sel : &lib.games()[0]);
+                    ui.preview_launch_start(12.0);
+                }
+                if (ui.launch_intro(12.0 + at) < 1.0f)
+                    ui.draw(12.0 + at);
+                ui.draw_launch(12.0 + at);
+            });
+        }
+        ui.return_from_game();
+        settle();
+        /* Settings: two changes waiting. */
+        press(kR1, 2);
+        settle();
+        press(kRight); /* into Games */
+        press(kRight); /* Find games automatically: off */
+        press(kDown);
+        press(kRight); /* Download covers: off */
+        settle();
+        render("v27-settings-pending", [&] { ui.draw(12.0); });
+        press(kCircle); /* to the sections */
+        press(kCircle); /* leaving: Apply or Discard? */
+        settle();
+        render("v27-settings-ask", [&] { ui.draw(12.0); });
+        press(kCircle); /* keep editing */
+        settle();
+        press(kSquare); /* Apply */
+        settle();
+        render("v27-settings-applied", [&] { ui.draw(12.0); });
+        press(kDown, 1); /* Video */
+        press(kRight);
+        press(kRight); /* Output resolution */
+        press(kSquare);
+        settle();
+        render("v27-settings-restart", [&] { ui.draw(12.0); });
+        press(kCircle);
+        /* In a game: a change waiting, then the question on Resume. */
+        porpoise::ui::Game &g0 = lib.games()[0];
+        Texture *frame = gfx.texture_file(covers + "/PRVW07.png");
+        auto shot = [&](const char *name) {
+            render(name, [&] {
+                gfx.background();
+                if (frame)
+                    gfx.image(frame, 0, 0, 1920, 1080, rgba(0xFFFFFF));
+                ui.draw_game_menu(12.0);
+            });
+        };
+        auto tap = [&](std::uint32_t b, int times = 1) {
+            for (int t = 0; t < times; ++t)
+            {
+                Input in;
+                in.held = b;
+                ui.update_game_menu(in, 0.016);
+                for (int i = 0; i < 12; ++i)
+                    ui.update_game_menu(none, 0.016);
+            }
+        };
+        porpoise::Settings play = settings;
+        ui.open_game_menu(&g0, &play);
+        for (int i = 0; i < 40; ++i)
+            ui.update_game_menu(none, 0.016);
+        tap(kR1, 2); /* Graphics */
+        tap(kRight); /* Shader compilation */
+        shot("v27-ingame-pending");
+        tap(kCircle);
+        shot("v27-ingame-ask");
+        tap(kCross); /* Apply: the shaders take effect at the next start */
+        shot("v27-ingame-restart");
+        return 0;
+    }
     /* PREVIEW_ACH=1: a game's achievements on Details, its page, and the
      * in-game menu's Achievements tab; then stop. */
     if (std::getenv("PREVIEW_ACH"))

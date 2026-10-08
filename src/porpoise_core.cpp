@@ -1626,9 +1626,9 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                 ps5::debug::mark("core: started over");
                 continue;
             }
-            if (answer == kMenuLibrary || answer == kMenuHome)
+            if (answer == kMenuLibrary || answer == kMenuHome || answer == kMenuRelaunch)
             {
-                exit = answer == kMenuLibrary ? Exit::Library : Exit::Home;
+                exit = answer == kMenuHome ? Exit::Home : Exit::Library;
                 ps5::debug::mark(answer == kMenuLibrary ? "core: back to the library" : "core: closing Porpoise");
                 /* The picture fades to black, Porpoise's mark appears, and the
                  * core closes behind it: nothing on screen stops half-way. The

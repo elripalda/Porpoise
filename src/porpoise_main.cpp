@@ -2224,10 +2224,12 @@ int main()
 
     const double hz = porpoise::vk::refresh_hz();
     g_pacer.start(hz, "launcher");
+    porpoise::ui::Game *relaunch = nullptr; /* left to start afresh (in-game Apply) */
     for (;;)
     {
-        porpoise::ui::Game *launch = nullptr;
-        for (;;)
+        porpoise::ui::Game *launch = relaunch;
+        relaunch = nullptr;
+        while (!launch)
         {
             const porpoise::pad::State &pad = porpoise::pad::poll();
 #ifdef PORPOISE_DESKTOP
@@ -2710,6 +2712,11 @@ int main()
         apply_settings();
         porpoise::banner::pause(false);
         g_app.return_from_game();
+        if (g_app.take_relaunch() && exit == porpoise::core::Exit::Library)
+        {
+            ps5::debug::mark("main: starting the game again for its new settings");
+            relaunch = launch;
+        }
         if (exit == porpoise::core::Exit::Failed)
         {
             /* Which part didn't start: a file, or Dolphin itself (then no game
