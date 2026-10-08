@@ -232,6 +232,10 @@ struct Settings
     bool set(const std::string &key, const std::string &value);
     /* Its value as the file has it ("" for no such setting). */
     std::string get(const std::string &key) const;
+    /* The keys whose values differ from before's (settings not yet applied). */
+    std::vector<std::string> changed_keys(const Settings &before) const;
+    /* Takes those keys' values from another (an edit being applied). */
+    void copy_keys(const Settings &from, const std::vector<std::string> &keys);
     /* The Wii Remote's settings, for a Wii game (active) or not. */
     porpoise::pad::WiiConfig wii_config(bool active) const;
     static const std::vector<std::string> &wii_preset_names();

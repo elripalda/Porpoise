@@ -48,6 +48,7 @@ enum RowAction
     kRowImportSaves, /* Games > Saves from a USB drive (beta) */
     kRowDeveloperOff,
     kRowReinitialize, /* Interface > Reinitialize Porpoise: settings wiped, the first start again */
+    kRowCoversAgain,  /* Games > Download covers again (every game), or a game's own in its settings */
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

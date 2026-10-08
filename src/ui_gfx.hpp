@@ -239,8 +239,22 @@ public:
     bool toned() const { return tone_; }
     Color tone(Color c) const;
 
-    /* Drawing, in design-space pixels (1920x1080). */
-    void background();
+    /* Where a picture was drawn: the largest place it took in the last
+     * whole frame (the launch's cover glides from there). watch() names the
+     * picture for the frame being drawn. */
+    void watch(Texture *t) { watch_tex_ = t; }
+    bool watched(float rect[4]) const
+    {
+        if (watch_last_[2] <= 0)
+            return false;
+        for (int i = 0; i < 4; ++i)
+            rect[i] = watch_last_[i];
+        return true;
+    }
+
+    /* Drawing, in design-space pixels (1920x1080). alpha < 1: over what is
+     * drawn already (a screen fading in). */
+    void background(float alpha = 1.0f);
     void panel(float x, float y, float w, float h, Color fill, float bottom_mul, float radius,
                Color border = {}, float border_w = 0, float glow = 0, float sheen = 0);
     void image(Texture *t, float x, float y, float w, float h, Color tint = {}, float radius = 0);
@@ -405,6 +419,17 @@ private:
     float target_w_ = 1920, target_h_ = 1080;
     float time_ = 0, dim_ = 0;
     float layer_dx_ = 0, layer_dy_ = 0, layer_fade_ = 1;
+    Texture *watch_tex_ = nullptr;
+    float watch_cur_[4] = {0, 0, 0, 0}, watch_last_[4] = {0, 0, 0, 0}; /* x y w h */
+    void note_watched(Texture *t, float x0, float y0, float x1, float y1)
+    {
+        if (!t || t != watch_tex_ || (x1 - x0) * (y1 - y0) <= watch_cur_[2] * watch_cur_[3])
+            return;
+        watch_cur_[0] = x0;
+        watch_cur_[1] = y0;
+        watch_cur_[2] = x1 - x0;
+        watch_cur_[3] = y1 - y0;
+    }
     float intro_fade_ = 1, intro_dy_ = 0;
     Look look_{};
     Color map_colour(Color c) const;

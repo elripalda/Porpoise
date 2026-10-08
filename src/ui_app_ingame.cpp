@@ -494,6 +494,9 @@ void App::open_game_menu(Game *game, Settings *play)
 {
     menu_game_ = game;
     menu_play_ = play;
+    if (play)
+        menu_draft_ = menu_base_ = *play; /* changes wait for Apply */
+    menu_prompt_ = 0;
     menu_row_ = 0;
     menu_tab_ = kTabGame;
     menu_anim_ = 0;
@@ -577,7 +580,7 @@ int App::update_game_menu(const Input &in, double dt)
     if (!menu_play_)
         return 1;
 
-    const bool up = nav(BtnUp, rep_up_, dt), down = nav(BtnDown, rep_down_, dt);
+    bool up = nav(BtnUp, rep_up_, dt), down = nav(BtnDown, rep_down_, dt);
     const bool left = nav(BtnLeft, rep_left_, dt), right = nav(BtnRight, rep_right_, dt);
 
     /* The mapping screen or the Wii Remote setup, over the game. */
@@ -641,7 +644,7 @@ int App::update_game_menu(const Input &in, double dt)
     const int tabs = kTabCount + (menu_has_achievements() ? 1 : 0);
     if (menu_tab_ >= tabs)
         menu_tab_ = kTabGame;
-    if (pressed(BtnL1) || pressed(BtnR1))
+    if (!menu_prompt_ && (pressed(BtnL1) || pressed(BtnR1)))
     {
         menu_tab_ = (menu_tab_ + (pressed(BtnL1) ? tabs - 1 : 1)) % tabs;
         menu_row_ = 0;
@@ -649,7 +652,7 @@ int App::update_game_menu(const Input &in, double dt)
         sfx(Sound::MovingTab);
         return 0;
     }
-    if (menu_tab_ == kTabCount)
+    if (menu_tab_ == kTabCount && !menu_prompt_)
     {
         /* Achievements: the list, fresh every couple of seconds. */
         if (menu_game_ && time_ - ach_loaded_at_ > 2.0)
@@ -678,12 +681,14 @@ int App::update_game_menu(const Input &in, double dt)
         }
         return 0;
     }
-    Settings &p = *menu_play_;
+    Settings &p = menu_draft_; /* the rows change it; Apply hands it to the game */
     Patches patches;
     patches.cheats = &menu_cheats_;
     g_menu_game_id = menu_game_ ? menu_game_->id : std::string();
     std::vector<Row> rows = rows_for(menu_tab_, p, menu_game_ && menu_game_->platform == "Wii", &patches);
     const int count = int(rows.size());
+    if (menu_prompt_)
+        up = down = false; /* the question is answered first */
     if (up || down)
         menu_confirm_ = false; /* "press again to replace" is for the row it was said on */
     if (up)
@@ -713,8 +718,65 @@ int App::update_game_menu(const Input &in, double dt)
     };
     const bool combo = (held_ & (BtnOptions | BtnTouch)) == (BtnOptions | BtnTouch) &&
                        (prev_ & (BtnOptions | BtnTouch)) != (BtnOptions | BtnTouch);
+    if (menu_prompt_)
+    {
+        /* The question over the menu: left / right, Cross, Circle. */
+        if ((left && menu_prompt_choice_ != 1) || (right && menu_prompt_choice_ != 0))
+        {
+            menu_prompt_choice_ = left ? 1 : 0;
+            sfx(Sound::MenuScroll);
+        }
+        if (pressed(BtnCircle))
+        {
+            menu_prompt_ = 0; /* keep editing, or Later */
+            sfx(Sound::MovingTab);
+            return 0;
+        }
+        if (!pressed(BtnCross))
+            return 0;
+        const int prompt = menu_prompt_;
+        menu_prompt_ = 0;
+        if (prompt == 2)
+            return menu_prompt_choice_ == 1 ? close(4) : 0; /* start the game over now, or Later */
+        const int answer = menu_prompt_answer_;
+        if (menu_prompt_choice_ == 1)
+        {
+            apply_menu_pending();
+            if (menu_prompt_ == 2)
+                return 0; /* applied, and the game needs starting over: that question first */
+        }
+        else
+            menu_draft_ = *menu_play_; /* Discard */
+        return close(answer);
+    }
+    const bool waiting = !menu_draft_.changed_keys(*menu_play_).empty();
+    if (pressed(BtnSquare) && waiting)
+    {
+        apply_menu_pending();
+        return 0;
+    }
     if (pressed(BtnCircle) || combo)
+    {
+        if (waiting)
+        {
+            menu_prompt_ = 1;
+            menu_prompt_choice_ = 1;
+            menu_prompt_answer_ = 1;
+            sfx(Sound::DetailsFlip);
+            return 0;
+        }
         return close(1);
+    }
+    /* Leaving the game with changes not applied: asked first too. */
+    auto leave = [&](int answer) {
+        if (!waiting)
+            return close(answer);
+        menu_prompt_ = 1;
+        menu_prompt_choice_ = 1;
+        menu_prompt_answer_ = answer;
+        sfx(Sound::DetailsFlip);
+        return 0;
+    };
 
     const Row &row = rows[std::size_t(menu_row_)];
     const bool cross = pressed(BtnCross);
@@ -728,11 +790,11 @@ int App::update_game_menu(const Input &in, double dt)
         break;
     case Kind::Library:
         if (cross)
-            return close(2);
+            return leave(2);
         break;
     case Kind::Home:
         if (cross)
-            return close(3);
+            return leave(3);
         break;
     case Kind::Restart:
         if (cross)
@@ -831,11 +893,8 @@ int App::update_game_menu(const Input &in, double dt)
                 std::vector<std::string> keys = Settings::keys_in(game_settings_path(*menu_game_));
                 if (setups::apply(menu_setup_, p, &keys))
                 {
-                    mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-                    p.save_keys(game_settings_path(*menu_game_), keys);
-                    menu_change_ = "setup";
                     menu_borders_ = porpoise::borders::list();
-                    menu_note_ = trf("Setup {n} is on for this game.", {{"n", n}});
+                    menu_note_ = trf("Setup {n} is ready: Square applies it.", {{"n", n}});
                     menu_note_time_ = time_;
                     sfx(Sound::LaunchGame);
                 }
@@ -854,31 +913,14 @@ int App::update_game_menu(const Input &in, double dt)
             const Cheat &c = menu_cheats_[std::size_t(row.index)];
             const bool on = !menu_cheat_on_[std::size_t(row.index)];
             menu_cheat_on_[std::size_t(row.index)] = on;
-            std::vector<std::string> keys = Settings::keys_in(game_settings_path(*menu_game_));
             for (const std::string &k : {cheat_key(c, true), cheat_key(c, false)})
-            {
                 p.forget(k);
-                keys.erase(std::remove(keys.begin(), keys.end(), k), keys.end());
-            }
             const std::string k = on && !c.default_on ? cheat_key(c, true) : !on && c.default_on ? cheat_key(c, false) : "";
             if (!k.empty())
-            {
                 p.set(k, "1");
-                keys.push_back(k);
-            }
-            /* A cheat (not a patch) needs the game's cheats on, saved: this
-             * run may have them on only for its widescreen code. */
             if (on && c.kind != "OnFrame")
-            {
-                p.cheats = true;
-                if (std::find(keys.begin(), keys.end(), "cheats") == keys.end())
-                    keys.push_back("cheats");
-            }
-            mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-            p.save_keys(game_settings_path(*menu_game_), keys);
-            menu_note_ = tr("Takes effect the next time the game starts.");
-            menu_note_time_ = time_;
-            sfx(Sound::MenuScroll);
+                p.cheats = true; /* a cheat (not a patch) needs the game's cheats on (Apply saves it) */
+            sfx(Sound::MenuScroll); /* waits for Apply; takes effect the next time the game starts */
         }
         break;
     case Kind::Int:
@@ -938,21 +980,78 @@ int App::update_game_menu(const Input &in, double dt)
             also = {"wii_controller", "wii_grip", "wii_pointer", "wii_speed", "wii_screen_x", "wii_screen_y",
                     "wii_smooth", "wii_reach"};
     }
-    if (!key.empty() && menu_game_)
+    (void)save_key; /* the keys that differ are what Apply saves */
+    if (!key.empty())
+        sfx(Sound::MenuScroll); /* waits for Apply (Square, or when the menu closes) */
+    return 0;
+}
+
+namespace
+{
+/* In a game: changes that take effect only when it starts again. */
+bool needs_game_restart(const std::string &key)
+{
+    return key == "wide" || key == "shader_mode" || key == "dsp_accurate" || key == "audio_pull" ||
+           key.rfind("gfx_", 0) == 0 || key.rfind("dolphin.", 0) == 0 || key == "cheats";
+}
+} // namespace
+
+void App::apply_menu_pending()
+{
+    if (!menu_play_)
+        return;
+    const std::vector<std::string> pending = menu_draft_.changed_keys(*menu_play_);
+    if (pending.empty())
+        return;
+    menu_play_->copy_keys(menu_draft_, pending);
+    if (menu_game_)
     {
-        /* Saved as this game's own setting, so it sticks next time. */
+        /* Saved as this game's own settings, so they stick next time. */
         std::vector<std::string> keys = Settings::keys_in(game_settings_path(*menu_game_));
-        if (save_key && std::find(keys.begin(), keys.end(), key) == keys.end())
-            keys.push_back(key);
-        for (const std::string &k : also)
+        for (const std::string &k : pending)
             if (std::find(keys.begin(), keys.end(), k) == keys.end())
                 keys.push_back(k);
+        /* A code switched on needs the game's cheats on, saved: this run may
+         * have them on only for its widescreen code. */
+        const bool code = std::any_of(pending.begin(), pending.end(),
+                                      [](const std::string &k) { return k.rfind("dolphin.", 0) == 0; });
+        if (code && menu_play_->cheats && std::find(keys.begin(), keys.end(), "cheats") == keys.end())
+            keys.push_back("cheats");
+        /* A code's switch back to its default is no key at all. */
+        keys.erase(std::remove_if(keys.begin(), keys.end(),
+                                  [&](const std::string &k) {
+                                      return k.rfind("dolphin.", 0) == 0 && menu_play_->get(k).empty();
+                                  }),
+                   keys.end());
         mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-        p.save_keys(game_settings_path(*menu_game_), keys);
-        menu_change_ = key == "wii_preset" ? std::string("wii_setup") : key;
-        sfx(Sound::MenuScroll);
+        menu_play_->save_keys(game_settings_path(*menu_game_), keys);
     }
-    return 0;
+    /* The host applies each in turn (take_menu_change). */
+    std::string restart;
+    bool wii = false;
+    for (const std::string &k : pending)
+    {
+        if (k.rfind("wii_", 0) == 0)
+            wii = true;
+        else if (k.rfind("dolphin.", 0) != 0)
+            menu_changes_.push_back(k);
+        if (needs_game_restart(k))
+            restart = k;
+    }
+    if (wii)
+        menu_changes_.push_back("wii_setup"); /* the whole Wii Remote set-up, pointer included */
+    menu_draft_ = *menu_play_;
+    sfx(Sound::LaunchGame);
+    if (!restart.empty())
+    {
+        menu_prompt_ = 2;
+        menu_prompt_choice_ = 1;
+    }
+    else
+    {
+        menu_note_ = tr("Applied.");
+        menu_note_time_ = time_;
+    }
 }
 
 void App::set_sound_pulled(bool pulled)
@@ -1067,7 +1166,9 @@ void App::draw_game_menu(double time)
         return;
     }
     const float t = ease_out(menu_anim_);
-    Settings &p = *menu_play_;
+    Settings &p = menu_draft_; /* the rows change it; Apply hands it to the game */
+    const std::vector<std::string> waiting = menu_draft_.changed_keys(*menu_play_);
+    const Color kPending = rgba(0xFFC857);
     g.set_layer();
     g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.55f * t), 1, 0);
 
@@ -1218,6 +1319,21 @@ void App::draw_game_menu(double time)
         if (on)
             g.panel(rx, ry + 4, rw, row_h - 8, rgba(0x1D45B8, 0.9f), 0.7f, kR, kIcy, 2.2f, 8, 0.18f);
         const std::string label = row.label ? tr(row.label) : row.text;
+        bool row_waiting = false;
+        if (row.key && *row.key)
+            row_waiting = std::find(waiting.begin(), waiting.end(), std::string(row.key)) != waiting.end() ||
+                          (std::string(row.key) == "audio_preset" &&
+                           std::find_if(waiting.begin(), waiting.end(), [](const std::string &k) {
+                               return k.rfind("audio_", 0) == 0;
+                           }) != waiting.end());
+        if (row.kind == Kind::Cheat && row.index >= 0 && row.index < int(menu_cheats_.size()))
+        {
+            const Cheat &c = menu_cheats_[std::size_t(row.index)];
+            for (const std::string &k : {cheat_key(c, true), cheat_key(c, false)})
+                row_waiting |= std::find(waiting.begin(), waiting.end(), k) != waiting.end();
+        }
+        if (row_waiting)
+            g.panel(rx + 8, cy - 6, 12, 12, kPending, 1, 6); /* changed, not applied yet */
         g.text_mid(on ? Font::Bold : Font::SemiBold, ts(27), rx + 28, cy, on ? kWhite : kSoft, Align::Left,
                    row.label ? label : fit(g, on ? Font::Bold : Font::SemiBold, ts(27), label, rw * 0.62f));
         std::string value;
@@ -1272,7 +1388,8 @@ void App::draw_game_menu(double time)
         {
             const float right = rx + rw - 24;
             value = fit(g, Font::Bold, ts(25), value, rw * 0.45f);
-            g.text_mid(Font::Bold, ts(25), right - (on ? 30 : 0), cy, on ? kWhite : kSoft, Align::Right, value);
+            g.text_mid(Font::Bold, ts(25), right - (on ? 30 : 0), cy, row_waiting ? kPending : on ? kWhite : kSoft,
+                       Align::Right, value);
             if (on && arrows)
             {
                 const float vw = g.measure(Font::Bold, ts(25), value);
@@ -1383,6 +1500,12 @@ void App::draw_game_menu(double time)
             help = tr(help_for(focus, p));
         std::string text = note ? menu_note_ : help;
         bool warn = false;
+        if (!note && !waiting.empty() && !menu_slots_mode_)
+        {
+            text = plural((long long)waiting.size(), "1 change waiting: Square applies it.",
+                          "{n} changes waiting: Square applies them.");
+            warn = note = true;
+        }
         if (menu_slots_mode_ && !note)
         {
             const std::string n = std::to_string(menu_slot_ + 1);
@@ -1422,6 +1545,8 @@ void App::draw_game_menu(double time)
             prompts = {{Glyph::DPad, tr("Slot")},
                        {Glyph::Cross, tr(menu_slots_mode_ == 1 ? "Save" : "Load")},
                        {Glyph::Circle, tr("Back")}};
+        else if (!waiting.empty())
+            prompts.push_back({Glyph::Square, tr("Apply")});
         for (std::size_t i = 0; i < prompts.size(); ++i)
         {
             if (i > 0)
@@ -1442,6 +1567,39 @@ void App::draw_game_menu(double time)
         {
             g.glyph(Glyph::R1, right - tw - 30, py, 30, kWhite);
             g.glyph(Glyph::L1, right - tw - 76, py, 30, kWhite);
+        }
+    }
+
+    /* A question over the menu: Apply or Discard before it closes, or
+     * starting the game over for changes that need it. */
+    if (menu_prompt_)
+    {
+        g.panel(x + 8, y + 8, w - 16, h - 16, rgba(0x050A24, 0.72f), 1, kR);
+        const float bw = w - 120, bh = 380, bx = x + 60, by = y + h * 0.5f - bh * 0.5f;
+        g.panel(bx, by, bw, bh, rgba(0x0F1F63, 0.96f), 0.9f, kR, rgba(0x8BD9FF), 2.0f, 12, 0.2f);
+        const bool restart = menu_prompt_ == 2;
+        g.text_mid(Font::Bold, ts(32), bx + bw * 0.5f, by + 60, kWhite, Align::Center,
+                   tr(restart ? "Start the game over to finish?" : "Apply your changes?"));
+        const std::string message =
+            restart ? tr("Some of the changes take effect when the game starts again. Unsaved progress is lost.")
+                    : plural((long long)waiting.size(), "You changed 1 setting. Circle keeps editing.",
+                             "You changed {n} settings. Circle keeps editing.");
+        float ly = by + 120;
+        for (const std::string &l : wrap(g, Font::Regular, ts(24), message, bw - 60, 3))
+        {
+            g.text_mid(Font::Regular, ts(24), bx + bw * 0.5f, ly, kLavender, Align::Center, l);
+            ly += 34;
+        }
+        const std::string names[2] = {tr(restart ? "Start over now" : "Apply"), tr(restart ? "Later" : "Discard")};
+        const float cw = (bw - 90) * 0.5f, ch = 64, cyb = by + bh - 70;
+        for (int b = 0; b < 2; ++b)
+        {
+            const bool lit = (b == 0) == (menu_prompt_choice_ == 1);
+            const float cx = bx + 30 + b * (cw + 30);
+            g.panel(cx, cyb - ch * 0.5f, cw, ch, lit ? rgba(0x1F63F0, 0.95f) : rgba(0x07102E, 0.6f), 0.8f, kR,
+                    lit ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.85f), lit ? 2.0f : 1.4f);
+            g.text_mid(Font::Bold, ts(26), cx + cw * 0.5f, cyb, lit ? kWhite : kSoft, Align::Center,
+                       fit(g, Font::Bold, ts(26), names[b], cw - 24));
         }
     }
 

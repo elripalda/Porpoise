@@ -557,7 +557,7 @@ vec3 background_at(vec2 uv)
 
 vec4 background()
 {
-    return vec4(background_at(v_local), 1.0);
+    return vec4(background_at(v_local), v_color.a); /* below 1: a screen fading in over another */
 }
 
 /* A five-pointed star (after Inigo Quilez's sdStar5), point up on screen. */

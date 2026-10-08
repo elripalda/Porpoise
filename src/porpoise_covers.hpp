@@ -23,6 +23,9 @@ struct Request
     /* Asked for by the player: the game info again even if it is recent, and
      * art GameTDB lacked last time looked for again. */
     bool force = false;
+    /* Asked for by the player: these games' art downloaded again, in place
+     * of what is there (Download covers again). */
+    std::vector<std::string> again;
 };
 /* Where they come from. */
 constexpr const char *kFeedUrl = "https://raw.githubusercontent.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/Main/data/recommended.ini";

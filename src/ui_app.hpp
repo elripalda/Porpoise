@@ -100,6 +100,8 @@ public:
         Reinitialize, /* settings wiped: Porpoise starts again as at its first start */
         MoveData,     /* Porpoise's folder moves to move_target() */
         UseFolder,    /* the Porpoise folder already at move_target() becomes the one in use */
+        Restart,        /* close Porpoise and open it again (a setting that needs it) */
+        CoversAgain,    /* the art of take_covers_again()'s games downloaded again */
         StayInSandbox,  /* freeing Porpoise closed it: don't ask again (Stay in the sandbox on) */
         RetryJailbreak, /* freeing Porpoise closed it: ask again, restarting Porpoise */
     };
@@ -115,6 +117,23 @@ public:
 
     Game *launch_game() { return launch_; }
     void launch_cover_now(); /* the launching game's cover, loaded now (after the display changed hands) */
+    /* The launch screen's entrance (0..1, about half a second): the library
+     * still shows under it until it is 1. */
+    float launch_intro(double time) const;
+    /* After CoversAgain: the games (IDs) whose art is downloaded again. */
+    std::vector<std::string> take_covers_again()
+    {
+        std::vector<std::string> ids;
+        ids.swap(covers_again_);
+        return ids;
+    }
+    /* After SettingsChanged: whether the applied changes need a new search for games. */
+    bool take_rescan()
+    {
+        const bool r = rescan_after_apply_;
+        rescan_after_apply_ = false;
+        return r;
+    }
 #ifdef PORPOISE_HOST_PREVIEW
     void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
     void preview_mapping(int kind, int row) /* tools/ui-preview: Customize buttons on a controller's tab */
@@ -177,6 +196,12 @@ public:
     std::string take_menu_change()
     {
         std::string k;
+        if (!menu_changes_.empty())
+        {
+            k = menu_changes_.front();
+            menu_changes_.erase(menu_changes_.begin());
+            return k;
+        }
         k.swap(menu_change_);
         return k;
     }
@@ -339,6 +364,10 @@ private:
         MoveData,      /* Porpoise's folder to another drive */
         UseFolder,     /* a Porpoise folder already on a drive: use it (move_target_) */
         JailbreakClosed, /* freeing Porpoise closed it last time: Stay in the sandbox, or Try again */
+        ApplyChanges,    /* leaving Settings with changes not applied: Apply or Discard (Circle: keep editing) */
+        RestartPorpoise, /* applied changes that need Porpoise started again: Restart now, or Later */
+        RestartGame,     /* in a game: applied changes that need the game started again */
+        CoversAgain,     /* every game's art downloaded again: Download, or Cancel */
     };
     struct Dialog
     {
@@ -772,6 +801,30 @@ private:
     /* A game's own settings: the global ones with its changes on top. */
     Settings game_;
     std::vector<std::string> game_keys_;
+    /* Settings wait for Apply. The rows change a copy (draft_ for everything,
+     * game_ for one game, menu_draft_ in a game); base_ / game_base_ /
+     * menu_base_ are what was in effect, so the rows that differ are marked. */
+    Settings draft_, base_;
+    Settings game_base_;
+    std::vector<std::string> game_keys_base_;
+    Settings menu_draft_, menu_base_;
+    std::vector<std::string> menu_changes_; /* applied in-game changes for the host, in turn */
+    bool rescan_after_apply_ = false;
+    std::vector<std::string> covers_again_;
+    std::string applied_note_; /* "Settings applied", for a moment in the help line */
+    double applied_note_time_ = -100;
+    int leave_tab_ = -1, leave_dir_ = 0; /* where Settings was going when Apply or Discard was asked */
+    bool leave_game_settings_ = false;
+    bool leave_menu_ = false; /* in a game: the menu closes after Apply or Discard */
+    std::vector<std::string> pending_keys() const;
+    std::vector<std::string> menu_pending_keys() const;
+    bool row_pending(const SettingRow &row, const std::vector<std::string> &pending) const;
+    Action apply_pending();
+    void discard_pending();
+    void apply_menu_pending();
+    /* Asks Apply / Discard before leaving Settings; false when nothing waits. */
+    bool ask_before_leaving();
+    void finish_leaving();
     Game *game_for_ = nullptr;
 
     Card card_a_, card_b_;
@@ -803,6 +856,11 @@ private:
     bool menu_closing_ = false;
     int menu_answer_ = 0;
     bool menu_restart_armed_ = false; /* Start over asked once */
+    /* A question over the in-game menu: 1 Apply or Discard before it closes
+     * (menu_prompt_answer_ is how it was closing), 2 start the game over for
+     * applied changes that need it. menu_prompt_choice_: 1 the first button. */
+    int menu_prompt_ = 0, menu_prompt_choice_ = 1, menu_prompt_answer_ = 1;
+    std::string menu_prompt_list_; /* the changes that need the game started again */
     std::string menu_change_;
     int menu_tab_ = 0;   /* Game, Video, Graphics, Audio, Controls, Patches (and Achievements) */
     int menu_slot_ = 0;  /* the save-state slot under focus */
@@ -1022,5 +1080,9 @@ private:
     std::string launch_status_;
     float launch_progress_ = -1;
     double launch_start_ = 0;
+    /* The cover glide into the launch screen: where the game's cover was in
+     * the library's last frame (x y w h), when it was on screen. */
+    float launch_from_[4] = {0, 0, 0, 0};
+    bool launch_from_ok_ = false;
 };
 } // namespace porpoise::ui

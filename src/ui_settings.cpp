@@ -675,6 +675,46 @@ bool Settings::set(const std::string &key, const std::string &value)
     return true;
 }
 
+std::vector<std::string> Settings::changed_keys(const Settings &before) const
+{
+    std::vector<std::string> keys;
+    for (const Field &fd : kFields)
+        if ((fd.i && this->*fd.i != before.*fd.i) || (fd.b && this->*fd.b != before.*fd.b))
+            keys.push_back(fd.key);
+    if (border != before.border)
+        keys.push_back("border");
+    if (stay_sandboxed != before.stay_sandboxed)
+        keys.push_back("stay_sandboxed");
+    auto add_dolphin = [&](const std::vector<std::pair<std::string, std::string>> &from) {
+        for (const auto &kv : from)
+            if (get(kv.first) != before.get(kv.first) &&
+                std::find(keys.begin(), keys.end(), kv.first) == keys.end())
+                keys.push_back(kv.first);
+    };
+    add_dolphin(dolphin);
+    add_dolphin(before.dolphin);
+    return keys;
+}
+
+void Settings::copy_keys(const Settings &from, const std::vector<std::string> &keys)
+{
+    for (const std::string &k : keys)
+    {
+        if (k == "stay_sandboxed")
+            stay_sandboxed = from.stay_sandboxed;
+        else if (is_dolphin_key(k))
+        {
+            const std::string v = from.get(k);
+            if (v.empty())
+                forget(k);
+            else
+                set(k, v);
+        }
+        else
+            set(k, from.get(k));
+    }
+}
+
 std::string Settings::get(const std::string &key) const
 {
     if (key == "border")

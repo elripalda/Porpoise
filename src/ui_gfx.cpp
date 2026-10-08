@@ -1633,6 +1633,12 @@ void Gfx::begin(unsigned slot, float target_w, float target_h, float time, float
     layer_fade_ = 1;
     intro_fade_ = 1;
     intro_dy_ = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        watch_last_[i] = watch_cur_[i];
+        watch_cur_[i] = 0;
+    }
+    watch_tex_ = nullptr;
     ++frame_no_;
     uploads_left_ = 2;
     if (async_loads_)
@@ -1803,7 +1809,7 @@ void Gfx::fx(int which, float strength)
     push(nullptr, v);
 }
 
-void Gfx::background()
+void Gfx::background(float alpha)
 {
     Vertex v[4]{};
     float pos[4][4];
@@ -1813,7 +1819,7 @@ void Gfx::background()
     {
         std::memcpy(v[i].pos, pos[i], sizeof pos[i]);
         fill(v[i].local, {local[i][0], local[i][1]});
-        fill(v[i].color, {1, 1, 1, 1});
+        fill(v[i].color, {1, 1, 1, std::clamp(alpha, 0.0f, 1.0f)});
         fill(v[i].p0, {float(K_BACKGROUND), 0, 0, 0});
         fill(v[i].p1, {target_w_, target_h_, target_w_, target_h_});
     }
@@ -1864,6 +1870,7 @@ void Gfx::panel(float x, float y, float w, float h, Color fill_c, float bottom_m
 
 void Gfx::image(Texture *t, float x, float y, float w, float h, Color tint, float radius)
 {
+    note_watched(t, x, y, x + w, y + h);
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     float pos[4][4];
@@ -1902,6 +1909,7 @@ void Gfx::blob(float cx, float cy, float w, float h, Color c)
 
 void Gfx::image_part(Texture *t, float x, float y, float w, float h, const float uv[4], Color tint, float radius)
 {
+    note_watched(t, x, y, x + w, y + h);
     const float px = target_w_ / kDesignW;
     Vertex v[4]{};
     float pos[4][4];
@@ -1993,6 +2001,18 @@ void Gfx::quad3d(Texture *t, const Corner c[4], float shape_w, float shape_h, Co
 {
     if (!t)
         tint = tone(tint); /* a plain shape, not a picture */
+    if (t && t == watch_tex_ && !reflection)
+    {
+        float x0 = c[0].x, y0 = c[0].y, x1 = c[0].x, y1 = c[0].y;
+        for (int i = 1; i < 4; ++i)
+        {
+            x0 = std::min(x0, c[i].x);
+            y0 = std::min(y0, c[i].y);
+            x1 = std::max(x1, c[i].x);
+            y1 = std::max(y1, c[i].y);
+        }
+        note_watched(t, x0, y0, x1, y1);
+    }
     const float u0 = uv_rect ? uv_rect[0] : 0.0f, v0 = uv_rect ? uv_rect[1] : 0.0f;
     const float u1 = uv_rect ? uv_rect[2] : 1.0f, v1 = uv_rect ? uv_rect[3] : 1.0f;
     const float px = target_w_ / kDesignW;

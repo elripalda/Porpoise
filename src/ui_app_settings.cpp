@@ -549,11 +549,11 @@ void App::add_game_rows(Settings &t, bool per_game)
     if (!per_game)
     {
         /* Porpoise's own sound: the menus, not the games. */
-        toggle("menu_music", "Menu music", "The music that plays in Porpoise's menus.", &settings_->menu_music);
-        choice("music_volume", "Music volume", "How loud the menu music plays.", &settings_->music_volume, 0,
+        toggle("menu_music", "Menu music", "The music that plays in Porpoise's menus.", &t.menu_music);
+        choice("music_volume", "Music volume", "How loud the menu music plays.", &t.music_volume, 0,
                {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
-        toggle("menu_sounds", "Menu sounds", "The sounds of moving through the menus.", &settings_->menu_sounds);
-        choice("sounds_volume", "Sounds volume", "How loud the menu sounds play.", &settings_->sounds_volume, 0,
+        toggle("menu_sounds", "Menu sounds", "The sounds of moving through the menus.", &t.menu_sounds);
+        choice("sounds_volume", "Sounds volume", "How loud the menu sounds play.", &t.sounds_volume, 0,
                {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
     }
 
@@ -626,7 +626,7 @@ void App::add_game_rows(Settings &t, bool per_game)
         const auto &names = Settings::wii_preset_names();
         for (int i = 0; i < Settings::kWiiPresets; ++i)
         {
-            const Settings::WiiPreset &w = settings_->wii_presets[i];
+            const Settings::WiiPreset &w = t.wii_presets[i];
             presets.push_back(std::to_string(i + 1) + ": " + (w.used ? names[std::size_t(w.name)] : "empty"));
         }
         choice("wii_preset", "Wii preset",
@@ -716,7 +716,7 @@ void App::add_game_rows(Settings &t, bool per_game)
         toggle("debug_logs", "Debug logs",
                "For testing: Porpoise keeps notes on what it did in /data/porpoise/debug, for bug reports.",
                &t.debug_logs);
-    if (!per_game && settings_->developer)
+    if (!per_game && t.developer)
     {
         header("Developer");
         toggle("motion_readout", "Motion readout", "The controller's motion and the pointer, over the game.",
@@ -740,6 +740,15 @@ void App::add_game_rows(Settings &t, bool per_game)
 
 void App::build_settings()
 {
+    /* The rows show the settings with the changes not yet applied on top:
+     * what is in effect now (other screens may have changed it), plus those. */
+    {
+        const std::vector<std::string> pending = draft_.changed_keys(base_);
+        Settings fresh = *settings_;
+        fresh.copy_keys(draft_, pending);
+        base_ = *settings_;
+        draft_ = fresh;
+    }
     rows_.clear();
     std::string section;
     auto header = [&](const char *name) {
@@ -793,20 +802,24 @@ void App::build_settings()
 #ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("auto_search", "Find games automatically",
            "Looks in /data/porpoise/games, /data/games, /data/roms, /data/iso and on USB drives.",
-           &settings_->auto_search);
+           &draft_.auto_search);
     rows_.back().rescan = true;
 #endif
     toggle("download_covers", "Download covers",
            "Box art from GameTDB.com, saved in /data/porpoise/covers. Needs the console online.",
-           &settings_->download_covers);
+           &draft_.download_covers);
     toggle("download_info", "Download game info",
            "Descriptions, developers, release dates and disc art from GameTDB.com, for Details.",
-           &settings_->download_info);
-    for (std::size_t i = 0; i < settings_->folders.size(); ++i)
+           &draft_.download_info);
+    action("Download covers again",
+           "Gets every game's cover, box and disc art from GameTDB.com again, in place of what Porpoise has (your "
+           "own art too). For art that downloaded wrong or cut short. Needs the console online.",
+           "Download\xE2\x80\xA6", kRowCoversAgain);
+    for (std::size_t i = 0; i < draft_.folders.size(); ++i)
     {
         SettingRow r;
         r.section = section;
-        r.label = settings_->folders[i];
+        r.label = draft_.folders[i];
         r.help = tr("Porpoise looks in this folder and four levels below it. Cross stops looking here; files stay.");
         r.values = {tr("Remove")};
         r.action = kRowRemoveFolder;
@@ -858,11 +871,11 @@ void App::build_settings()
            "On: Porpoise doesn't ask your jailbreak to free it from the app sandbox. For jailbreaks that close "
            "Porpoise when they free it. Porpoise then can't see /data or USB drives; games in "
            "/app0/porpoise/games work. Takes effect the next time Porpoise starts.",
-           &settings_->stay_sandboxed);
+           &draft_.stay_sandboxed);
     toggle("sandbox_notice", "Sandbox message at start",
            "When the console starts Porpoise inside the app sandbox, says so and how to free it. Off: Porpoise "
            "just uses its own folder (games in /app0/porpoise/games).",
-           &settings_->sandbox_notice);
+           &draft_.sandbox_notice);
 #endif
     action("Add a game folder", "Pick any folder on the console or a USB drive to search for games.",
            "Choose\xE2\x80\xA6", kRowAddFolder);
@@ -891,7 +904,7 @@ void App::build_settings()
            "Copy in\xE2\x80\xA6", kRowImportSaves);
 #endif
 
-    add_game_rows(*settings_, false);
+    add_game_rows(draft_, false);
 
     header("Interface");
     {
@@ -900,7 +913,7 @@ void App::build_settings()
         r.key = "ui_language";
         r.label = tr("Language");
         r.help = tr("The language of Porpoise's menus. System follows your PS5.");
-        r.int_value = &settings_->ui_language;
+        r.int_value = &draft_.ui_language;
         r.order = language_order();
         for (int i : r.order)
             r.values.push_back(language_choice(i));
@@ -912,7 +925,7 @@ void App::build_settings()
         r.key = "ui_theme";
         r.label = tr("Theme");
         r.help = tr(th().about);
-        r.int_value = &settings_->ui_theme;
+        r.int_value = &draft_.ui_theme;
         for (int i = 0; i < kThemes; ++i)
             r.values.push_back(tr(theme(i).name));
         rows_.push_back(r);
@@ -924,7 +937,7 @@ void App::build_settings()
         r.key = "ui_palette";
         r.label = tr("Colors");
         r.help = tr("The theme's colors: its glass, its light and what is chosen.");
-        r.int_value = &settings_->ui_palette;
+        r.int_value = &draft_.ui_palette;
         r.values.push_back(tr("Theme default"));
         for (int i = 0; i < kPalettes; ++i)
             r.values.push_back(tr(palette(i).name));
@@ -936,29 +949,29 @@ void App::build_settings()
         r.key = "ui_font";
         r.label = tr("Font");
         r.help = tr("The letters across Porpoise. Each theme starts with its own; any font works with any theme.");
-        r.int_value = &settings_->ui_font;
+        r.int_value = &draft_.ui_font;
         r.values.push_back(tr("Theme default"));
         for (int i = 0; i < kFontSets; ++i)
             r.values.push_back(font_set(i).name);
         rows_.push_back(r);
     }
-    if (settings_->ui_theme == 1)
+    if (draft_.ui_theme == 1)
     {
         SettingRow r;
         r.section = section;
         r.key = "ui_layout";
         r.label = tr("Home screen");
         r.help = tr("Tiles: a grid you point at, twelve to a page. Library view: your games in the Library view below.");
-        r.int_value = &settings_->ui_layout;
+        r.int_value = &draft_.ui_layout;
         r.values = {tr("Tiles"), tr("Library view")};
         rows_.push_back(r);
         toggle("ui_pointer", "Point with the controller",
                "Move the controller to point at tiles and buttons. The touch pad turns it on and off too.",
-               &settings_->ui_pointer);
+               &draft_.ui_pointer);
     }
-    if (settings_->ui_theme == int(ThemeId::StarCube))
+    if (draft_.ui_theme == int(ThemeId::StarCube))
         choice("sc_games", "Games page", "Star Cube's Games page: your games as spinning discs, or as covers.",
-               &settings_->sc_games, {"Discs", "Covers"});
+               &draft_.sc_games, {"Discs", "Covers"});
     else
     {
         static const char *const kHelp[8] = {
@@ -970,17 +983,17 @@ void App::build_settings()
             "List: your games by name, the chosen one's box beside them. Up and down go through them.",
             "Stack: a deck of boxes; the front one flips away as you go.",
             "Helix: the boxes climbing round a turning column."};
-        choice("lib_view", "Library view", kHelp[std::clamp(settings_->lib_view, 0, 7)], &settings_->lib_view,
+        choice("lib_view", "Library view", kHelp[std::clamp(draft_.lib_view, 0, 7)], &draft_.lib_view,
                {"Cover flow", "Wheel", "Disc flow", "Shelf", "Box", "List", "Stack", "Helix"});
     }
-    if (settings_->ui_theme != int(ThemeId::StarCube))
+    if (draft_.ui_theme != int(ThemeId::StarCube))
     {
         static const char *const kHelp[4] = {
             "Cards: both memory cards side by side, their saves as icons.",
             "Blocks: one card at a time, drawn as the card itself with each save's blocks.",
             "By game: every save on both cards and the Wii, grouped by game.",
             "Cubes: both cards side by side, each save a little glass cube on a grid."};
-        choice("mc_view", "Memory Cards view", kHelp[std::clamp(settings_->mc_view, 0, 3)], &settings_->mc_view,
+        choice("mc_view", "Memory Cards view", kHelp[std::clamp(draft_.mc_view, 0, 3)], &draft_.mc_view,
                {"Cards", "Blocks", "By game", "Cubes"});
     }
     action("Reset all settings", "Every setting back to how Porpoise ships. Games, folders and saves stay.",
@@ -991,22 +1004,22 @@ void App::build_settings()
            "Reinitialize\xE2\x80\xA6", kRowReinitialize);
 
     header("Accessibility");
-    choice("text_size", "Text size", "Bigger labels across Porpoise.", &settings_->text_size,
+    choice("text_size", "Text size", "Bigger labels across Porpoise.", &draft_.text_size,
            {"Normal", "Large", "Larger"});
     choice("colour_filter", "Color filter",
            "For color blindness: moves the colors you may not tell apart to ones you can. Red-weak and "
            "green-weak help with reds and greens, blue-weak with blues and yellows.",
-           &settings_->colour_filter, {"Off", "Red-weak", "Green-weak", "Blue-weak", "Grayscale"});
+           &draft_.colour_filter, {"Off", "Red-weak", "Green-weak", "Blue-weak", "Grayscale"});
     toggle("colour_filter_games", "Color filter in games", "The same color filter on the game's picture too.",
-           &settings_->colour_filter_games);
+           &draft_.colour_filter_games);
     toggle("high_contrast", "High contrast", "Solid panels, clearer edges and brighter text.",
-           &settings_->high_contrast);
+           &draft_.high_contrast);
     toggle("reduced_motion", "Reduced motion", "Stops the moving lights and shortens animations.",
-           &settings_->reduced_motion);
+           &draft_.reduced_motion);
     toggle("still_background", "Still background", "The background holds still; everything else moves as usual.",
-           &settings_->still_background);
+           &draft_.still_background);
     toggle("big_prompts", "Larger button hints", "The button hints along the bottom of the screen, larger.",
-           &settings_->big_prompts);
+           &draft_.big_prompts);
 
     header("About");
     info("Porpoise", build_label(), "A GameCube and Wii emulator for PS5, powered by Dolphin.");
@@ -1027,7 +1040,7 @@ void App::build_settings()
     toggle("beta_updates", "Beta updates",
            "Offer test versions (pre-releases) too when they come out: newer, but less tested. A beta of Porpoise "
            "always offers the next beta.",
-           &settings_->beta_updates);
+           &draft_.beta_updates);
     if (!version_labels_.empty())
     {
         SettingRow r;
@@ -1060,7 +1073,7 @@ void App::build_settings()
     toggle("perf_profile", "Performance report",
            "For a game that runs slowly: from the next time Porpoise starts, it records where the emulator spends "
            "its time, for a bug report. Slows games a little; turn it off again afterwards.",
-           &settings_->perf_profile);
+           &draft_.perf_profile);
 
     /* Credits: Ruben first, his mark beside his name. */
     info("Created by", "Ruben (@elripalda)", "Porpoise, its menus, music and sounds: Ruben. @elripalda - ripalda.dev");
@@ -1118,6 +1131,17 @@ void App::build_game_settings()
     reset.values = {tr("Reset\xE2\x80\xA6")};
     reset.action = kRowResetGame;
     rows_.push_back(reset);
+    if (game_for_ && !game_for_->id.empty())
+    {
+        SettingRow art;
+        art.section = "This game";
+        art.label = tr("Download cover again");
+        art.help = tr("Gets this game's cover, box and disc art from GameTDB.com again, in place of what Porpoise has. "
+                      "Needs the console online.");
+        art.values = {tr("Download")};
+        art.action = kRowCoversAgain;
+        rows_.push_back(art);
+    }
     add_setup_rows(true);
     add_game_rows(game_, true);
     add_recommended_rows();
@@ -1435,9 +1459,7 @@ void App::toggle_recommended(int index)
         break;
     }
     }
-    mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-    game_.save_keys(game_settings_path(*game_for_), game_keys_);
-    const int row = settings_row_;
+    const int row = settings_row_; /* waits for Apply, like any change */
     build_game_settings();
     settings_row_ = std::clamp(row, 0, int(rows_.size()) - 1);
     sfx(on ? Sound::MovingTab : Sound::LaunchGame);
@@ -1475,6 +1497,8 @@ void App::open_game_settings(Game &g)
     const std::string path = game_settings_path(g);
     game_.load(path, true);
     game_keys_ = Settings::keys_in(path);
+    game_base_ = game_;
+    game_keys_base_ = game_keys_;
     on_rail_ = true;
     rail_ = 0;
     settings_row_ = 1;
@@ -1541,8 +1565,6 @@ void App::change_setting(int dir)
             if (std::find(game_keys_.begin(), game_keys_.end(), "cheats") == game_keys_.end())
                 game_keys_.push_back("cheats");
         }
-        mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-        game_.save_keys(game_settings_path(*game_for_), game_keys_);
         rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
         return;
     }
@@ -1551,7 +1573,7 @@ void App::change_setting(int dir)
         /* The sound rows follow each other: a preset sets several, and the
          * preset shown follows the rows. */
         const bool per_game = screen_ == Screen::GameSettings && game_for_;
-        Settings &t = per_game ? game_ : *settings_;
+        Settings &t = per_game ? game_ : draft_;
         const std::string key = r.key; /* r goes with the rebuild */
         if (key == "audio_preset")
             t.use_audio_preset(audio_preset_);
@@ -1563,20 +1585,16 @@ void App::change_setting(int dir)
             for (const std::string &k : keys)
                 if (std::find(game_keys_.begin(), game_keys_.end(), k) == game_keys_.end())
                     game_keys_.push_back(k);
-            mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-            game_.save_keys(game_settings_path(*game_for_), game_keys_);
             build_game_settings();
             return;
         }
-        settings_->save(settings_path_);
-        settings_->write_core_options(options_path_);
         build_settings();
         return;
     }
     if (r.key == "wide")
     {
         /* 2.0's hack switch gives way to the Widescreen choice. */
-        Settings &t = screen_ == Screen::GameSettings && game_for_ ? game_ : *settings_;
+        Settings &t = screen_ == Screen::GameSettings && game_for_ ? game_ : draft_;
         if (t.widescreen)
         {
             t.widescreen = false;
@@ -1605,30 +1623,21 @@ void App::change_setting(int dir)
     {
         if (!r.key.empty() && std::find(game_keys_.begin(), game_keys_.end(), r.key) == game_keys_.end())
             game_keys_.push_back(r.key);
-        mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-        game_.save_keys(game_settings_path(*game_for_), game_keys_);
         rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
         return;
     }
+    /* Everything else waits for Apply (apply_pending). */
     if (r.key == "ui_theme")
-        look_changed(theme_seen_);
+    {
+        /* A new theme brings its own colours and font; both can be changed after. */
+        draft_.ui_palette = 0;
+        draft_.ui_font = 0;
+    }
+    if (r.key == "wii_preset" && draft_.wii_preset > 0)
+        draft_.use_wii_preset(draft_.wii_preset - 1); /* a preset brings its whole set-up */
     if (r.key == "ui_theme" || r.key == "ui_layout" || r.key == "lib_view" || r.key == "mc_view" || r.key == "sc_games" ||
-        r.key == "ui_palette" || r.key == "ui_font")
+        r.key == "ui_palette" || r.key == "ui_font" || r.key == "wii_preset")
         build_settings(); /* rows and help that follow the look */
-    if (r.key == "wii_preset" && settings_->wii_preset > 0)
-    {
-        /* A preset brings its whole set-up. */
-        settings_->use_wii_preset(settings_->wii_preset - 1);
-        build_settings();
-    }
-    settings_->save(settings_path_);
-    settings_->write_core_options(options_path_);
-    if (r.key == "ui_language")
-    {
-        /* The menus change language at once. */
-        apply_language(settings_->ui_language, data_dir_ + "/lang");
-        build_settings();
-    }
 }
 
 App::Action App::activate_row(const SettingRow &row)
@@ -1777,20 +1786,15 @@ App::Action App::activate_row(const SettingRow &row)
         {
             if (setups::apply(row.setup, game_, &game_keys_))
             {
-                mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-                game_.save_keys(game_settings_path(*game_for_), game_keys_);
-                build_game_settings();
+                build_game_settings(); /* waits for Apply, like any change */
                 sfx(Sound::LaunchGame);
             }
             return Action::None;
         }
-        if (setups::apply(row.setup, *settings_))
+        if (setups::apply(row.setup, draft_))
         {
-            settings_->save(settings_path_);
-            settings_->write_core_options(options_path_);
             build_settings();
             sfx(Sound::LaunchGame);
-            return Action::SettingsChanged;
         }
         return Action::None;
 
@@ -1834,6 +1838,20 @@ App::Action App::activate_row(const SettingRow &row)
         rail_ = std::min(rail_, section_count() - 1);
         sfx(Sound::MovingTab);
         return Action::SettingsChanged;
+    case kRowCoversAgain:
+        if (screen_ == Screen::GameSettings && game_for_)
+        {
+            covers_again_ = {game_for_->id};
+            applied_note_ = tr("Downloading this game's art again\xE2\x80\xA6");
+            applied_note_time_ = time_;
+            sfx(Sound::LaunchGame);
+            return Action::CoversAgain;
+        }
+        open_dialog(DialogKind::CoversAgain, tr("Download every cover again?"),
+                    tr("Porpoise gets each game's cover, box and disc art from GameTDB.com again, in place of what "
+                       "it has, your own art too. It runs in the background."),
+                    tr("Download"));
+        return Action::None;
     case kRowResetGame:
         open_dialog(DialogKind::ResetGame, tr("Reset this game's settings?"),
                     tr("It forgets its own settings and follows your settings again."), tr("Reset"), true);
@@ -1869,15 +1887,24 @@ App::Action App::update_settings(bool up, bool down, bool left, bool right)
                 sfx(Sound::MenuScroll);
             }
         }
+        if (pressed(BtnSquare) && !pending_keys().empty())
+            return apply_pending();
         if (pressed(BtnCircle))
         {
             if (game)
-                close_game_settings();
+            {
+                leave_game_settings_ = true;
+                if (!ask_before_leaving())
+                    finish_leaving();
+            }
             else
-                set_tab(int(Tab::Library), -1);
+                set_tab(int(Tab::Library), -1); /* asks first when changes wait (set_tab) */
         }
         return Action::None;
     }
+    /* Square: Apply, from anywhere in Settings. */
+    if (pressed(BtnSquare) && !pending_keys().empty())
+        return apply_pending();
 
     /* Inside a section: up and down stay in it. */
     const std::string section = rows_[std::size_t(settings_row_)].section;
@@ -1943,21 +1970,170 @@ App::Action App::update_settings(bool up, bool down, bool left, bool right)
     }
     if (!row.bool_value && !row.int_value)
         return Action::None;
-    Action action = Action::None;
-    const Action changed = (row.rescan && !game) ? Action::Rescan : Action::SettingsChanged;
+    /* A change waits for Apply (Square, or when leaving Settings). */
     if (left)
     {
         change_setting(-1);
-        action = changed;
         sfx(Sound::MenuScroll);
     }
     if (right || pressed(BtnCross))
     {
         change_setting(+1);
-        action = changed;
         sfx(Sound::MenuScroll);
     }
-    return game ? Action::None : action;
+    return Action::None;
+}
+
+/* ---- Apply ------------------------------------------------------------------------------- */
+
+namespace
+{
+/* Settings that take effect only when Porpoise starts again. */
+bool needs_restart(const std::string &key)
+{
+    return key == "output_res" || key == "stay_sandboxed" || key == "perf_profile";
+}
+} // namespace
+
+std::vector<std::string> App::pending_keys() const
+{
+    if (screen_ == Screen::GameSettings && game_for_)
+    {
+        std::vector<std::string> keys = game_.changed_keys(game_base_);
+        auto add = [&](const std::vector<std::string> &a, const std::vector<std::string> &b) {
+            for (const std::string &k : a)
+                if (std::find(b.begin(), b.end(), k) == b.end() && std::find(keys.begin(), keys.end(), k) == keys.end())
+                    keys.push_back(k);
+        };
+        add(game_keys_, game_keys_base_);
+        add(game_keys_base_, game_keys_);
+        return keys;
+    }
+    return draft_.changed_keys(base_);
+}
+
+bool App::row_pending(const SettingRow &row, const std::vector<std::string> &pending) const
+{
+    if (row.header || row.action || pending.empty())
+        return false;
+    auto has = [&](const std::string &k) { return std::find(pending.begin(), pending.end(), k) != pending.end(); };
+    if (row.key == "cheat")
+        return row.folder >= 0 && row.folder < int(cheats_.size()) &&
+               (has(cheat_key(cheats_[std::size_t(row.folder)], true)) ||
+                has(cheat_key(cheats_[std::size_t(row.folder)], false)));
+    if (row.key == "audio_preset")
+        return has("audio_pull") || has("audio_buffer") || has("audio_fill") || has("audio_stretch");
+    return !row.key.empty() && has(row.key);
+}
+
+App::Action App::apply_pending()
+{
+    if (screen_ == Screen::GameSettings && game_for_)
+    {
+        if (pending_keys().empty())
+            return Action::None;
+        mkdir((data_dir_ + "/game-settings").c_str(), 0777);
+        game_.save_keys(game_settings_path(*game_for_), game_keys_);
+        game_base_ = game_;
+        game_keys_base_ = game_keys_;
+        const int row = settings_row_;
+        build_game_settings();
+        settings_row_ = std::clamp(row, 0, int(rows_.size()) - 1);
+        applied_note_ = tr("Applied: from the next time this game starts.");
+        applied_note_time_ = time_;
+        sfx(Sound::LaunchGame);
+        return Action::None;
+    }
+    const std::vector<std::string> pending = draft_.changed_keys(base_);
+    if (pending.empty())
+        return Action::None;
+    auto has = [&](const char *k) { return std::find(pending.begin(), pending.end(), k) != pending.end(); };
+    const int was_theme = settings_->ui_theme;
+    settings_->copy_keys(draft_, pending);
+    if (has("ui_theme"))
+    {
+        /* The theme's own view (look_changed), keeping the colours and font
+         * chosen with it. */
+        const int palette = settings_->ui_palette, font = settings_->ui_font;
+        look_changed(was_theme);
+        settings_->ui_palette = palette;
+        settings_->ui_font = font;
+        apply_look();
+    }
+    if (has("ui_language"))
+        apply_language(settings_->ui_language, data_dir_ + "/lang");
+    settings_->save(settings_path_);
+    settings_->write_core_options(options_path_);
+    std::string restart;
+    for (const SettingRow &r : rows_)
+    {
+        if (r.header || r.key.empty() || std::find(pending.begin(), pending.end(), r.key) == pending.end())
+            continue;
+        if (r.rescan)
+            rescan_after_apply_ = true;
+        if (needs_restart(r.key) && restart.find(r.label) == std::string::npos)
+            restart += "\n\xE2\x80\xA2 " + r.label;
+    }
+    base_ = draft_ = *settings_;
+    const int row = settings_row_;
+    build_settings();
+    settings_row_ = std::clamp(row, 0, int(rows_.size()) - 1);
+    sfx(Sound::LaunchGame);
+    if (!restart.empty())
+    {
+        open_dialog(DialogKind::RestartPorpoise, tr("Restart Porpoise to finish?"),
+                    tr("These take effect when Porpoise starts again:") + restart, tr("Restart now"));
+        dialog_.no = tr("Later");
+        dialog_.choice = 1;
+    }
+    else
+    {
+        applied_note_ = tr("Settings applied.");
+        applied_note_time_ = time_;
+    }
+    return Action::SettingsChanged;
+}
+
+void App::discard_pending()
+{
+    if (screen_ == Screen::GameSettings && game_for_)
+    {
+        game_ = game_base_;
+        game_keys_ = game_keys_base_;
+        build_game_settings();
+        return;
+    }
+    draft_ = base_;
+    build_settings();
+}
+
+bool App::ask_before_leaving()
+{
+    const std::size_t n = pending_keys().size();
+    if (n == 0)
+        return false;
+    open_dialog(DialogKind::ApplyChanges, tr("Apply your changes?"),
+                plural((long long)n, "You changed 1 setting. Apply it, or leave it as it was? Circle keeps editing.",
+                       "You changed {n} settings. Apply them, or leave them as they were? Circle keeps editing."),
+                tr("Apply"));
+    dialog_.no = tr("Discard");
+    dialog_.choice = 1;
+    return true;
+}
+
+void App::finish_leaving()
+{
+    if (leave_game_settings_)
+    {
+        leave_game_settings_ = false;
+        close_game_settings();
+    }
+    else if (leave_tab_ >= 0)
+    {
+        const int tab = leave_tab_;
+        leave_tab_ = -1;
+        set_tab(tab, leave_dir_);
+    }
 }
 
 /* ---- drawing ------------------------------------------------------------------------------- */
@@ -2049,7 +2225,29 @@ void App::draw_settings()
         subtitle = tr("Green is on for this game \xE2\x80\xA2 changes apply the next time it starts");
     else if (game)
         subtitle = tr("For this game only \xE2\x80\xA2 values in blue are its own");
-    g.text_mid(Font::Regular, ts(26), px + 50, py + 112, kLavender, Align::Left, subtitle);
+    const std::vector<std::string> pending = pending_keys();
+    const Color kPending = rgba(0xFFC857);
+    if (!pending.empty())
+        subtitle = plural((long long)pending.size(), "1 change waiting \xE2\x80\xA2 Square applies it",
+                          "{n} changes waiting \xE2\x80\xA2 Square applies them");
+    g.text_mid(Font::Regular, ts(26), px + 50, py + 112, pending.empty() ? kLavender : kPending, Align::Left,
+               subtitle);
+    if (!pending.empty())
+    {
+        /* The Apply button, top right of the panel (left of a code shown there). */
+        const std::string label = tr("Apply");
+        const float lw = g.measure(Font::Bold, ts(26), label);
+        const float bw = lw + 84, bh = 52;
+        const bool code_shown = !on_rail_ && settings_row_ >= 0 && settings_row_ < int(rows_.size()) &&
+                                (rows_[std::size_t(settings_row_)].label == tr("Report a bug") ||
+                                 rows_[std::size_t(settings_row_)].key == "discord" ||
+                                 rows_[std::size_t(settings_row_)].key == "creator");
+        const float bx = px + pw - bw - (code_shown ? 230 : 50), by = py + 64 - bh * 0.5f;
+        const float pulse = settings_->reduced_motion ? 0.0f : 0.5f + 0.5f * std::sin(float(time_) * 3.0f);
+        g.panel(bx, by, bw, bh, rgba(0x5A3A00, 0.55f + 0.2f * pulse), 0.9f, bh * 0.5f, kPending, 2.0f, 6, 0.2f);
+        g.glyph(Glyph::Square, bx + 32, by + bh * 0.5f, 30, kWhite);
+        g.text_mid(Font::Bold, ts(26), bx + 58, by + bh * 0.5f, kWhite, Align::Left, label);
+    }
 
     const float row_h = 80, row_x = px + 26, row_w = pw - 52;
     float y = py + 158;
@@ -2079,7 +2277,10 @@ void App::draw_settings()
         const bool on = !on_rail_ && i == settings_row_;
         const bool own = game && !r.key.empty() &&
                          std::find(game_keys_.begin(), game_keys_.end(), r.key) != game_keys_.end();
+        const bool waiting = row_pending(r, pending);
         const float cy = y + row_h * 0.5f;
+        if (waiting)
+            g.panel(row_x + 8, cy - 7, 14, 14, kPending, 1, 7); /* changed, not applied yet */
         if (on)
             ; /* the gliding highlight, above */
         else if (k + 1 < section_rows.size() && k + 1 < first + kVisible && (on_rail_ || section_rows[k + 1] != settings_row_))
@@ -2115,7 +2316,7 @@ void App::draw_settings()
             value = n <= 1 ? tr("1 player") : trf("{n} players", {{"n", std::to_string(n)}});
         }
         const float right = row_x + row_w - 24;
-        const Color value_c = own ? kCyan : (on ? kWhite : kSoft);
+        const Color value_c = waiting ? kPending : own ? kCyan : (on ? kWhite : kSoft);
         if (r.action == kRowUpdate)
             value = update_row_value();
         if (r.action)
@@ -2230,6 +2431,8 @@ void App::draw_settings()
         !update_note_.empty() &&
         time_ - update_note_time_ < 8.0)
         help = update_note_;
+    if (!applied_note_.empty() && time_ - applied_note_time_ < 4.0)
+        help = applied_note_;
     g.panel(px + 50, py + ph - 100, pw - 100, 1.5f, rgba(0x3D4F9E, 0.7f), 1, 0);
     {
         /* One line, or two smaller ones when it is long. */

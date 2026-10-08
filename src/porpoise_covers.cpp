@@ -437,9 +437,14 @@ bool start(const Request &request)
     for (const std::string &id : request.ids)
         if ((id.size() == 6 || id.size() == 4) && std::find(ids.begin(), ids.end(), id) == ids.end())
             ids.push_back(id);
-    if (request.covers)
+    auto again = [&](const std::string &id) {
+        return std::find(request.again.begin(), request.again.end(), id) != request.again.end();
+    };
+    if (!request.again.empty())
+        g.force = true; /* art GameTDB lacked last time is looked for again too */
+    if (request.covers || !request.again.empty())
         for (const std::string &id : ids)
-            if (!exists(g.dir + "/" + id + ".png") && !exists(g.dir + "/" + id + ".jpg"))
+            if (again(id) || (request.covers && !exists(g.dir + "/" + id + ".png") && !exists(g.dir + "/" + id + ".jpg")))
                 g.jobs.push_back({Job::Cover, id});
     if (!request.info_path.empty())
     {
@@ -450,15 +455,15 @@ bool start(const Request &request)
         if ((!fresh || request.force) && !ids.empty())
             g.jobs.push_back({Job::Info, ""});
     }
-    if (request.discs)
+    if (request.discs || !request.again.empty())
         for (const std::string &id : ids)
-            if (!exists(g.dir + "/" + id + ".disc.png"))
+            if (again(id) || (request.discs && !exists(g.dir + "/" + id + ".disc.png")))
                 g.jobs.push_back({Job::Disc, id});
     /* Backs of boxes whose fronts are already here (new covers bring theirs). */
-    if (request.covers)
+    if (request.covers || !request.again.empty())
         for (const std::string &id : ids)
-            if (exists(g.dir + "/" + id + ".png") &&
-                (!exists(g.dir + "/" + id + ".back.png") || !exists(g.dir + "/" + id + ".spine.png")))
+            if (again(id) || (request.covers && exists(g.dir + "/" + id + ".png") &&
+                              (!exists(g.dir + "/" + id + ".back.png") || !exists(g.dir + "/" + id + ".spine.png"))))
                 g.jobs.push_back({Job::Back, id});
     if (g.jobs.empty())
         return true;

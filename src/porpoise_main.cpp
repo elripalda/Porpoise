@@ -745,6 +745,7 @@ std::string install_dir()
 
 bool g_covers_again = false; /* a request came while a run was going: ask again once it ends */
 bool g_covers_force = false; /* the player asked for covers and info now (Sort & filter) */
+std::vector<std::string> g_covers_again_ids; /* Download covers again: these games' art in place of what's there */
 
 void fetch_covers(bool force = false)
 {
@@ -759,6 +760,7 @@ void fetch_covers(bool force = false)
     /* Asked for, it gets both, whatever the settings say about doing it by itself. */
     const bool covers = g_settings.download_covers || g_covers_force, info = g_settings.download_info || g_covers_force;
     request.force = g_covers_force;
+    request.again = g_covers_again_ids;
     request.covers = covers;
     request.discs = info;
     if (info)
@@ -782,7 +784,10 @@ void fetch_covers(bool force = false)
     if (g_covers_again && g_covers_force)
         porpoise::covers::stop(); /* the run going now ends early, and this one follows it */
     if (!g_covers_again)
+    {
         g_covers_force = false;
+        g_covers_again_ids.clear();
+    }
 }
 
 /* The player's own GameCube BIOS for a game's region, from <data>/bios/<USA|EUR|JAP>/IPL.bin,
@@ -1069,8 +1074,9 @@ int menu_paused(void *)
     in.stick_y = pad.left_y / 32768.0f;
     g_app.set_sound_pulled(porpoise::audio::pulling());
     const int answer = g_app.update_game_menu(in, 1.0 / 60.0);
-    /* Settings take effect right away. */
-    const std::string key = g_app.take_menu_change();
+    /* Applied settings take effect right away, each in turn. */
+    for (std::string key = g_app.take_menu_change(); !key.empty(); key = g_app.take_menu_change())
+    {
     if (key == "volume")
         porpoise::audio::set_volume(g_play.volume / 10.0f);
     else if (key == "muted")
@@ -1122,6 +1128,7 @@ int menu_paused(void *)
         if (key == "rumble")
             porpoise::pad::set_rumble_enabled(g_play.rumble);
         apply_game_controls(porpoise::pad::wii().active);
+    }
     }
     /* Save states, asked for in the menu, done here on the core's thread. */
     const porpoise::ui::App::MenuRequest request = g_app.take_menu_request();
@@ -2290,6 +2297,8 @@ int main()
 #ifndef PORPOISE_DESKTOP
                 porpoise::jailbreak::set_stay(g_settings.stay_sandboxed);
 #endif
+                if (g_app.take_rescan())
+                    rescan_library(); /* Find games automatically changed */
                 apply_settings();
                 read_latest_release(); /* Beta updates may have changed what counts as newer */
                 if (g_library.paths().info != shown_info_path())
@@ -2308,6 +2317,8 @@ int main()
                 porpoise::jailbreak::set_stay(true);
                 porpoise::jailbreak::forget_closed();
             }
+            if (action == porpoise::ui::App::Action::Restart)
+                restart_porpoise(); /* settings that take effect at the start */
             if (action == porpoise::ui::App::Action::RetryJailbreak)
             {
                 porpoise::jailbreak::forget_closed();
@@ -2347,6 +2358,14 @@ int main()
             }
             if (action == porpoise::ui::App::Action::FetchCovers)
                 fetch_covers(true);
+            if (action == porpoise::ui::App::Action::CoversAgain)
+            {
+                for (const std::string &id : g_app.take_covers_again())
+                    g_covers_again_ids.push_back(id);
+                ps5::debug::mark_value("main: art downloaded again for games",
+                                       static_cast<long long>(g_covers_again_ids.size()));
+                fetch_covers(true);
+            }
             if (action == porpoise::ui::App::Action::MoveData && !g_app.move_target().empty())
                 move_data(g_app.move_target(), hz);
             if (action == porpoise::ui::App::Action::UseFolder && !g_app.move_target().empty())
@@ -2570,11 +2589,14 @@ int main()
         g_app.begin_launch(launch);
         /* The music fades as the screen dims; the Play sound finishes. */
         porpoise::sound::fade_music(0.0f, 0.5f);
-        for (int frame = 0; frame < 36; ++frame)
+        const int launch_frames = std::max(36, int(hz * 0.6));
+        for (int frame = 0; frame < launch_frames; ++frame)
         {
             g_time += 1.0 / hz;
-            const float t = std::min(1.0f, float(frame + 1) / 24.0f);
+            const float t = std::min(1.0f, float(frame + 1) / float(launch_frames * 2 / 3));
             begin_ui_frame(0.6f * t);
+            if (g_app.launch_intro(g_time) < 1.0f)
+                g_app.draw(g_time); /* the library, fading under the launch screen */
             g_app.draw_launch(g_time);
             porpoise::vk::present_clear(0, 0, 0);
             porpoise::sound::pump();

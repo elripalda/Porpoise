@@ -749,6 +749,15 @@ void App::set_tab(int tab, int dir)
 {
     if (tab == int(tab_))
         return;
+    if (tab_ == Tab::Settings && screen_ == Screen::Main)
+    {
+        /* Leaving Settings with changes not applied: Apply or Discard first. */
+        leave_tab_ = tab;
+        leave_dir_ = dir;
+        if (ask_before_leaving())
+            return;
+        leave_tab_ = -1;
+    }
     tab_ = Tab(tab);
     sfx(Sound::MovingTab);
     tab_dir_ = dir;
@@ -866,6 +875,11 @@ App::Action App::update_dialog(bool left, bool right)
     }
     if (pressed(BtnCircle))
     {
+        if (dialog_.kind == DialogKind::ApplyChanges)
+        {
+            leave_tab_ = -1; /* keep editing */
+            leave_game_settings_ = false;
+        }
         close_dialog();
         if (welcome_after_dialog_)
         {
@@ -888,6 +902,16 @@ App::Action App::update_dialog(bool left, bool right)
                 return Action::None;
             }
         }
+        if (kind == DialogKind::ApplyChanges)
+        {
+            const Action a = choice == 1 ? apply_pending() : Action::None;
+            if (choice != 1)
+                discard_pending();
+            finish_leaving();
+            return a;
+        }
+        if (kind == DialogKind::RestartPorpoise)
+            return choice == 1 ? Action::Restart : Action::None;
         if (kind == DialogKind::JailbreakClosed)
         {
             if (choice == 1)
@@ -934,6 +958,7 @@ App::Action App::confirm_dialog(DialogKind kind)
     {
     case DialogKind::ResetAll:
         settings_->reset();
+        draft_ = base_ = *settings_; /* changes not applied go too */
         settings_->save(settings_path_);
         settings_->write_core_options(options_path_);
         apply_language(settings_->ui_language, data_dir_ + "/lang");
@@ -948,11 +973,18 @@ App::Action App::confirm_dialog(DialogKind kind)
         return Action::None;
     case DialogKind::UseFolder:
         return move_target_.empty() ? Action::None : Action::UseFolder;
+    case DialogKind::CoversAgain:
+        covers_again_.clear();
+        for (const Game &g : lib_->games())
+            if (!g.id.empty() && std::find(covers_again_.begin(), covers_again_.end(), g.id) == covers_again_.end())
+                covers_again_.push_back(g.id);
+        return covers_again_.empty() ? Action::None : Action::CoversAgain;
     case DialogKind::Reinitialize:
     {
         /* Settings wiped (games' own too); games, folders, saves and states
          * stay. Then Porpoise starts again as it did the first time. */
         settings_->reset();
+        draft_ = base_ = *settings_;
         settings_->setup_checked = false;
         if (DIR *d = opendir((data_dir_ + "/game-settings").c_str()))
         {
@@ -975,6 +1007,8 @@ App::Action App::confirm_dialog(DialogKind kind)
             game_keys_.clear();
             std::remove(game_settings_path(*game_for_).c_str());
             game_ = *settings_;
+            game_base_ = game_;
+            game_keys_base_.clear();
             build_game_settings();
         }
         return Action::None;
@@ -2385,6 +2419,10 @@ void App::draw(double time)
 {
     Gfx &g = *g_;
     apply_look();
+    /* The game the player is on: where its cover is drawn is kept, for the
+     * glide into the launch screen. */
+    if (!launch_ && lib_ && selected_ >= 0 && selected_ < lib_->shown())
+        g.watch(lib_->games()[std::size_t(selected_)].cover);
     if (screen_ == Screen::Welcome)
     {
         draw_welcome(time);
@@ -2608,8 +2646,17 @@ void App::draw_update_overlay(double time)
 
 /* ---- launch ------------------------------------------------------------------------------- */
 
+float App::launch_intro(double time) const
+{
+    if (settings_ && settings_->reduced_motion)
+        return 1.0f;
+    return std::clamp(float((time - launch_start_) / 0.5), 0.0f, 1.0f);
+}
+
 void App::begin_launch(Game *game)
 {
+    /* Where its cover was in the last frame: it glides from there. */
+    launch_from_ok_ = game && game->cover && g_->watched(launch_from_) && launch_from_[2] > 8 && launch_from_[3] > 8;
     launch_ = game;
     launch_status_ = "Loading Dolphin";
     launch_progress_ = -1;
@@ -2628,16 +2675,28 @@ void App::draw_launch(double time)
 {
     apply_look();
     Gfx &g = *g_;
+    /* The entrance (about half a second, from Play): the library fades under
+     * the launch screen, the cover glides from where it was to the middle and
+     * grows, the tile rises into place under it, then the words and the bar. */
+    const float k = launch_intro(time);
+    auto ease = [](float t) { return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t); };
+    const float bg = ease(std::min(1.0f, k * 1.6f));
+    const float rise = ease(std::clamp((k - 0.15f) / 0.6f, 0.0f, 1.0f));
+    const float words = std::clamp((k - 0.6f) / 0.4f, 0.0f, 1.0f);
     if (revolution())
     {
         g.set_tone(false);
+        g.set_layer(0, 0, bg);
         draw_room();
+        g.set_layer();
         g.set_tone(true); /* the rest drawn light */
     }
     else
-        g.background();
+        g.background(bg);
+    g.set_layer(0, 0, words);
     draw_brand(kBarCy);
     g.text_mid(Font::SemiBold, ts(27), 1866, kBarCy, rgba(0x9FD8FF), Align::Right, tr("Launching"));
+    g.set_layer();
 
     /* The tile: the game's cover when there is one, else the Porpoise mark. */
     const float size = 330, cx = 960, cy = 420;
@@ -2649,13 +2708,34 @@ void App::draw_launch(double time)
     face.rim_w = 3.0f;
     face.glow = 22;
     face.phase = 0.5f;
+    g.set_layer(0, 60.0f * (1.0f - rise), rise);
     glass_block(g, cx, cy, size, size, 40.0f, 0, 0, 66, face);
+    /* Its reflection on the floor. */
+    g.blob(cx, cy + size * 0.5f + 40, size * 1.4f, 120, rgba(0x2F7BFF, 0.35f));
+    g.set_layer();
     if (cover)
     {
         const float ch = size - 36, cw = ch * float(cover->width) / float(cover->height);
-        g.image(cover, cx - cw * 0.5f, cy - ch * 0.5f, cw, ch, kWhite, kR * 0.6f);
+        float x = cx - cw * 0.5f, y = cy - ch * 0.5f, w = cw, h = ch;
+        if (k < 1.0f && launch_from_ok_)
+        {
+            /* From where it was, lifted a little on the way (a shadow under it). */
+            const float e = ease(k);
+            const float lift = std::sin(k * kPi);
+            x = launch_from_[0] + (x - launch_from_[0]) * e;
+            y = launch_from_[1] + (y - launch_from_[1]) * e - 26.0f * lift;
+            w = launch_from_[2] + (w - launch_from_[2]) * e;
+            h = launch_from_[3] + (h - launch_from_[3]) * e;
+            const float grow = 1.0f + 0.05f * lift;
+            x -= w * (grow - 1.0f) * 0.5f;
+            y -= h * (grow - 1.0f) * 0.5f;
+            w *= grow;
+            h *= grow;
+            g.blob(x + w * 0.5f, y + h + 26.0f + 20.0f * lift, w * 1.2f, 70, rgba(0x000000, 0.35f * lift));
+        }
+        g.image(cover, x, y, w, h, kWhite, kR * 0.6f);
         Corner gc[4];
-        rect_at(cx, cy, cw * 0.5f, ch * 0.5f, 0, 0, 0, gc);
+        rect_at(x + w * 0.5f, y + h * 0.5f, w * 0.5f, h * 0.5f, 0, 0, 0, gc);
         Glass gloss;
         gloss.face = 2;
         gloss.radius = kR * 0.6f;
@@ -2663,14 +2743,18 @@ void App::draw_launch(double time)
         gloss.tint = kWhite;
         gloss.rim = kClear;
         gloss.phase = 0.5f;
-        g.glass(gc, cw, ch, 0, gloss);
+        g.glass(gc, w, h, 0, gloss);
     }
     else if (!launch_ || launch_->cover_wait.empty())
-        draw_mark(cx, cy, 250, rgba(0x6EDCFF)); /* no cover at all (not one still coming back after the
-                                                   game took the screen: that showed the mark for a moment) */
-    /* Its reflection on the floor. */
-    g.blob(cx, cy + size * 0.5f + 40, size * 1.4f, 120, rgba(0x2F7BFF, 0.35f));
+    {
+        /* no cover at all (not one still coming back after the game took the
+         * screen: that showed the mark for a moment) */
+        g.set_layer(0, 60.0f * (1.0f - rise), rise);
+        draw_mark(cx, cy, 250, rgba(0x6EDCFF));
+        g.set_layer();
+    }
 
+    g.set_layer(0, 16.0f * (1.0f - words), words);
     g.text(Font::SemiBold, ts(52), 960, 690, kWhite, Align::Center,
            launch_ ? trf("Starting {game}\xE2\x80\xA6", {{"game", launch_->title}}) : tr("Starting game\xE2\x80\xA6"));
 
@@ -2687,5 +2771,6 @@ void App::draw_launch(double time)
         g.panel(sx, by + 3, seg, bh - 6, rgba(0x5AD8FF), 0.85f, kR, rgba(0xBDF1FF, 0.6f), 0, 10);
     }
     g.text(Font::SemiBold, ts(28), 960, 852, rgba(0xB6BDE8), Align::Center, tr(launch_status_));
+    g.set_layer();
 }
 } // namespace porpoise::ui
