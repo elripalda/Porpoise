@@ -23,6 +23,9 @@
 - **2.5:** smoother sound and sound presets, an Audio tab in-game, the GameCube controller for Wii games, Dolphin's graphics mods, and controller extras (light bar colors, turbo, quick save buttons).
 - **2.1 and 2.1.1:** RetroAchievements with PS5-style trophy popups and achievement lists, your own cheats folder, custom buttons for every Wii controller, true widescreen per game, Porpoise's folder on extended storage or USB, and Online (beta) for WiiLink.
 
+### 🙏 Special thanks
+A huge thank you to **[Martin Pham (@MartinPham)](https://github.com/MartinPham)**. Home screen tiles were his idea: he suggested them, built the first version ([#11](https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/pull/11)) and has supported Porpoise all along. Thank you, Martin, for your contributions and support!
+
 ### What's next 👀
 **Triforce** arcade support is in the works: the GameCube-based arcade board behind games like **Mario Kart Arcade GP 1 and 2**. Stay tuned on the **[Discord](https://discord.gg/GgDE5Vynyu)**.
 
