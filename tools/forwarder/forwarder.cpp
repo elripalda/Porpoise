@@ -84,10 +84,18 @@ int main()
     }
     note("launcher bytes", static_cast<long long>(elf_size));
     static const char kMarker[] = "PORPOISE-HOME-LAUNCH-V1";
+    /* The room: the marker followed by zeros to 2048 bytes (a copy of the
+     * marker elsewhere, in code, is not it). */
     unsigned char *at = nullptr;
-    for (std::size_t i = 0; elf_size > sizeof kMarker && i + sizeof kMarker < elf_size && !at; ++i)
+    for (std::size_t i = 0; i + 2048 <= elf_size && !at; ++i)
         if (std::memcmp(elf + i, kMarker, sizeof kMarker - 1) == 0)
-            at = elf + i;
+        {
+            bool room = true;
+            for (std::size_t j = sizeof kMarker - 1; j < 2048 && room; ++j)
+                room = elf[i + j] == 0;
+            if (room)
+                at = elf + i;
+        }
     if (!at || static_cast<std::size_t>(elf + elf_size - at) < 2048)
     {
         note("no room for the request in the launcher", 0);

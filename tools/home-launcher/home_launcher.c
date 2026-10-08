@@ -52,7 +52,9 @@ int main(void)
     static char request[2048];
     for (unsigned i = 0; i < sizeof request - 1; ++i)
         request[i] = g_request[i];
-    if (strncmp(request, "PORPOISE-HOME-LAUNCH-V1", 23) == 0 || request[0] != '/')
+    /* The marker itself starts with 'P'; a request is a path. (No copy of the
+     * marker in this program's code: the tile fills the first one it finds.) */
+    if (request[0] != '/')
         return 1; /* no request written */
     g_log = fopen("/data/porpoise/home-art/last-launch.txt", "w");
 

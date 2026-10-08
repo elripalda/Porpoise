@@ -36,7 +36,7 @@ std::string own_background(const std::string &data_dir, const std::string &game_
 std::string existing(const std::string &data_dir, const std::string &game_path);
 /* Makes (or remakes) the game's forwarder. Slow-ish (its art): a second or two. */
 Result make(const std::string &data_dir, const Options &options);
-/* Gives the tiles made before 2.7's fix the file modes the console starts
- * an app with. Cheap: a stat per tile when nothing needs doing. */
+/* Brings the tiles already made up to date: this Porpoise's tile program and
+ * launcher, and the file modes the console starts an app with. */
 void repair(const std::string &data_dir);
 } // namespace porpoise::forwarders

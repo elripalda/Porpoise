@@ -462,14 +462,29 @@ std::string existing(const std::string &data_dir, const std::string &game_path)
 
 void repair(const std::string &data_dir)
 {
+    /* Tiles keep this Porpoise's copy of the tile program and the launcher,
+     * so an update's fixes reach the tiles made before it. */
+    std::vector<unsigned char> current[2];
+    const char *names[2] = {"eboot.bin", "home-launcher.elf"};
+    for (int i = 0; i < 2; ++i)
+        porpoise::read_whole(std::string(PORPOISE_APP "/assets/forwarder/") + names[i], current[i]);
     for (const auto &e : read_list(data_dir))
     {
         const std::string folder = std::string(kHomebrew) + "/" + e.first;
         struct stat st;
-        if (stat((folder + "/eboot.bin").c_str(), &st) == 0 && (st.st_mode & 0777) != 0777)
+        if (stat((folder + "/eboot.bin").c_str(), &st) != 0)
+            continue;
+        bool changed = (st.st_mode & 0777) != 0777;
+        for (int i = 0; i < 2; ++i)
+        {
+            std::vector<unsigned char> have;
+            if (!current[i].empty() && (!porpoise::read_whole(folder + "/" + names[i], have) || have != current[i]))
+                changed |= porpoise::write_whole(folder + "/" + names[i], current[i].data(), current[i].size());
+        }
+        if (changed)
         {
             open_to_all(folder);
-            ps5::debug::mark(("forwarders: opened up " + folder).c_str());
+            ps5::debug::mark(("forwarders: brought up to date " + folder).c_str());
         }
     }
 }
