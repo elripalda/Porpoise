@@ -1918,7 +1918,7 @@ void show_boot_mark()
     g_pacer.start(porpoise::vk::refresh_hz(), "boot");
     const float hz = float(porpoise::vk::refresh_hz() > 10 ? porpoise::vk::refresh_hz() : 60.0);
     /* The black, then the dolphin rising out of it with a soft glow. */
-    const int frames = int(hz * 0.9f);
+    const int frames = int(hz * 0.55f); /* 2.7: 0.9 s before */
     for (int frame = 0; frame <= frames; ++frame)
     {
         const float t = float(frame) / float(frames);
@@ -1962,8 +1962,8 @@ struct Entrance
     int steady = 0; /* frames in a row drawn in time */
 };
 Entrance g_entrance;
-constexpr double kEntranceMinHold = 0.35, kEntranceMaxHold = 3.0;
-constexpr double kEntranceLift = 0.75, kEntranceUiFrom = 0.35, kEntranceUi = 0.9;
+constexpr double kEntranceMinHold = 0.2, kEntranceMaxHold = 3.0;
+constexpr double kEntranceLift = 0.5, kEntranceUiFrom = 0.2, kEntranceUi = 0.6; /* 2.7: quicker into the menus */
 constexpr float kEntranceRise = 28.0f;
 
 void start_entrance()
