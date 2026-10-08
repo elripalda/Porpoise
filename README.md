@@ -49,6 +49,20 @@ BIOS or firmware files.
 - Sort by title, recently played, most played or favorites first. Each game
   shows its play time and when you last played it.
 
+### Home screen tiles
+- **A game's own tile on the PS5 home screen:** in a game's settings, **Home
+  screen → Add to home screen** makes a small app in `/data/homebrew`. Install
+  it with ShadowMountPlus, close Porpoise, and the tile opens Porpoise straight
+  into that game. **Close Porpoise after the game** decides where leaving the
+  game takes you. The tile hands the launch to the jailbreak's payload loader
+  on port 9021 (etaHEN has one), since a PS5 app can't open another app itself.
+- **Tile art** shows the icon and the background as the home screen will.
+  Pick the cover, the back of the box, a screenshot or the title screen (from
+  [libretro's thumbnails](https://github.com/libretro-thumbnails)) or your own
+  `.png` / `.jpg` (from `/data/porpoise/home-art` or a USB drive). Fill the
+  space and move and zoom it with the left stick and R2 / L2, or show it whole
+  over a blur, white, black or a Porpoise pattern.
+
 ### Revolution theme
 - **Settings → Interface → Theme** switches between **Porpoise** (the cover
   flow) and **Revolution**: a bright home screen of game tiles, twelve to a

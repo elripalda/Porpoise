@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.7 — 2026-10-08
+
+- **Home screen tiles:** a game's settings → Home screen → **Add to home
+  screen** gives it its own tile on the PS5 home screen, which opens Porpoise
+  straight into the game. **Tile art** shows the icon and background as the
+  home screen will: the cover, the back of the box, a screenshot, the title
+  screen or your own picture, cropped and zoomed, or whole over a blur, white,
+  black or a Porpoise pattern. Other apps can start a game the same way
+  (`--rom`, thanks to MartinPham, #11).
+- **Settings wait for Apply** (Square), ask before you leave with changes,
+  and offer a restart for the few that need one; in the in-game menu too.
+- **Inverted sticks:** the control stick and the C-stick, up-down, left-right
+  or both, for each game.
+- **Scanlines, Shadow mask and LCD** screen filters.
+- **First-start setup** questions, and a **Diagnostic test** in Settings →
+  About.
+- Faster save states, with pictures of the whole image.
+- **Download covers again**, for every game or just one.
+- **Stay in the sandbox** (Settings → Games) for consoles where freeing
+  Porpoise closes it.
+- Optimizations and fixes for reported bugs.
+
 ## 2.5 — 2026-10-06
 
 Everything in 2.5 Beta 1 (smoother sound, sound presets, the in-game Audio
