@@ -11,6 +11,7 @@
  * the title's symbols (build/core_imports.inc). */
 #include "porpoise_paths.hpp"
 #include "porpoise_core.hpp"
+#include "porpoise_atomic.hpp"
 #ifdef PORPOISE_DESKTOP
 #include "porpoise_platform.hpp"
 #endif
@@ -1039,21 +1040,7 @@ void unload_core()
 
 bool read_whole_file(const char *path, std::vector<unsigned char> &out)
 {
-    std::FILE *f = std::fopen(path, "rb");
-    if (!f)
-        return false;
-    std::fseek(f, 0, SEEK_END);
-    const long size = std::ftell(f);
-    std::fseek(f, 0, SEEK_SET);
-    if (size <= 0)
-    {
-        std::fclose(f);
-        return false;
-    }
-    out.resize(static_cast<std::size_t>(size));
-    const bool ok = std::fread(out.data(), 1, out.size(), f) == out.size();
-    std::fclose(f);
-    return ok;
+    return porpoise::read_whole(path, out);
 }
 } // namespace
 
@@ -1136,19 +1123,10 @@ bool save_state(const char *path)
     if (!serialize(data))
         return false;
     const std::size_t size = data.size();
-    const std::string tmp = std::string(path) + ".part";
-    std::FILE *f = std::fopen(tmp.c_str(), "wb");
-    if (!f)
-        return false;
     /* All of it on disk before it takes the old one's place: a full disk
      * leaves the old state as it was. */
-    bool written = std::fwrite(data.data(), 1, size, f) == size && std::fflush(f) == 0 && fsync(fileno(f)) == 0;
-    written = std::fclose(f) == 0 && written;
-    if (!written || std::rename(tmp.c_str(), path) != 0)
-    {
-        std::remove(tmp.c_str());
+    if (!porpoise::write_whole(path, data.data(), size))
         return false;
-    }
     char line[160];
     std::snprintf(line, sizeof line, "core: state saved (%zu MB)", size >> 20);
     ps5::debug::mark(line);

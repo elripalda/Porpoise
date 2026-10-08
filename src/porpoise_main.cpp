@@ -1043,6 +1043,7 @@ void launch_device_closing(void *)
 void launch_device_ready(void *)
 {
     start_gfx();
+    g_app.launch_cover_now();
 }
 
 double g_game_rate = 48000.0; /* the game's audio rate, kept while the menu's sounds play */

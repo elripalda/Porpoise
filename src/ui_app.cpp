@@ -135,6 +135,22 @@ Texture *App::cover_of(Game &g)
     return t;
 }
 
+void App::launch_cover_now()
+{
+    /* After the display changed hands for the game (the launch screen's
+     * textures went with the old device): the game's cover again at once, not
+     * through the loader, which can't finish while Dolphin prepares its
+     * graphics - the tile showed empty then. */
+    if (!launch_ || launch_->cover)
+        return;
+    launch_->cover_tried = true;
+    launch_->cover_wait.clear();
+    const std::string path = lib_->cover_path(*launch_);
+    if (!path.empty())
+        launch_->cover = g_->texture_file(path);
+    launch_->cover_at = -10.0; /* no fade: it was already showing */
+}
+
 Texture *App::disc_of(Game &g)
 {
     return picture(g.disc, g.disc_tried, g.disc_wait, &Library::disc_path, g);
@@ -2249,11 +2265,8 @@ void App::release_covers()
     }
 }
 
-/* The look changed (from the look `was`): each look keeps its own Show in
- * Sort & filter; Revolution starts on the Wii games when there are some. */
-/* A new theme starts from its own view: Porpoise shows every game and the
- * GameCube cards; Revolution shows the Wii games (when there are any) and
- * the Wii saves. */
+/* A new theme starts from its own view: every game, and the GameCube cards
+ * (Porpoise) or the Wii saves (Revolution). */
 void App::apply_look()
 {
     if (!settings_)

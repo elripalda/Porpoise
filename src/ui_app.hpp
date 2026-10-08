@@ -114,6 +114,7 @@ public:
     void draw(double time);
 
     Game *launch_game() { return launch_; }
+    void launch_cover_now(); /* the launching game's cover, loaded now (after the display changed hands) */
 #ifdef PORPOISE_HOST_PREVIEW
     void preview_setup_step(int step) { ws_step_ = step; } /* tools/ui-preview: show each step */
     void preview_mapping(int kind, int row) /* tools/ui-preview: Customize buttons on a controller's tab */

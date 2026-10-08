@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "porpoise_atomic.hpp"
 #include "porpoise_core.hpp"
 #include "title_threads.hpp"
 #include "trace.hpp"
@@ -65,21 +66,9 @@ long long now_ms()
 
 bool write_file(const std::string &path, const std::vector<unsigned char> &data)
 {
-    const std::string tmp = path + ".part";
-    std::FILE *f = std::fopen(tmp.c_str(), "wb");
-    if (!f)
-        return false;
     /* All of it on disk before it takes the old one's place: a full disk
      * leaves the slot as it was. */
-    bool written =
-        std::fwrite(data.data(), 1, data.size(), f) == data.size() && std::fflush(f) == 0 && fsync(fileno(f)) == 0;
-    written = std::fclose(f) == 0 && written;
-    if (!written || std::rename(tmp.c_str(), path.c_str()) != 0)
-    {
-        std::remove(tmp.c_str());
-        return false;
-    }
-    return true;
+    return porpoise::write_whole(path, data.data(), data.size());
 }
 
 /* Rows (or columns) at an edge that are all near black: the bars many games
