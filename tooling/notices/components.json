@@ -19,7 +19,9 @@
         "eboot.bin",
         "LEGAL.txt",
         "sce_sys/param.json",
-        "porpoise/options.ini"
+        "porpoise/options.ini",
+        "assets/forwarder/eboot.bin",
+        "assets/forwarder/home-launcher.elf"
       ],
       "licence": "GPL-3.0-or-later",
       "copyright": [
@@ -129,7 +131,9 @@
       "always": true,
       "artifacts": [
         "eboot.bin",
-        "cores/*.so"
+        "cores/*.so",
+        "assets/forwarder/eboot.bin",
+        "assets/forwarder/home-launcher.elf"
       ],
       "licence": "GPL-3.0-or-later",
       "copyright": [

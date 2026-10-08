@@ -8,6 +8,8 @@
 - **First-start setup**, a **Diagnostic test**, faster save states and **Download covers again**.
 - Optimizations and fixes for reported bugs.
 
+If you've enjoyed Porpoise, donations and love are always appreciated: **[support me on Ko-fi](https://ko-fi.com/ripalda)**. Thank you!
+
 > [!WARNING]
 > **Porpoise is still in early development on the PS5.** If you run into bugs or glitches in a game, please report them on the **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**, with the game's name, and we'll get them fixed as soon as we can.
 
