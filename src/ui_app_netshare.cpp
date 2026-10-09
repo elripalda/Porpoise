@@ -150,7 +150,9 @@ App::Action App::update_share(bool up, bool down, bool left, bool right)
     bool busy = false;
     if (p.job)
     {
-        std::lock_guard<std::mutex> lock(p.job->m);
+        /* Held here too: p.job may let go of it below, inside the lock. */
+        const std::shared_ptr<ShareJob> held = p.job;
+        std::lock_guard<std::mutex> lock(held->m);
         if (p.job->done)
         {
             if (p.job->kind == ShareJob::Find)
@@ -185,6 +187,15 @@ App::Action App::update_share(bool up, bool down, bool left, bool right)
                                          : problem_text(p.job->problem, p.job->share, p.job->detail);
             }
             sfx(p.message_ok ? Sound::LaunchGame : Sound::MovingTab);
+            p.job.reset();
+        }
+        else if (time_ - p.job_started > 45.0)
+        {
+            /* No answer for this long: stop waiting (the try ends by itself
+             * on its own thread). */
+            p.message = problem_text(netfs::Problem::Unreachable, p.job->share, "");
+            p.message_ok = false;
+            sfx(Sound::MovingTab);
             p.job.reset();
         }
         else
@@ -273,6 +284,7 @@ App::Action App::update_share(bool up, bool down, bool left, bool right)
         else
             run_share_job(held); /* no thread: here, as it would have */
         p.job = job;
+        p.job_started = time_;
         p.message.clear();
         sfx(Sound::DetailsFlip);
         return Action::None;

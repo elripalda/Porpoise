@@ -231,15 +231,22 @@ smb2_context *open_context(const Share &s, const std::string &share, std::string
         smb2_set_password(ctx, s.password.c_str());
     }
     const std::string server = server_of(s);
+    note("connecting to " + server + "/" + share + (guest ? " as a guest" : " with a username"));
+    const long long started = now_ms();
     const int rc = smb2_connect_share(ctx, server.c_str(), share.c_str(), guest ? nullptr : user.c_str());
     if (rc < 0)
     {
         error = last_error(ctx);
         if (error.empty())
             error = std::strerror(-rc);
+        while (!error.empty() && (error.back() == '\n' || error.back() == ' '))
+            error.pop_back();
+        note("connecting to " + server + "/" + share + " failed after " + std::to_string(now_ms() - started) +
+             " ms: " + error);
         smb2_destroy_context(ctx);
         return nullptr;
     }
+    note("connected to " + server + "/" + share + " in " + std::to_string(now_ms() - started) + " ms");
     return ctx;
 }
 
@@ -744,7 +751,8 @@ Problem classify(const std::string &error)
         return Problem::NoFolder;
     if (has("resolve") || has("Invalid address"))
         return Problem::UnknownName;
-    if (has("connect failed") || has("Timeout") || has("timed out") || has("POLLHUP") || has("socket"))
+    if (has("connect failed") || has("Timeout") || has("timed out") || has("TIMEOUT") || has("POLLHUP") ||
+        has("socket"))
         return Problem::Unreachable;
     return Problem::Other;
 }
@@ -1025,8 +1033,7 @@ Problem test(const Share &share, std::string *detail)
     }
     else
         smb2_closedir(ctx, d);
-    smb2_disconnect_share(ctx);
-    smb2_destroy_context(ctx);
+    smb2_destroy_context(ctx); /* no goodbye: a server slow to answer it would hold the panel */
     return result;
 }
 
@@ -1044,6 +1051,7 @@ Problem enumerate(const Share &server, std::vector<std::string> &out, std::strin
             *detail = raw;
         return classify(raw);
     }
+    note("asking " + server_of(server) + " for its shared folders");
     smb2_share_enum_reply *reply = smb2_share_enum_sync(ctx, SMB2_SHARE_INFO_1);
     if (!reply)
     {
@@ -1051,7 +1059,6 @@ Problem enumerate(const Share &server, std::vector<std::string> &out, std::strin
         note("listing the shares of " + server_of(server) + " failed: " + raw);
         if (detail)
             *detail = raw;
-        smb2_disconnect_share(ctx);
         smb2_destroy_context(ctx);
         return classify(raw);
     }
@@ -1066,8 +1073,8 @@ Problem enumerate(const Share &server, std::vector<std::string> &out, std::strin
         out.push_back(name);
     }
     smb2_free_data(ctx, reply);
-    smb2_disconnect_share(ctx);
-    smb2_destroy_context(ctx);
+    smb2_destroy_context(ctx); /* no goodbye: a server slow to answer it would hold the panel */
+    note(server_of(server) + " shares " + std::to_string(out.size()) + " folders Porpoise can use");
     std::sort(out.begin(), out.end());
     return Problem::None;
 }
@@ -1114,7 +1121,8 @@ int porpoise_netfs_getaddrinfo(const char *node, const char *service, const stru
         int rc = -1;
         if (rid >= 0)
         {
-            rc = sceNetResolverStartNtoa(rid, node, &addr, 0, 0, 0);
+            /* 2 s a try, 3 tries (microseconds), never left waiting. */
+            rc = sceNetResolverStartNtoa(rid, node, &addr, 2 * 1000 * 1000, 2, 0);
             sceNetResolverDestroy(rid);
         }
         sceNetPoolDestroy(pool);

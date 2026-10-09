@@ -482,6 +482,7 @@ private:
         Keyboard kb;
         std::vector<std::string> found; /* the computer's shared folders, once looked for */
         std::shared_ptr<ShareJob> job;
+        double job_started = 0; /* when it began (time_): given up on after a while */
         std::string message;
         bool message_ok = false;
         float anim = 0;

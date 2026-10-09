@@ -85,9 +85,19 @@ static int wait_for_reply(struct smb2_context *smb2,
 			smb2_set_error(smb2, "Timeout expired and no connection exists\n");
 			return -1;
 		}
+                /* Porpoise: nothing heard for twice the timeout and the
+                 * call not finished (a request no reply will ever answer):
+                 * give up instead of waiting for ever. */
+                if (smb2->timeout && pfd.revents == 0 &&
+                    (time(NULL) - t) > 2 * smb2->timeout) {
+                        smb2_set_error(smb2, "Timeout expired waiting for "
+                                       "the server\n");
+                        return -1;
+                }
                 if (pfd.revents == 0) {
                         continue;
                 }
+                t = time(NULL); /* Porpoise: heard from the server */
 		if (smb2_service(smb2, pfd.revents) < 0) {
 			smb2_set_error(smb2, "smb2_service failed with : "
                                         "%s\n", smb2_get_error(smb2));
