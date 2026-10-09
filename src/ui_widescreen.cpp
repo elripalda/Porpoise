@@ -249,7 +249,7 @@ Plan plan_for(int mode, Kind kind, bool needs_hack)
         return needs_hack ? Plan::PatchHack : Plan::Patch;
     if (kind == Kind::Native)
         return Plan::Native;
-    return mode == ModeOn ? Plan::Hack : Plan::Standard;
+    return mode == ModeOn ? Plan::Hack : mode == ModeUniversal ? Plan::Universal : Plan::Standard;
 }
 
 std::vector<Cheat> pack_codes(const std::string &game_id)

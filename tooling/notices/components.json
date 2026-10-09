@@ -828,6 +828,42 @@
         "url": "https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/tree/{rev}/third_party/zstd-educational"
       },
       "modifications": "Unmodified; compiled by src/zstd_impl.c with its exit() on errors turned into a failed call. Upstream: https://github.com/facebook/zstd (doc/educational_decoder, 1.5.8)."
+    },
+    {
+      "id": "libsmb2",
+      "name": "libsmb2 (games on a network share)",
+      "kind": "code",
+      "always": true,
+      "artifacts": [
+        "eboot.bin"
+      ],
+      "licence": "LGPL-2.1-or-later",
+      "copyright": [
+        "Copyright (C) 2016-2025 by Ronnie Sahlberg <ronniesahlberg@gmail.com>",
+        "Copyright (C) 2016-2024 by Brian Dodge",
+        "Copyright (C) 2024 by André Guilherme",
+        "Copyright (C) 1990-2, RSA Data Security, Inc. (the MD4 and MD5 message-digest algorithms)"
+      ],
+      "texts": [
+        {
+          "from": "third_party/libsmb2/COPYING",
+          "to": "COPYING"
+        },
+        {
+          "from": "third_party/libsmb2/LICENCE-LGPL-2.1.txt",
+          "to": "LICENCE-LGPL-2.1.txt"
+        },
+        {
+          "from": "third_party/libsmb2/README.porpoise",
+          "to": "README.porpoise"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/tree/{rev}/third_party/libsmb2"
+      },
+      "modifications": "Altered: a PS5 configuration (ps5/config.h), SO_NOSIGPIPE on the client socket (lib/socket.c), and its name lookups renamed to Porpoise's at build time; see README.porpoise. Upstream: https://github.com/sahlberg/libsmb2 (commit fc710a3)."
     }
   ]
 }

@@ -126,7 +126,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
     case kTabVideo:
         r.push_back({Kind::Int, "resolution", "Internal Resolution", &p.resolution, nullptr, 1,
                      {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p)", "5x (1800p)", "6x (4K)"}});
-        r.push_back({Kind::Int, "wide", "Widescreen", &p.wide, nullptr, 0, {"Auto", "On", "Off"}});
+        r.push_back({Kind::Int, "wide", "Widescreen", &p.wide, nullptr, 0, {"Auto", "On", "Off", "Universal (Beta)"}});
         r.push_back({Kind::Int, "aspect", "Aspect Ratio", &p.aspect, nullptr, 0,
                      {"Auto", "Force 16:9", "Force 4:3", "Stretch to Fill"}});
         r.push_back({Kind::Int, "antialiasing", "Anti-Aliasing", &p.antialiasing, nullptr, 0,
@@ -289,7 +289,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
 const char *help_for(const Row &row, const Settings &p)
 {
     if (row.key == std::string("resolution") && p.resolution >= 4)
-        return "Experimental: may slow some games down.";
+        return "The highest resolutions may slow some games down.";
     if (row.key == std::string("screen_filter"))
         return "Porpoise's own filter on the way to the TV. CRT and Arcade CRT look best at 1080p or above.";
     if (row.key == std::string("wide"))
@@ -367,6 +367,7 @@ const char *ws_value(int plan, bool wii)
     case 4: return "16:9 Code + Hack";
     case 2: return "In the game's options";
     case 3: return "Emulated Hack";
+    case 5: return "Universal (Beta)";
     default: return "Off: 4:3";
     }
 }
@@ -383,6 +384,9 @@ const char *ws_help(int plan, bool wii)
     case 2:
         return "This game has a 16:9 option of its own: turn it on in the game's options, and the picture follows.";
     case 3: return "Dolphin's emulated widescreen hack is on. Things at the edges of the screen may pop in and out.";
+    case 5:
+        return "Porpoise's universal widescreen (beta) widens the game's own 3D view to 16:9 when it finds how; if it "
+               "can't, the game stays 4:3. The menus and HUD may look stretched.";
     default: return "This game plays in 4:3. Widescreen, in the Video tab, changes that the next time it starts.";
     }
 }

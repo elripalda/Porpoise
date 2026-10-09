@@ -11,6 +11,7 @@
  * Then: the launcher (src/ui_*.cpp) on Porpoise's own Vulkan device; on Play,
  * the launch screen, the hand-over of the display to Dolphin's device, and the
  * game (src/porpoise_core.cpp). */
+#include "porpoise_netfs.hpp"
 #include "porpoise_paths.hpp"
 #include <algorithm>
 #include <atomic>
@@ -517,6 +518,9 @@ porpoise::ui::LibraryPaths library_paths()
     }
 #endif
     paths.deep = g_settings.folders;
+    /* Network shares (Settings > Games): searched like the folders chosen. */
+    for (const porpoise::netfs::Share &share : porpoise::netfs::shares())
+        paths.deep.push_back(porpoise::netfs::root_of(share));
     paths.covers = g_data + "/covers";
     paths.state = g_data + "/library.txt";
     paths.info = shown_info_path();
@@ -869,6 +873,7 @@ struct Search
     bool again = false;        /* asked again while searching */
     porpoise::ui::LibraryPaths paths;
     std::vector<std::string> files, cut;
+    std::vector<porpoise::ui::Game> games; /* the files' headers, read by the worker too */
     long long started_ns = 0;
     long long took_ms = 0;              /* set by the worker as it ends */
     long long last_ms = -1;             /* the last search's time, for the diagnostic test */
@@ -949,6 +954,9 @@ std::vector<std::string> search_roots(const porpoise::ui::LibraryPaths &paths)
 void *search_worker(void *)
 {
     g_search.files = porpoise::ui::find_game_files(search_roots(g_search.paths), kSearchLimitMs, &g_search.cut);
+    /* The headers here too, off the menus' thread: a network share's take a
+     * round trip or two each. */
+    g_search.games = porpoise::ui::read_games(g_search.files);
     g_search.took_ms = (now_ns() - g_search.started_ns) / 1000000;
     g_search.state.store(2, std::memory_order_release);
     return nullptr;
@@ -963,6 +971,7 @@ void rescan_library()
     }
     g_search.paths = library_paths();
     g_search.files.clear();
+    g_search.games.clear();
     g_search.cut.clear();
     g_search.started_ns = now_ns();
     g_search.state.store(1, std::memory_order_release);
@@ -979,7 +988,8 @@ void take_search()
     if (g_search.state.load(std::memory_order_acquire) != 2 || !g_app.library_free())
         return;
     g_app.release_covers();
-    g_library.scan_files(g_search.paths, std::move(g_search.files));
+    g_library.scan_games(g_search.paths, std::move(g_search.games));
+    g_search.games.clear();
     g_search.files.clear();
     g_app.library_changed();
     ps5::debug::mark_value("main: games after the search", static_cast<long long>(g_library.games().size()));
@@ -1004,7 +1014,7 @@ void start_library()
     const porpoise::ui::LibraryPaths paths = library_paths();
     std::vector<std::string> local;
     for (const std::string &root : search_roots(paths))
-        if (root.rfind("/mnt/", 0) != 0)
+        if (root.rfind("/mnt/", 0) != 0 && !porpoise::netfs::is_net(root))
             local.push_back(root);
     std::vector<std::string> cut;
     g_library.scan_files(paths, porpoise::ui::find_game_files(local, kSearchLimitMs, &cut));
@@ -2264,6 +2274,13 @@ int main(int argc, char **argv)
     g_settings.load(g_settings_path);
     g_settings.stay_sandboxed = g_stay_sandboxed; /* kept in /app0/porpoise, not settings.ini */
     {
+        /* Network shares: connected only when something on them is read. */
+        std::vector<porpoise::netfs::Share> shares;
+        if (porpoise::netfs::load(g_data + "/network-shares.txt", shares))
+            porpoise::netfs::set_shares(shares);
+        ps5::debug::mark_value("main: network shares", static_cast<long long>(shares.size()));
+    }
+    {
         /* Games' own settings from 1.0, brought up to date once. */
         bool changed = false;
         if (DIR *d = opendir((g_data + "/game-settings").c_str()))
@@ -2675,10 +2692,12 @@ int main(int argc, char **argv)
             porpoise::ui::widescreen::kind_of(launch->id, PORPOISE_APP "/system/dolphin-emu/Sys", ws_wii, ws_revision),
             porpoise::ui::widescreen::code_needs_hack(launch->id));
         static_assert(int(porpoise::ui::widescreen::Plan::Patch) == 1 && int(porpoise::ui::widescreen::Plan::Hack) == 3 &&
-                          int(porpoise::ui::widescreen::Plan::PatchHack) == 4,
+                          int(porpoise::ui::widescreen::Plan::PatchHack) == 4 &&
+                          int(porpoise::ui::widescreen::Plan::Universal) == 5,
                       "Settings::core_options reads the plan as these numbers");
         g_play.ws_plan = int(ws_plan);
-        ps5::debug::mark_value("main: widescreen plan (0 4:3, 1 code, 2 the game's own, 3 hack, 4 code with hack)",
+        ps5::debug::mark_value("main: widescreen plan (0 4:3, 1 code, 2 the game's own, 3 hack, 4 code with hack, "
+                               "5 universal)",
                                g_play.ws_plan);
         porpoise::pacer::set_vsync(g_play.vsync);
         /* The driver reads this when Dolphin makes the game's device

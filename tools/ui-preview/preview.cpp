@@ -26,6 +26,7 @@
 #include "ui_gfx.hpp"
 #include "ui_library.hpp"
 #include "ui_settings.hpp"
+#include "porpoise_netfs.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image_write.h"
@@ -769,6 +770,46 @@ int main(int argc, char **argv)
         ui.preview_account(false, 0, 1, 0);
         settle();
         render("account-in", [&] { ui.draw(12.0); });
+        return 0;
+    }
+    /* PREVIEW_SHARE=1: the network share panel - a new share tested, typing,
+     * a problem, shared folders found, a saved one being changed - and
+     * Settings > Games with a share in it; then stop. */
+    if (std::getenv("PREVIEW_SHARE"))
+    {
+        porpoise::netfs::set_shares({{"Games", "192.168.1.20", "Games", "", "ruben", "secret"}});
+        settle();
+        ui.preview_share(-1, 5, 1, false, "Connected. Porpoise can read this folder.", true);
+        settle();
+        render("share-tested", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 0, 0, true, "", false);
+        settle();
+        render("share-typing", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 5, 1, false,
+                         "Couldn't reach 192.168.1.20. Check the address, that the computer is on, and that it "
+                         "shares files on the network.",
+                         false);
+        settle();
+        render("share-problem", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 1, 0, false, "Found 3 shared folders. Left and right on Shared Folder pick one.", true,
+                         {"Games", "Media", "Public"});
+        settle();
+        render("share-found", [&] { ui.draw(12.0); });
+        ui.preview_share(0, 5, 3, false, "", false);
+        settle();
+        render("share-edit", [&] { ui.draw(12.0); });
+        press(kCircle);
+        settle();
+        /* Settings > Games, down to the share's row. */
+        press(kR1, 2);
+        press(1u << 0, 12);
+        const int section = std::getenv("PREVIEW_SECTION") ? std::atoi(std::getenv("PREVIEW_SECTION")) : 6;
+        const int row = std::getenv("PREVIEW_ROW") ? std::atoi(std::getenv("PREVIEW_ROW")) : 12;
+        press(kDown, section);
+        press(kRight);
+        press(kDown, row);
+        settle();
+        render("share-settings", [&] { ui.draw(12.0); });
         return 0;
     }
     /* PREVIEW_WIIMAP=1: Customize buttons on each controller's tab; then stop. */

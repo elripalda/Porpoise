@@ -1,0 +1,19 @@
+libsmb2, the SMB2/3 client library by Ronnie Sahlberg and contributors
+https://github.com/sahlberg/libsmb2, commit fc710a3ebd58a3c15d0ef24322f748e38a3d3a90
+
+Licence: LGPL-2.1-or-later for lib/ and include/ (COPYING, LICENCE-LGPL-2.1.txt).
+Only the client library is here: lib/ (the sources listed in sources.txt, and
+their headers) and include/. The DCE/RPC library, the examples, utilities and
+tests are left out.
+
+Porpoise reads games on a network share with it (src/porpoise_netfs.cpp).
+tools/build.sh compiles each file in sources.txt as C with ps5/config.h.
+
+Changes from upstream:
+- ps5/config.h: the configuration for the PS5's FreeBSD headers (upstream
+  makes config.h with CMake or autoconf; _U_ comes from lib/CMakeLists.txt).
+- lib/socket.c: SO_NOSIGPIPE on the client socket, so a write to a connection
+  the server has closed fails with EPIPE instead of ending the app.
+- The build renames getaddrinfo, freeaddrinfo, getlogin_r, gethostname and
+  __isthreaded to src/porpoise_netfs.cpp's (the console's libc has no resolver
+  in the modules Porpoise loads), and sets SOL_TCP to IPPROTO_TCP.

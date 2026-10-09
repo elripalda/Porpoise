@@ -130,6 +130,17 @@ def vc_blocks(vc_dir, dropped):
     return blocks
 
 
+def own_blocks():
+    """Porpoise's own codes (tools/widescreen-porpoise.ini): blocks as they are,
+    comments left out, none turned on."""
+    path = os.path.join(ROOT, "tools", "widescreen-porpoise.ini")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        text = "\n".join(l for l in f.read().splitlines() if not l.startswith("#")).strip()
+    return [b.strip() for b in re.split(r"\n(?=\[\[)", text) if b.strip()]
+
+
 def main():
     if len(sys.argv) not in (3, 4):
         print(__doc__ or "usage: make-widescreen.py <codes dir> <native dir> [<Enhancement-Codes dir>]")
@@ -208,6 +219,7 @@ def main():
         blocks.append("\n".join(out))
     if vc_dir:
         blocks += vc_blocks(vc_dir, dropped)
+    blocks += own_blocks()
     natives = sorted({RENAMED_FILES.get(f[:-4], f[:-4]).upper() for f in os.listdir(native_dir)
                       if f.lower().endswith(".ini")})
     header = ("# Porpoise: GameCube widescreen codes, from Warped Polygon's collection (the Force 16:9 set),\n"

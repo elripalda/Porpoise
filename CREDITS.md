@@ -62,6 +62,7 @@ Porpoise builds Dolphin from libretro/dolphin revision
 | [stb](https://github.com/nothings/stb) by Sean Barrett | `stb_truetype`, `stb_image` and `stb_vorbis`: text, images and the menu music | MIT or public domain |
 | [Wii Banner Player](https://github.com/jordan-woyak/wii-banner-player) by the Wii Banner Player Project | How a Wii disc's own tile and banner (layouts, animations, textures, jingle) are read and played. Rewritten for Porpoise as a software renderer (`src/porpoise_banner.cpp`). | zlib |
 | [Zstandard](https://github.com/facebook/zstd) educational decoder by Meta Platforms | Reading `.rvz` disc images for their banners | BSD or GPL-2.0 |
+| [libsmb2](https://github.com/sahlberg/libsmb2) by Ronnie Sahlberg and contributors | Games on a network share (SMB): the library search, the launcher and Dolphin read them through it (`src/porpoise_netfs.cpp`; the client library in `third_party/libsmb2`) | LGPL-2.1-or-later |
 | Widescreen codes collected by **Warped Polygon** | The GameCube widescreen codes in `assets/widescreen` (cleaned by `tools/make-widescreen.py`), which play games in true 16:9 | the collection's own |
 | 16:9 codes for Virtual Console N64 games from **Admentus64**'s Enhancement Codes (with gamemasterplc and the codes' other authors) | Optional 16:9 codes in Cheats and Patches for the Wii's Virtual Console N64 games, in `assets/widescreen` | GPL-3.0 |
 

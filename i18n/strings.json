@@ -5814,5 +5814,149 @@
  {
   "en": "Retro TV",
   "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Universal (Beta)",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Auto: 16:9 for a game with a widescreen code or a 16:9 option of its own, 4:3 for the rest. On: the same, and Dolphin's emulated widescreen hack for a game with neither, which can glitch at the screen edges. Off: always 4:3. Universal (beta): Porpoise widens the game's own 3D view to 16:9 where it can.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Porpoise's universal widescreen (beta) widens the game's own 3D view to 16:9 when it finds how; if it can't, the game stays 4:3. The menus and HUD may look stretched.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "The highest resolutions may slow some games down.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Add a Network Share",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Games from a shared folder on a computer or NAS on your home network (SMB). A wired connection works best for big games.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Games from a shared folder on a computer or NAS on your home network (SMB). Porpoise only reads from it. A wired connection works best for big games.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "A shared folder on {computer}, on your network. Porpoise looks in it and four levels below it. Cross changes or removes it.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Computer",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Shared Folder",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Folder Inside",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Its address, like 192.168.1.20, or its name",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "The shared folder's name",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Optional: a folder inside it",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Optional: empty to connect as a guest",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Optional",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Find Shared Folders",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Test",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Add",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Looking for shared folders…",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Enter the computer's address or name first.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Enter the shared folder's name, or look for the computer's shared folders.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Couldn't find a computer called {computer}. Try its address instead (like 192.168.1.20).",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Couldn't reach {computer}. Check the address, that the computer is on, and that it shares files on the network.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "The computer didn't accept the username or password.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "{computer} has no shared folder called {name}.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "The computer didn't let Porpoise in. Check the folder's sharing permissions, or sign in with a username and password.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "There's no folder {folder} in the share.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Couldn't connect: {reason}",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Found the shared folder {name}.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Found {n} shared folders. Left and right on Shared Folder pick one.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "The computer answered, but shares no folders Porpoise can see.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Connected. Porpoise can read this folder.",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Porpoise couldn't save the share. Is its folder full or read-only?",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Change…",
+  "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Connecting…",
+  "section": "3.0: network shares, universal widescreen"
  }
 ]

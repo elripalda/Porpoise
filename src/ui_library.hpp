@@ -65,12 +65,18 @@ struct LibraryPaths
 std::vector<std::string> find_game_files(const std::vector<std::string> &roots, int limit_ms,
                                          std::vector<std::string> *cut);
 
+/* The games in files (their headers read): the other slow part of a search,
+ * safe on any thread. Sorted, each file once. */
+std::vector<Game> read_games(std::vector<std::string> files);
+
 class Library
 {
 public:
     void scan(const LibraryPaths &paths); /* find_game_files on every root, then scan_files */
     /* The library made from files found (a search in the background). */
     void scan_files(const LibraryPaths &paths, std::vector<std::string> files);
+    /* The library made from games read (read_games, on the search's thread). */
+    void scan_games(const LibraryPaths &paths, std::vector<Game> games);
     /* The game in this file: the one the search found, else read now and
      * added (a game started with --rom from outside the library's folders).
      * nullptr if it isn't a file. Moves games_: no Game pointer held before

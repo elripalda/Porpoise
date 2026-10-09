@@ -23,6 +23,7 @@ enum Mode
     ModeAuto = 0, /* the game's code or its own option; 4:3 otherwise */
     ModeOn = 1,   /* the same, or the emulated hack when the game has neither */
     ModeOff = 2,  /* always 4:3 */
+    ModeUniversal = 3, /* the same as Auto, or Porpoise's universal widescreen (beta) when the game has neither */
 };
 /* What a game has. */
 enum class Kind
@@ -39,6 +40,7 @@ enum class Plan
     Native,   /* its own option decides; the picture follows */
     Hack,     /* Dolphin's emulated widescreen hack */
     PatchHack, /* its code on with the hack, for the few codes made to work with it */
+    Universal, /* the universal widescreen (beta): the core widens the game's own 3D view, if it finds how */
 };
 
 /* Where codes.ini and native.txt are (read once, when first asked). */

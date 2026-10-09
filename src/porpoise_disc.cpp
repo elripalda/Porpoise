@@ -4,6 +4,7 @@
  * Copyright (C) 2026 Ruben (Project Porpoise)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #include "porpoise_disc.hpp"
+#include "porpoise_netfs.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -152,28 +153,16 @@ constexpr u64 kMaxBuffer = u64(64) << 20;
 
 struct File
 {
-    std::FILE *f = nullptr;
+    porpoise::netfs::Reader reader; /* a file here or on a network share */
     u64 size = 0;
-    ~File()
-    {
-        if (f)
-            std::fclose(f);
-    }
     bool open(const std::string &path)
     {
-        f = std::fopen(path.c_str(), "rb");
-        if (!f)
+        if (!reader.open(path))
             return false;
-        std::fseek(f, 0, SEEK_END);
-        size = u64(std::ftell(f));
+        size = reader.size();
         return true;
     }
-    bool read(u64 offset, void *out, u64 n)
-    {
-        if (offset + n > size)
-            return false;
-        return std::fseek(f, long(offset), SEEK_SET) == 0 && std::fread(out, 1, n, f) == n;
-    }
+    bool read(u64 offset, void *out, u64 n) { return reader.read(offset, out, n); }
 };
 
 class Image
@@ -636,15 +625,17 @@ public:
 
 std::unique_ptr<Image> open_image(const std::string &path, std::string &error)
 {
-    std::FILE *probe = std::fopen(path.c_str(), "rb");
-    if (!probe)
-    {
-        error = "can't open the file";
-        return nullptr;
-    }
     u8 magic[4] = {};
-    const bool got = std::fread(magic, 1, 4, probe) == 4;
-    std::fclose(probe);
+    bool got = false;
+    {
+        File probe;
+        if (!probe.open(path))
+        {
+            error = "can't open the file";
+            return nullptr;
+        }
+        got = probe.read(0, magic, 4);
+    }
     if (!got)
     {
         error = "the file is too short";
@@ -867,20 +858,13 @@ bool read_header(const std::string &path, std::uint8_t out[0x100], std::string &
 bool read_wad(const std::string &path, WadInfo &info, std::vector<std::uint8_t> *banner, std::string &error)
 {
     File file;
-    file.f = std::fopen(path.c_str(), "rb");
-    if (!file.f)
+    if (!file.open(path))
     {
         error = "can't open the file";
         return false;
     }
-    std::fseek(file.f, 0, SEEK_END);
-    const u64 file_size = u64(std::ftell(file.f));
-    std::fseek(file.f, 0, SEEK_SET);
-    auto read_at = [&](u64 off, u64 n, u8 *dst) {
-        if (off + n > file_size || std::fseek(file.f, long(off), SEEK_SET) != 0)
-            return false;
-        return std::fread(dst, 1, std::size_t(n), file.f) == n;
-    };
+    const u64 file_size = file.size;
+    auto read_at = [&](u64 off, u64 n, u8 *dst) { return file.read(off, dst, n); };
     u8 head[0x20];
     if (!read_at(0, sizeof head, head) || be32(head) != 0x20)
     {

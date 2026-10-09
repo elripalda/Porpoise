@@ -47,7 +47,7 @@ const Field kFields[] = {
     {"download_info", nullptr, &Settings::download_info, 0, 1},
     {"resolution", &Settings::resolution, nullptr, 1, 6},
     {"widescreen", nullptr, &Settings::widescreen, 0, 1},
-    {"wide", &Settings::wide, nullptr, 0, 2},
+    {"wide", &Settings::wide, nullptr, 0, 3},
     {"aspect", &Settings::aspect, nullptr, 0, 3},
     {"anisotropy", &Settings::anisotropy, nullptr, 0, 4},
     {"texture_filter", &Settings::texture_filter, nullptr, 0, 2},
@@ -207,7 +207,7 @@ const char *const kTextureCache[] = {"128", "512", "0"};
 const int kLanguages[] = {1, 0, 2, 3, 4, 5, 6, 7, 8, 9};
 
 const char *const kManaged[] = {
-    "dolphin_efb_scale", "dolphin_widescreen_hack", "dolphin_aspect_ratio", "dolphin_max_anisotropy",
+    "dolphin_efb_scale", "dolphin_widescreen_hack", "dolphin_aspect_ratio", "dolphin_universal_widescreen", "dolphin_libretro_vfs_enabled", "dolphin_max_anisotropy",
     "dolphin_force_texture_filtering_mode", "dolphin_anti_aliasing", "dolphin_enhance_output_resampling",
     "dolphin_shader_compilation_mode", "dolphin_texture_cache_accuracy", "dolphin_pixel_lighting",
     "dolphin_disable_fog", "dolphin_crop_overscan", "dolphin_load_custom_textures",
@@ -909,6 +909,11 @@ std::vector<std::pair<std::string, std::string>> Settings::core_options() const
          * game's own widescreen code wants the picture at 16:9. */
         {"dolphin_widescreen_hack", on_off(ws_plan == 3 || ws_plan == 4)},
         {"dolphin_aspect_ratio", std::to_string(ws_plan == 1 ? 1 : aspect)},
+        /* The universal widescreen (beta): the core sets 16:9 itself when it hooks the game. */
+        {"dolphin_universal_widescreen", on_off(ws_plan == 5)},
+        /* The core reads games on a network share through Porpoise's VFS
+         * (porpoise_netfs), for /net/ paths only. */
+        {"dolphin_libretro_vfs_enabled", "enabled"},
         {"dolphin_max_anisotropy", std::to_string(anisotropy)},
         {"dolphin_force_texture_filtering_mode", std::to_string(texture_filter)},
         {"dolphin_anti_aliasing", std::to_string(antialiasing)},

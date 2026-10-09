@@ -13,6 +13,7 @@
 
 #include "porpoise_atomic.hpp"
 #include "porpoise_disc.hpp"
+#include "porpoise_netfs.hpp"
 #include "ui_i18n.hpp"
 
 #include <algorithm>
@@ -143,35 +144,20 @@ void find_games(const std::string &dir, int depth, std::vector<std::string> &out
             *cut = true;
         return;
     }
-    DIR *d = opendir(dir.c_str());
-    if (!d)
+    /* The folder listing says what most entries are; a stat (slow on a big
+     * exFAT drive) only for those it doesn't. A network share's (/net/) the
+     * same way. */
+    std::vector<porpoise::netfs::Entry> entries;
+    if (!porpoise::netfs::list(dir, entries))
         return;
     std::vector<std::string> subdirs;
     bool has_meta = false;
     std::vector<std::string> apps; /* boot.dol / .elf: a Homebrew Channel app when meta.xml is beside it */
-    while (dirent *entry = readdir(d))
+    for (const porpoise::netfs::Entry &entry : entries)
     {
-        const std::string name = entry->d_name;
-        if (name.empty() || name[0] == '.')
-            continue;
+        const std::string &name = entry.name;
         const std::string path = dir + "/" + name;
-        /* The folder listing says what most entries are; a stat (slow on a
-         * big exFAT drive) only for those it doesn't. */
-        bool is_dir = false, is_file = false;
-#ifdef DT_DIR
-        if (entry->d_type == DT_DIR)
-            is_dir = true;
-        else if (entry->d_type == DT_REG)
-            is_file = true;
-        else
-#endif
-        {
-            struct stat st;
-            if (stat(path.c_str(), &st) != 0)
-                continue;
-            is_dir = S_ISDIR(st.st_mode);
-            is_file = !is_dir;
-        }
+        const bool is_dir = entry.is_dir, is_file = !entry.is_dir;
         if (is_dir)
         {
             if (!skipped_folder(name))
@@ -186,7 +172,6 @@ void find_games(const std::string &dir, int depth, std::vector<std::string> &out
         else if (name == "meta.xml")
             has_meta = true;
     }
-    closedir(d);
     if (has_meta)
         out.insert(out.end(), apps.begin(), apps.end());
     if (depth > 0)
@@ -209,11 +194,12 @@ int count_games(const std::string &dir, int depth)
 
 bool read_disc_header(const std::string &path, Game &g)
 {
-    std::FILE *f = std::fopen(path.c_str(), "rb");
-    if (!f)
+    porpoise::netfs::Reader f; /* a file here or on a network share */
+    if (!f.open(path))
         return false;
     unsigned char head[0x400] = {};
-    std::size_t got = std::fread(head, 1, sizeof head, f);
+    const std::int64_t first = f.read_some(0, head, sizeof head);
+    std::size_t got = first > 0 ? std::size_t(first) : 0;
     long data = -1;
     std::size_t header_len = 0x400;
     if (got >= 4 && std::memcmp(head, "CISO", 4) == 0)
@@ -250,10 +236,10 @@ bool read_disc_header(const std::string &path, Game &g)
     }
     if (data > 0)
     {
-        std::fseek(f, data, SEEK_SET);
-        got = std::fread(head, 1, sizeof head, f);
+        const std::int64_t more = f.read_some(std::uint64_t(data), head, sizeof head);
+        got = more > 0 ? std::size_t(more) : 0;
     }
-    std::fclose(f);
+    f.close();
     if (g.format == "GCZ" || g.format == "WBFS")
     {
         std::string error;
@@ -342,12 +328,13 @@ bool read_app_meta(const std::string &path, Game &g)
     g.platform = "Wii";
     g.format = extension(g.file) == "elf" ? "ELF" : "DOL";
     const std::string dir = path.substr(0, path.rfind('/'));
-    std::FILE *f = std::fopen((dir + "/meta.xml").c_str(), "rb");
-    if (!f)
+    porpoise::netfs::Reader f; /* here or on a network share */
+    if (!f.open(dir + "/meta.xml"))
         return false;
     std::string xml(8192, '\0');
-    xml.resize(std::fread(&xml[0], 1, xml.size(), f));
-    std::fclose(f);
+    const std::int64_t got = f.read_some(0, &xml[0], xml.size());
+    xml.resize(got > 0 ? std::size_t(got) : 0);
+    f.close();
     const auto a = xml.find("<name>"), b = xml.find("</name>");
     if (a != std::string::npos && b != std::string::npos && b > a + 6 && b - a < 200)
         g.title = xml.substr(a + 6, b - a - 6);
@@ -392,9 +379,9 @@ Game game_from_file(const std::string &path)
     Game g;
     g.path = path;
     g.file = path.substr(path.rfind('/') + 1);
-    struct stat st;
-    if (stat(path.c_str(), &st) == 0)
-        g.bytes = std::uint64_t(st.st_size);
+    std::uint64_t bytes = 0;
+    if (porpoise::netfs::stat(path, nullptr, &bytes))
+        g.bytes = bytes;
     const std::string ext = extension(g.file);
     if (ext == "wad")
         read_wad_header(path, g);
@@ -437,14 +424,26 @@ void Library::scan(const LibraryPaths &paths)
     scan_files(paths, find_game_files(roots, 0, nullptr));
 }
 
-void Library::scan_files(const LibraryPaths &paths, std::vector<std::string> files)
+std::vector<Game> read_games(std::vector<std::string> files)
 {
-    paths_ = paths;
-    games_.clear();
     std::sort(files.begin(), files.end());
     files.erase(std::unique(files.begin(), files.end()), files.end());
+    std::vector<Game> games;
+    games.reserve(files.size());
     for (const std::string &path : files)
-        games_.push_back(game_from_file(path));
+        games.push_back(game_from_file(path));
+    return games;
+}
+
+void Library::scan_files(const LibraryPaths &paths, std::vector<std::string> files)
+{
+    scan_games(paths, read_games(std::move(files)));
+}
+
+void Library::scan_games(const LibraryPaths &paths, std::vector<Game> games)
+{
+    paths_ = paths;
+    games_ = std::move(games);
     load_state();
     load_info();
     sort(sort_);
@@ -452,15 +451,19 @@ void Library::scan_files(const LibraryPaths &paths, std::vector<std::string> fil
 
 Game *Library::open_file(const std::string &path)
 {
+    const bool net = porpoise::netfs::is_net(path);
+    bool is_dir = true;
     struct stat wanted;
-    if (stat(path.c_str(), &wanted) != 0 || !S_ISREG(wanted.st_mode))
+    if (net ? !porpoise::netfs::stat(path, &is_dir) || is_dir
+            : stat(path.c_str(), &wanted) != 0 || !S_ISREG(wanted.st_mode))
         return nullptr;
-    /* The same file as one the search found, however its path is spelled. */
+    /* The same file as one the search found, however its path is spelled (a
+     * share's by its path). */
     for (Game &g : games_)
     {
         struct stat st;
-        if (g.path == path ||
-            (stat(g.path.c_str(), &st) == 0 && st.st_dev == wanted.st_dev && st.st_ino == wanted.st_ino))
+        if (g.path == path || (!net && !porpoise::netfs::is_net(g.path) && stat(g.path.c_str(), &st) == 0 &&
+                               st.st_dev == wanted.st_dev && st.st_ino == wanted.st_ino))
             return &g;
     }
     /* Outside every folder searched: in the library until the next search,

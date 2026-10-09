@@ -53,6 +53,8 @@ enum RowAction
     kRowForwarder,    /* a game's settings > Home screen: make (or remake) its home screen tile */
     kRowTileArt,      /* a game's settings > Home screen: the tile art editor */
     kRowShots,        /* Screenshots: the gallery */
+    kRowAddShare,     /* Games > Add a network share: the share panel */
+    kRowEditShare,    /* Games > a network share (folder: its index): the share panel */
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

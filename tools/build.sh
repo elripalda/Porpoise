@@ -188,6 +188,27 @@ for source in "${sources[@]}"; do
     objects+=("$object")
 done
 
+# libsmb2 (LGPL-2.1-or-later), for games on a network share
+# (src/porpoise_netfs.cpp): its client library as C, with its PS5
+# configuration. Its name lookups and the like become porpoise_netfs's: the
+# console's libc has no getaddrinfo in the modules Porpoise loads.
+smb2_root="$root/third_party/libsmb2"
+mapfile -t smb2_sources < "$smb2_root/sources.txt"
+for name in "${smb2_sources[@]}"; do
+    [[ $name =~ ^[a-z0-9_-]+\.c$ && -f $smb2_root/lib/$name ]] || {
+        echo "invalid libsmb2 source: $name" >&2; exit 2;
+    }
+    object="$build/obj/libsmb2_${name%.c}.o"
+    PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
+        -std=gnu11 -O2 -w -ffunction-sections -fdata-sections -DHAVE_CONFIG_H \
+        -I"$smb2_root/ps5" -I"$smb2_root/include" -I"$smb2_root/include/smb2" \
+        -Dgetaddrinfo=porpoise_netfs_getaddrinfo -Dfreeaddrinfo=porpoise_netfs_freeaddrinfo \
+        -Dgetlogin_r=porpoise_netfs_getlogin_r -Dgethostname=porpoise_netfs_gethostname \
+        -D__isthreaded=porpoise_netfs_isthreaded -DSOL_TCP=IPPROTO_TCP \
+        -c "$smb2_root/lib/$name" -o "$object"
+    objects+=("$object")
+done
+
 PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
     -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti \
     -ffunction-sections -fdata-sections \

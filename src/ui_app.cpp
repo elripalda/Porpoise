@@ -438,6 +438,8 @@ App::Action App::update(const Input &in, double dt)
         return update_dialog(left, right);
     if (acct_.open)
         return update_account(up, down, left, right);
+    if (share_.open)
+        return update_share(up, down, left, right);
     if (screen_ == Screen::Achievements)
         return update_achievements_screen(up, down);
     if (screen_ == Screen::Welcome)
@@ -1206,6 +1208,7 @@ void App::draw_dialog()
     if (screen_ == Screen::Achievements)
         draw_achievements_screen(); /* over whichever look's library */
     draw_account(); /* under any dialog */
+    draw_share();
     if (!dialog_.open)
         return;
     Gfx &g = *g_;
@@ -1583,7 +1586,7 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
                        const std::vector<std::pair<Glyph, std::string>> &right_in, const std::string &center)
 {
     Gfx &g = *g_;
-    if ((dialog_.open || acct_.open || screen_ == Screen::Achievements) && !drawing_dialog_)
+    if ((dialog_.open || acct_.open || share_.open || screen_ == Screen::Achievements) && !drawing_dialog_)
         return; /* the dialog (or the account panel, the achievements page) brings its own */
     /* Every prompt is translated here, so callers write plain English. */
     std::vector<std::pair<Glyph, std::string>> left_tr, right_tr;

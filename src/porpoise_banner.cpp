@@ -9,6 +9,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #include "porpoise_paths.hpp"
 #include "porpoise_banner.hpp"
+#include "porpoise_netfs.hpp"
 
 #include <algorithm>
 #include <array>
@@ -1709,8 +1710,13 @@ bool load(const std::string &image, const std::string &id, const std::string &ca
     }
     if (!disc::read_file(image, "opening.bnr", bnr, error))
     {
-        mkdir(cache_dir.c_str(), 0777);
-        write_whole(none, error.data(), error.size());
+        /* Remembered as having none, except on a network share: there a
+         * failure may only be the share out of reach for now. */
+        if (!netfs::is_net(image))
+        {
+            mkdir(cache_dir.c_str(), 0777);
+            write_whole(none, error.data(), error.size());
+        }
         return false;
     }
     mkdir(cache_dir.c_str(), 0777);

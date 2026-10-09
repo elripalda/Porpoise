@@ -264,6 +264,355 @@ index a9737c1e0e..b1b57502bc 100644
    void SetVerifyMode() { m_mode = Mode::Verify; }
    bool IsReadMode() const { return m_mode == Mode::Read; }
    bool IsWriteMode() const { return m_mode == Mode::Write; }
+diff --git a/Source/Core/Common/DirectIOFile.cpp b/Source/Core/Common/DirectIOFile.cpp
+index b09ffd176c..d9d9351bb4 100644
+--- a/Source/Core/Common/DirectIOFile.cpp
++++ b/Source/Core/Common/DirectIOFile.cpp
+@@ -3,6 +3,7 @@
+ 
+ #include "Common/DirectIOFile.h"
+ 
++#include <mutex>
+ #include <utility>
+ 
+ #if defined(_WIN32)
+@@ -84,7 +85,7 @@ bool DirectIOFile::Open(const std::string& path, AccessMode access_mode, OpenMod
+     return false;
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(path))
+   {
+     // used in Duplicate() later
+     m_path = path;
+@@ -184,7 +185,7 @@ bool DirectIOFile::Close()
+   m_current_offset = 0;
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     int result = Libretro::VFile::Close(m_vfs_handle);
+     m_vfs_handle = nullptr;
+@@ -202,7 +203,7 @@ bool DirectIOFile::Close()
+ bool DirectIOFile::IsOpen() const
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+     return m_vfs_handle != nullptr;
+ #endif
+ 
+@@ -243,11 +244,18 @@ static bool OverlappedTransfer(HANDLE handle, u64 offset, auto* data_ptr, u64 si
+ }
+ #endif
+ 
++#ifdef __LIBRETRO__
++static std::mutex s_vfs_offset_mutex;
++#endif
++
+ bool DirectIOFile::OffsetRead(u64 offset, u8* out_ptr, u64 size)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
++    // Porpoise: a seek and a read on the one handle, which the disc readers'
++    // threads share; one at a time, as pread would be.
++    std::lock_guard<std::mutex> lock(s_vfs_offset_mutex);
+     if (Libretro::VFile::Seek(m_vfs_handle, offset, SEEK_SET) < 0)
+       return false;
+ 
+@@ -266,8 +274,9 @@ bool DirectIOFile::OffsetRead(u64 offset, u8* out_ptr, u64 size)
+ bool DirectIOFile::OffsetWrite(u64 offset, const u8* in_ptr, u64 size)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
++    std::lock_guard<std::mutex> lock(s_vfs_offset_mutex);
+     if (Libretro::VFile::Seek(m_vfs_handle, offset, SEEK_SET) < 0)
+       return false;
+ 
+@@ -286,7 +295,7 @@ bool DirectIOFile::OffsetWrite(u64 offset, const u8* in_ptr, u64 size)
+ u64 DirectIOFile::GetSize() const
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+     return Libretro::VFile::GetSize(m_vfs_handle);
+ #endif
+ 
+@@ -332,7 +341,7 @@ bool DirectIOFile::Seek(s64 offset, SeekOrigin origin)
+ bool DirectIOFile::Flush()
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+     return Libretro::VFile::Flush(m_vfs_handle) == 0;
+ #endif
+ 
+@@ -346,7 +355,7 @@ bool DirectIOFile::Flush()
+ void DirectIOFile::Swap(DirectIOFile& other)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (true)
+   {
+     std::swap(m_vfs_handle, other.m_vfs_handle);
+     std::swap(m_path, other.m_path);
+@@ -371,7 +380,7 @@ DirectIOFile DirectIOFile::Duplicate() const
+     return result;
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     // We need to reopen the file, since VFS handles cannot be duplicated.
+     result.m_vfs_handle = Libretro::VFile::Open(
+@@ -415,7 +424,7 @@ DirectIOFile DirectIOFile::Duplicate() const
+ bool Resize(DirectIOFile& file, u64 size)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (file.m_vfs_handle)
+     return Libretro::VFile::Truncate(file.m_vfs_handle, size) == 0;
+ #endif
+ 
+@@ -434,7 +443,7 @@ bool Rename(DirectIOFile& file, const std::string& source_path [[maybe_unused]],
+             const std::string& destination_path)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (file.m_vfs_handle)
+     return file.IsOpen() && Libretro::VFile::Rename(source_path, destination_path);
+ #endif
+ 
+@@ -460,7 +469,7 @@ bool Rename(DirectIOFile& file, const std::string& source_path [[maybe_unused]],
+ bool Delete(DirectIOFile& file, const std::string& filename)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (file.m_vfs_handle)
+     return file.IsOpen() && Libretro::VFile::Delete(filename);
+ #endif
+ 
+diff --git a/Source/Core/Common/DirectIOFile.h b/Source/Core/Common/DirectIOFile.h
+index 6bff9b04ef..e0eee81a3e 100644
+--- a/Source/Core/Common/DirectIOFile.h
++++ b/Source/Core/Common/DirectIOFile.h
+@@ -112,7 +112,7 @@ public:
+   auto GetHandle() const
+   {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+     ERROR_LOG_FMT(COMMON, "VFS: Attempt to use std::FILE in DirectIO which should not happen in VFS mode");
+ #endif
+ 
+@@ -146,6 +146,9 @@ private:
+   unsigned m_hints{};
+ 
+   friend bool Resize(DirectIOFile& file, u64 size);
++  friend bool Rename(DirectIOFile& file, const std::string& source_path,
++                     const std::string& destination_path);
++  friend bool Delete(DirectIOFile& file, const std::string& filename);
+ #endif
+ };
+ 
+diff --git a/Source/Core/Common/FileUtil.cpp b/Source/Core/Common/FileUtil.cpp
+index 54fb88b441..e47d428fac 100644
+--- a/Source/Core/Common/FileUtil.cpp
++++ b/Source/Core/Common/FileUtil.cpp
+@@ -96,7 +96,7 @@ FileInfo::FileInfo(const std::string& path) : FileInfo(path.c_str())
+ FileInfo::FileInfo(const char* path)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(path))
+   {
+     Libretro::VFile::FileInfo(m_status, m_size, m_exists, path);
+     return;
+@@ -149,7 +149,7 @@ u64 FileInfo::GetSize() const
+ bool Exists(const std::string& path)
+ {
+ #ifdef __LIBRETRO__
+-  if(Libretro::VFile::HasVFS())
++  if(Libretro::VFile::UseVFS(path))
+     return Libretro::VFile::Exists(path);
+ #endif
+ 
+@@ -160,7 +160,7 @@ bool Exists(const std::string& path)
+ bool IsDirectory(const std::string& path)
+ {
+ #ifdef __LIBRETRO__
+-  if(Libretro::VFile::HasVFS())
++  if(Libretro::VFile::UseVFS(path))
+     return Libretro::VFile::IsDirectory(path);
+ #endif
+   return FileInfo(path).IsDirectory();
+@@ -170,7 +170,7 @@ bool IsDirectory(const std::string& path)
+ bool IsFile(const std::string& path)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(path))
+     return Libretro::VFile::IsFile(path);
+ #endif
+   return FileInfo(path).IsFile();
+@@ -183,7 +183,7 @@ bool Delete(const std::string& filename, IfAbsentBehavior behavior)
+   DEBUG_LOG_FMT(COMMON, "{}: file {}", __func__, filename);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(filename))
+     return Libretro::VFile::Delete(filename);
+ #endif
+ 
+@@ -232,7 +232,7 @@ bool CreateDir(const std::string& path)
+   DEBUG_LOG_FMT(COMMON, "{}: directory {}", __func__, path);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(path))
+     return Libretro::VFile::CreateDir(path);
+ #endif
+ 
+@@ -253,7 +253,7 @@ bool CreateDirs(std::string_view path)
+   DEBUG_LOG_FMT(COMMON, "{}: directory {}", __func__, path);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(path))
+     return Libretro::VFile::CreateDirs(path);
+ #endif
+ 
+@@ -274,7 +274,7 @@ bool CreateFullPath(std::string_view fullPath)
+   DEBUG_LOG_FMT(COMMON, "{}: path {}", __func__, fullPath);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(fullPath))
+     return Libretro::VFile::CreateFullPath(fullPath);
+ #endif
+ 
+@@ -296,7 +296,7 @@ bool DeleteDir(const std::string& filename, IfAbsentBehavior behavior)
+   DEBUG_LOG_FMT(COMMON, "{}: directory {}", __func__, filename);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(filename))
+     return Libretro::VFile::DeleteDir(filename);
+ #endif
+ 
+@@ -334,7 +334,7 @@ bool DeleteDir(const std::string& filename, IfAbsentBehavior behavior)
+ bool Rename(const std::string& srcFilename, const std::string& destFilename)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(srcFilename))
+     return Libretro::VFile::Rename(srcFilename, destFilename);
+ #endif
+   DEBUG_LOG_FMT(COMMON, "{}: {} --> {}", __func__, srcFilename, destFilename);
+@@ -392,7 +392,7 @@ bool CopyRegularFile(std::string_view source_path, std::string_view destination_
+   DEBUG_LOG_FMT(COMMON, "{}: {} --> {}", __func__, source_path, destination_path);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(source_path))
+     return Libretro::VFile::CopyRegularFile(source_path, destination_path);
+ #endif
+ 
+@@ -412,7 +412,7 @@ bool CopyRegularFile(std::string_view source_path, std::string_view destination_
+ u64 GetSize(const std::string& path)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(path))
+     return Libretro::VFile::GetSize(path);
+ #endif
+   return FileInfo(path).GetSize();
+@@ -422,7 +422,7 @@ u64 GetSize(const std::string& path)
+ u64 GetSize(FILE* f)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (false)
+   {
+     ERROR_LOG_FMT(COMMON, "GetSize: call using FILE when VFS is in use. This should not happen");
+     return 0;
+@@ -452,7 +452,7 @@ bool CreateEmptyFile(const std::string& filename)
+   DEBUG_LOG_FMT(COMMON, "CreateEmptyFile: {}", filename);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(filename))
+     return Libretro::VFile::CreateEmptyFile(filename);
+ #endif
+   if (!File::IOFile(filename, "wb"))
+@@ -508,7 +508,7 @@ FSTEntry ScanDirectoryTree(const std::string& directory, bool recursive)
+   DEBUG_LOG_FMT(COMMON, "{}: directory {}", __func__, directory);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(directory))
+     return Libretro::VFile::ScanDirectoryTree(directory, recursive);
+ #endif
+ 
+@@ -604,7 +604,7 @@ bool DeleteDirRecursively(const std::string& directory)
+   DEBUG_LOG_FMT(COMMON, "{}: {}", __func__, directory);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(directory))
+     return Libretro::VFile::DeleteDir(directory, true);
+ #endif
+ 
+@@ -622,7 +622,7 @@ bool Copy(std::string_view source_path, std::string_view dest_path, bool overwri
+                 overwrite_existing ? "overwrite" : "preserve");
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(source_path))
+     return Libretro::VFile::CopyRegularFile(source_path, dest_path, overwrite_existing);
+ #endif
+ 
+@@ -650,7 +650,7 @@ static bool MoveWithOverwrite(const std::filesystem::path& src, const std::files
+                               std::error_code& error)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(src))
+     return Libretro::VFile::MoveWithOverwrite(src.string(), dst.string());
+ #endif
+ 
+@@ -763,7 +763,7 @@ std::string CreateTempDir()
+ std::string GetTempFilenameForAtomicWrite(std::string path)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(path))
+     return path + ".xxx";
+ #endif
+   std::error_code error;
+@@ -1143,7 +1143,7 @@ std::string GetThemeDir(const std::string& theme_name)
+ bool WriteStringToFile(const std::string& filename, std::string_view str)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(filename))
+     return Libretro::VFile::WriteStringToFile(filename, str);
+ #endif
+   return File::IOFile(filename, "wb").WriteBytes(str.data(), str.size());
+@@ -1152,7 +1152,7 @@ bool WriteStringToFile(const std::string& filename, std::string_view str)
+ bool ReadFileToString(const std::string& filename, std::string& str)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(filename))
+     return Libretro::VFile::ReadFileToString(filename, str);
+ #endif
+   File::IOFile file(filename, "rb");
 diff --git a/Source/Core/Common/FilesystemWatcher.cpp b/Source/Core/Common/FilesystemWatcher.cpp
 index fbb5e216b1..514abe9426 100644
 --- a/Source/Core/Common/FilesystemWatcher.cpp
@@ -290,6 +639,140 @@ index fbb5e216b1..514abe9426 100644
    m_watched_paths.erase(path);
  #endif
  }
+diff --git a/Source/Core/Common/IOFile.cpp b/Source/Core/Common/IOFile.cpp
+index 7ad6352153..1b32bb29db 100644
+--- a/Source/Core/Common/IOFile.cpp
++++ b/Source/Core/Common/IOFile.cpp
+@@ -42,7 +42,7 @@ IOFile::IOFile(std::FILE* file) : m_file(file), m_good(true)
+ #ifdef __LIBRETRO__
+   m_vfs_handle = nullptr;
+ 
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+     ERROR_LOG_FMT(COMMON, "VFS: Attempt to use IOFile::IOFile with a std::FILE which should not happen");
+ #endif
+ }
+@@ -78,7 +78,7 @@ IOFile& IOFile::operator=(IOFile&& other) noexcept
+ void IOFile::Swap(IOFile& other) noexcept
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (true)
+     std::swap(m_vfs_handle, other.m_vfs_handle);
+ #endif
+   std::swap(m_file, other.m_file);
+@@ -91,7 +91,7 @@ bool IOFile::Open(const std::string& filename, const char openmode[],
+   Close();
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(filename))
+   {
+     m_vfs_handle = Libretro::VFile::Open(filename, openmode);
+     m_good = m_vfs_handle != nullptr;
+@@ -126,7 +126,7 @@ bool IOFile::Open(const std::string& filename, const char openmode[],
+ bool IOFile::Close()
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     if (!IsOpen() || 0 != Libretro::VFile::Close(m_vfs_handle))
+       m_good = false;
+@@ -153,7 +153,7 @@ void IOFile::SetHandle(std::FILE* file)
+ u64 IOFile::GetSize() const
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     if (IsOpen())
+       return Libretro::VFile::GetSize(m_vfs_handle);
+@@ -187,7 +187,7 @@ bool IOFile::Seek(s64 offset, SeekOrigin origin)
+   }
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     if (!IsOpen() || 0 != Libretro::VFile::Seek(m_vfs_handle, offset, fseek_origin))
+       m_good = false;
+@@ -205,7 +205,7 @@ bool IOFile::Seek(s64 offset, SeekOrigin origin)
+ u64 IOFile::Tell() const
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     if (IsOpen())
+       return Libretro::VFile::Tell(m_vfs_handle);
+@@ -222,7 +222,7 @@ u64 IOFile::Tell() const
+ bool IOFile::Flush()
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     if (!IsOpen() || 0 != Libretro::VFile::Flush(m_vfs_handle))
+       m_good = false;
+@@ -239,7 +239,7 @@ bool IOFile::Flush()
+ bool IOFile::Resize(u64 size)
+ {
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (m_vfs_handle)
+   {
+     if (!IsOpen() || 0 != Libretro::VFile::Resize(m_vfs_handle, size))
+       m_good = false;
+diff --git a/Source/Core/Common/IOFile.h b/Source/Core/Common/IOFile.h
+index a123e7be9c..547098d027 100644
+--- a/Source/Core/Common/IOFile.h
++++ b/Source/Core/Common/IOFile.h
+@@ -61,7 +61,7 @@ public:
+   bool ReadArray(T* elements, size_t count, size_t* num_read = nullptr)
+   {
+ #ifdef __LIBRETRO__
+-    if (Libretro::VFile::HasVFS())
++    if (m_vfs_handle)
+     {
+       if (!IsOpen())
+       {
+@@ -99,7 +99,7 @@ public:
+   bool WriteArray(const T* elements, size_t count)
+   {
+   #ifdef __LIBRETRO__
+-    if (Libretro::VFile::HasVFS())
++    if (m_vfs_handle)
+     {
+       if (!IsOpen())
+       {
+@@ -157,7 +157,7 @@ public:
+   bool IsOpen() const
+   {
+ #ifdef __LIBRETRO__
+-    if (Libretro::VFile::HasVFS())
++    if (m_vfs_handle)
+       return nullptr != m_vfs_handle;
+ #endif
+     return nullptr != m_file;
+@@ -168,7 +168,7 @@ public:
+   std::FILE* GetHandle()
+   {
+ #ifdef __LIBRETRO__
+-    if (Libretro::VFile::HasVFS())
++    if (m_vfs_handle)
+       ERROR_LOG_FMT(COMMON, "VFS: Attempt to use std::FILE which should not happen in VFS mode");
+ #endif
+     return m_file; 
+@@ -189,7 +189,7 @@ public:
+   {
+     m_good = true;
+ #ifdef __LIBRETRO__
+-    if (Libretro::VFile::HasVFS())
++    if (m_vfs_handle)
+       return;
+ #endif
+     if (IsOpen())
 diff --git a/Source/Core/Common/MemArena.h b/Source/Core/Common/MemArena.h
 index 1a3093cc4d..22a59f7a47 100644
 --- a/Source/Core/Common/MemArena.h
@@ -1072,6 +1555,36 @@ index 74f26b9ec7..91de356d89 100644
    std::unordered_map<AchievementId, Badge> m_unlocked_badges;
    std::unordered_map<AchievementId, Badge> m_locked_badges;
    RichPresence m_rich_presence;
+diff --git a/Source/Core/Core/Boot/Boot.cpp b/Source/Core/Core/Boot/Boot.cpp
+index 0cad29ee35..f9fb14bec5 100644
+--- a/Source/Core/Core/Boot/Boot.cpp
++++ b/Source/Core/Core/Boot/Boot.cpp
+@@ -36,6 +36,7 @@
+ #include "Core/ConfigManager.h"
+ #include "Core/FifoPlayer/FifoPlayer.h"
+ #include "Core/HLE/HLE.h"
++#include "Core/HLE/HLE_PorpoiseWidescreen.h"
+ #include "Core/HW/DVD/AMMediaboard.h"
+ #include "Core/HW/DVD/DVDInterface.h"
+ #include "Core/HW/EXI/EXI_DeviceIPL.h"
+@@ -73,7 +74,7 @@ std::vector<std::string> ReadM3UFile(const std::string& m3u_path,
+   std::string newline;
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (Libretro::VFile::UseVFS(m3u_path))
+   {
+     lines = Libretro::VFile::ReadLines(m3u_path);
+   }
+@@ -564,6 +565,8 @@ bool CBoot::BootUp(Core::System& system, const Core::CPUThreadGuard& guard,
+         return false;
+ 
+       SConfig::OnTitleDirectlyBooted(guard);
++      // Porpoise: the universal widescreen, when chosen for this game.
++      HLE_PorpoiseWidescreen::Apply(system, guard, *volume);
+       return true;
+     }
+ 
 diff --git a/Source/Core/Core/Boot/Boot_WiiWAD.cpp b/Source/Core/Core/Boot/Boot_WiiWAD.cpp
 index c4b5419a69..71778b9600 100644
 --- a/Source/Core/Core/Boot/Boot_WiiWAD.cpp
@@ -1090,6 +1603,19 @@ index c4b5419a69..71778b9600 100644
    {
      PanicAlertFmtT("Cannot boot this WAD because it could not be installed to the NAND.");
      return false;
+diff --git a/Source/Core/Core/CMakeLists.txt b/Source/Core/Core/CMakeLists.txt
+index baad9c0941..44681b89cf 100644
+--- a/Source/Core/Core/CMakeLists.txt
++++ b/Source/Core/Core/CMakeLists.txt
+@@ -131,6 +131,8 @@ add_library(core
+   HLE/HLE_Misc.cpp
+   HLE/HLE_Misc.h
+   HLE/HLE_OS.cpp
++  HLE/HLE_PorpoiseWidescreen.cpp
++  HLE/HLE_PorpoiseWidescreen.h
+   HLE/HLE_OS.h
+   HLE/HLE_VarArgs.cpp
+   HLE/HLE_VarArgs.h
 diff --git a/Source/Core/Core/Config/MainSettings.cpp b/Source/Core/Core/Config/MainSettings.cpp
 index f0cc8511b7..86571be24b 100644
 --- a/Source/Core/Core/Config/MainSettings.cpp
@@ -1348,6 +1874,364 @@ index f0c62d4e3f..bbb4cb7791 100644
    }
  
    if (m_FileLoadedCb)
+diff --git a/Source/Core/Core/HLE/HLE.cpp b/Source/Core/Core/HLE/HLE.cpp
+index 31b6c2d1ed..e9d09a5296 100644
+--- a/Source/Core/Core/HLE/HLE.cpp
++++ b/Source/Core/Core/HLE/HLE.cpp
+@@ -14,6 +14,7 @@
+ #include "Core/GeckoCode.h"
+ #include "Core/HLE/HLE_Misc.h"
+ #include "Core/HLE/HLE_OS.h"
++#include "Core/HLE/HLE_PorpoiseWidescreen.h"
+ #include "Core/HW/Memmap.h"
+ #include "Core/Host.h"
+ #include "Core/PowerPC/PPCSymbolDB.h"
+@@ -26,7 +27,7 @@ namespace HLE
+ static std::map<u32, u32> s_hooked_addresses;
+ 
+ // clang-format off
+-constexpr std::array<Hook, 23> os_patches{{
++constexpr std::array<Hook, 25> os_patches{{
+     // Placeholder, os_patches[0] is the "non-existent function" index
+     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
+ 
+@@ -58,7 +59,11 @@ constexpr std::array<Hook, 23> os_patches{{
+ 
+     {"GeckoCodehandler",             HLE_Misc::GeckoCodeHandlerICacheFlush, HookType::Start,   HookFlag::Fixed},
+     {"GeckoHandlerReturnTrampoline", HLE_Misc::GeckoReturnTrampoline,       HookType::Replace, HookFlag::Fixed},
+-    {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Start,   HookFlag::Fixed} // apploader needs OSReport-like function
++    {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Start,   HookFlag::Fixed}, // apploader needs OSReport-like function
++
++    // Porpoise's universal widescreen (beta): installed at the addresses found when the game boots
++    {"PorpoiseWidePerspective",      HLE_PorpoiseWidescreen::Perspective,   HookType::Start,   HookFlag::Fixed},
++    {"PorpoiseWideFrustum",          HLE_PorpoiseWidescreen::Frustum,       HookType::Start,   HookFlag::Fixed},
+ }};
+ // clang-format on
+ 
+@@ -104,6 +109,8 @@ void PatchFixedFunctions(Core::System& system)
+   // This has to always be installed even if cheats are not enabled because of the possibility of
+   // loading a savestate where PC is inside the code handler while cheats are disabled.
+   Patch(system, Gecko::HLE_TRAMPOLINE_ADDRESS, "GeckoHandlerReturnTrampoline");
++  // Porpoise: the universal widescreen's hooks, when the game has them.
++  HLE_PorpoiseWidescreen::Repatch(system);
+ }
+ 
+ void PatchFunctions(Core::System& system)
+@@ -151,6 +158,7 @@ void PatchFunctions(Core::System& system)
+ void Clear()
+ {
+   s_hooked_addresses.clear();
++  HLE_PorpoiseWidescreen::Reset();
+ }
+ 
+ void Reload(Core::System& system)
+diff --git a/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.cpp b/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.cpp
+new file mode 100644
+index 0000000000..d5c9604a7a
+--- /dev/null
++++ b/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.cpp
+@@ -0,0 +1,252 @@
++// Porpoise's universal widescreen (beta).
++// Copyright (C) 2026 Ruben (Project Porpoise)
++// SPDX-License-Identifier: GPL-2.0-or-later
++
++#include "Core/HLE/HLE_PorpoiseWidescreen.h"
++
++#include <array>
++#include <atomic>
++#include <cmath>
++#include <optional>
++#include <utility>
++#include <vector>
++
++#include "Common/CommonTypes.h"
++#include "Common/Config/Config.h"
++#include "Common/Logging/Log.h"
++#include "Core/Config/GraphicsSettings.h"
++#include "Core/Core.h"
++#include "Core/HLE/HLE.h"
++#include "Core/PowerPC/MMU.h"
++#include "Core/PowerPC/PowerPC.h"
++#include "Core/PowerPC/SignatureDB/SignatureDB.h"
++#include "Core/System.h"
++#include "DiscIO/DiscUtils.h"
++#include "DiscIO/Enums.h"
++#include "DiscIO/Volume.h"
++#include "DiscIO/VolumeDisc.h"
++#include "VideoCommon/VideoConfig.h"
++
++namespace HLE_PorpoiseWidescreen
++{
++namespace
++{
++constexpr u32 BLR = 0x4E800020;
++// C_MTXFrustum's first instruction: fsubs f9, f4, f3 (r - l).
++constexpr u32 FRUSTUM_FIRST = 0xED241828;
++// 4:3 to 16:9.
++constexpr double WIDEN = 4.0 / 3.0;
++
++struct Signature
++{
++  u32 hash;
++  u32 size;  // bytes
++};
++
++// From Dolphin's Data/Sys/totaldb.dsy (two builds of the SDK each).
++constexpr std::array<Signature, 2> PERSPECTIVE{{{0x2f85f228, 236}, {0xd2bd4590, 208}}};
++constexpr std::array<Signature, 2> ORTHO{{{0xc76f95b2, 152}, {0xcdcb1aa9, 152}}};
++
++bool s_enabled = false;
++u32 s_perspective = 0;
++u32 s_frustum = 0;
++std::atomic<bool> s_logged_perspective{false};
++std::atomic<bool> s_logged_frustum{false};
++
++struct Section
++{
++  u32 start;
++  u32 end;  // exclusive
++};
++
++// The main program's text sections, from its DOL header on the disc.
++std::vector<Section> TextSections(const DiscIO::VolumeDisc& volume)
++{
++  std::vector<Section> sections;
++  const DiscIO::Partition partition = volume.GetGamePartition();
++  const std::optional<u64> dol = DiscIO::GetBootDOLOffset(volume, partition);
++  if (!dol)
++    return sections;
++  for (u32 i = 0; i < 7; ++i)
++  {
++    const std::optional<u32> address = volume.ReadSwapped<u32>(*dol + 0x48 + i * 4, partition);
++    const std::optional<u32> size = volume.ReadSwapped<u32>(*dol + 0x90 + i * 4, partition);
++    if (!address || !size || *size == 0 || *size > 0x01800000)
++      continue;
++    if (*address < 0x80000000 || *address >= 0x81800000)
++      continue;
++    sections.push_back({*address, *address + (*size & ~3u)});
++  }
++  return sections;
++}
++
++u32 Read(const Core::CPUThreadGuard& guard, u32 address)
++{
++  return PowerPC::MMU::HostRead_Instruction(guard, address);
++}
++
++// A function with one of the signatures: it starts just after a blr (or at the
++// section's start) and its last instruction is a blr.
++template <std::size_t N>
++u32 FindKnown(const Core::CPUThreadGuard& guard, const std::vector<Section>& sections,
++              const std::array<Signature, N>& known)
++{
++  for (const Section& section : sections)
++  {
++    for (u32 address = section.start; address + 8 <= section.end; address += 4)
++    {
++      if (address != section.start && Read(guard, address - 4) != BLR)
++        continue;
++      for (const Signature& signature : known)
++      {
++        const u32 last = address + signature.size - 4;
++        if (last >= section.end || Read(guard, last) != BLR)
++          continue;
++        if (HashSignatureDB::ComputeCodeChecksum(guard, address, last) == signature.hash)
++          return address;
++      }
++    }
++  }
++  return 0;
++}
++
++// C_MTXFrustum sits just before C_MTXPerspective in mtx44.o: the function that
++// ends at the blr before it, when it starts with C_MTXFrustum's first
++// instruction.
++u32 FindFrustumBefore(const Core::CPUThreadGuard& guard, u32 next, u32 start)
++{
++  if (next < start + 8 || Read(guard, next - 4) != BLR)
++    return 0;
++  const u32 limit = next - start > 0x200 ? next - 0x200 : start;
++  for (u32 address = next - 8; address >= limit; address -= 4)
++  {
++    if (Read(guard, address) == BLR)
++      return Read(guard, address + 4) == FRUSTUM_FIRST ? address + 4 : 0;
++    if (address == start)
++      return Read(guard, address) == FRUSTUM_FIRST ? address : 0;
++    if (address < 4)
++      break;
++  }
++  return 0;
++}
++
++// A 4:3-ish aspect, widened to 16:9; anything else (a square shadow map, a
++// game that is wide already) is left alone.
++std::optional<double> Widened(double aspect)
++{
++  const double magnitude = std::fabs(aspect);
++  if (!std::isfinite(magnitude) || magnitude < 1.2 || magnitude > 1.6)
++    return std::nullopt;
++  return aspect * WIDEN;
++}
++}  // namespace
++
++void SetEnabled(bool enabled)
++{
++  s_enabled = enabled;
++}
++
++bool Apply(Core::System& system, const Core::CPUThreadGuard& guard,
++           const DiscIO::VolumeDisc& volume)
++{
++  Reset();
++  if (!s_enabled)
++    return false;
++  if (system.IsWii() || volume.GetVolumeType() != DiscIO::Platform::GameCubeDisc)
++  {
++    NOTICE_LOG_FMT(OSHLE, "Universal widescreen: GameCube games only, left off");
++    return false;
++  }
++
++  const std::vector<Section> sections = TextSections(volume);
++  if (sections.empty())
++  {
++    WARN_LOG_FMT(OSHLE, "Universal widescreen: the program's sections weren't readable; 4:3");
++    return false;
++  }
++
++  u32 perspective = FindKnown(guard, sections, PERSPECTIVE);
++  u32 frustum = 0;
++  if (perspective)
++  {
++    for (const Section& section : sections)
++      if (perspective >= section.start && perspective < section.end)
++        frustum = FindFrustumBefore(guard, perspective, section.start);
++  }
++  const u32 ortho = FindKnown(guard, sections, ORTHO);
++
++  if (!perspective && !frustum)
++  {
++    NOTICE_LOG_FMT(OSHLE,
++                   "Universal widescreen: no projection function found (ortho {:08x}); the game "
++                   "stays 4:3",
++                   ortho);
++    return false;
++  }
++
++  s_perspective = perspective;
++  s_frustum = frustum;
++  NOTICE_LOG_FMT(OSHLE,
++                 "Universal widescreen: C_MTXPerspective {:08x}, C_MTXFrustum {:08x}, "
++                 "C_MTXOrtho {:08x}",
++                 perspective, frustum, ortho);
++  Repatch(system);
++
++  Config::SetCurrent(Config::GFX_ASPECT_RATIO, AspectMode::ForceWide);
++  Config::SetCurrent(Config::GFX_WIDESCREEN_HACK, false);
++  return true;
++}
++
++void Repatch(Core::System& system)
++{
++  if (s_perspective)
++    HLE::Patch(system, s_perspective, "PorpoiseWidePerspective");
++  if (s_frustum)
++    HLE::Patch(system, s_frustum, "PorpoiseWideFrustum");
++}
++
++void Reset()
++{
++  s_perspective = 0;
++  s_frustum = 0;
++  s_logged_perspective = false;
++  s_logged_frustum = false;
++}
++
++// C_MTXPerspective(Mtx44 m, f32 fovY, f32 aspect, f32 n, f32 f): aspect in f2.
++void Perspective(const Core::CPUThreadGuard& guard)
++{
++  auto& ppc_state = guard.GetSystem().GetPPCState();
++  const double aspect = ppc_state.ps[2].PS0AsDouble();
++  const std::optional<double> wide = Widened(aspect);
++  if (!wide)
++    return;
++  ppc_state.ps[2].Fill(double(float(*wide)));
++  if (!s_logged_perspective.exchange(true))
++    NOTICE_LOG_FMT(OSHLE, "Universal widescreen: perspective {:.3f} widened to {:.3f}", aspect,
++                   *wide);
++}
++
++// C_MTXFrustum(Mtx44 m, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f): l and r in
++// f3 and f4, widened about their middle.
++void Frustum(const Core::CPUThreadGuard& guard)
++{
++  auto& ppc_state = guard.GetSystem().GetPPCState();
++  const double t = ppc_state.ps[1].PS0AsDouble();
++  const double b = ppc_state.ps[2].PS0AsDouble();
++  const double l = ppc_state.ps[3].PS0AsDouble();
++  const double r = ppc_state.ps[4].PS0AsDouble();
++  if (t == b)
++    return;
++  if (!Widened((r - l) / (t - b)))
++    return;
++  const double middle = (l + r) / 2;
++  const double new_l = middle + (l - middle) * WIDEN;
++  const double new_r = middle + (r - middle) * WIDEN;
++  ppc_state.ps[3].Fill(double(float(new_l)));
++  ppc_state.ps[4].Fill(double(float(new_r)));
++  if (!s_logged_frustum.exchange(true))
++    NOTICE_LOG_FMT(OSHLE, "Universal widescreen: frustum {:.3f}..{:.3f} widened to {:.3f}..{:.3f}",
++                   l, r, new_l, new_r);
++}
++}  // namespace HLE_PorpoiseWidescreen
+diff --git a/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.h b/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.h
+new file mode 100644
+index 0000000000..f4ed420486
+--- /dev/null
++++ b/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.h
+@@ -0,0 +1,43 @@
++// Porpoise's universal widescreen (beta).
++// Copyright (C) 2026 Ruben (Project Porpoise)
++// SPDX-License-Identifier: GPL-2.0-or-later
++//
++// For a GameCube game without a widescreen code of its own: find the SDK's
++// projection functions (C_MTXPerspective and C_MTXFrustum, from mtx44.o) in
++// the game's main program, by the checksums in Dolphin's own signature
++// database, and hook them so a 4:3 projection is widened to 16:9. When they
++// can't be found, nothing is hooked and the game stays 4:3.
++
++#pragma once
++
++namespace Core
++{
++class CPUThreadGuard;
++class System;
++}  // namespace Core
++
++namespace DiscIO
++{
++class VolumeDisc;
++}
++
++namespace HLE_PorpoiseWidescreen
++{
++// Chosen for the game about to boot (the frontend's "Universal (Beta)").
++void SetEnabled(bool enabled);
++
++// After the game's program is in memory: finds the functions and hooks them.
++// true when the game is widened.
++bool Apply(Core::System& system, const Core::CPUThreadGuard& guard,
++           const DiscIO::VolumeDisc& volume);
++
++// Installs the hooks found by Apply again (HLE::PatchFixedFunctions).
++void Repatch(Core::System& system);
++
++// Forgets the game (HLE::Clear).
++void Reset();
++
++// The hooks, run at the start of each function.
++void Perspective(const Core::CPUThreadGuard& guard);
++void Frustum(const Core::CPUThreadGuard& guard);
++}  // namespace HLE_PorpoiseWidescreen
 diff --git a/Source/Core/Core/HW/GCMemcard/GCMemcardDirectory.cpp b/Source/Core/Core/HW/GCMemcard/GCMemcardDirectory.cpp
 index 1228b2a94f..76f34d0008 100644
 --- a/Source/Core/Core/HW/GCMemcard/GCMemcardDirectory.cpp
@@ -1381,6 +2265,19 @@ index 1228b2a94f..76f34d0008 100644
              Core::DisplayMessage(
                  fmt::format("Failed to write save contents to {}", save.m_filename), 10000);
              ERROR_LOG_FMT(EXPANSIONINTERFACE, "Failed to save data to {}", save.m_filename);
+diff --git a/Source/Core/Core/IOS/FS/HostBackend/File.cpp b/Source/Core/Core/IOS/FS/HostBackend/File.cpp
+index bee1b14666..31868c76b6 100644
+--- a/Source/Core/Core/IOS/FS/HostBackend/File.cpp
++++ b/Source/Core/Core/IOS/FS/HostBackend/File.cpp
+@@ -137,7 +137,7 @@ Result<u32> HostFileSystem::ReadBytesFromFile(Fd fd, u8* ptr, u32 count)
+   handle->host_file->Seek(handle->file_offset, File::SeekOrigin::Begin);
+ 
+ #ifdef __LIBRETRO__
+-  if (Libretro::VFile::HasVFS())
++  if (handle->host_file->GetVFSHandle())
+   {
+     const u32 actually_read_vfs = Libretro::VFile::ReadBytes(handle->host_file->GetVFSHandle(), ptr, count);
+ 
 diff --git a/Source/Core/Core/IOS/Network/Socket.cpp b/Source/Core/Core/IOS/Network/Socket.cpp
 index feb2579afb..2fc09c5e03 100644
 --- a/Source/Core/Core/IOS/Network/Socket.cpp
@@ -2289,7 +3186,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..591b8d98d7 100644
+index c53281053f..9aa38a6095 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2298,7 +3195,15 @@ index c53281053f..591b8d98d7 100644
  #include <libretro.h>
  #include <string>
  #include <functional>
-@@ -14,6 +15,7 @@
+@@ -6,6 +7,7 @@
+ #include <fstream>
+ 
+ #include "Common/CommonPaths.h"
++#include "Core/HLE/HLE_PorpoiseWidescreen.h"
+ #include "Core/CommonTitles.h"
+ #include "Common/FileUtil.h"
+ #include "Common/StringUtil.h"
+@@ -14,6 +16,7 @@
  #include "Core/BootManager.h"
  #include "Core/Config/GraphicsSettings.h"
  #include "Core/Config/MainSettings.h"
@@ -2306,7 +3211,7 @@ index c53281053f..591b8d98d7 100644
  #include "Core/Config/SYSCONFSettings.h"
  #include "Core/ConfigManager.h"
  #include "Core/Core.h"
-@@ -25,6 +27,7 @@
+@@ -25,6 +28,7 @@
  #include "Core/HW/WiimoteReal/WiimoteReal.h"
  #include "Core/PowerPC/PowerPC.h"
  #include "Core/System.h"
@@ -2314,7 +3219,7 @@ index c53281053f..591b8d98d7 100644
  #include "DolphinLibretro/Audio.h"
  #include "DolphinLibretro/Input.h"
  #include "DolphinLibretro/Log.h"
-@@ -280,6 +283,8 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -280,6 +284,8 @@ bool retro_load_game(const struct retro_game_info* game)
    UICommon::Init();
    Libretro::Log::Init();
  
@@ -2323,7 +3228,7 @@ index c53281053f..591b8d98d7 100644
    if (Libretro::GBPlayer_active)
    {
      Config::SetBase(Config::MAIN_GBA_ROM_PATHS[Config::GBPLAYER_GBA_INDEX], Libretro::GBPlayer_rom_path);
-@@ -294,7 +299,31 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -294,7 +300,31 @@ bool retro_load_game(const struct retro_game_info* game)
    {
      Config::SetBase(Config::MAIN_GBA_ROM_PATHS[Config::GBPLAYER_GBA_INDEX], std::string{});
    }
@@ -2355,7 +3260,7 @@ index c53281053f..591b8d98d7 100644
    Discord::SetDiscordPresenceEnabled(false);
    Common::SetEnableAlert(false);
    Common::SetAbortOnPanicAlert(false);
-@@ -303,6 +332,18 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -303,6 +333,18 @@ bool retro_load_game(const struct retro_game_info* game)
    {
      // Log the message instead of showing a popup
      WARN_LOG_FMT(COMMON, "Suppressed popup: {} - {}", caption, text);
@@ -2374,7 +3279,7 @@ index c53281053f..591b8d98d7 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,23 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +399,29 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -2394,11 +3299,17 @@ index c53281053f..591b8d98d7 100644
 +    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, fast);
 +    NOTICE_LOG_FMT(BOOT, "Riptide Boost (deferred paired rounding) = {}", fast ? "Yes" : "No");
 +  }
++  {
++    // Porpoise 3.0: the universal widescreen (beta), hooked as the game boots.
++    const bool universal = Libretro::GetOption<bool>(core::UNIVERSAL_WIDESCREEN, /*def=*/false);
++    HLE_PorpoiseWidescreen::SetEnabled(universal);
++    NOTICE_LOG_FMT(BOOT, "Universal widescreen = {}", universal ? "Yes" : "No");
++  }
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +554,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +561,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -2411,7 +3322,7 @@ index c53281053f..591b8d98d7 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +710,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +717,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -2422,7 +3333,7 @@ index c53281053f..591b8d98d7 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +805,13 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +812,13 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2436,7 +3347,7 @@ index c53281053f..591b8d98d7 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +879,7 @@ void retro_unload_game(void)
+@@ -804,6 +886,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
@@ -2456,7 +3367,7 @@ index 50497a7171..2e5629cfa6 100644
    Boot.cpp
    Host.cpp
 diff --git a/Source/Core/DolphinLibretro/Common/Options.cpp b/Source/Core/DolphinLibretro/Common/Options.cpp
-index 52791da8de..bd20dcbd47 100644
+index 52791da8de..9197de420f 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.cpp
 +++ b/Source/Core/DolphinLibretro/Common/Options.cpp
 @@ -1,6 +1,13 @@
@@ -2473,7 +3384,7 @@ index 52791da8de..bd20dcbd47 100644
  #include "DolphinLibretro/Common/Options.h"
  
  namespace Libretro
-@@ -243,6 +250,37 @@ static struct retro_core_option_v2_definition option_defs[] = {
+@@ -243,6 +250,51 @@ static struct retro_core_option_v2_definition option_defs[] = {
      },
      "disabled"
    },
@@ -2483,6 +3394,20 @@ index 52791da8de..bd20dcbd47 100644
 +    "Core > Accurate single-precision multiply-add",
 +    "Accurate single-precision multiply-add",
 +    "Rounds fmadds and ps_madd exactly as the console does. Slower; only a few games need it.",
++    nullptr,
++    CATEGORY_CORE,
++    {
++      { "disabled", nullptr },
++      { "enabled",  nullptr },
++      { nullptr, nullptr }
++    },
++    "disabled"
++  },
++  {
++    Libretro::Options::core::UNIVERSAL_WIDESCREEN,
++    "Core > Universal widescreen",
++    "Universal widescreen",
++    "Widens the game's own 3D view to 16:9 where it uses the SDK's projection functions.",
 +    nullptr,
 +    CATEGORY_CORE,
 +    {
@@ -2511,7 +3436,7 @@ index 52791da8de..bd20dcbd47 100644
    {
      Libretro::Options::core::CHEATS_ENABLED,
      "Core > Internal Cheats",
-@@ -1876,9 +1914,61 @@ void Init()
+@@ -1876,9 +1928,61 @@ void Init()
    CheckForUpdatedVariables();
  }
  
@@ -2574,10 +3499,10 @@ index 52791da8de..bd20dcbd47 100644
    struct retro_core_options_v2 options_us = {
      const_cast<retro_core_option_v2_category*>(option_cats),
 diff --git a/Source/Core/DolphinLibretro/Common/Options.h b/Source/Core/DolphinLibretro/Common/Options.h
-index 0601c80065..d3a7b9d8c9 100644
+index 0601c80065..e051ee8d9c 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.h
 +++ b/Source/Core/DolphinLibretro/Common/Options.h
-@@ -140,6 +140,17 @@ namespace core {
+@@ -140,6 +140,20 @@ namespace core {
    constexpr const char FASTMEM[] = "dolphin_fastmem";
    constexpr const char FASTMEM_ARENA[] = "dolphin_fastmem_arena";
    constexpr const char MAIN_ACCURATE_CPU_CACHE[] = "dolphin_main_accurate_cpu_cache";
@@ -2591,10 +3516,55 @@ index 0601c80065..d3a7b9d8c9 100644
 +  // single after every operation (FastSinglePrecision, FastPairedMath): about
 +  // twice as fast in long chains of float math. Per game; read at its start.
 +  constexpr const char FAST_FLOAT_MATH[] = "dolphin_fast_float_math";
++  // Porpoise 3.0: the universal widescreen (beta), for a game with no
++  // widescreen code (Core/HLE/HLE_PorpoiseWidescreen).
++  constexpr const char UNIVERSAL_WIDESCREEN[] = "dolphin_universal_widescreen";
 +#endif
    constexpr const char CHEATS_ENABLED[] = "dolphin_cheats_enabled";
    constexpr const char SKIP_GC_BIOS[] = "dolphin_skip_gc_bios";
    constexpr const char DISC_BASED_GAMES_BOOT_TO_WII_MENU[] = "dolphin_disc_based_games_boot_to_wii_menu";
+diff --git a/Source/Core/DolphinLibretro/Common/VFile.cpp b/Source/Core/DolphinLibretro/Common/VFile.cpp
+index 26ef8b1278..c4f4ef190b 100644
+--- a/Source/Core/DolphinLibretro/Common/VFile.cpp
++++ b/Source/Core/DolphinLibretro/Common/VFile.cpp
+@@ -66,6 +66,11 @@ bool HasVFS()
+   return is_enabled && initialized && vfs_interface;
+ }
+ 
++bool UseVFS(std::string_view path)
++{
++  return HasVFS() && path.size() > 5 && path.substr(0, 5) == "/net/";
++}
++
+ // Dolphin expects to be able to use "/" (DIR_SEP) everywhere.
+ // RetroArch uses the OS separator.
+ // Convert between them when switching between systems.
+diff --git a/Source/Core/DolphinLibretro/Common/VFile.h b/Source/Core/DolphinLibretro/Common/VFile.h
+index b1248b660b..c1c4d19578 100644
+--- a/Source/Core/DolphinLibretro/Common/VFile.h
++++ b/Source/Core/DolphinLibretro/Common/VFile.h
+@@ -1,6 +1,8 @@
+ #pragma once
+ 
++#include <filesystem>
+ #include <string>
++#include <string_view>
+ #include <cstdint>
+ #include <cstdio>
+ #include <cstring>
+@@ -26,6 +28,12 @@ extern retro_vfs_interface* vfs_interface;
+ // Generic methods
+ void Init();
+ bool HasVFS();
++// Porpoise: the frontend's VFS is used only for its network library's paths
++// ("/net/<share>/..."); every other file is the core's own, as without a VFS.
++bool UseVFS(std::string_view path);
++inline bool UseVFS(const std::string& path) { return UseVFS(std::string_view(path)); }
++inline bool UseVFS(const char* path) { return path && UseVFS(std::string_view(path)); }
++inline bool UseVFS(const std::filesystem::path& path) { return UseVFS(path.generic_string()); }
+ std::string NormalizePath(const std::string& path);
+ std::string DenormalizePath(const std::string& path);
+ 
 diff --git a/Source/Core/DolphinLibretro/Log.cpp b/Source/Core/DolphinLibretro/Log.cpp
 index 1a1915cd1d..c6ee649d84 100644
 --- a/Source/Core/DolphinLibretro/Log.cpp

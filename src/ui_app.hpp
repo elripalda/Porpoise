@@ -21,6 +21,7 @@
 
 #include "porpoise_banner.hpp"
 #include "porpoise_borders.hpp"
+#include "porpoise_netfs.hpp"
 #include "ui_achievements.hpp"
 #include "ui_theme.hpp"
 #include "ui_cheats.hpp"
@@ -331,11 +332,27 @@ public:
         acct_.typing = typing;
         acct_.field = field;
         acct_.row = field;
-        acct_.kr = kr;
-        acct_.kc = kc;
+        acct_.kb.kr = kr;
+        acct_.kb.kc = kc;
         acct_.anim = 1;
         acct_.user = "Ripalda";
         acct_.pass = "hunter22";
+    }
+    /* tools/ui-preview: the network share panel, a row in focus, typing or
+     * not, with a message (ok: green). */
+    void preview_share(int index, int row, int button, bool typing, const std::string &message, bool ok,
+                       const std::vector<std::string> &found = {})
+    {
+        open_share(index);
+        if (index < 0)
+            share_.share = netfs::Share{"", "192.168.1.20", "Games", "", "", ""};
+        share_.row = row;
+        share_.button = button;
+        share_.typing = typing;
+        share_.message = message;
+        share_.message_ok = ok;
+        share_.found = found;
+        share_.anim = 1;
     }
 #endif
 
@@ -421,6 +438,22 @@ private:
         float anim = 0;
     };
 
+    /* The on-screen keyboard (ui_app_keyboard.cpp): the account panel's and
+     * the network share panel's. */
+    struct Keyboard
+    {
+        int kr = 1, kc = 0; /* the key in focus */
+        bool shift = false, symbols = false;
+    };
+    static constexpr int kKeyboardRows = 5;
+    /* A frame of typing into text: true when OK (or Options, or Circle) ends it. */
+    bool keyboard_update(Keyboard &kb, std::string &text, std::size_t limit, bool spaces, bool up, bool down,
+                         bool left, bool right);
+    /* The keyboard, its top at y; the panel's glass for its board. */
+    void draw_keyboard(const Keyboard &kb, float y, const Glass &face);
+    static float keyboard_height();
+    void draw_keyboard_prompts();
+
     /* The RetroAchievements account panel and its keyboard. */
     struct AccountPanel
     {
@@ -429,12 +462,36 @@ private:
         std::string user, pass;
         bool typing = false;   /* the keyboard is up */
         int field = 0;         /* what it types into: 0 username, 1 password */
-        int kr = 1, kc = 0;    /* the key in focus */
-        bool shift = false, symbols = false;
+        Keyboard kb;
         bool was_busy = false;
         float anim = 0;
     };
     AccountPanel acct_;
+
+    /* A network share, added or changed (ui_app_netshare.cpp). */
+    struct ShareJob; /* a connection test or a search for shared folders, on its own thread */
+    static void *run_share_job(void *job);
+    struct SharePanel
+    {
+        bool open = false;
+        int index = -1;       /* the share changed, or -1 for a new one */
+        netfs::Share share;
+        int row = 0;          /* 0 computer, 1 shared folder, 2 folder inside, 3 username, 4 password, 5 buttons */
+        int button = 0;       /* on the buttons: 0 find shared folders, 1 test, 2 save, 3 remove */
+        bool typing = false;
+        Keyboard kb;
+        std::vector<std::string> found; /* the computer's shared folders, once looked for */
+        std::shared_ptr<ShareJob> job;
+        std::string message;
+        bool message_ok = false;
+        float anim = 0;
+    };
+    SharePanel share_;
+    void open_share(int index);
+    void close_share();
+    Action update_share(bool up, bool down, bool left, bool right);
+    void draw_share();
+    std::string shares_file() const { return data_dir_ + "/network-shares.txt"; }
     std::function<RaState()> ra_state_;
     /* The host's own checks for the diagnostic test (the jailbreak, the
      * folder, the search, the last game's speed): ok and what was found. */
@@ -472,7 +529,6 @@ private:
     void draw_achievements_screen();
     bool menu_has_achievements() const { return ach_live_ && ach_.valid(); }
     const AchievementSet &details_achievements(const Game &game);
-    void account_key(int kr, int kc);
 
     std::uint32_t pressed(std::uint32_t bits) const { return (held_ & ~prev_) & bits; }
     void sfx(Sound s) const

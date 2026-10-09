@@ -16,6 +16,7 @@
 #include "porpoise_platform.hpp"
 #endif
 #include "porpoise_mic.hpp"
+#include "porpoise_netfs.hpp"
 #include "porpoise_ra.hpp"
 #include "porpoise_speaker.hpp"
 #include "porpoise_states.hpp"
@@ -579,6 +580,18 @@ bool environment(unsigned cmd, void *data)
             core_log(RETRO_LOG_INFO, "message: %s\n", msg->msg);
         return true;
     }
+    case RETRO_ENVIRONMENT_GET_VFS_INTERFACE:
+    {
+        /* Games on a network share (porpoise_netfs): the core reads /net/
+         * paths through this; every other file it opens is its own, as before. */
+        auto *info = static_cast<retro_vfs_interface_info *>(data);
+        const retro_vfs_interface *iface = porpoise::netfs::vfs_interface();
+        if (!info || !iface || info->required_interface_version > 4)
+            return false;
+        info->required_interface_version = 4;
+        info->iface = const_cast<retro_vfs_interface *>(iface);
+        return true;
+    }
     /* Accepted and not needed by Porpoise yet. */
     case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
     case RETRO_ENVIRONMENT_SET_CONTROLLER_INFO:
@@ -587,8 +600,7 @@ bool environment(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE:
         return true;
     /* Refused on purpose: the core then pushes audio itself each frame, paced
-     * by the display (SET_AUDIO_CALLBACK, SET_FRAME_TIME_CALLBACK), reads files
-     * with plain stdio (GET_VFS_INTERFACE), and leaves out the motion sensor and
+     * by the display (SET_AUDIO_CALLBACK, SET_FRAME_TIME_CALLBACK), and leaves out the motion sensor and
      * microphone. EXEC_MEM_ALLOC is an iOS path; on PS5 the core takes JIT
      * memory from the platform layer directly. */
     default:
@@ -1374,12 +1386,14 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
         game.data = bytes.data();
         game.size = bytes.size();
     }
-    else if (access(game_path, R_OK) != 0)
+    else if (porpoise::netfs::is_net(game_path) ? !porpoise::netfs::stat(game_path)
+                                                : access(game_path, R_OK) != 0)
     {
-        /* Dolphin opens the file itself: a drive unplugged, a file gone. */
+        /* Dolphin opens the file itself: a drive unplugged, a file gone, a
+         * network share out of reach. */
         const int e = errno;
         ps5::debug::mark("core: the game file can't be read");
-        fail(Failure::File, std::strerror(e));
+        fail(Failure::File, porpoise::netfs::is_net(game_path) ? "the network share can't be reached" : std::strerror(e));
         h.api.deinit();
         unload_core();
         close_log();

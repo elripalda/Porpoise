@@ -463,8 +463,8 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("wide", "Widescreen",
            "Auto: 16:9 for a game with a widescreen code or a 16:9 option of its own, 4:3 for the rest. On: the same, "
            "and Dolphin's emulated widescreen hack for a game with neither, which can glitch at the screen edges. "
-           "Off: always 4:3.",
-           &t.wide, 0, {"Auto", "On", "Off"});
+           "Off: always 4:3. Universal (beta): Porpoise widens the game's own 3D view to 16:9 where it can.",
+           &t.wide, 0, {"Auto", "On", "Off", "Universal (Beta)"});
     if (per_game && game_for_)
     {
         const widescreen::Kind kind = widescreen::kind_of(game_for_->id, sys_dir_, game_for_->platform == "Wii");
@@ -1012,6 +1012,34 @@ void App::build_settings()
 #endif
     action("Add a Game Folder", "Pick any folder on the console or a USB drive to search for games.",
            "Choose\xE2\x80\xA6", kRowAddFolder);
+#ifndef PORPOISE_DESKTOP /* Windows opens a share's folder by its own path */
+    {
+        /* Network shares (porpoise_netfs): searched like a folder. */
+        const std::vector<netfs::Share> shares = netfs::shares();
+        for (std::size_t i = 0; i < shares.size(); ++i)
+        {
+            SettingRow r;
+            r.section = section;
+            /* Shown as Windows writes a share: \\computer\share\folder. */
+            std::string folder = shares[i].folder;
+            std::replace(folder.begin(), folder.end(), '/', '\\');
+            while (!folder.empty() && folder.front() == '\\')
+                folder.erase(folder.begin());
+            r.label = "\\\\" + shares[i].host + "\\" + shares[i].share + (folder.empty() ? "" : "\\" + folder);
+            r.help = trf("A shared folder on {computer}, on your network. Porpoise looks in it and four levels below "
+                         "it. Cross changes or removes it.",
+                         {{"computer", shares[i].host}});
+            r.values = {tr("Change\xE2\x80\xA6")};
+            r.action = kRowEditShare;
+            r.folder = int(i);
+            rows_.push_back(r);
+        }
+    }
+    action("Add a Network Share",
+           "Games from a shared folder on a computer or NAS on your home network (SMB). A wired connection works "
+           "best for big games.",
+           "Add\xE2\x80\xA6", kRowAddShare);
+#endif
     const std::size_t n = lib_ ? lib_->games().size() : 0;
     action("Search for Games Now", "Looks through every folder again, for games you have just copied over.",
            searching_ ? std::string("Searching\xE2\x80\xA6") : plural((long long)n, "1 game", "{n} games"), kRowRescan);
@@ -1945,6 +1973,12 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowAccount:
         open_account();
         return Action::None;
+    case kRowAddShare:
+        open_share(-1);
+        return Action::None;
+    case kRowEditShare:
+        open_share(row.folder);
+        return Action::None;
     case kRowMoveData:
         if (row.folder >= 0 && row.folder < int(move_places_.size()))
         {
@@ -2813,6 +2847,10 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Choose a Folder"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowRemoveFolder)
         draw_prompts({{Glyph::Cross, "Remove"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowAddShare)
+        draw_prompts({{Glyph::Cross, "Add"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowEditShare)
+        draw_prompts({{Glyph::Cross, "Change"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowRescan)
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMapping)
