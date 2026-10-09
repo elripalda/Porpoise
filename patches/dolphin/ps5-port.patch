@@ -50,6 +50,28 @@ index 01b03ecee5..343efa4d02 100644
    add_subdirectory(Externals/cpp-ipc)
    add_definitions(-DHAVE_CPPIPC)
  endif()
+diff --git a/Externals/curl/CMakeLists.txt b/Externals/curl/CMakeLists.txt
+index b0a7ea0d39..1a8e87bbef 100644
+--- a/Externals/curl/CMakeLists.txt
++++ b/Externals/curl/CMakeLists.txt
+@@ -48,6 +48,17 @@ if(ANDROID)
+   set(CURL_CA_PATH "/system/etc/security/cacerts" CACHE STRING "")
+ endif()
+ 
++# Porpoise (PS5): curl's resolver thread doesn't start in a console core
++# ("getaddrinfo() thread failed to start"); names are looked up on the calling
++# thread instead (Dolphin's own download workers: WiiConnect24, game updates).
++if(CMAKE_C_COMPILER MATCHES "prospero")
++  set(ENABLE_THREADED_RESOLVER OFF CACHE BOOL "" FORCE)
++  # No alarm()/sigsetjmp() timeout around a lookup either: no signals for a
++  # title (Porpoise's own lookups have their own time limits).
++  set(HAVE_ALARM 0 CACHE INTERNAL "" FORCE)
++  set(HAVE_SIGSETJMP 0 CACHE INTERNAL "" FORCE)
++endif()
++
+ add_subdirectory(curl)
+ 
+ if(UNIX AND NOT MBEDTLS_FOUND)
 diff --git a/Source/Core/AudioCommon/AudioCommon.cpp b/Source/Core/AudioCommon/AudioCommon.cpp
 index 86cd50b192..2a601ab81d 100644
 --- a/Source/Core/AudioCommon/AudioCommon.cpp
@@ -2283,10 +2305,28 @@ index bee1b14666..31868c76b6 100644
      const u32 actually_read_vfs = Libretro::VFile::ReadBytes(handle->host_file->GetVFSHandle(), ptr, count);
  
 diff --git a/Source/Core/Core/IOS/Network/Socket.cpp b/Source/Core/Core/IOS/Network/Socket.cpp
-index feb2579afb..2fc09c5e03 100644
+index feb2579afb..17cbed26b4 100644
 --- a/Source/Core/Core/IOS/Network/Socket.cpp
 +++ b/Source/Core/Core/IOS/Network/Socket.cpp
-@@ -754,7 +754,7 @@ WiiSocket::ConnectingState WiiSocket::GetConnectingState() const
+@@ -153,6 +153,17 @@ void WiiSocket::SetFd(s32 s)
+   if (-1 == (flags = fcntl(fd, F_GETFL, 0)))
+     flags = 0;
+   fcntl(fd, F_SETFL, flags | O_NONBLOCK);
++#ifdef __PROSPERO__
++  // Porpoise: the console ignores O_NONBLOCK on a socket; its own SO_NBIO
++  // option makes it non-blocking, as everything here expects (a Wii game's
++  // receive with nothing waiting would otherwise hold the emulator until data
++  // came: Mario Kart Wii froze joining a race online).
++  {
++    int one = 1;
++    if (setsockopt(fd, SOL_SOCKET, 0x1200 /* SO_NBIO */, &one, sizeof one) != 0)
++      WARN_LOG_FMT(IOS_NET, "SO_NBIO failed on socket {}", fd);
++  }
++#endif
+ #endif
+ }
+ 
+@@ -754,7 +765,7 @@ WiiSocket::ConnectingState WiiSocket::GetConnectingState() const
    Common::ScopeGuard guard([&state] { Common::RestoreNetworkErrorState(state); });
  
  #ifdef _WIN32

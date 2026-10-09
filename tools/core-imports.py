@@ -73,6 +73,8 @@ def generate(imports):
                # (a Wii game going online), the DNS server the player set first.
                'gethostbyname': 'porpoise_core_gethostbyname', 'getnameinfo': 'porpoise_core_getnameinfo',
                'getaddrinfo': 'porpoise_core_getaddrinfo', 'freeaddrinfo': 'porpoise_core_freeaddrinfo',
+               # The Wii's own address (IOS SO_GETHOSTID): no getifaddrs for a title.
+               'getifaddrs': 'porpoise_core_getifaddrs', 'freeifaddrs': 'porpoise_core_freeifaddrs',
                'gai_strerror': 'ps5_gai_strerror',
                # libc's getcwd calls __getcwd, which only libkernel_sys has.
                'getcwd': 'ps5_getcwd', 'tmpfile': 'ps5_tmpfile',

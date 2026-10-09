@@ -11,6 +11,7 @@
 #include <cstring>
 #include <map>
 #include <mutex>
+#include <ifaddrs.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <poll.h>
@@ -148,15 +149,16 @@ Said ask(const std::string &server, const std::string &name, std::uint32_t &out,
     sin.sin_addr = to_addr;
     bool found = false, answered = false;
     why = "no answer";
-    /* Two tries, 0.8 s each: the game waits while its name is looked up. */
-    for (int attempt = 0; attempt < 2 && !found; ++attempt)
+    /* Three tries, 0.6 s each (a lost packet costs a try, not the server's
+     * answer): the game waits while its name is looked up. */
+    for (int attempt = 0; attempt < 3 && !found; ++attempt)
     {
         if (sendto(fd, q, n, 0, reinterpret_cast<sockaddr *>(&sin), sizeof sin) != ssize_t(n))
         {
             why = std::string("send: ") + std::strerror(errno);
             break;
         }
-        const long long deadline = now_ms() + 800;
+        const long long deadline = now_ms() + 600;
         while (!found)
         {
             const long long left = deadline - now_ms();
@@ -174,7 +176,7 @@ Said ask(const std::string &server, const std::string &name, std::uint32_t &out,
             if (rcode != 0)
             {
                 why = rcode == 3 ? "no such name" : "the server refused (" + std::to_string(rcode) + ")";
-                attempt = 2;
+                attempt = 3;
                 break;
             }
             const int qd = (r[4] << 8) | r[5], an = (r[6] << 8) | r[7];
@@ -221,7 +223,7 @@ Said ask(const std::string &server, const std::string &name, std::uint32_t &out,
             if (!found)
             {
                 why = "no address in the answer";
-                attempt = 2;
+                attempt = 3;
                 break;
             }
         }
@@ -494,5 +496,65 @@ int porpoise_core_getnameinfo(const struct sockaddr *sa, socklen_t length, char 
     if (service && service_size)
         std::snprintf(service, service_size, "%u", unsigned(ntohs(sin->sin_port)));
     return 0;
+}
+
+/* getifaddrs: the one interface a Wii game asks about (its own address, as
+ * IOS's SO_GETHOSTID gives it): the address the console reaches the internet
+ * from, on a /24. The console's libc has no getifaddrs for a title. */
+int porpoise_core_getifaddrs(struct ifaddrs **out)
+{
+    if (!out)
+        return -1;
+    *out = nullptr;
+    const int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return -1;
+    sockaddr_in to{};
+#ifdef __FreeBSD__
+    to.sin_len = sizeof to;
+#endif
+    to.sin_family = AF_INET;
+    to.sin_port = htons(53);
+    to.sin_addr.s_addr = inet_addr("8.8.8.8"); /* nothing is sent: a UDP connect only picks the route */
+    sockaddr_in own{};
+    socklen_t length = sizeof own;
+    const bool ok = connect(fd, reinterpret_cast<sockaddr *>(&to), sizeof to) == 0 &&
+                    getsockname(fd, reinterpret_cast<sockaddr *>(&own), &length) == 0 && own.sin_addr.s_addr != 0;
+    close(fd);
+    if (!ok)
+        return -1;
+    struct Block
+    {
+        ifaddrs ifa;
+        sockaddr_in addr, netmask, broadcast;
+        char name[8];
+    };
+    auto *b = static_cast<Block *>(std::calloc(1, sizeof(Block)));
+    if (!b)
+        return -1;
+    auto fill = [](sockaddr_in &sin, std::uint32_t address) {
+#ifdef __FreeBSD__
+        sin.sin_len = sizeof sin;
+#endif
+        sin.sin_family = AF_INET;
+        sin.sin_addr.s_addr = address;
+    };
+    const std::uint32_t mask = htonl(0xFFFFFF00u);
+    fill(b->addr, own.sin_addr.s_addr);
+    fill(b->netmask, mask);
+    fill(b->broadcast, (own.sin_addr.s_addr & mask) | ~mask);
+    std::memcpy(b->name, "eth0", 5);
+    b->ifa.ifa_name = b->name;
+    b->ifa.ifa_flags = 0x1 | 0x40; /* up, running */
+    b->ifa.ifa_addr = reinterpret_cast<sockaddr *>(&b->addr);
+    b->ifa.ifa_netmask = reinterpret_cast<sockaddr *>(&b->netmask);
+    b->ifa.ifa_dstaddr = reinterpret_cast<sockaddr *>(&b->broadcast);
+    *out = &b->ifa;
+    return 0;
+}
+
+void porpoise_core_freeifaddrs(struct ifaddrs *list)
+{
+    std::free(list); /* one block, its first member */
 }
 }
