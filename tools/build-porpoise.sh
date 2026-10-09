@@ -110,7 +110,16 @@ echo "==> [porpoise] step 3/3: staging"
 bash "$root/tools/build-forwarder.sh" "$dist/assets/forwarder"
 cp -a -- "$root/config/LEGAL.txt" "$dist/LEGAL.txt"
 mkdir -p "$dist/cores" "$dist/info" "$dist/system" "$dist/content" "$dist/porpoise"
-cp -- "$root/build/cores/stage/cores/dolphin_libretro.so" "$dist/cores/"
+# The core ships without its static symbol table (.symtab/.strtab, ~0.7 MB
+# zipped): nothing loads it - the core loader reads .dynsym - and crash
+# addresses are symbolized against the full copy left in build/cores/stage.
+# What is loaded (the program headers and their bytes) stays the same.
+if command -v llvm-objcopy >/dev/null; then
+    llvm-objcopy --remove-section=.symtab --remove-section=.strtab \
+        "$root/build/cores/stage/cores/dolphin_libretro.so" "$dist/cores/dolphin_libretro.so"
+else
+    cp -- "$root/build/cores/stage/cores/dolphin_libretro.so" "$dist/cores/"
+fi
 cp -- "$root/build/cores/stage/info/dolphin_libretro.info" "$dist/info/"
 cp -- "$root/build/cores/stage/info/dolphin_libretro.info" "$dist/cores/"
 rm -rf -- "$dist/system/dolphin-emu"

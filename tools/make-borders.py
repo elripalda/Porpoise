@@ -433,10 +433,29 @@ def arcade_synth():
     return bevel_opening(img, hole, lip_px=31, light=(120, 240, 255), shadow=0.8)
 
 
+def save_png(img, path):
+    """The smaller of a full-colour PNG and a 256-colour one from libimagequant
+    (pip install imagequant), dithered so gradients don't band: on screen the
+    two look the same. Returns the file's size."""
+    img.save(path, optimize=True)
+    try:
+        import imagequant
+    except ImportError:
+        return os.path.getsize(path)
+    small = path + ".tmp.png"
+    imagequant.quantize_pil_image(img.convert("RGBA"), dithering_level=1.0, max_quality=100,
+                                  min_quality=0).save(small, optimize=True)
+    if os.path.getsize(small) < os.path.getsize(path):
+        os.replace(small, path)
+    else:
+        os.remove(small)
+    return os.path.getsize(path)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     for name, fn in (("glass", glass), ("midnight", midnight), ("porpoise", porpoise), ("frost", frost),
                      ("carbon", carbon), ("arcade", arcade), ("arcade-retro", arcade_retro),
                      ("arcade-synth", arcade_synth)):
-        fn().save(os.path.join(OUT, name + ".png"), optimize=True)
+        save_png(fn(), os.path.join(OUT, name + ".png"))
         print("wrote", name)

@@ -40,6 +40,20 @@ class NoticeError(Exception):
     pass
 
 
+def same_core_stripped(built, built_sha, shipped):
+    """True when shipped is the built core (as build.json records it) with only
+    its static symbol table removed, as build-porpoise.sh ships it."""
+    if not built.is_file() or sha256(built) != built_sha or shutil.which("llvm-objcopy") is None:
+        return False
+    tmp = shipped.with_name(shipped.name + ".check")
+    try:
+        subprocess.run(["llvm-objcopy", "--remove-section=.symtab", "--remove-section=.strtab",
+                        str(built), str(tmp)], check=True)
+        return sha256(tmp) == sha256(shipped)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with open(path, "rb") as stream:
@@ -120,7 +134,8 @@ def source_of(component, tokens, root, title):
         staged = [f for f in component["artifacts"] if f.endswith(".so")]
         for name in staged:
             path = title / name
-            if path.is_file() and sha256(path) != report["sha256"]:
+            if path.is_file() and sha256(path) != report["sha256"] and not same_core_stripped(
+                    root / "build/cores/stage" / name, report["sha256"], path):
                 raise NoticeError(f"{component['id']}: {name} is not the file "
                                   f"build/cores/{spec['build']}/build.json describes")
         info["revision"] = report["source_revision"]
