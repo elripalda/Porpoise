@@ -4,7 +4,7 @@
  *
  * params: x filter (0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS,
  *           6 soft VHS, 7 8-bit, 8 pocket LCD, 9 scanlines, 10 shadow mask,
- *           11 LCD),
+ *           11 LCD, 12 FSR 1),
  *         y strength 0..1, z time in seconds, w colour filter (0 off,
  *         1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale: Accessibility).
  * size:   x, y the picture's texture size in texels; z, w its size on screen
@@ -200,6 +200,109 @@ vec3 lcd(vec2 uv, float amount)
     return clamp(col * (1.0 + 0.3 * amount), 0.0, 1.0);
 }
 
+/* FSR 1's upscaler (EASU), after AMD FidelityFX Super Resolution 1.0
+ * (ffx_fsr1.h, MIT licence, Copyright (c) 2021 Advanced Micro Devices, Inc.):
+ * twelve of the game's pixels round the spot, weighted along the edge they
+ * make, so edges stay clean when a picture is scaled up to the TV. */
+vec3 easu_tex(ivec2 q)
+{
+    return texelFetch(tex, clamp(q, ivec2(0), ivec2(p.size.xy) - 1), 0).rgb;
+}
+
+float easu_luma(vec3 c)
+{
+    return c.b * 0.5 + (c.r * 0.5 + c.g);
+}
+
+void easu_set(inout vec2 dir, inout float len, float w, float la, float lb, float lc, float ld, float le)
+{
+    float dc = ld - lc, cb = lc - lb;
+    float len_x = max(abs(dc), abs(cb));
+    len_x = len_x > 0.0 ? 1.0 / len_x : 0.0;
+    float dir_x = ld - lb;
+    dir.x += dir_x * w;
+    len_x = clamp(abs(dir_x) * len_x, 0.0, 1.0);
+    len += len_x * len_x * w;
+    float ec = le - lc, ca = lc - la;
+    float len_y = max(abs(ec), abs(ca));
+    len_y = len_y > 0.0 ? 1.0 / len_y : 0.0;
+    float dir_y = le - la;
+    dir.y += dir_y * w;
+    len_y = clamp(abs(dir_y) * len_y, 0.0, 1.0);
+    len += len_y * len_y * w;
+}
+
+void easu_tap(inout vec3 ac, inout float aw, vec2 off, vec2 dir, vec2 len2, float lob, float clp, vec3 c)
+{
+    vec2 v = vec2(off.x * dir.x + off.y * dir.y, off.x * -dir.y + off.y * dir.x) * len2;
+    float d2 = min(v.x * v.x + v.y * v.y, clp);
+    float wb = 0.4 * d2 - 1.0;
+    float wa = lob * d2 - 1.0;
+    wb *= wb;
+    wa *= wa;
+    wb = 1.5625 * wb - 0.5625;
+    float w = wb * wa;
+    ac += c * w;
+    aw += w;
+}
+
+vec3 fsr_easu(vec2 uv)
+{
+    vec2 pp = uv * p.size.xy - 0.5;
+    vec2 fp = floor(pp);
+    pp -= fp;
+    ivec2 q = ivec2(fp);
+    /*    b c
+     *  e f g h
+     *  i j k l
+     *    n o    */
+    vec3 b = easu_tex(q + ivec2(0, -1)), c = easu_tex(q + ivec2(1, -1));
+    vec3 e = easu_tex(q + ivec2(-1, 0)), f = easu_tex(q), g = easu_tex(q + ivec2(1, 0)),
+         h = easu_tex(q + ivec2(2, 0));
+    vec3 i = easu_tex(q + ivec2(-1, 1)), j = easu_tex(q + ivec2(0, 1)), k = easu_tex(q + ivec2(1, 1)),
+         l = easu_tex(q + ivec2(2, 1));
+    vec3 n = easu_tex(q + ivec2(0, 2)), o = easu_tex(q + ivec2(1, 2));
+    float bl = easu_luma(b), cl = easu_luma(c), el = easu_luma(e), fl = easu_luma(f), gl = easu_luma(g),
+          hl = easu_luma(h), il = easu_luma(i), jl = easu_luma(j), kl = easu_luma(k), ll = easu_luma(l),
+          nl = easu_luma(n), ol = easu_luma(o);
+    vec2 dir = vec2(0.0);
+    float len = 0.0;
+    easu_set(dir, len, (1.0 - pp.x) * (1.0 - pp.y), bl, el, fl, gl, jl);
+    easu_set(dir, len, pp.x * (1.0 - pp.y), cl, fl, gl, hl, kl);
+    easu_set(dir, len, (1.0 - pp.x) * pp.y, fl, il, jl, kl, nl);
+    easu_set(dir, len, pp.x * pp.y, gl, jl, kl, ll, ol);
+    vec2 dir2 = dir * dir;
+    float dir_r = dir2.x + dir2.y;
+    bool zero = dir_r < 1.0 / 32768.0;
+    dir_r = zero ? 1.0 : inversesqrt(dir_r);
+    dir.x = zero ? 1.0 : dir.x;
+    dir *= dir_r;
+    len = len * 0.5;
+    len *= len;
+    float stretch = (dir.x * dir.x + dir.y * dir.y) / max(abs(dir.x), abs(dir.y));
+    vec2 len2 = vec2(1.0 + (stretch - 1.0) * len, 1.0 - 0.5 * len);
+    float lob = 0.5 + ((1.0 / 4.0 - 0.04) - 0.5) * len;
+    float clp = 1.0 / lob;
+    vec3 ac = vec3(0.0);
+    float aw = 0.0;
+    easu_tap(ac, aw, vec2(0.0, -1.0) - pp, dir, len2, lob, clp, b);
+    easu_tap(ac, aw, vec2(1.0, -1.0) - pp, dir, len2, lob, clp, c);
+    easu_tap(ac, aw, vec2(-1.0, 1.0) - pp, dir, len2, lob, clp, i);
+    easu_tap(ac, aw, vec2(0.0, 1.0) - pp, dir, len2, lob, clp, j);
+    easu_tap(ac, aw, vec2(0.0, 0.0) - pp, dir, len2, lob, clp, f);
+    easu_tap(ac, aw, vec2(-1.0, 0.0) - pp, dir, len2, lob, clp, e);
+    easu_tap(ac, aw, vec2(1.0, 1.0) - pp, dir, len2, lob, clp, k);
+    easu_tap(ac, aw, vec2(2.0, 1.0) - pp, dir, len2, lob, clp, l);
+    easu_tap(ac, aw, vec2(2.0, 0.0) - pp, dir, len2, lob, clp, h);
+    easu_tap(ac, aw, vec2(1.0, 0.0) - pp, dir, len2, lob, clp, g);
+    easu_tap(ac, aw, vec2(1.0, 2.0) - pp, dir, len2, lob, clp, o);
+    easu_tap(ac, aw, vec2(0.0, 2.0) - pp, dir, len2, lob, clp, n);
+    /* No ringing: the result stays within the four nearest pixels. */
+    vec3 mn = min(min(f, g), min(j, k));
+    vec3 mx = max(max(f, g), max(j, k));
+    return clamp(min(mx, max(mn, ac / max(aw, 1e-6))), 0.0, 1.0);
+}
+
 /* As the menus' (shaders/ui.frag): daltonising after Fidaner et al. */
 vec3 colour_filter(vec3 c, int mode)
 {
@@ -260,6 +363,23 @@ void main()
         col = shadow_mask(uv, amount);
     else if (filter_id == 11)
         col = lcd(uv, amount);
+    else if (filter_id == 12)
+    {
+        /* Only when the picture is scaled up; then sharpened lightly by the
+         * filter strength, as FSR's own sharpening pass does. */
+        if (p.size.z > p.size.x * 1.01 || p.size.w > p.size.y * 1.01)
+        {
+            col = fsr_easu(uv);
+            if (amount > 0.0)
+            {
+                vec3 plain = sample_rgb(uv);
+                vec3 sharp = sharpen(uv, amount);
+                col = clamp(col + (sharp - plain) * amount, 0.0, 1.0);
+            }
+        }
+        else
+            col = sharpen(uv, amount);
+    }
     else
         col = texture(tex, uv).rgb;
     col = colour_filter(col, int(p.params.w + 0.5));

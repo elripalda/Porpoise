@@ -204,6 +204,7 @@ struct State
 
     retro_hw_render_interface_vulkan iface{};
     bool device_is_ours = false;
+    bool colorspace_ext = false; /* VK_EXT_swapchain_colorspace turned on (the HDR check) */
     void (*overlay)(VkCommandBuffer, unsigned, void *) = nullptr;
     void (*prepass)(VkCommandBuffer, void *) = nullptr; /* before the render pass: texture copies */
     void *prepass_user = nullptr;
@@ -470,9 +471,28 @@ bool create_swapchain()
     VkSurfaceFormatKHR formats[32];
     format_count = std::min<std::uint32_t>(format_count, 32);
     CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(s.gpu, s.surface, &format_count, formats), "formats");
+    /* 3.0: the HDR check. Every format and colour space the TV's surface
+     * offers, once (HDR10 is colour space 1000104008, HDR10's 10-bit format 64). */
+    static bool listed = false;
+    if (!listed)
+    {
+        listed = true;
+        char line[160];
+        std::snprintf(line, sizeof line, "vk: hdr check: colour space extension %s, %u surface formats",
+                      s.colorspace_ext ? "on" : "not offered", format_count);
+        ps5::debug::mark(line);
+        for (std::uint32_t i = 0; i < format_count; ++i)
+        {
+            std::snprintf(line, sizeof line, "vk: surface format %d, colour space %d%s", int(formats[i].format),
+                          int(formats[i].colorSpace),
+                          formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT ? " (HDR10)" : "");
+            ps5::debug::mark(line);
+        }
+    }
     VkSurfaceFormatKHR chosen = formats[0];
     for (std::uint32_t i = 0; i < format_count; ++i)
-        if (formats[i].format == VK_FORMAT_B8G8R8A8_UNORM || formats[i].format == VK_FORMAT_R8G8B8A8_UNORM)
+        if ((formats[i].format == VK_FORMAT_B8G8R8A8_UNORM || formats[i].format == VK_FORMAT_R8G8B8A8_UNORM) &&
+            formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) /* never an HDR one by chance */
         {
             chosen = formats[i];
             break;
@@ -935,10 +955,35 @@ bool open_display()
     info.enabledExtensionCount = extension_count;
     info.ppEnabledExtensionNames = extensions;
 #else
-    const char *extensions[] = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_DISPLAY_EXTENSION_NAME};
+    const char *extensions[] = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_DISPLAY_EXTENSION_NAME, nullptr};
+    std::uint32_t extension_count = 2;
+    /* 3.0: the HDR check. What the driver offers at this level goes to the
+     * trace; the colour space extension (HDR10's, among others) is turned on
+     * when it is offered, so the surface can list HDR formats. */
+    if (auto enumerate = reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(
+            vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties")))
+    {
+        std::uint32_t n = 0;
+        if (enumerate(nullptr, &n, nullptr) == VK_SUCCESS && n)
+        {
+            std::vector<VkExtensionProperties> all(n);
+            if (enumerate(nullptr, &n, all.data()) == VK_SUCCESS)
+                for (std::uint32_t i = 0; i < n; ++i)
+                {
+                    char line[160];
+                    std::snprintf(line, sizeof line, "vk: instance extension %s", all[i].extensionName);
+                    ps5::debug::mark(line);
+                    if (std::strcmp(all[i].extensionName, "VK_EXT_swapchain_colorspace") == 0)
+                    {
+                        extensions[extension_count++] = "VK_EXT_swapchain_colorspace";
+                        s.colorspace_ext = true;
+                    }
+                }
+        }
+    }
     VkInstanceCreateInfo info{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     info.pApplicationInfo = &app;
-    info.enabledExtensionCount = 2;
+    info.enabledExtensionCount = extension_count;
     info.ppEnabledExtensionNames = extensions;
 #endif
     CHECK(create_instance(&info, nullptr, &s.instance), "instance");

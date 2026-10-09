@@ -459,9 +459,6 @@ void App::add_game_rows(Settings &t, bool per_game)
                "sharper on a 4K TV with a high internal resolution. Takes effect the next time Porpoise starts.",
                &t.output_res, 0, {"Match the PS5", "1080p", "1440p", "4K"});
 #endif
-    choice("resolution", "Internal resolution", "How sharp games render. 1080p is the tested default; above it is experimental and can slow games.",
-           &t.resolution, 1, {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p) \xE2\x80\xA2 experimental",
-            "5x (1800p) \xE2\x80\xA2 experimental", "6x (4K) \xE2\x80\xA2 experimental"});
     choice("wide", "Widescreen",
            "Auto: 16:9 for a game with a widescreen code or a 16:9 option of its own, 4:3 for the rest. On: the same, "
            "and Dolphin's emulated widescreen hack for a game with neither, which can glitch at the screen edges. "
@@ -474,22 +471,6 @@ void App::add_game_rows(Settings &t, bool per_game)
     }
     choice("aspect", "Aspect ratio", "The picture's shape. Auto follows the game; Stretch fills the screen.",
            &t.aspect, 0, {"Auto", "Force 16:9", "Force 4:3", "Stretch to fill"});
-    choice("antialiasing", "Anti-aliasing", "Smooths jagged edges. SSAA is the sharpest and the heaviest.",
-           &t.antialiasing, 0, {"Off", "2x MSAA", "4x MSAA", "8x MSAA", "2x SSAA", "4x SSAA", "8x SSAA"});
-    choice("anisotropy", "Anisotropic filtering", "Sharper textures on floors and walls seen at an angle.",
-           &t.anisotropy, 0, {"1x", "2x", "4x", "8x", "16x"});
-    choice("texture_filter", "Texture filtering", "Force sharp or smooth textures, or leave it to the game.",
-           &t.texture_filter, 0, {"Game's own", "Nearest (sharp)", "Linear (smooth)"});
-    choice("resampling", "Output resampling", "How Dolphin scales its picture. Sharp bilinear keeps pixels crisp.",
-           &t.resampling, 0,
-           {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp bilinear", "Area sampling"});
-    choice("screen_filter", "Screen filter",
-           "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor, a worn or a soft VHS tape, 8-bit pixels, a green handheld screen, scanlines, a TV's shadow mask, or a sharp LCD.",
-           &t.screen_filter, 0,
-           {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-bit", "Pocket", "Scanlines",
-            "Shadow mask", "LCD"});
-    choice("filter_strength", "Filter strength", "How strong the screen filter is.", &t.filter_strength, 1,
-           {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
     {
         /* Borders: the built-in ones and the player's own PNGs. */
         SettingRow r;
@@ -520,6 +501,54 @@ void App::add_game_rows(Settings &t, bool per_game)
     if (!per_game)
         add_setup_rows(false);
 
+    /* 3.0: everything that makes a game look better, together. */
+    header("Enhancements");
+    choice("resolution", "Internal resolution", "How sharp games render. 1080p is the tested default; above it is experimental and can slow games.",
+           &t.resolution, 1, {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p) \xE2\x80\xA2 experimental",
+            "5x (1800p) \xE2\x80\xA2 experimental", "6x (4K) \xE2\x80\xA2 experimental"});
+    choice("antialiasing", "Anti-aliasing", "Smooths jagged edges. SSAA is the sharpest and the heaviest.",
+           &t.antialiasing, 0, {"Off", "2x MSAA", "4x MSAA", "8x MSAA", "2x SSAA", "4x SSAA", "8x SSAA"});
+    choice("anisotropy", "Anisotropic filtering", "Sharper textures on floors and walls seen at an angle.",
+           &t.anisotropy, 0, {"1x", "2x", "4x", "8x", "16x"});
+    choice("texture_filter", "Texture filtering", "Force sharp or smooth textures, or leave it to the game.",
+           &t.texture_filter, 0, {"Game's own", "Nearest (sharp)", "Linear (smooth)"});
+    choice("resampling", "Output resampling", "How Dolphin scales its picture. Sharp bilinear keeps pixels crisp.",
+           &t.resampling, 0,
+           {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp bilinear", "Area sampling"});
+    choice("screen_filter", "Screen filter",
+           "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor, a worn or a soft VHS tape, 8-bit pixels, a green handheld screen, scanlines, a TV's shadow mask, or a sharp LCD.",
+           &t.screen_filter, 0,
+           {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-bit", "Pocket", "Scanlines",
+            "Shadow mask", "LCD", "FSR 1"});
+    rows_.back().help += " " + tr("FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with "
+                                  "clean edges; Filter strength sets its sharpening. Best with an internal resolution "
+                                  "below the output's.");
+    choice("filter_strength", "Filter strength", "How strong the screen filter is.", &t.filter_strength, 1,
+           {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
+    toggle("pixel_lighting", "Per-pixel lighting", "Smoother lighting on surfaces. A little heavier.",
+           &t.pixel_lighting);
+    toggle("disable_fog", "Disable fog", "Removes distance fog. Some games use fog for their look.", &t.disable_fog);
+    toggle("custom_textures", "Custom textures",
+           "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in "
+           "/data/porpoise/saves/User/Load/Textures. A game's Details say when its pack is found.",
+           &t.custom_textures);
+    if (per_game && game_for_)
+    {
+        /* Dolphin's built-in graphics mods, for the games that have them. */
+        const porpoise::gfxmods::Offer mods = porpoise::gfxmods::offer(game_for_->id);
+        if (mods.bloom)
+            choice("gfx_bloom", "Bloom", kGfxBloomHelp, &t.gfx_bloom, 0,
+                   mods.own_bloom ? std::vector<std::string>{"Game's own", "Off", "Blurred"}
+                                  : std::vector<std::string>{"Game's own", "Off", "Blurred", "Native resolution"});
+        if (mods.dof)
+            choice("gfx_dof", "Depth of field", kGfxDofHelp, &t.gfx_dof, 0,
+                   {"Game's own", "Off", "Blurred", "Native resolution"});
+        if (mods.hud)
+            toggle("gfx_hud", "Hide the HUD", kGfxHudHelp, &t.gfx_hud);
+        if (!mods.extra_title.empty())
+            toggle("gfx_extra", "Native resolution goop", kGfxGoopHelp, &t.gfx_extra);
+    }
+
     header("Graphics");
     choice("shader_mode", "Shader compilation",
            "Ubershaders hide the stutter when a game draws something new, at a GPU cost.", &t.shader_mode, 0,
@@ -537,33 +566,10 @@ void App::add_game_rows(Settings &t, bool per_game)
 #endif
     choice("texture_cache", "Texture cache accuracy", "Safe fixes some games' text and effects; Fast is quickest.",
            &t.texture_cache, 0, {"Fast", "Middle", "Safe"});
-    toggle("pixel_lighting", "Per-pixel lighting", "Smoother lighting on surfaces. A little heavier.",
-           &t.pixel_lighting);
-    toggle("disable_fog", "Disable fog", "Removes distance fog. Some games use fog for their look.", &t.disable_fog);
     toggle("crop_overscan", "Crop overscan", "Hides the black borders some games draw at the edges.",
            &t.crop_overscan);
-    toggle("custom_textures", "Custom textures",
-           "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in "
-           "/data/porpoise/saves/User/Load/Textures. A game's Details say when its pack is found.",
-           &t.custom_textures);
     toggle("skip_dupes", "Skip duplicate frames", "Saves work when a game shows the same frame twice.",
            &t.skip_dupes);
-    if (per_game && game_for_)
-    {
-        /* Dolphin's built-in graphics mods, for the games that have them. */
-        const porpoise::gfxmods::Offer mods = porpoise::gfxmods::offer(game_for_->id);
-        if (mods.bloom)
-            choice("gfx_bloom", "Bloom", kGfxBloomHelp, &t.gfx_bloom, 0,
-                   mods.own_bloom ? std::vector<std::string>{"Game's own", "Off", "Blurred"}
-                                  : std::vector<std::string>{"Game's own", "Off", "Blurred", "Native resolution"});
-        if (mods.dof)
-            choice("gfx_dof", "Depth of field", kGfxDofHelp, &t.gfx_dof, 0,
-                   {"Game's own", "Off", "Blurred", "Native resolution"});
-        if (mods.hud)
-            toggle("gfx_hud", "Hide the HUD", kGfxHudHelp, &t.gfx_hud);
-        if (!mods.extra_title.empty())
-            toggle("gfx_extra", "Native resolution goop", kGfxGoopHelp, &t.gfx_extra);
-    }
     toggle("quick_resume", "Quick resume (beta)",
            "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next "
            "time you start it. Start over (in the in-game menu) boots it fresh.",
@@ -763,11 +769,9 @@ void App::add_game_rows(Settings &t, bool per_game)
     header("System");
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
            &t.cpu_clock, 0, {"50%", "60%", "70%", "80%", "90%", "100%", "150%", "200%", "250%", "300%"});
-    toggle("fast_float", "Fast float math (beta)",
-           "The emulated processor's paired-single math (its 3D math) isn't rounded after every step, as "
-           "Dolphin does on a PC to match the console exactly. Up to twice as fast in games heavy on 3D math, "
-           "like Mario Superstar Baseball. If a game freezes, glitches or behaves oddly, turn it off. Applies "
-           "when the game starts.",
+    toggle("fast_float", "Riptide Boost (beta)",
+           "Speeds up the emulated processor's 3D math. Up to twice as fast in CPU-heavy games. Turn it off if a "
+           "game misbehaves. Applies when the game starts.",
            &t.fast_float);
     toggle("dual_core", "Dual core", "Faster. Turn it off for a game that freezes or glitches.", &t.dual_core);
 #ifndef PORPOISE_DESKTOP /* the PS5's own */

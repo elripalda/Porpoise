@@ -1376,5 +1376,12 @@
  "1 picture right here": "這裡有 1 張圖片",
  "{n} pictures right here": "這裡有 {n} 張圖片",
  "Use this picture": "使用此圖片",
- "Put .png or .jpg pictures here (over FTP, for example), or press Triangle for a USB drive.": "將 .png 或 .jpg 圖片放到這裡（例如透過 FTP），或按 △ 開啟 USB 隨身碟。"
+ "Put .png or .jpg pictures here (over FTP, for example), or press Triangle for a USB drive.": "將 .png 或 .jpg 圖片放到這裡（例如透過 FTP），或按 △ 開啟 USB 隨身碟。",
+ "Riptide Boost": "Riptide Boost",
+ "Speeds up the emulated processor's 3D math. Up to twice as fast in CPU-heavy games. Turn it off if a game misbehaves. Applies when the game starts.": "加速模擬處理器的 3D 運算。在 CPU 負載高的遊戲中最多可快一倍。若遊戲運作異常，請關閉此項。下次啟動遊戲時套用。",
+ "Enhancements": "畫質增強",
+ "FSR 1": "FSR 1",
+ "FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with clean edges; Filter strength sets its sharpening. Best with an internal resolution below the output's.": "FSR 1：AMD 的升頻技術會將遊戲畫面提升至電視的解析度，邊緣清晰；「濾鏡強度」可設定其銳利化程度。內部解析度低於輸出解析度時效果最佳。",
+ "Build shaders before starting": "啟動前編譯著色器",
+ "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "遊戲上次使用過的著色器會在載入時編譯，讓看過的特效第一次出現時不會卡頓。遊戲啟動會稍慢一些。"
 }

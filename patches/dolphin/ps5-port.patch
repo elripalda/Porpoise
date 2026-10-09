@@ -1091,7 +1091,7 @@ index c4b5419a69..71778b9600 100644
      PanicAlertFmtT("Cannot boot this WAD because it could not be installed to the NAND.");
      return false;
 diff --git a/Source/Core/Core/Config/MainSettings.cpp b/Source/Core/Core/Config/MainSettings.cpp
-index f0cc8511b7..c0f08eb3c0 100644
+index f0cc8511b7..86571be24b 100644
 --- a/Source/Core/Core/Config/MainSettings.cpp
 +++ b/Source/Core/Core/Config/MainSettings.cpp
 @@ -46,7 +46,14 @@ const Info<bool> MAIN_JIT_FOLLOW_BRANCH{{System::Main, "Core", "JITFollowBranch"
@@ -1129,7 +1129,7 @@ index f0cc8511b7..c0f08eb3c0 100644
 +// Porpoise 3.0: a block whose guess at its quantizers (GQRs) turned out wrong
 +// guesses again with the values then current, this many times, before it reads
 +// them on every access for good.
-+const Info<int> MAIN_PAIRED_QUANTIZE_RETRIES{{System::Main, "Core", "PairedQuantizeRetries"}, 8};
++const Info<int> MAIN_PAIRED_QUANTIZE_RETRIES{{System::Main, "Core", "PairedQuantizeRetries"}, 0};
 +const Info<std::string> MAIN_FAST_PAIRED_BLOCKS{{System::Main, "Core", "FastPairedBlocks"}, ""};
  const Info<bool> MAIN_DISABLE_ICACHE{{System::Main, "Core", "DisableICache"}, false};
  const Info<float> MAIN_EMULATION_SPEED{{System::Main, "Core", "EmulationSpeed"}, 1.0f};
@@ -1764,14 +1764,14 @@ index 1248b1ab01..763dde53da 100644
  {
    const auto result = HLE::TryReplaceFunction(m_ppc_symbol_db, address, PowerPC::CoreMode::JIT);
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit.h b/Source/Core/Core/PowerPC/Jit64/Jit.h
-index da1be2db04..ab36c8eea6 100644
+index da1be2db04..74e36f4016 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit.h
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit.h
 @@ -277,6 +277,14 @@ private:
  
    bool HandleFunctionHooking(u32 address);
  
-+  // Porpoise 3.0: deferred paired-single rounding (Fast float math).
++  // Porpoise 3.0: deferred paired-single rounding (Riptide Boost).
 +  void PorpoisePlan(u32 count);
 +  void PorpoiseRound(BitSet32 regs);
 +  BitSet32 PorpoiseExitNeed(const PPCAnalyst::CodeOp& op) const;
@@ -2270,7 +2270,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..882135bd63 100644
+index c53281053f..e45680121a 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2355,7 +2355,7 @@ index c53281053f..882135bd63 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,23 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,20 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -2369,17 +2369,14 @@ index c53281053f..882135bd63 100644
 +    // stores read them; anything else that reads them, and every exit from a
 +    // block, gets them rounded first (Jit64::PorpoisePlan). Leaving every result
 +    // unrounded ran Mario Superstar Baseball twice as fast but froze it.
-+    // Every block (no list); quantizer retries off for now.
 +    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, fast);
-+    Config::SetBase(Config::MAIN_PAIRED_QUANTIZE_RETRIES, 0);
-+    Config::SetBase(Config::MAIN_FAST_PAIRED_BLOCKS, std::string());
-+    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (test 7: deferred paired rounding, both halves kept)", fast ? "Yes" : "No");
++    NOTICE_LOG_FMT(BOOT, "Riptide Boost (deferred paired rounding) = {}", fast ? "Yes" : "No");
 +  }
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +554,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +551,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -2392,7 +2389,7 @@ index c53281053f..882135bd63 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +710,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +707,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -2403,7 +2400,7 @@ index c53281053f..882135bd63 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +805,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +802,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2416,7 +2413,7 @@ index c53281053f..882135bd63 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +878,7 @@ void retro_unload_game(void)
+@@ -804,6 +875,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
@@ -2436,7 +2433,7 @@ index 50497a7171..2e5629cfa6 100644
    Boot.cpp
    Host.cpp
 diff --git a/Source/Core/DolphinLibretro/Common/Options.cpp b/Source/Core/DolphinLibretro/Common/Options.cpp
-index 52791da8de..85e8b26456 100644
+index 52791da8de..bd20dcbd47 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.cpp
 +++ b/Source/Core/DolphinLibretro/Common/Options.cpp
 @@ -1,6 +1,13 @@
@@ -2474,10 +2471,10 @@ index 52791da8de..85e8b26456 100644
 +  },
 +  {
 +    Libretro::Options::core::FAST_FLOAT_MATH,
-+    "Core > Fast float math",
-+    "Fast float math",
-+    "Paired-single results are not rounded after every operation. Much faster in games heavy on "
-+    "paired-single math; a few games may need the rounding.",
++    "Core > Riptide Boost",
++    "Riptide Boost",
++    "Paired-single results are rounded where they are read, not after every operation. Up to twice as "
++    "fast in games heavy on paired-single math.",
 +    nullptr,
 +    CATEGORY_CORE,
 +    {

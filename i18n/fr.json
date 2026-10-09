@@ -1376,5 +1376,12 @@
  "1 picture right here": "1 image ici",
  "{n} pictures right here": "{n} images ici",
  "Use this picture": "Utiliser cette image",
- "Put .png or .jpg pictures here (over FTP, for example), or press Triangle for a USB drive.": "Mets ici des images .png ou .jpg (par FTP, par exemple), ou appuie sur Triangle pour une clé USB."
+ "Put .png or .jpg pictures here (over FTP, for example), or press Triangle for a USB drive.": "Mets ici des images .png ou .jpg (par FTP, par exemple), ou appuie sur Triangle pour une clé USB.",
+ "Riptide Boost": "Riptide Boost",
+ "Speeds up the emulated processor's 3D math. Up to twice as fast in CPU-heavy games. Turn it off if a game misbehaves. Applies when the game starts.": "Accélère les calculs 3D du processeur émulé. Jusqu'à deux fois plus rapide dans les jeux gourmands en CPU. Désactive-le si un jeu fonctionne mal. S'applique au prochain lancement du jeu.",
+ "Enhancements": "Améliorations",
+ "FSR 1": "FSR 1",
+ "FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with clean edges; Filter strength sets its sharpening. Best with an internal resolution below the output's.": "FSR 1 : la mise à l'échelle d'AMD porte l'image du jeu à la résolution de la TV avec des contours nets ; Intensité du filtre règle sa netteté. Idéal avec une résolution interne inférieure à celle de sortie.",
+ "Build shaders before starting": "Compiler les shaders avant de lancer",
+ "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "Les shaders utilisés par le jeu la dernière fois sont compilés pendant le chargement, pour que les effets déjà vus ne saccadent pas la première fois. Le jeu met un peu plus de temps à démarrer."
 }
