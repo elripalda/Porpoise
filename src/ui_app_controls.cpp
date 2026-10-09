@@ -5,7 +5,7 @@
  *
  * Settings > Controls > Customize buttons, a game's own settings, and the
  * in-game menu's Controls tab all open it. The player keeps four layouts of
- * their own ("My layout 1".."4", with the global settings); the top row picks
+ * their own ("My Layout 1".."4", with the global settings); the top row picks
  * which one to edit. Up and down pick a GameCube button; Cross waits for the
  * DualSense control to give it, and the control's old button moves to where
  * the new one was, so every button stays reachable. Changing a button puts
@@ -79,10 +79,10 @@ struct GcInfo
     std::uint32_t colour;
 };
 constexpr GcInfo kGc[GcCount] = {
-    {"A", "A button", 0x34C77B},     {"B", "B button", 0xF2536B},    {"X", "X button", 0xC9D3E6},
-    {"Y", "Y button", 0xC9D3E6},     {"Z", "Z button", 0x8E6CFF},    {"L", "L trigger", 0x9AA8C7},
-    {"R", "R trigger", 0x9AA8C7},    {"START", "Start", 0x9AA8C7},   {"", "D-pad up", 0x9AA8C7},
-    {"", "D-pad down", 0x9AA8C7},    {"", "D-pad left", 0x9AA8C7},   {"", "D-pad right", 0x9AA8C7},
+    {"A", "A Button", 0x34C77B},     {"B", "B Button", 0xF2536B},    {"X", "X Button", 0xC9D3E6},
+    {"Y", "Y Button", 0xC9D3E6},     {"Z", "Z Button", 0x8E6CFF},    {"L", "L Trigger", 0x9AA8C7},
+    {"R", "R Trigger", 0x9AA8C7},    {"START", "Start", 0x9AA8C7},   {"", "D-Pad Up", 0x9AA8C7},
+    {"", "D-Pad Down", 0x9AA8C7},    {"", "D-Pad Left", 0x9AA8C7},   {"", "D-Pad Right", 0x9AA8C7},
 };
 /* The arrow's rotation for the D-pad inputs (Glyph::Arrow points up at 0). */
 float arrow_rotation(int gc)
@@ -110,10 +110,10 @@ std::string control_label(int c)
     case CtlR3: return "R3";
     case CtlOptions: return tr("OPTIONS");
     case CtlTouch: return tr("TOUCH PAD");
-    case CtlUp: return tr("D-pad up");
-    case CtlDown: return tr("D-pad down");
-    case CtlLeft: return tr("D-pad left");
-    case CtlRight: return tr("D-pad right");
+    case CtlUp: return tr("D-Pad Up");
+    case CtlDown: return tr("D-Pad Down");
+    case CtlLeft: return tr("D-Pad Left");
+    case CtlRight: return tr("D-Pad Right");
     default: return "";
     }
 }
@@ -137,7 +137,7 @@ bool is_face(int c)
 std::string layout_name(int layout)
 {
     if (layout >= LayoutOwn)
-        return trf("My layout {n}", {{"n", std::to_string(layout - LayoutOwn + 1)}});
+        return trf("My Layout {n}", {{"n", std::to_string(layout - LayoutOwn + 1)}});
     return tr(layout == LayoutPlayStation ? "PlayStation" : "GameCube");
 }
 
@@ -517,7 +517,7 @@ void App::draw_mapping(double time)
         const float sy = ly + lh - 56;
         if (g.has_icons())
         {
-            const std::string a = tr("Control stick"), b = tr("C-stick");
+            const std::string a = tr("Control Stick"), b = tr("C-Stick");
             const float wa = g.measure(Font::Regular, ts(24), a), wb = g.measure(Font::Regular, ts(24), b);
             const float total = 44 + 10 + wa + 50 + 44 + 10 + wb;
             float x = lx + (lw - total) * 0.5f;
@@ -565,7 +565,7 @@ void App::draw_mapping(double time)
             }
             if (editing_in_use)
             {
-                const std::string in_use = tr("In use");
+                const std::string in_use = tr("In Use");
                 const float bw = g.measure(Font::Bold, ts(20), in_use) + 30;
                 g.panel(right - bw, cy - 16, bw, 32, rgba(0x2FB574, 0.85f), 0.8f, 16, rgba(0xBDF5D8, 0.9f), 1.4f);
                 g.text_mid(Font::Bold, ts(20), right - bw * 0.5f, cy, kWhite, Align::Center, in_use);
@@ -593,7 +593,7 @@ void App::draw_mapping(double time)
         {
             const bool from_gc = i == kFromGameCube;
             g.text_mid(Font::SemiBold, ts(26), row_x + 34, cy, on ? kWhite : kSoft, Align::Left,
-                       tr(from_gc ? "Start over from the GameCube layout" : "Start over from the PlayStation layout"));
+                       tr(from_gc ? "Start Over from the GameCube Layout" : "Start Over from the PlayStation Layout"));
             g.text_mid(Font::Regular, ts(21), right, cy, with_alpha(kLavender, 0.9f), Align::Right,
                        tr(from_gc ? "Circle A \xE2\x80\xA2 Cross B" : "Cross A \xE2\x80\xA2 Circle B"));
         }
@@ -617,13 +617,13 @@ void App::draw_mapping(double time)
                                   {"n", std::to_string(std::max(1, left))}}));
     }
     else if (map_row_ == kSelectRow)
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Use this layout"}, {Glyph::Circle, "Back"}},
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Use This Layout"}, {Glyph::Circle, "Back"}},
                      {{kKeyL1R1, "Controller"}}, "");
     else if (map_row_ < kFromGameCube)
         draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Change"}, {Glyph::Circle, "Back"}},
                      {{kKeyL1R1, "Controller"}}, "");
     else
-        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Start over"}, {Glyph::Circle, "Back"}},
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Start Over"}, {Glyph::Circle, "Back"}},
                      {{kKeyL1R1, "Controller"}}, "");
 }
 
@@ -640,17 +640,17 @@ struct WiiInfo
 };
 constexpr std::uint32_t kWiiWhite = 0xEEF3FF, kWiiBlue = 0x7FD9FF, kWiiAmber = 0xFFC85C, kWiiGreen = 0x6BE3A8;
 constexpr WiiInfo kWiiInfo[WiInputCount] = {
-    {"A", "A button", kWiiBlue},
+    {"A", "A Button", kWiiBlue},
     {"B", "B, the trigger", kWiiBlue},
-    {"1", "1 button", kWiiWhite},
-    {"2", "2 button", kWiiWhite},
+    {"1", "1 Button", kWiiWhite},
+    {"2", "2 Button", kWiiWhite},
     {"-", "Minus", kWiiWhite},
     {"+", "Plus", kWiiWhite},
-    {"HOME", "HOME button", kWiiWhite},
-    {"", "D-pad up", kWiiWhite},
-    {"", "D-pad down", kWiiWhite},
-    {"", "D-pad left", kWiiWhite},
-    {"", "D-pad right", kWiiWhite},
+    {"HOME", "HOME Button", kWiiWhite},
+    {"", "D-Pad Up", kWiiWhite},
+    {"", "D-Pad Down", kWiiWhite},
+    {"", "D-Pad Left", kWiiWhite},
+    {"", "D-Pad Right", kWiiWhite},
     {"SHAKE", "Shakes the Remote", kWiiAmber},
     {"C", "Nunchuk C", kWiiWhite},
     {"Z", "Nunchuk Z", kWiiWhite},
@@ -659,10 +659,10 @@ constexpr WiiInfo kWiiInfo[WiInputCount] = {
     {"b", "b button", kWiiBlue},
     {"x", "x button", kWiiWhite},
     {"y", "y button", kWiiWhite},
-    {"ZL", "ZL button", kWiiWhite},
-    {"ZR", "ZR button", kWiiWhite},
-    {"L", "L trigger", kWiiWhite},
-    {"R", "R trigger", kWiiWhite},
+    {"ZL", "ZL Button", kWiiWhite},
+    {"ZR", "ZR Button", kWiiWhite},
+    {"L", "L Trigger", kWiiWhite},
+    {"R", "R Trigger", kWiiWhite},
     {"CENTER", "Hold: center and level", kWiiGreen},
 };
 float wii_arrow(int input)
@@ -696,10 +696,10 @@ const char *stick_name(int role)
 {
     switch (role)
     {
-    case StickDPad: return "D-pad";
-    case StickNunchuk: return "Nunchuk stick";
-    case StickClassicLeft: return "Left stick";
-    case StickClassicRight: return "Right stick";
+    case StickDPad: return "D-Pad";
+    case StickNunchuk: return "Nunchuk Stick";
+    case StickClassicLeft: return "Left Stick";
+    case StickClassicRight: return "Right Stick";
     case StickPointer: return "Aims the pointer";
     case StickTilt: return "Tilts the Remote";
     default: return "";
@@ -710,10 +710,10 @@ const char *wii_controller_name(int controller)
     switch (controller)
     {
     case WiiRemote: return "Remote";
-    case WiiSideways: return "Remote sideways";
+    case WiiSideways: return "Remote Sideways";
     case WiiClassic: return "Classic Controller";
-    case WiiTwoControllers: return "Two controllers (alpha)";
-    case WiiGameCube: return "GameCube controller";
+    case WiiTwoControllers: return "Two Controllers (Alpha)";
+    case WiiGameCube: return "GameCube Controller";
     default: return "Remote + Nunchuk";
     }
 }
@@ -890,7 +890,7 @@ float App::draw_wii_list(const WiiLayout &lay, float lx, float ly, float lw, int
         if (arrow_home)
         {
             if (!dpad_listed)
-                add(Icon::DPad, -1, tr("D-pad"));
+                add(Icon::DPad, -1, tr("D-Pad"));
             dpad_listed = true;
             continue;
         }
@@ -1130,12 +1130,12 @@ void App::draw_wii_guide(double)
     /* Left: what it is and how to hold it; right: the drawing. */
     const float lx = 90, ly = 136, lw = 750, lh = 800;
     g.panel(lx, ly, lw, lh, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-    g.text_mid(Font::Bold, ts(46), lx + 44, ly + 64, kWhite, Align::Left, tr("How to hold it"));
+    g.text_mid(Font::Bold, ts(46), lx + 44, ly + 64, kWhite, Align::Left, tr("How to Hold It"));
     {
         /* Beta, plainly. */
         const std::string beta = tr("Beta");
         const float bw = g.measure(Font::Bold, ts(20), beta) + 28;
-        const float bx = lx + 44 + g.measure(Font::Bold, ts(46), tr("How to hold it")) + 20;
+        const float bx = lx + 44 + g.measure(Font::Bold, ts(46), tr("How to Hold It")) + 20;
         g.panel(bx, ly + 64 - 17, bw, 34, rgba(0xFFC85C, 0.9f), 0.8f, 17, rgba(0xFFE7B0), 1.4f);
         g.text_mid(Font::Bold, ts(20), bx + bw * 0.5f, ly + 64, rgba(0x2A1A00), Align::Center, beta);
     }
@@ -1170,7 +1170,7 @@ void App::draw_wii_guide(double)
         }
     }
     draw_wii_controls(870, 120, 960, 850, wii, 1.0f);
-    draw_prompts({{Glyph::DPad, "Other Wii controllers"}, {Glyph::Circle, "Back"}}, {}, "");
+    draw_prompts({{Glyph::DPad, "Other Wii Controllers"}, {Glyph::Circle, "Back"}}, {}, "");
 }
 
 } // namespace porpoise::ui
@@ -1673,7 +1673,7 @@ void App::draw_wii_setup(double time)
     const bool corners = ws_step_ == kWsTopLeft || ws_step_ == kWsBottomRight;
     if (!corners)
     {
-        const std::string title = ws_recal_only_ ? tr("Recalibrate the pointer") : tr("Wii Remote setup");
+        const std::string title = ws_recal_only_ ? tr("Recalibrate the Pointer") : tr("Wii Remote Setup");
         g.text_mid(Font::Bold, ts(40), 90, 70, kWhite, Align::Left, title);
         const bool alpha = ws_controller_ == WiiTwoControllers;
         const std::string tag = alpha ? tr("Alpha") : tr("Beta");
@@ -1773,13 +1773,13 @@ void App::draw_wii_setup(double time)
         left_panel(tr("Which Wii controller?"));
         const float rx = lx + 30, rw = lw - 60;
         float ry = ly + 128;
-        row(0, tr("Wii controller"), tr(wii_controller_name(ws_controller_)), rx, ry, rw);
+        row(0, tr("Wii Controller"), tr(wii_controller_name(ws_controller_)), rx, ry, rw);
         ry += 62;
         row(1, tr("Setup"), advanced ? tr("Advanced") : tr("Simple"), rx, ry, rw);
         ry += 62;
         if (ws_game_ && !ws_in_game_)
         {
-            row(2, tr("Before this game"), ws_ask_ ? tr("Show this setup") : tr("Don't show"), rx, ry, rw);
+            row(2, tr("Before This Game"), ws_ask_ ? tr("Show This Setup") : tr("Don't Show"), rx, ry, rw);
             ry += 62;
         }
         ty = ry + 10;
@@ -1805,7 +1805,7 @@ void App::draw_wii_setup(double time)
         draw_wii_controls(870, 160, 960, 780, cfg, 1.0f);
         std::vector<std::pair<Glyph, std::string>> prompts = {{Glyph::DPad, "Change"}, {Glyph::Cross, "Next"}};
         if (ws_launch_)
-            prompts.push_back({Glyph::Triangle, "Play now"});
+            prompts.push_back({Glyph::Triangle, "Play Now"});
         prompts.push_back({Glyph::Circle, "Back"});
         draw_prompts(prompts, {}, "");
         break;
@@ -1839,12 +1839,12 @@ void App::draw_wii_setup(double time)
              kSoft);
         float ry = ty + 30;
         const float rx = lx + 30, rw = lw - 60;
-        row(0, tr("Size the pointer by"), ws_size_mode_ ? tr("Size and distance") : tr("Pointing at corners"), rx, ry,
+        row(0, tr("Size the pointer by"), ws_size_mode_ ? tr("Size and Distance") : tr("Pointing at Corners"), rx, ry,
             rw);
         ry += 64;
         if (ws_size_mode_)
         {
-            row(1, tr("Screen size"), std::to_string(settings_->wii_size) + "\"", rx, ry, rw);
+            row(1, tr("Screen Size"), std::to_string(settings_->wii_size) + "\"", rx, ry, rw);
             ry += 64;
             char d[48];
             std::snprintf(d, sizeof d, "%.1f ft (%.1f m)", settings_->wii_distance / 10.0,
@@ -1865,7 +1865,7 @@ void App::draw_wii_setup(double time)
         big_line(tr("Then hold Cross, keeping still."), 830, kLavender);
         if (ws_controller_ == WiiTwoControllers)
             big_line(tr("Hold the second controller as you'll play, too."), 900, kLavender);
-        draw_prompts({{Glyph::Cross, "Hold to center"}, {Glyph::Circle, ws_recal_only_ ? "Close" : "Back"}}, {}, "");
+        draw_prompts({{Glyph::Cross, "Hold to Center"}, {Glyph::Circle, ws_recal_only_ ? "Close" : "Back"}}, {}, "");
         break;
     }
     case kWsTopLeft:
@@ -1910,23 +1910,23 @@ void App::draw_wii_setup(double time)
             big_line(tr("Tilt and flick the controller: the game feels it."), 570, kLavender);
         }
         std::vector<std::pair<Glyph, std::string>> prompts = {
-            {Glyph::Cross, ws_launch_ ? "Play" : ws_in_game_ ? "Back to the game" : "Done"}};
+            {Glyph::Cross, ws_launch_ ? "Play" : ws_in_game_ ? "Back to the Game" : "Done"}};
         if (pointing)
-            prompts.push_back({Glyph::Square, "Measure again"});
+            prompts.push_back({Glyph::Square, "Measure Again"});
         if (advanced && !ws_recal_only_)
-            prompts.push_back({Glyph::Triangle, "Fine-tune"});
+            prompts.push_back({Glyph::Triangle, "Fine-Tune"});
         prompts.push_back({Glyph::Circle, "Back"});
         draw_prompts(prompts, {}, "");
         break;
     }
     default: /* kWsTune */
     {
-        left_panel(tr("Fine-tune"));
+        left_panel(tr("Fine-Tune"));
         para(tr("Changes show on the pointer at once. Keep the whole set-up as a preset to switch to it later "
                 "(Settings > Wii Remote, or the pause menu)."),
              kSoft);
         static const char *const kSmooth[] = {"Off", "Light", "Medium", "Strong"};
-        static const char *const kGrips[] = {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"};
+        static const char *const kGrips[] = {"Auto", "Both Hands", "Upright, trigger to the TV", "Upright, facing you"};
         const auto &names = Settings::wii_preset_names();
         float ry = ty + 20;
         const float rx = lx + 30, rw = lw - 60;
@@ -1944,7 +1944,7 @@ void App::draw_wii_setup(double time)
         ry += 62;
         row(4, tr("Name"), tr(names[std::size_t(std::clamp(ws_preset_name_, 0, int(names.size()) - 1))]), rx, ry, rw);
         ry += 62;
-        row(5, tr("Save as this preset"), "", rx, ry, rw);
+        row(5, tr("Save as This Preset"), "", rx, ry, rw);
         ry += 62;
         row(6, ws_launch_ ? tr("Play") : tr("Done"), "", rx, ry, rw);
         /* The pointer, live, so the changes show. */
@@ -1983,7 +1983,7 @@ namespace
 /* The four Wii controllers the player can set buttons for, in tab order after
  * GameCube (Settings::wii_buttons, porpoise::pad::wii_button_set). */
 constexpr int kWiiSetController[4] = {WiiRemoteNunchuk, WiiRemote, WiiSideways, WiiClassic};
-constexpr const char *kMapKindNames[5] = {"GameCube", "Remote + Nunchuk", "Remote", "Remote sideways",
+constexpr const char *kMapKindNames[5] = {"GameCube", "Remote + Nunchuk", "Remote", "Remote Sideways",
                                           "Classic Controller"};
 /* The tabs' short names, across the top of the list. */
 constexpr const char *kMapKindTabs[5] = {"GameCube", "Remote + Nunchuk", "Remote", "Sideways", "Classic"};
@@ -2193,7 +2193,7 @@ void App::draw_wii_mapping(double time)
         }
         else
             g.text_mid(Font::SemiBold, ts(26), row_x + 34, rcy, on ? kWhite : kSoft, Align::Left,
-                       tr("Start over from Porpoise's layout"));
+                       tr("Start Over from Porpoise's Layout"));
         y += row_h;
     }
     const double since = time_ - map_note_time_;
@@ -2213,7 +2213,7 @@ void App::draw_wii_mapping(double time)
     }
     else
         draw_prompts({{Glyph::DPad, "Browse"},
-                      {Glyph::Cross, map_row_ < base.count ? "Change" : "Start over"},
+                      {Glyph::Cross, map_row_ < base.count ? "Change" : "Start Over"},
                       {Glyph::Circle, "Back"}},
                      {{kKeyL1R1, "Controller"}}, "");
 }

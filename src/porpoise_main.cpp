@@ -293,8 +293,8 @@ void choose_data_dir()
     mkdir((g_data + "/games").c_str(), 0777);
     mkdir((g_data + "/saves").c_str(), 0777);
     mkdir((g_data + "/bios").c_str(), 0777); /* the player's own GameCube BIOS, if they have one */
-    /* <data>/cheats (the player's own codes) is made when a game's cheats are
-     * first opened, not at every start. */
+    /* <data>/cheats (the player's own codes) is never made by Porpoise: the
+     * player makes it when they add a code. */
     g_settings_path = g_data + "/settings.ini";
     g_options_path = g_data + "/options.ini";
     g_saves_path = g_data + "/saves";
@@ -865,7 +865,7 @@ std::vector<std::pair<bool, std::string>> diagnostics()
                                     {{"stage", stage}}));
     }
     if (g_sandboxed && g_stay_sandboxed)
-        out.emplace_back(true, tr("Stay in the sandbox is on: Porpoise doesn't ask your jailbreak to free it."));
+        out.emplace_back(true, tr("Stay in the Sandbox is on: Porpoise doesn't ask your jailbreak to free it."));
     else if (g_sandboxed && porpoise::jailbreak::root_put_back())
         out.emplace_back(false, tr("Your jailbreak freed Porpoise in a way that hid its own files, so it stayed in "
                                    "the sandbox."));
@@ -882,7 +882,7 @@ std::vector<std::pair<bool, std::string>> diagnostics()
                              {{"s", std::to_string(g_search.last_ms / 1000) + "." +
                                         std::to_string(g_search.last_ms / 100 % 10)}}));
     for (const std::string &root : g_search.last_cut)
-        out.emplace_back(false, trf("The search gave up on {place} (too slow). Turn off Find games automatically "
+        out.emplace_back(false, trf("The search gave up on {place} (too slow). Turn off Find Games Automatically "
                                     "and add your game folder instead.",
                                     {{"place", root}}));
     /* The last game's speed, from its core.log: the middle of its speed lines. */
@@ -1723,9 +1723,9 @@ void draw_texture_note()
         return;
     const float a = float(age < 0.4 ? age / 0.4 : age > 7.2 ? (8.0 - age) / 0.8 : 1.0);
     const std::string text =
-        n > 0 ? porpoise::ui::trf(n == 1 ? "Custom textures: 1 found ({pack})" : "Custom textures: {n} found ({pack})",
+        n > 0 ? porpoise::ui::trf(n == 1 ? "Custom Textures: 1 found ({pack})" : "Custom Textures: {n} found ({pack})",
                                   {{"n", std::to_string(n)}, {"pack", g_texture_pack}})
-              : porpoise::ui::trf("Custom textures: none found in {pack}", {{"pack", g_texture_pack}});
+              : porpoise::ui::trf("Custom Textures: none found in {pack}", {{"pack", g_texture_pack}});
     const float y = g_play.fps_overlay ? 96 : 30;
     const float w = g_gfx.measure(porpoise::ui::Font::SemiBold, 26, text) + 48;
     g_gfx.panel(36, y, w, 50, porpoise::ui::rgba(0x0A1236, 0.72f * a), 0.9f * a, 14,
@@ -2431,6 +2431,8 @@ int main(int argc, char **argv)
                 }
                 fetch_covers(); /* in case covers were just turned on */
             }
+            if (action == porpoise::ui::App::Action::LiveSettings)
+                apply_settings(); /* a look or sound setting, saved as it was chosen */
             if (action == porpoise::ui::App::Action::Rescan)
                 rescan_library();
 #ifndef PORPOISE_DESKTOP

@@ -115,7 +115,7 @@ void App::draw_states()
     face.glow = 12;
     face.phase = 0.3f;
     glass_block(g, px + pw * 0.5f, py + ph * 0.5f, pw, ph, 22, 0, 0, 36, face);
-    g.text_mid(Font::Bold, ts(44), px + 60, py + 66, kWhite, Align::Left, tr("Save states"));
+    g.text_mid(Font::Bold, ts(44), px + 60, py + 66, kWhite, Align::Left, tr("Save States"));
     g.text_mid(Font::Regular, ts(26), px + 60, py + 112, kLavender, Align::Left,
                fit(g, Font::Regular, ts(26), states_game_->title, pw - 120));
 
@@ -151,7 +151,7 @@ void App::draw_states()
     g.text_mid(Font::Regular, ts(23), 960, py + ph - 40, kLavender, Align::Center,
                tr("Save a state from the in-game menu (OPTIONS + touch pad) while you play."));
     if (menu_slot_used_[states_sel_])
-        draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Cross, "Play from here"}, {Glyph::Circle, "Back"}},
+        draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Cross, "Play from Here"}, {Glyph::Circle, "Back"}},
                      {{Glyph::Square, "Delete"}}, "");
     else
         draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Circle, "Back"}}, {}, "");

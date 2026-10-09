@@ -47,15 +47,15 @@ const char *source_name(int source)
     switch (source)
     {
     case art::Cover:
-        return "The cover";
+        return "The Cover";
     case art::Back:
-        return "The back of the box";
+        return "The Back of the Box";
     case art::Screenshot:
-        return "A screenshot";
+        return "A Screenshot";
     case art::TitleScreen:
-        return "The title screen";
+        return "The Title Screen";
     case art::File:
-        return "Your picture";
+        return "Your Picture";
     default:
         return "Porpoise's";
     }
@@ -70,7 +70,7 @@ const char *behind_name(int behind)
     case art::Black:
         return "Black";
     case art::Pattern:
-        return "Porpoise pattern";
+        return "Porpoise Pattern";
     default:
         return "The picture, blurred";
     }
@@ -307,9 +307,10 @@ void App::draw_tile_art(double)
     Gfx &g = *g_;
     if (!game_for_)
         return;
-    const float x = 110, y = 92, w = 1700, h = 872;
+    /* The panel sits where the settings' do, clear of the top bar. */
+    const float x = 90, y = 136, w = 1740, h = 800;
     g.panel(x, y, w, h, rgba(0x0F1F63, 0.94f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-    g.text_mid(Font::Bold, ts(44), x + 50, y + 58, kWhite, Align::Left, tr("Tile art"));
+    g.text_mid(Font::Bold, ts(44), x + 50, y + 58, kWhite, Align::Left, tr("Tile Art"));
     g.text_mid(Font::SemiBold, ts(26), x + 50, y + 104, kIcy, Align::Left,
                fit(g, Font::SemiBold, ts(26), game_for_->title, 1000));
 
@@ -339,7 +340,7 @@ void App::draw_tile_art(double)
         g.panel(bx, py, bw, bh, rgba(0x0B1640), 0.6f, 6);
         if (art_.spec.bg.source == art::Porpoise)
             g.text_mid(Font::SemiBold, ts(24), bx + bw * 0.5f, py + bh * 0.62f, kLavender, Align::Center,
-                       tr("Porpoise's own background"));
+                       tr("Porpoise's Own Background"));
     }
     /* The home screen's row: this tile chosen, others beside it. */
     const float tile = bh * 0.19f, tx = bx + bw * 0.035f, ty = py + bh * 0.07f, small = tile * 0.7f;
@@ -373,7 +374,7 @@ void App::draw_tile_art(double)
                    fit(g, Font::SemiBold, ts(26), note, pw));
 
     /* The choices. */
-    const float rx = x + 1180, rw = 476;
+    const float rw = 476, rx = x + w - 44 - rw;
     const float tab_w = (rw - 12) * 0.5f;
     for (int i = 0; i < 2; ++i)
     {
@@ -389,8 +390,8 @@ void App::draw_tile_art(double)
 
     const bool whole = l.fit == art::Whole;
     const std::string values[3] = {tr(source_name(l.source)),
-                                   tr(whole ? "Whole" : "Fill (cropped)"), tr(behind_name(l.behind))};
-    const char *labels[3] = {"Picture", "Fit", "Behind it"};
+                                   tr(whole ? "Whole" : "Fill (Cropped)"), tr(behind_name(l.behind))};
+    const char *labels[3] = {"Picture", "Fit", "Behind It"};
     float ry = py + 100;
     for (int i = 0; i < 3; ++i)
     {
@@ -417,12 +418,12 @@ void App::draw_tile_art(double)
         g.text_mid(Font::Regular, ts(24), rx + 66, ry, kSoft, Align::Left, fit(g, Font::Regular, ts(24), text, rw - 80));
         ry += 50;
     };
-    hint(Glyph::LStick, tr("Move the picture"));
-    hint(Glyph::R2, tr("Zoom in (L2: out)"));
+    hint(Glyph::LStick, tr("Move the Picture"));
+    hint(Glyph::R2, tr("Zoom In (L2: Out)"));
     if (art_.row == 0 && l.source != art::Porpoise)
-        hint(Glyph::Cross, tr("Choose your own picture"));
+        hint(Glyph::Cross, tr("Choose Your Own Picture"));
 
-    draw_prompts({{Glyph::Circle, "Cancel"}, {Glyph::Triangle, "Reset position"}},
-                 {{Glyph::Square, "Save and make the tile"}}, "");
+    draw_prompts({{Glyph::Circle, "Cancel"}, {Glyph::Triangle, "Reset Position"}},
+                 {{Glyph::Square, "Save and Make the Tile"}}, "");
 }
 } // namespace porpoise::ui

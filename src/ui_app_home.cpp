@@ -374,7 +374,7 @@ void App::draw_home(double time)
         for (const std::string &l :
              wrap(g, Font::Regular, ts(23),
                   none ? tr("Put them in /data/porpoise/games, or add a folder in Settings, under Games.")
-                       : tr("Sort & filter (Triangle) can show all of your games."),
+                       : tr("Sort & Filter (Triangle) can show all of your games."),
                   720, 2))
         {
             g.text_mid(Font::Regular, ts(23), 960, 500, kInkSoft, Align::Center, l);
@@ -493,10 +493,10 @@ void App::draw_home(double time)
     {
         float hx = 262;
         hx += hint(Glyph::Cross, tr("Open"), hx, false) + 24;
-        hint(Glyph::Square, tr("Play now"), hx, false);
+        hint(Glyph::Square, tr("Play Now"), hx, false);
         float rx = 1658;
-        rx -= hint(Glyph::TouchPad, settings_->ui_pointer ? tr("Pointer off") : tr("Pointer on"), rx, true) + 24;
-        hint(Glyph::Triangle, tr("Sort & filter"), rx, true);
+        rx -= hint(Glyph::TouchPad, settings_->ui_pointer ? tr("Pointer Off") : tr("Pointer On"), rx, true) + 24;
+        hint(Glyph::Triangle, tr("Sort & Filter"), rx, true);
         const std::string note = library_note();
         if (!note.empty())
         {

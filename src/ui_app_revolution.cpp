@@ -258,8 +258,8 @@ void App::rev_pointer_step()
     {
         settings_->ui_pointer = !settings_->ui_pointer;
         settings_->save(settings_path_);
-        flash_note(settings_->ui_pointer ? tr("Pointer on: point at the screen.")
-                                         : tr("Pointer off: the touch pad turns it back on."));
+        flash_note(settings_->ui_pointer ? tr("Pointer On: point at the screen.")
+                                         : tr("Pointer Off: the touch pad turns it back on."));
         sfx(Sound::MovingTab);
     }
     const porpoise::pad::Motion m = porpoise::pad::snapshot(0).motion;
@@ -341,12 +341,12 @@ enum ChipId
 std::vector<std::pair<int, std::string>> App::rev_chips(const Game &game) const
 {
     std::vector<std::pair<int, std::string>> chips;
-    chips.push_back({kChipStates, details_states_ > 0 ? trf("Save states ({n})", {{"n", std::to_string(details_states_)}})
-                                                      : tr("Save states")});
+    chips.push_back({kChipStates, details_states_ > 0 ? trf("Save States ({n})", {{"n", std::to_string(details_states_)}})
+                                                      : tr("Save States")});
     if (game.platform == "Wii")
-        chips.push_back({kChipSettings, tr("Game settings")});
-    chips.push_back({kChipSave, tr("Save data")});
-    chips.push_back({kChipFavourite, game.favourite ? tr("Favorite") : tr("Add to favorites")});
+        chips.push_back({kChipSettings, tr("Game Settings")});
+    chips.push_back({kChipSave, tr("Save Data")});
+    chips.push_back({kChipFavourite, game.favourite ? tr("Favorite") : tr("Add to Favorites")});
     for (auto &c : chips)
         c.second = title_case(c.second);
     return chips;
@@ -637,7 +637,7 @@ void App::draw_rev_picture(Game &game, float x, float y, float w, float h, float
     ty += 10;
     const std::string about = !game.synopsis.empty()
                                   ? game.synopsis
-                                  : tr("No description yet: Sort & filter (Triangle, on the home screen) can get the "
+                                  : tr("No description yet: Sort & Filter (Triangle, on the home screen) can get the "
                                        "game info.");
     const int lines = std::max(2, int((y + h - 40 - ty) / 38));
     for (const std::string &l : wrap(g, Font::Regular, ts(25), about, tw, std::size_t(lines)))
@@ -681,7 +681,7 @@ void App::draw_rev_details(double time)
     if (has_banner(game))
     {
         /* Triangle turns between the disc's own banner and the facts. */
-        const std::string hint = rd_info_ ? tr("The game's banner") : tr("About this game");
+        const std::string hint = rd_info_ ? tr("The Game's Banner") : tr("About This Game");
         const float hw = g.measure(Font::SemiBold, ts(20), hint) + 36 + 34;
         const float hx = kFrameX + kFrameW - 26 - hw, hy = kFrameY + kFrameH - 26 - 40;
         g.panel(hx, hy, hw, 40, rgba(0xFFFFFF, 0.92f), 0.96f, 20, rev::kRim, 2);
@@ -724,7 +724,7 @@ void App::draw_rev_details(double time)
         if (id == kRdStart)
             label = title_case(tr("Start"));
         else if (id == kRdSecond)
-            label = title_case(wii ? tr("Wii controls") : tr("Game settings"));
+            label = title_case(wii ? tr("Wii Controls") : tr("Game Settings"));
         else
             label = chips[std::size_t(id - kRdChip)].second;
         const Color ink = grow > 0.5f ? rgba(0x1E8CC4) : rev::kInk;

@@ -36,10 +36,10 @@ namespace porpoise::ui
 /* Dolphin's built-in graphics mods (porpoise_gfxmods): the rows' texts. */
 inline constexpr const char *kGfxBloomHelp =
     "Dolphin's graphics mod for this game's glow, which can look blocky at high resolutions. Off removes it, "
-    "Blurred softens it, Native resolution draws it as the console did. Applies the next time the game starts.";
+    "Blurred softens it, Native Resolution draws it as the console did. Applies the next time the game starts.";
 inline constexpr const char *kGfxDofHelp =
     "Dolphin's graphics mod for this game's depth of field (the blur on faraway things). Off removes it, Blurred "
-    "softens it, Native resolution draws it as the console did. Applies the next time the game starts.";
+    "softens it, Native Resolution draws it as the console did. Applies the next time the game starts.";
 inline constexpr const char *kGfxHudHelp =
     "Hides the game's HUD, for clean screenshots. Applies the next time the game starts.";
 inline constexpr const char *kGfxGoopHelp =
@@ -59,11 +59,11 @@ inline constexpr const char *kLightHelp =
 inline const std::vector<std::string> kQuickSlotValues = {"Off", "Slot 1", "Slot 2", "Slot 3"};
 inline const std::vector<std::string> kTurboValues = {"Off", "Cross", "Circle", "Square", "Triangle",
                                                       "L1",  "R1",    "L2",     "R2"};
-inline const std::vector<std::string> kTriggerFeelValues = {"Off", "Light", "Firm"};
+inline const std::vector<std::string> kTriggerFeelValues = {"Off", "Light", "Firm", "Extra Firm"};
 inline const std::vector<std::string> kLightValues = {"Blue",   "Red",    "Green", "Pink",  "Purple",
                                                       "Orange", "Yellow", "Cyan",  "White", "Off"};
 inline constexpr const char *kGameCubeOnWiiHelp =
-    "GameCube controller: for Wii games that take one, like Super Smash Bros. Brawl and Mario Kart Wii, with your "
+    "GameCube Controller: for Wii games that take one, like Super Smash Bros. Brawl and Mario Kart Wii, with your "
     "GameCube buttons.";
 /* Physical buttons, as porpoise::pad::Button bits. */
 struct Input
@@ -105,6 +105,7 @@ public:
         CoversAgain,    /* the art of take_covers_again()'s games downloaded again */
         StayInSandbox,  /* freeing Porpoise closed it: don't ask again (Stay in the sandbox on) */
         RetryJailbreak, /* freeing Porpoise closed it: ask again, restarting Porpoise */
+        LiveSettings,   /* a look or sound setting changed and is saved: use it now */
     };
     const std::string &move_target() const { return move_target_; }
 
@@ -542,6 +543,11 @@ private:
     void set_game_key(const std::string &key, const std::string *value);
     void add_game_rows(Settings &target, bool per_game);
     void change_setting(int dir);
+    /* Settings you see change as you choose them (the look, borders, screen
+     * filters, menu sounds): saved at once, with no Apply. */
+    static bool applies_at_once(const std::string &key);
+    void apply_at_once(const std::vector<std::string> &keys);
+    bool live_changed_ = false;
     Action update_settings(bool up, bool down, bool left, bool right);
     Action activate_row(const SettingRow &row);
     void draw_settings();
@@ -854,6 +860,7 @@ private:
     Action apply_pending();
     void discard_pending();
     void apply_menu_pending();
+    void apply_menu_keys(const std::vector<std::string> &keys, bool quiet);
     /* Asks Apply / Discard before leaving Settings; false when nothing waits. */
     bool ask_before_leaving();
     void finish_leaving();

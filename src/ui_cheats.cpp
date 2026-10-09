@@ -277,7 +277,7 @@ std::string cheat_help(const Cheat &cheat)
     if (cheat.kind == "OnFrame")
     {
         if (lower.find("widescreen") != std::string::npos || lower.find("16:9") != std::string::npos)
-            return tr("A patch from Dolphin: the game drawn in 16:9. Use it with Aspect ratio on Force 16:9.");
+            return tr("A patch from Dolphin: the game drawn in 16:9. Use it with Aspect Ratio on Force 16:9.");
         if (lower.find("60") != std::string::npos && lower.find("fps") != std::string::npos)
             return tr("A patch from Dolphin: the game runs at 60 frames a second. Needs a game that holds full "
                       "speed.");

@@ -27,7 +27,7 @@ bool ensure();
  * root to keep running (ensure() then says whether /data is reachable). */
 bool root_put_back();
 
-/* "Stay in the sandbox" (Settings > Games): Porpoise doesn't ask a daemon to
+/* "Stay in the Sandbox" (Settings > Games): Porpoise doesn't ask a daemon to
  * free it. A file in /app0/porpoise, since it is read before Porpoise knows
  * where its folder is. */
 bool stay_wanted();

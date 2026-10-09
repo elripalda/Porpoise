@@ -85,7 +85,7 @@ const Field kFields[] = {
     {"ff_buttons", nullptr, &Settings::ff_buttons, 0, 1},
     {"quick_slot", &Settings::quick_slot, nullptr, 0, 3},
     {"turbo", &Settings::turbo, nullptr, 0, 8},
-    {"trigger_feel", &Settings::trigger_feel, nullptr, 0, 2},
+    {"trigger_feel", &Settings::trigger_feel, nullptr, 0, 3},
     {"light_1", &Settings::light_1, nullptr, 0, 9},
     {"light_2", &Settings::light_2, nullptr, 0, 9},
     {"light_3", &Settings::light_3, nullptr, 0, 9},
@@ -381,6 +381,10 @@ bool Settings::load(const std::string &path, bool overlay)
         output_res = std::min(output_res + 1, 3);
     if (!overlay && version < 11 && shader_mode == 0)
         shader_mode = 2;
+    /* 15 (3.0): the trigger click is Firm for everyone, once; Off, Light and
+     * Extra Firm stay a choice away. */
+    if (!overlay && versioned && version < 15)
+        trigger_feel = 2;
     /* 2.1.1: the widescreen hack switch became the Widescreen choice; on, it
      * is On (the hack for games with no code of their own). Per game too. */
     if (!saw_wide && legacy_wide >= 0)
@@ -404,7 +408,7 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = open_atomic(path);
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 14\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 15\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     std::fprintf(f, "border = %s\n", border.c_str());

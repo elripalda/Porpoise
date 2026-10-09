@@ -113,91 +113,91 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
     {
     case kTabGame:
         r.push_back({Kind::Resume, "", "Resume"});
-        r.push_back({Kind::Save, "", "Save state\xE2\x80\xA6"});
-        r.push_back({Kind::Load, "", "Load state\xE2\x80\xA6"});
-        r.push_back({Kind::FastForward, "", "Fast forward"});
-        r.push_back({Kind::Restart, "", "Start over"});
-        r.push_back({Kind::Library, "", "Quit to library", nullptr, nullptr, 0, {}, true});
+        r.push_back({Kind::Save, "", "Save State\xE2\x80\xA6"});
+        r.push_back({Kind::Load, "", "Load State\xE2\x80\xA6"});
+        r.push_back({Kind::FastForward, "", "Fast Forward"});
+        r.push_back({Kind::Restart, "", "Start Over"});
+        r.push_back({Kind::Library, "", "Quit to Library", nullptr, nullptr, 0, {}, true});
         r.push_back({Kind::Home, "", "Close Porpoise"});
         break;
     case kTabVideo:
-        r.push_back({Kind::Int, "resolution", "Internal resolution", &p.resolution, nullptr, 1,
+        r.push_back({Kind::Int, "resolution", "Internal Resolution", &p.resolution, nullptr, 1,
                      {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p) \xE2\x80\xA2 exp.", "5x (1800p) \xE2\x80\xA2 exp.",
                       "6x (4K) \xE2\x80\xA2 exp."}});
         r.push_back({Kind::Int, "wide", "Widescreen", &p.wide, nullptr, 0, {"Auto", "On", "Off"}});
-        r.push_back({Kind::Int, "aspect", "Aspect ratio", &p.aspect, nullptr, 0,
-                     {"Auto", "Force 16:9", "Force 4:3", "Stretch to fill"}});
-        r.push_back({Kind::Int, "antialiasing", "Anti-aliasing", &p.antialiasing, nullptr, 0,
+        r.push_back({Kind::Int, "aspect", "Aspect Ratio", &p.aspect, nullptr, 0,
+                     {"Auto", "Force 16:9", "Force 4:3", "Stretch to Fill"}});
+        r.push_back({Kind::Int, "antialiasing", "Anti-Aliasing", &p.antialiasing, nullptr, 0,
                      {"Off", "2x MSAA", "4x MSAA", "8x MSAA", "2x SSAA", "4x SSAA", "8x SSAA"}});
-        r.push_back({Kind::Int, "anisotropy", "Anisotropic filtering", &p.anisotropy, nullptr, 0,
+        r.push_back({Kind::Int, "anisotropy", "Anisotropic Filtering", &p.anisotropy, nullptr, 0,
                      {"1x", "2x", "4x", "8x", "16x"}});
-        r.push_back({Kind::Int, "screen_filter", "Screen filter", &p.screen_filter, nullptr, 0,
-                     {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-bit", "Pocket",
-                      "Scanlines", "Shadow mask", "LCD", "FSR 1"}});
-        r.push_back({Kind::Int, "filter_strength", "Filter strength", &p.filter_strength, nullptr, 1,
+        r.push_back({Kind::Int, "screen_filter", "Screen Filter", &p.screen_filter, nullptr, 0,
+                     {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-Bit", "Pocket",
+                      "Scanlines", "Shadow Mask", "LCD", "FSR 1"}});
+        r.push_back({Kind::Int, "filter_strength", "Filter Strength", &p.filter_strength, nullptr, 1,
                      {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"}});
         r.push_back({Kind::Border, "border", "Border"});
-        r.push_back({Kind::Bool, "fps_overlay", "FPS counter", nullptr, &p.fps_overlay, 0, {"Off", "On"}});
+        r.push_back({Kind::Bool, "fps_overlay", "FPS Counter", nullptr, &p.fps_overlay, 0, {"Off", "On"}});
         break;
     case kTabGraphics:
-        r.push_back({Kind::Int, "shader_mode", "Shader compilation", &p.shader_mode, nullptr, 0,
-                     {"Synchronous", "Ubershaders", "Async ubershaders", "Async, skip drawing"}});
-        r.push_back({Kind::Int, "texture_cache", "Texture cache accuracy", &p.texture_cache, nullptr, 0,
+        r.push_back({Kind::Int, "shader_mode", "Shader Compilation", &p.shader_mode, nullptr, 0,
+                     {"Synchronous", "Ubershaders", "Async Ubershaders", "Async, Skip Drawing"}});
+        r.push_back({Kind::Int, "texture_cache", "Texture Cache Accuracy", &p.texture_cache, nullptr, 0,
                      {"Fast", "Middle", "Safe"}});
-        r.push_back({Kind::Int, "texture_filter", "Texture filtering", &p.texture_filter, nullptr, 0,
-                     {"Game's own", "Nearest (sharp)", "Linear (smooth)"}});
-        r.push_back({Kind::Int, "resampling", "Output resampling", &p.resampling, nullptr, 0,
-                     {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp bilinear",
-                      "Area sampling"}});
-        r.push_back({Kind::Bool, "pixel_lighting", "Per-pixel lighting", nullptr, &p.pixel_lighting, 0, {"Off", "On"}});
-        r.push_back({Kind::Bool, "disable_fog", "Disable fog", nullptr, &p.disable_fog, 0, {"Off", "On"}});
-        r.push_back({Kind::Bool, "crop_overscan", "Crop overscan", nullptr, &p.crop_overscan, 0, {"Off", "On"}});
-        r.push_back({Kind::Bool, "skip_dupes", "Skip duplicate frames", nullptr, &p.skip_dupes, 0, {"Off", "On"}});
+        r.push_back({Kind::Int, "texture_filter", "Texture Filtering", &p.texture_filter, nullptr, 0,
+                     {"Game's Own", "Nearest (Sharp)", "Linear (Smooth)"}});
+        r.push_back({Kind::Int, "resampling", "Output Resampling", &p.resampling, nullptr, 0,
+                     {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp Bilinear",
+                      "Area Sampling"}});
+        r.push_back({Kind::Bool, "pixel_lighting", "Per-Pixel Lighting", nullptr, &p.pixel_lighting, 0, {"Off", "On"}});
+        r.push_back({Kind::Bool, "disable_fog", "Disable Fog", nullptr, &p.disable_fog, 0, {"Off", "On"}});
+        r.push_back({Kind::Bool, "crop_overscan", "Crop Overscan", nullptr, &p.crop_overscan, 0, {"Off", "On"}});
+        r.push_back({Kind::Bool, "skip_dupes", "Skip Duplicate Frames", nullptr, &p.skip_dupes, 0, {"Off", "On"}});
         {
             /* Dolphin's built-in graphics mods, for the games that have them. */
             const porpoise::gfxmods::Offer mods = porpoise::gfxmods::offer(g_menu_game_id);
             if (mods.bloom)
                 r.push_back({Kind::Int, "gfx_bloom", "Bloom", &p.gfx_bloom, nullptr, 0,
-                             mods.own_bloom ? std::vector<std::string>{"Game's own", "Off", "Blurred"}
-                                            : std::vector<std::string>{"Game's own", "Off", "Blurred",
-                                                                       "Native resolution"}});
+                             mods.own_bloom ? std::vector<std::string>{"Game's Own", "Off", "Blurred"}
+                                            : std::vector<std::string>{"Game's Own", "Off", "Blurred",
+                                                                       "Native Resolution"}});
             if (mods.dof)
-                r.push_back({Kind::Int, "gfx_dof", "Depth of field", &p.gfx_dof, nullptr, 0,
-                             {"Game's own", "Off", "Blurred", "Native resolution"}});
+                r.push_back({Kind::Int, "gfx_dof", "Depth of Field", &p.gfx_dof, nullptr, 0,
+                             {"Game's Own", "Off", "Blurred", "Native Resolution"}});
             if (mods.hud)
                 r.push_back({Kind::Bool, "gfx_hud", "Hide the HUD", nullptr, &p.gfx_hud, 0, {"Off", "On"}});
             if (!mods.extra_title.empty())
-                r.push_back({Kind::Bool, "gfx_extra", "Native resolution goop", nullptr, &p.gfx_extra, 0,
+                r.push_back({Kind::Bool, "gfx_extra", "Native Resolution Goop", nullptr, &p.gfx_extra, 0,
                              {"Off", "On"}});
         }
-        r.push_back({Kind::SaveSetup, "", "Save as a setup", nullptr, nullptr, 0, {}, true});
-        r.push_back({Kind::UseSetup, "", "Use a setup"});
+        r.push_back({Kind::SaveSetup, "", "Save as a Setup", nullptr, nullptr, 0, {}, true});
+        r.push_back({Kind::UseSetup, "", "Use a Setup"});
         break;
     case kTabAudio:
     {
         r.push_back({Kind::Int, "volume", "Volume", &p.volume, nullptr, 0, kPercent});
-        r.push_back({Kind::Bool, "muted", "Mute game", nullptr, &p.muted, 0, {"Off", "On"}});
+        r.push_back({Kind::Bool, "muted", "Mute Game", nullptr, &p.muted, 0, {"Off", "On"}});
         g_audio_preset = p.audio_preset();
-        std::vector<std::string> presets = {"Smooth", "Responsive", "Extra smooth", "Classic (2.1)"};
+        std::vector<std::string> presets = {"Smooth", "Responsive", "Extra Smooth", "Classic (2.1)"};
         if (g_audio_preset == Settings::kAudioCustom)
             presets.push_back("Custom");
-        r.push_back({Kind::Int, "audio_preset", "Sound preset", &g_audio_preset, nullptr, 0, presets, true});
+        r.push_back({Kind::Int, "audio_preset", "Sound Preset", &g_audio_preset, nullptr, 0, presets, true});
         if (g_sound_pulled)
         {
-            r.push_back({Kind::Int, "audio_buffer", "Audio buffer", &p.audio_buffer, nullptr, 0,
+            r.push_back({Kind::Int, "audio_buffer", "Audio Buffer", &p.audio_buffer, nullptr, 0,
                          {"40 ms", "80 ms", "160 ms"}});
-            r.push_back({Kind::Bool, "audio_fill", "Fill audio gaps", nullptr, &p.audio_fill, 0, {"Off", "On"}});
+            r.push_back({Kind::Bool, "audio_fill", "Fill Audio Gaps", nullptr, &p.audio_fill, 0, {"Off", "On"}});
         }
         else
         {
-            r.push_back({Kind::Int, "audio_buffer", "Audio buffer", &p.audio_buffer, nullptr, 0,
+            r.push_back({Kind::Int, "audio_buffer", "Audio Buffer", &p.audio_buffer, nullptr, 0,
                          {"Low", "Normal", "Safe"}});
-            r.push_back({Kind::Bool, "audio_stretch", "Audio stretching", nullptr, &p.audio_stretch, 0,
+            r.push_back({Kind::Bool, "audio_stretch", "Audio Stretching", nullptr, &p.audio_stretch, 0,
                          {"Off", "On"}});
         }
-        r.push_back({Kind::Bool, "dsp_accurate", "Accurate audio", nullptr, &p.dsp_accurate, 0, {"Off", "On"}, true});
+        r.push_back({Kind::Bool, "dsp_accurate", "Accurate Audio", nullptr, &p.dsp_accurate, 0, {"Off", "On"}, true});
         if (wii)
-            r.push_back({Kind::Int, "wiimote_speaker", "Wii Remote speaker", &p.wiimote_speaker, nullptr, 0,
+            r.push_back({Kind::Int, "wiimote_speaker", "Wii Remote Speaker", &p.wiimote_speaker, nullptr, 0,
                          {"Off", "TV", "Controller"}});
         break;
     }
@@ -206,26 +206,26 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         {
             /* A GameCube controller in a Wii game: the GameCube's buttons, no
              * pointer or motion. */
-            r.push_back({Kind::Int, "wii_controller", "Wii controller", &p.wii_controller, nullptr, 0,
-                         {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
-                          "Two controllers (alpha)", "GameCube controller"}});
+            r.push_back({Kind::Int, "wii_controller", "Wii Controller", &p.wii_controller, nullptr, 0,
+                         {"Remote + Nunchuk", "Remote", "Remote Sideways", "Classic Controller",
+                          "Two Controllers (Alpha)", "GameCube Controller"}});
             wii = false; /* then the GameCube's rows */
         }
         if (!wii)
         {
-            r.push_back({Kind::Int, "button_layout", "Button layout", &p.button_layout, nullptr, 0,
-                         {"GameCube", "PlayStation", "My layout 1", "My layout 2", "My layout 3", "My layout 4"}});
-            r.push_back({Kind::Customize, "", "Customize buttons"});
-            r.push_back({Kind::Int, "invert_main", "Invert the control stick", &p.invert_main, nullptr, 0,
-                         {"Off", "Up and down", "Left and right", "Both"}});
-            r.push_back({Kind::Int, "invert_c", "Invert the C-stick", &p.invert_c, nullptr, 0,
-                         {"Off", "Up and down", "Left and right", "Both"}});
+            r.push_back({Kind::Int, "button_layout", "Button Layout", &p.button_layout, nullptr, 0,
+                         {"GameCube", "PlayStation", "My Layout 1", "My Layout 2", "My Layout 3", "My Layout 4"}});
+            r.push_back({Kind::Customize, "", "Customize Buttons"});
+            r.push_back({Kind::Int, "invert_main", "Invert the Control Stick", &p.invert_main, nullptr, 0,
+                         {"Off", "Up and Down", "Left and Right", "Both"}});
+            r.push_back({Kind::Int, "invert_c", "Invert the C-Stick", &p.invert_c, nullptr, 0,
+                         {"Off", "Up and Down", "Left and Right", "Both"}});
         }
         if (wii)
         {
             /* The Wii Remote: put right while playing. */
-            r.push_back({Kind::Customize, "wii_recal", "Recalibrate the pointer"});
-            r.push_back({Kind::Customize, "wii_setup", "Wii Remote setup"});
+            r.push_back({Kind::Customize, "wii_recal", "Recalibrate the Pointer"});
+            r.push_back({Kind::Customize, "wii_setup", "Wii Remote Setup"});
             {
                 std::vector<std::string> presets = {"None"};
                 const auto &names = Settings::wii_preset_names();
@@ -235,33 +235,33 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
                     presets.push_back(std::to_string(i + 1) + ": " +
                                       (w.used ? tr(names[std::size_t(w.name)]) : tr("empty")));
                 }
-                r.push_back({Kind::Int, "wii_preset", "Wii preset", &p.wii_preset, nullptr, 0, presets});
+                r.push_back({Kind::Int, "wii_preset", "Wii Preset", &p.wii_preset, nullptr, 0, presets});
             }
-            r.push_back({Kind::Int, "wii_controller", "Wii controller", &p.wii_controller, nullptr, 0,
-                         {"Remote + Nunchuk", "Remote", "Remote sideways", "Classic Controller",
-                          "Two controllers (alpha)", "GameCube controller"}});
+            r.push_back({Kind::Int, "wii_controller", "Wii Controller", &p.wii_controller, nullptr, 0,
+                         {"Remote + Nunchuk", "Remote", "Remote Sideways", "Classic Controller",
+                          "Two Controllers (Alpha)", "GameCube Controller"}});
             r.push_back({Kind::Int, "wii_pointer", "Pointer", &p.wii_pointer, nullptr, 0,
-                         {"Gyro", "Touch pad", "Right stick"}});
-            r.push_back({Kind::Int, "wii_speed", "Pointer speed", &p.wii_speed, nullptr, 0,
+                         {"Gyro", "Touch Pad", "Right Stick"}});
+            r.push_back({Kind::Int, "wii_speed", "Pointer Speed", &p.wii_speed, nullptr, 0,
                          {"Your screen", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}});
             r.push_back({Kind::Int, "wii_grip", "Grip", &p.wii_grip, nullptr, 0,
-                         {"Auto", "Both hands", "Upright, trigger to the TV", "Upright, facing you"}});
+                         {"Auto", "Both Hands", "Upright, trigger to the TV", "Upright, facing you"}});
             r.push_back({Kind::Bool, "wii_motion", "Motion", nullptr, &p.wii_motion, 0, {"Off", "On"}});
-            r.push_back({Kind::Bool, "wii_shake", "Flick to shake", nullptr, &p.wii_shake, 0, {"Off", "On"}});
+            r.push_back({Kind::Bool, "wii_shake", "Flick to Shake", nullptr, &p.wii_shake, 0, {"Off", "On"}});
             if (p.developer)
-                r.push_back({Kind::Bool, "motion_readout", "Motion readout", nullptr, &p.motion_readout, 0,
+                r.push_back({Kind::Bool, "motion_readout", "Motion Readout", nullptr, &p.motion_readout, 0,
                              {"Off", "On"}});
         }
         r.push_back({Kind::Bool, "rumble", "Vibration", nullptr, &p.rumble, 0, {"Off", "On"}});
-        r.push_back({Kind::Int, "turbo", "Turbo button", &p.turbo, nullptr, 0, kTurboValues});
-        r.push_back({Kind::Int, "quick_slot", "Quick save buttons", &p.quick_slot, nullptr, 0, kQuickSlotValues});
+        r.push_back({Kind::Int, "turbo", "Turbo Button", &p.turbo, nullptr, 0, kTurboValues});
+        r.push_back({Kind::Int, "quick_slot", "Quick Save Buttons", &p.quick_slot, nullptr, 0, kQuickSlotValues});
         if (!wii) /* the GameCube's L and R (also the GameCube controller in a Wii game) */
-            r.push_back({Kind::Int, "trigger_feel", "Trigger click", &p.trigger_feel, nullptr, 0, kTriggerFeelValues});
+            r.push_back({Kind::Int, "trigger_feel", "Trigger Click", &p.trigger_feel, nullptr, 0, kTriggerFeelValues});
         break;
     case kTabPatches:
         r.push_back({Kind::Info, "ws_status", "Widescreen"});
         if (!patches || !patches->cheats || patches->cheats->empty())
-            r.push_back({Kind::Info, "no_codes", "Cheats and patches"});
+            r.push_back({Kind::Info, "no_codes", "Cheats and Patches"});
         else
             for (std::size_t i = 0; i < patches->cheats->size(); ++i)
             {
@@ -292,7 +292,7 @@ const char *help_for(const Row &row, const Settings &p)
     if (row.key == std::string("border"))
         return "Fills the bars beside a 4:3 picture (widescreen off). Add your own PNGs to /data/porpoise/borders.";
     if (row.key == std::string("shader_mode"))
-        return "Async ubershaders hide the stutter when a game draws something new. Takes effect after a restart of the game.";
+        return "Async Ubershaders hide the stutter when a game draws something new. Takes effect after a restart of the game.";
     if (row.key == std::string("texture_cache"))
         return "Safe fixes some games' text and effects; Fast is quickest.";
     if (row.kind == Kind::FastForward)
@@ -313,9 +313,9 @@ const char *help_for(const Row &row, const Settings &p)
         return "A Wii Remote set-up kept under a name (made in the setup's Fine-tune page, Advanced).";
     if (row.key == std::string("audio_preset"))
         return g_sound_pulled ? "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: "
-                              "less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from "
+                              "less delay. Extra Smooth: for games that slow down often. Classic: 2.1's sound, from "
                               "the next start."
-                            : "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the "
+                            : "Classic is 2.1's sound. Smooth, Responsive and Extra Smooth cover the gaps when the "
                               "game runs slow; they apply the next time the game starts.";
     if (row.key == std::string("turbo"))
         return kTurboHelp;
@@ -354,20 +354,20 @@ const char *help_for(const Row &row, const Settings &p)
 const char *ws_value(int plan, bool wii)
 {
     if (wii)
-        return "The Wii's setting";
+        return "The Wii's Setting";
     switch (plan)
     {
-    case 1: return "16:9 code";
-    case 4: return "16:9 code + hack";
+    case 1: return "16:9 Code";
+    case 4: return "16:9 Code + Hack";
     case 2: return "In the game's options";
-    case 3: return "Emulated hack";
+    case 3: return "Emulated Hack";
     default: return "Off: 4:3";
     }
 }
 const char *ws_help(int plan, bool wii)
 {
     if (wii)
-        return "Wii games are 16:9 when Wii widescreen is on in Porpoise's settings, as on a Wii.";
+        return "Wii games are 16:9 when Wii Widescreen is on in Porpoise's settings, as on a Wii.";
     switch (plan)
     {
     case 1:
@@ -522,7 +522,8 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_cheat_on_.clear();
     if (game && play && game->id.size() == 6 && !sys_dir_.empty())
     {
-        mkdir((data_dir_ + "/cheats").c_str(), 0777); /* where the player's own codes go */
+        /* <data>/cheats, where the player's own codes go, is theirs to make: an
+         * empty one made here was taken for a broken online patch. */
         menu_cheats_ = cheats_for(sys_dir_, game->id, data_dir_ + "/cheats", game->platform == "Wii");
         for (const Cheat &c : menu_cheats_)
             menu_cheat_on_.push_back(c.default_on ? play->get(cheat_key(c, false)) != "1"
@@ -995,6 +996,15 @@ int App::update_game_menu(const Input &in, double dt)
     (void)save_key; /* the keys that differ are what Apply saves */
     if (!key.empty())
         sfx(Sound::MenuScroll); /* waits for Apply (Square, or when the menu closes) */
+    /* What you see change (a border, a screen filter) is used and saved at once. */
+    if (!key.empty() && applies_at_once(key) && !menu_draft_.changed_keys(*menu_play_).empty())
+    {
+        std::vector<std::string> only;
+        for (const std::string &k : menu_draft_.changed_keys(*menu_play_))
+            if (applies_at_once(k))
+                only.push_back(k);
+        apply_menu_keys(only, true);
+    }
     return 0;
 }
 
@@ -1011,10 +1021,13 @@ bool needs_game_restart(const std::string &key)
 
 void App::apply_menu_pending()
 {
-    if (!menu_play_)
-        return;
-    const std::vector<std::string> pending = menu_draft_.changed_keys(*menu_play_);
-    if (pending.empty())
+    if (menu_play_)
+        apply_menu_keys(menu_draft_.changed_keys(*menu_play_), false);
+}
+
+void App::apply_menu_keys(const std::vector<std::string> &pending, bool quiet)
+{
+    if (!menu_play_ || pending.empty())
         return;
     menu_play_->copy_keys(menu_draft_, pending);
     if (menu_game_)
@@ -1053,6 +1066,8 @@ void App::apply_menu_pending()
     }
     if (wii)
         menu_changes_.push_back("wii_setup"); /* the whole Wii Remote set-up, pointer included */
+    if (quiet)
+        return; /* the draft keeps any other change, still waiting */
     menu_draft_ = *menu_play_;
     sfx(Sound::LaunchGame);
     if (!restart.empty())
@@ -1142,8 +1157,8 @@ void App::draw_controller_lines(float x, float y, float w, const Mapping &m)
                           {Icon::DPadRight, CtlRight, ""}});
     draw_group(kEndFace, {{Icon::Triangle, CtlTriangle, ""}, {Icon::Square, CtlSquare, ""},
                           {Icon::Circle, CtlCircle, ""}, {Icon::Cross, CtlCross, ""}});
-    draw_group(kEndLStick, {{Icon::LStick, -1, tr("Control stick")}, {Icon::L3, CtlL3, ""}});
-    draw_group(kEndRStick, {{Icon::RStick, -1, tr("C-stick")}, {Icon::R3, CtlR3, ""}});
+    draw_group(kEndLStick, {{Icon::LStick, -1, tr("Control Stick")}, {Icon::L3, CtlL3, ""}});
+    draw_group(kEndRStick, {{Icon::RStick, -1, tr("C-Stick")}, {Icon::R3, CtlR3, ""}});
 }
 
 void App::draw_game_menu(double time)
@@ -1382,7 +1397,7 @@ void App::draw_game_menu(double time)
             if (row.key == std::string("wide") && *row.iv == menu_wide_open_)
                 value += "  \xE2\x80\xA2  " + tr(ws_value(p.ws_plan, wii));
             if (row.key == std::string("button_layout") && *row.iv >= LayoutOwn)
-                value = trf("My layout {n}", {{"n", std::to_string(*row.iv - LayoutOwn + 1)}});
+                value = trf("My Layout {n}", {{"n", std::to_string(*row.iv - LayoutOwn + 1)}});
             break;
         case Kind::Bool:
             value = tr(*row.bv ? "On" : "Off");
@@ -1595,7 +1610,7 @@ void App::draw_game_menu(double time)
                    tr(restart ? "Restart the game to finish?" : "Apply your changes?"));
         const std::string message =
             restart ? (menu_play_->quick_resume
-                           ? tr("Some of the changes take effect when the game starts again. Quick resume brings you "
+                           ? tr("Some of the changes take effect when the game starts again. Quick Resume brings you "
                                 "back to this moment.")
                            : tr("Some of the changes take effect when the game starts again. Unsaved progress is lost; "
                                 "a save state keeps it."))
@@ -1607,7 +1622,7 @@ void App::draw_game_menu(double time)
             g.text_mid(Font::Regular, ts(24), bx + bw * 0.5f, ly, kLavender, Align::Center, l);
             ly += 34;
         }
-        const std::string names[2] = {tr(restart ? "Restart now" : "Apply"), tr(restart ? "Later" : "Discard")};
+        const std::string names[2] = {tr(restart ? "Restart Now" : "Apply"), tr(restart ? "Later" : "Discard")};
         const float cw = (bw - 90) * 0.5f, ch = 64, cyb = by + bh - 70;
         for (int b = 0; b < 2; ++b)
         {

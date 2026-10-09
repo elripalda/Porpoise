@@ -385,9 +385,9 @@ void push_triggers(Slot &slot)
         if (!on || feel <= 0)
             return; /* mode 0: off */
         c.mode = 2;
-        c.data[0] = 6;                    /* the resistance starts six tenths down */
+        c.data[0] = feel >= 3 ? 5 : 6;    /* the resistance starts six tenths down (Extra Firm: five) */
         c.data[1] = 8;                    /* and gives way at eight */
-        c.data[2] = feel >= 2 ? 6 : 3;    /* strength 0..8 */
+        c.data[2] = feel >= 3 ? 8 : feel >= 2 ? 6 : 3; /* strength 0..8: Light 3, Firm 6, Extra Firm 8 */
     };
     click(p.l2, l2);
     click(p.r2, r2);
@@ -981,7 +981,7 @@ void set_mapping(const Mapping &mapping)
 void set_trigger_feel(int feel)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
-    g_trigger_feel.store(std::clamp(feel, 0, 2), std::memory_order_relaxed);
+    g_trigger_feel.store(std::clamp(feel, 0, 3), std::memory_order_relaxed);
     for (Slot &slot : g_slots)
         push_triggers(slot);
 }

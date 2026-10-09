@@ -12,7 +12,7 @@
   "section": "Top bar, tabs, library"
  },
  {
-  "en": "Your games",
+  "en": "Your Games",
   "section": "Top bar, tabs, library"
  },
  {
@@ -28,7 +28,7 @@
   "section": "Top bar, tabs, library"
  },
  {
-  "en": "Add games",
+  "en": "Add Games",
   "section": "Top bar, tabs, library"
  },
  {
@@ -56,7 +56,7 @@
   "section": "Top bar, tabs, library"
  },
  {
-  "en": "Sort games",
+  "en": "Sort Games",
   "section": "Top bar, tabs, library"
  },
  {
@@ -64,7 +64,7 @@
   "section": "Top bar, tabs, library"
  },
  {
-  "en": "Recently played",
+  "en": "Recently Played",
   "section": "Top bar, tabs, library"
  },
  {
@@ -184,7 +184,7 @@
   "section": "Details"
  },
  {
-  "en": "Last played",
+  "en": "Last Played",
   "section": "Details"
  },
  {
@@ -196,19 +196,19 @@
   "section": "Details"
  },
  {
-  "en": "Turn on Settings > Games > Download game info for a description.",
+  "en": "Turn on Settings > Games > Download Game Info for a description.",
   "section": "Details"
  },
  {
-  "en": "Game settings",
+  "en": "Game Settings",
   "section": "Details"
  },
  {
-  "en": "Back of box",
+  "en": "Back of Box",
   "section": "Details"
  },
  {
-  "en": "Front of box",
+  "en": "Front of Box",
   "section": "Details"
  },
  {
@@ -216,7 +216,7 @@
   "section": "Details"
  },
  {
-  "en": "Save data",
+  "en": "Save Data",
   "section": "Details"
  },
  {
@@ -396,7 +396,7 @@
   "section": "In-game menu"
  },
  {
-  "en": "FPS counter",
+  "en": "FPS Counter",
   "section": "In-game menu"
  },
  {
@@ -408,7 +408,7 @@
   "section": "In-game menu"
  },
  {
-  "en": "Quit to library",
+  "en": "Quit to Library",
   "section": "In-game menu"
  },
  {
@@ -460,7 +460,7 @@
   "section": "Settings: sections"
  },
  {
-  "en": "This game",
+  "en": "This Game",
   "section": "Settings: sections"
  },
  {
@@ -480,7 +480,7 @@
   "section": "Settings: sections"
  },
  {
-  "en": "Choose a folder",
+  "en": "Choose a Folder",
   "section": "Settings: sections"
  },
  {
@@ -532,7 +532,7 @@
   "section": "Settings: sections"
  },
  {
-  "en": "Find games automatically",
+  "en": "Find Games Automatically",
   "section": "Settings: Games"
  },
  {
@@ -540,7 +540,7 @@
   "section": "Settings: Games"
  },
  {
-  "en": "Download covers",
+  "en": "Download Covers",
   "section": "Settings: Games"
  },
  {
@@ -548,7 +548,7 @@
   "section": "Settings: Games"
  },
  {
-  "en": "Download game info",
+  "en": "Download Game Info",
   "section": "Settings: Games"
  },
  {
@@ -560,7 +560,7 @@
   "section": "Settings: Games"
  },
  {
-  "en": "Add a game folder",
+  "en": "Add a Game Folder",
   "section": "Settings: Games"
  },
  {
@@ -568,7 +568,7 @@
   "section": "Settings: Games"
  },
  {
-  "en": "Search for games now",
+  "en": "Search for Games Now",
   "section": "Settings: Games"
  },
  {
@@ -576,27 +576,27 @@
   "section": "Settings: Games"
  },
  {
-  "en": "Internal resolution",
+  "en": "Internal Resolution",
   "section": "Settings: Video"
  },
  {
-  "en": "How sharp games render. 1080p is the tested default; above it is experimental and can slow games.",
+  "en": "How sharp games render. Higher is sharper and can slow some games.",
   "section": "Settings: Video"
  },
  {
-  "en": "4x (1440p) • experimental",
+  "en": "4x (1440p)",
   "section": "Settings: Video"
  },
  {
-  "en": "5x (1800p) • experimental",
+  "en": "5x (1800p)",
   "section": "Settings: Video"
  },
  {
-  "en": "6x (4K) • experimental",
+  "en": "6x (4K)",
   "section": "Settings: Video"
  },
  {
-  "en": "Widescreen hack",
+  "en": "Widescreen Hack",
   "section": "Settings: Video"
  },
  {
@@ -604,7 +604,7 @@
   "section": "Settings: Video"
  },
  {
-  "en": "Aspect ratio",
+  "en": "Aspect Ratio",
   "section": "Settings: Video"
  },
  {
@@ -624,11 +624,11 @@
   "section": "Settings: Video"
  },
  {
-  "en": "Stretch to fill",
+  "en": "Stretch to Fill",
   "section": "Settings: Video"
  },
  {
-  "en": "Anti-aliasing",
+  "en": "Anti-Aliasing",
   "section": "Settings: Video"
  },
  {
@@ -636,7 +636,7 @@
   "section": "Settings: Video"
  },
  {
-  "en": "Anisotropic filtering",
+  "en": "Anisotropic Filtering",
   "section": "Settings: Video"
  },
  {
@@ -644,7 +644,7 @@
   "section": "Settings: Video"
  },
  {
-  "en": "Texture filtering",
+  "en": "Texture Filtering",
   "section": "Settings: Video"
  },
  {
@@ -652,23 +652,23 @@
   "section": "Settings: Video"
  },
  {
-  "en": "Game's own",
+  "en": "Game's Own",
   "section": "Settings: Video"
  },
  {
-  "en": "Nearest (sharp)",
+  "en": "Nearest (Sharp)",
   "section": "Settings: Video"
  },
  {
-  "en": "Linear (smooth)",
+  "en": "Linear (Smooth)",
   "section": "Settings: Video"
  },
  {
-  "en": "Output resampling",
+  "en": "Output Resampling",
   "section": "Settings: Video"
  },
  {
-  "en": "How Dolphin scales its picture. Sharp bilinear keeps pixels crisp.",
+  "en": "How Dolphin scales its picture. Sharp Bilinear keeps pixels crisp.",
   "section": "Settings: Video"
  },
  {
@@ -676,11 +676,11 @@
   "section": "Settings: Video"
  },
  {
-  "en": "Sharp bilinear",
+  "en": "Sharp Bilinear",
   "section": "Settings: Video"
  },
  {
-  "en": "Area sampling",
+  "en": "Area Sampling",
   "section": "Settings: Video"
  },
  {
@@ -700,7 +700,7 @@
   "section": "Settings: Video"
  },
  {
-  "en": "FPS overlay",
+  "en": "FPS Overlay",
   "section": "Settings: Video"
  },
  {
@@ -708,7 +708,7 @@
   "section": "Settings: Video"
  },
  {
-  "en": "Shader compilation",
+  "en": "Shader Compilation",
   "section": "Settings: Graphics"
  },
  {
@@ -724,15 +724,15 @@
   "section": "Settings: Graphics"
  },
  {
-  "en": "Async ubershaders",
+  "en": "Async Ubershaders",
   "section": "Settings: Graphics"
  },
  {
-  "en": "Async, skip drawing",
+  "en": "Async, Skip Drawing",
   "section": "Settings: Graphics"
  },
  {
-  "en": "Texture cache accuracy",
+  "en": "Texture Cache Accuracy",
   "section": "Settings: Graphics"
  },
  {
@@ -752,7 +752,7 @@
   "section": "Settings: Graphics"
  },
  {
-  "en": "Per-pixel lighting",
+  "en": "Per-Pixel Lighting",
   "section": "Settings: Graphics"
  },
  {
@@ -760,7 +760,7 @@
   "section": "Settings: Graphics"
  },
  {
-  "en": "Disable fog",
+  "en": "Disable Fog",
   "section": "Settings: Graphics"
  },
  {
@@ -768,7 +768,7 @@
   "section": "Settings: Graphics"
  },
  {
-  "en": "Crop overscan",
+  "en": "Crop Overscan",
   "section": "Settings: Graphics"
  },
  {
@@ -776,7 +776,7 @@
   "section": "Settings: Graphics"
  },
  {
-  "en": "Custom textures",
+  "en": "Custom Textures",
   "section": "Settings: Graphics"
  },
  {
@@ -784,7 +784,7 @@
   "section": "Settings: Graphics"
  },
  {
-  "en": "Skip duplicate frames",
+  "en": "Skip Duplicate Frames",
   "section": "Settings: Graphics"
  },
  {
@@ -792,7 +792,7 @@
   "section": "Settings: Graphics"
  },
  {
-  "en": "Menu music",
+  "en": "Menu Music",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -800,7 +800,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Music volume",
+  "en": "Music Volume",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -808,7 +808,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Menu sounds",
+  "en": "Menu Sounds",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -816,7 +816,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Sounds volume",
+  "en": "Sounds Volume",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -824,7 +824,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Game volume",
+  "en": "Game Volume",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -832,7 +832,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Mute game",
+  "en": "Mute Game",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -840,7 +840,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Button layout",
+  "en": "Button Layout",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -868,7 +868,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Customize buttons",
+  "en": "Customize Buttons",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -904,7 +904,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "For {game} only",
+  "en": "For {game} Only",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -916,31 +916,31 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "A button",
+  "en": "A Button",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "B button",
+  "en": "B Button",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "X button",
+  "en": "X Button",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Y button",
+  "en": "Y Button",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Z button",
+  "en": "Z Button",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "L trigger",
+  "en": "L Trigger",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "R trigger",
+  "en": "R Trigger",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -948,19 +948,19 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "D-pad up",
+  "en": "D-Pad Up",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "D-pad down",
+  "en": "D-Pad Down",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "D-pad left",
+  "en": "D-Pad Left",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "D-pad right",
+  "en": "D-Pad Right",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -992,15 +992,15 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Use the GameCube layout",
+  "en": "Use the GameCube Layout",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Use the PlayStation layout",
+  "en": "Use the PlayStation Layout",
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "In use",
+  "en": "In Use",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -1032,7 +1032,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Other games",
+  "en": "Other Games",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -1040,7 +1040,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "Report a bug",
+  "en": "Report a Bug",
   "section": "Settings: Audio, Controls"
  },
  {
@@ -1048,7 +1048,7 @@
   "section": "Settings: Audio, Controls"
  },
  {
-  "en": "CPU clock",
+  "en": "CPU Clock",
   "section": "Settings: System"
  },
  {
@@ -1056,7 +1056,7 @@
   "section": "Settings: System"
  },
  {
-  "en": "Dual core",
+  "en": "Dual Core",
   "section": "Settings: System"
  },
  {
@@ -1064,7 +1064,7 @@
   "section": "Settings: System"
  },
  {
-  "en": "Fast disc loading",
+  "en": "Fast Disc Loading",
   "section": "Settings: System"
  },
  {
@@ -1080,7 +1080,7 @@
   "section": "Settings: System"
  },
  {
-  "en": "System language",
+  "en": "System Language",
   "section": "Settings: System"
  },
  {
@@ -1116,11 +1116,11 @@
   "section": "Settings: System"
  },
  {
-  "en": "Chinese (simplified)",
+  "en": "Chinese (Simplified)",
   "section": "Settings: System"
  },
  {
-  "en": "Chinese (traditional)",
+  "en": "Chinese (Traditional)",
   "section": "Settings: System"
  },
  {
@@ -1128,7 +1128,7 @@
   "section": "Settings: System"
  },
  {
-  "en": "Progressive scan",
+  "en": "Progressive Scan",
   "section": "Settings: System"
  },
  {
@@ -1144,7 +1144,7 @@
   "section": "Settings: Interface"
  },
  {
-  "en": "Reduced motion",
+  "en": "Reduced Motion",
   "section": "Settings: Interface"
  },
  {
@@ -1152,7 +1152,7 @@
   "section": "Settings: Interface"
  },
  {
-  "en": "Larger text",
+  "en": "Larger Text",
   "section": "Settings: Interface"
  },
  {
@@ -1160,7 +1160,7 @@
   "section": "Settings: Interface"
  },
  {
-  "en": "Reset all settings",
+  "en": "Reset All Settings",
   "section": "Settings: Interface"
  },
  {
@@ -1176,7 +1176,7 @@
   "section": "Settings: Interface"
  },
  {
-  "en": "Own settings",
+  "en": "Own Settings",
   "section": "Settings: a game's own"
  },
  {
@@ -1196,7 +1196,7 @@
   "section": "Settings: a game's own"
  },
  {
-  "en": "Reset to default",
+  "en": "Reset to Default",
   "section": "Settings: a game's own"
  },
  {
@@ -1212,27 +1212,27 @@
   "section": "Settings: a game's own"
  },
  {
-  "en": "Choose a game folder",
+  "en": "Choose a Game Folder",
   "section": "Folder browser"
  },
  {
-  "en": "Pick a drive",
+  "en": "Pick a Drive",
   "section": "Folder browser"
  },
  {
-  "en": "Console storage",
+  "en": "Console Storage",
   "section": "Folder browser"
  },
  {
-  "en": "USB drive {n}",
+  "en": "USB Drive {n}",
   "section": "Folder browser"
  },
  {
-  "en": "Extended storage",
+  "en": "Extended Storage",
   "section": "Folder browser"
  },
  {
-  "en": "Whole system",
+  "en": "Whole System",
   "section": "Folder browser"
  },
  {
@@ -1252,7 +1252,7 @@
   "section": "Folder browser"
  },
  {
-  "en": "Use this folder",
+  "en": "Use This Folder",
   "section": "Folder browser"
  },
  {
@@ -1268,7 +1268,7 @@
   "section": "About"
  },
  {
-  "en": "Created by",
+  "en": "Created By",
   "section": "About"
  },
  {
@@ -1280,7 +1280,7 @@
   "section": "About"
  },
  {
-  "en": "Dolphin core",
+  "en": "Dolphin Core",
   "section": "About"
  },
  {
@@ -1288,23 +1288,23 @@
   "section": "About"
  },
  {
-  "en": "PS5 graphics",
+  "en": "PS5 Graphics",
   "section": "About"
  },
  {
-  "en": "PS5 toolchain",
+  "en": "PS5 Toolchain",
   "section": "About"
  },
  {
-  "en": "PS5 port",
+  "en": "PS5 Port",
   "section": "About"
  },
  {
-  "en": "Inspired by",
+  "en": "Inspired By",
   "section": "About"
  },
  {
-  "en": "Box art and info",
+  "en": "Box Art and Info",
   "section": "About"
  },
  {
@@ -1312,11 +1312,11 @@
   "section": "About"
  },
  {
-  "en": "Images and audio",
+  "en": "Images and Audio",
   "section": "About"
  },
  {
-  "en": "Music and sounds",
+  "en": "Music and Sounds",
   "section": "About"
  },
  {
@@ -1396,7 +1396,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Arbitrary mipmap detection",
+  "en": "Arbitrary Mipmap Detection",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1404,15 +1404,15 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Arcade cabinet",
+  "en": "Arcade Cabinet",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Async ubershaders hide the stutter when a game draws something new. Takes effect after a restart of the game.",
+  "en": "Async Ubershaders hide the stutter when a game draws something new. Takes effect after a restart of the game.",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Audio emulation",
+  "en": "Audio Emulation",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1420,39 +1420,39 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Bounding box",
+  "en": "Bounding Box",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "C-stick",
+  "en": "C-Stick",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "CPU access to the EFB",
+  "en": "CPU Access to the EFB",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "CPU overclock",
+  "en": "CPU Overclock",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "CPU recompiler",
+  "en": "CPU Recompiler",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Control stick",
+  "en": "Control Stick",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Controller art",
+  "en": "Controller Art",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Cull vertices on the CPU",
+  "en": "Cull Vertices on the CPU",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Defer EFB copies",
+  "en": "Defer EFB Copies",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1480,11 +1480,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "EFB copies",
+  "en": "EFB Copies",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Early XFB output",
+  "en": "Early XFB Output",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1492,7 +1492,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Emulate EFB format changes",
+  "en": "Emulate EFB Format Changes",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1504,15 +1504,15 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Fast depth calculation",
+  "en": "Fast Depth Calculation",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Fast forward",
+  "en": "Fast Forward",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Fast texture sampling",
+  "en": "Fast Texture Sampling",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1520,7 +1520,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Favorites first",
+  "en": "Favorites First",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1532,11 +1532,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Filter strength",
+  "en": "Filter Strength",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Floating-point result flags",
+  "en": "Floating-Point Result Flags",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1544,7 +1544,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Full memory management (MMU)",
+  "en": "Full Memory Management (MMU)",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1552,7 +1552,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. My layouts: your own, made in Customize buttons.",
+  "en": "GameCube: Cross is A, Square is B. PlayStation: Cross is A, Circle is B. My layouts: your own, made in Customize Buttons.",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1560,7 +1560,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Instruction cache",
+  "en": "Instruction Cache",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1580,11 +1580,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Load state",
+  "en": "Load State",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Low DCBZ hack",
+  "en": "Low DCBZ Hack",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1592,7 +1592,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Memory card size",
+  "en": "Memory Card Size",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1600,11 +1600,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Most played",
+  "en": "Most Played",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "My layout {n}",
+  "en": "My Layout {n}",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1628,15 +1628,15 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Performance queries",
+  "en": "Performance Queries",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Play from here",
+  "en": "Play from Here",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Play time",
+  "en": "Play Time",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1644,7 +1644,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Porpoise glass",
+  "en": "Porpoise Glass",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1664,7 +1664,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Porpoise's picks",
+  "en": "Porpoise's Picks",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1672,7 +1672,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Recommended settings",
+  "en": "Recommended Settings",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1688,11 +1688,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Save state",
+  "en": "Save State",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Save states",
+  "en": "Save States",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1704,7 +1704,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Screen filter",
+  "en": "Screen Filter",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1720,11 +1720,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Show frames immediately (XFB)",
+  "en": "Show Frames Immediately (XFB)",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Skip VI interrupts",
+  "en": "Skip VI Interrupts",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1740,19 +1740,15 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Start over",
+  "en": "Start Over from the GameCube Layout",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Start over from the GameCube layout",
+  "en": "Start Over from the PlayStation Layout",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Start over from the PlayStation layout",
-  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
- },
- {
-  "en": "Sync on idle skipping",
+  "en": "Sync on Idle Skipping",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1776,11 +1772,11 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "To RAM too (accurate)",
+  "en": "To RAM Too (Accurate)",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "To texture only",
+  "en": "To Texture Only",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1788,15 +1784,15 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Update available",
+  "en": "Update Available",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Use this layout",
+  "en": "Use This Layout",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "Vertex rounding",
+  "en": "Vertex Rounding",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1804,7 +1800,7 @@
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
-  "en": "XFB copies",
+  "en": "XFB Copies",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -1868,11 +1864,11 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Save state…",
+  "en": "Save State…",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Load state…",
+  "en": "Load State…",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -1884,27 +1880,27 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Save as a setup",
+  "en": "Save as a Setup",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Use a setup",
+  "en": "Use a Setup",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "My layout 1",
+  "en": "My Layout 1",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "My layout 2",
+  "en": "My Layout 2",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "My layout 3",
+  "en": "My Layout 3",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "My layout 4",
+  "en": "My Layout 4",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2004,7 +2000,7 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Check now",
+  "en": "Check Now",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2020,7 +2016,7 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Fast save states",
+  "en": "Fast Save States",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2040,7 +2036,7 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Use setup {n}",
+  "en": "Use Setup {n}",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2052,11 +2048,11 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Dolphin's fix",
+  "en": "Dolphin's Fix",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Porpoise's pick",
+  "en": "Porpoise's Pick",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2096,15 +2092,15 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Turn off",
+  "en": "Turn Off",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Turn on",
+  "en": "Turn On",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "GPU texture decoding",
+  "en": "GPU Texture Decoding",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2124,11 +2120,11 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Retro cabinet",
+  "en": "Retro Cabinet",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Synthwave cabinet",
+  "en": "Synthwave Cabinet",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2136,7 +2132,7 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "8-bit",
+  "en": "8-Bit",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2152,7 +2148,7 @@
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
-  "en": "Japanese font",
+  "en": "Japanese Font",
   "section": "1.1: updates, setups, save state slots, more filters and borders, credits"
  },
  {
@@ -2220,11 +2216,11 @@
   "section": "1.1: updater messages, recommended settings notes"
  },
  {
-  "en": "Porpoise's games folder",
+  "en": "Porpoise's Games Folder",
   "section": "1.1: folder browser"
  },
  {
-  "en": "Drives and shortcuts",
+  "en": "Drives and Shortcuts",
   "section": "1.1: folder browser"
  },
  {
@@ -2248,7 +2244,7 @@
   "section": "1.1: folder browser"
  },
  {
-  "en": "Copy to console",
+  "en": "Copy to Console",
   "section": "1.1: folder browser"
  },
  {
@@ -2280,7 +2276,7 @@
   "section": "1.1 build 14: layouts, beta"
  },
  {
-  "en": "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made in Customize buttons.",
+  "en": "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made in Customize Buttons.",
   "section": "1.1 build 14: layouts, beta"
  },
  {
@@ -2332,11 +2328,11 @@
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "Sort & filter (Triangle) can show all of your games.",
+  "en": "Sort & Filter (Triangle) can show all of your games.",
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "Sort & filter",
+  "en": "Sort & Filter",
   "section": "Library, sort and filter, memory cards"
  },
  {
@@ -2356,11 +2352,11 @@
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "All games",
+  "en": "All Games",
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "Sort by",
+  "en": "Sort By",
   "section": "Library, sort and filter, memory cards"
  },
  {
@@ -2368,7 +2364,7 @@
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "Get covers and info now",
+  "en": "Get Covers and Info Now",
   "section": "Library, sort and filter, memory cards"
  },
  {
@@ -2396,7 +2392,7 @@
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "Texture pack",
+  "en": "Texture Pack",
   "section": "Library, sort and filter, memory cards"
  },
  {
@@ -2408,7 +2404,7 @@
   "section": "Library, sort and filter, memory cards"
  },
  {
-  "en": "Wii saves",
+  "en": "Wii Saves",
   "section": "Library, sort and filter, memory cards"
  },
  {
@@ -2428,11 +2424,11 @@
   "section": "Home screen (Revolution)"
  },
  {
-  "en": "Pointer off",
+  "en": "Pointer Off",
   "section": "Home screen (Revolution)"
  },
  {
-  "en": "Pointer on",
+  "en": "Pointer On",
   "section": "Home screen (Revolution)"
  },
  {
@@ -2464,35 +2460,35 @@
   "section": "Revolution theme"
  },
  {
-  "en": "Pointer on: point at the screen.",
+  "en": "Pointer On: point at the screen.",
   "section": "Revolution theme"
  },
  {
-  "en": "Pointer off: the touch pad turns it back on.",
+  "en": "Pointer Off: the touch pad turns it back on.",
   "section": "Revolution theme"
  },
  {
-  "en": "Save states ({n})",
+  "en": "Save States ({n})",
   "section": "Revolution theme"
  },
  {
-  "en": "Add to favorites",
+  "en": "Add to Favorites",
   "section": "Revolution theme"
  },
  {
-  "en": "No description yet: Sort & filter (Triangle, on the home screen) can get the game info.",
+  "en": "No description yet: Sort & Filter (Triangle, on the home screen) can get the game info.",
   "section": "Revolution theme"
  },
  {
-  "en": "The game's banner",
+  "en": "The Game's Banner",
   "section": "Revolution theme"
  },
  {
-  "en": "About this game",
+  "en": "About This Game",
   "section": "Revolution theme"
  },
  {
-  "en": "Wii controls",
+  "en": "Wii Controls",
   "section": "Revolution theme"
  },
  {
@@ -2536,11 +2532,11 @@
   "section": "Wii saves"
  },
  {
-  "en": "GameCube cards",
+  "en": "GameCube Cards",
   "section": "Wii saves"
  },
  {
-  "en": "Back up",
+  "en": "Back Up",
   "section": "Wii saves"
  },
  {
@@ -2548,15 +2544,15 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "1 button",
+  "en": "1 Button",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "2 button",
+  "en": "2 Button",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "HOME button",
+  "en": "HOME Button",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2588,19 +2584,19 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "D-pad",
+  "en": "D-Pad",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Nunchuk stick",
+  "en": "Nunchuk Stick",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Left stick",
+  "en": "Left Stick",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Right stick",
+  "en": "Right Stick",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2616,7 +2612,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Remote sideways",
+  "en": "Remote Sideways",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2624,7 +2620,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Two controllers (alpha)",
+  "en": "Two Controllers (Alpha)",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2700,7 +2696,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "How to hold it",
+  "en": "How to Hold It",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2716,7 +2712,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Other Wii controllers",
+  "en": "Other Wii Controllers",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2780,11 +2776,11 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Recalibrate the pointer",
+  "en": "Recalibrate the Pointer",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Wii Remote setup",
+  "en": "Wii Remote Setup",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2804,7 +2800,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Wii controller",
+  "en": "Wii Controller",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2812,15 +2808,15 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Before this game",
+  "en": "Before This Game",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Show this setup",
+  "en": "Show This Setup",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Don't show",
+  "en": "Don't Show",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2852,7 +2848,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Play now",
+  "en": "Play Now",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2892,15 +2888,15 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Size and distance",
+  "en": "Size and Distance",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Pointing at corners",
+  "en": "Pointing at Corners",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Screen size",
+  "en": "Screen Size",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2928,7 +2924,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Hold to center",
+  "en": "Hold to Center",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -2972,15 +2968,15 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Back to the game",
+  "en": "Back to the Game",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Measure again",
+  "en": "Measure Again",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Fine-tune",
+  "en": "Fine-Tune",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -3000,7 +2996,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Both hands",
+  "en": "Both Hands",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -3032,7 +3028,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Save as this preset",
+  "en": "Save as This Preset",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -3052,11 +3048,11 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "ZL button",
+  "en": "ZL Button",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "ZR button",
+  "en": "ZR Button",
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
@@ -3068,7 +3064,7 @@
   "section": "Wii controllers and the Wii Remote setup"
  },
  {
-  "en": "Wii preset",
+  "en": "Wii Preset",
   "section": "In-game menu"
  },
  {
@@ -3080,11 +3076,11 @@
   "section": "In-game menu"
  },
  {
-  "en": "Touch pad",
+  "en": "Touch Pad",
   "section": "In-game menu"
  },
  {
-  "en": "Pointer speed",
+  "en": "Pointer Speed",
   "section": "In-game menu"
  },
  {
@@ -3092,11 +3088,11 @@
   "section": "In-game menu"
  },
  {
-  "en": "Flick to shake",
+  "en": "Flick to Shake",
   "section": "In-game menu"
  },
  {
-  "en": "Motion readout",
+  "en": "Motion Readout",
   "section": "In-game menu"
  },
  {
@@ -3160,7 +3156,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Your setup",
+  "en": "Your Setup",
   "section": "Settings (2.0)"
  },
  {
@@ -3172,7 +3168,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Output resolution",
+  "en": "Output Resolution",
   "section": "Settings (2.0)"
  },
  {
@@ -3180,7 +3176,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Threaded GPU recording",
+  "en": "Threaded GPU Recording",
   "section": "Settings (2.0)"
  },
  {
@@ -3192,11 +3188,11 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Quick resume",
+  "en": "Quick Resume",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next time you start it. Start over (in the in-game menu) boots it fresh.",
+  "en": "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next time you start it. Start Over (in the in-game menu) boots it fresh.",
   "section": "Settings (2.0)"
  },
  {
@@ -3220,19 +3216,19 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Setup before this game",
+  "en": "Setup Before This Game",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Shows the Wii Remote setup when this game starts; Triangle there plays straight away.",
+  "en": "Shows the Wii Remote Setup when this game starts; Triangle there plays straight away.",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Setup before each Wii game",
+  "en": "Setup Before Each Wii Game",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Shows the Wii Remote setup when a Wii game starts; Triangle there plays straight away. A game can have its own choice in its settings.",
+  "en": "Shows the Wii Remote Setup when a Wii game starts; Triangle there plays straight away. A game can have its own choice in its settings.",
   "section": "Settings (2.0)"
  },
  {
@@ -3252,7 +3248,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "How far you turn the controller to reach the screen's edge. Your screen: as measured by the Wii Remote setup, so the pointer is where you point.",
+  "en": "How far you turn the controller to reach the screen's edge. Your screen: as measured by the Wii Remote Setup, so the pointer is where you point.",
   "section": "Settings (2.0)"
  },
  {
@@ -3268,7 +3264,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Debug logs",
+  "en": "Debug Logs",
   "section": "Settings (2.0)"
  },
  {
@@ -3280,7 +3276,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Invert pointer left / right",
+  "en": "Invert Pointer Left / Right",
   "section": "Settings (2.0)"
  },
  {
@@ -3288,11 +3284,11 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Invert pointer up / down",
+  "en": "Invert Pointer Up / Down",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Motion logs",
+  "en": "Motion Logs",
   "section": "Settings (2.0)"
  },
  {
@@ -3300,7 +3296,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Turn off developer options",
+  "en": "Turn Off Developer Options",
   "section": "Settings (2.0)"
  },
  {
@@ -3308,7 +3304,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Check my setup",
+  "en": "Check My Setup",
   "section": "Settings (2.0)"
  },
  {
@@ -3320,7 +3316,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Saves from a USB drive",
+  "en": "Saves from a USB Drive",
   "section": "Settings (2.0)"
  },
  {
@@ -3328,7 +3324,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Copy in…",
+  "en": "Copy In…",
   "section": "Settings (2.0)"
  },
  {
@@ -3340,11 +3336,11 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Home screen",
+  "en": "Home Screen",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Tiles: a grid you point at, twelve to a page. Cover flow: the boxes in a row, in white.",
+  "en": "Tiles: a grid you point at, twelve to a page. Cover Flow: the boxes in a row, in white.",
   "section": "Settings (2.0)"
  },
  {
@@ -3352,11 +3348,11 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Cover flow",
+  "en": "Cover Flow",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Point with the controller",
+  "en": "Point with the Controller",
   "section": "Settings (2.0)"
  },
  {
@@ -3364,7 +3360,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Beta updates",
+  "en": "Beta Updates",
   "section": "Settings (2.0)"
  },
  {
@@ -3372,7 +3368,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Choose a version",
+  "en": "Choose a Version",
   "section": "Settings (2.0)"
  },
  {
@@ -3384,11 +3380,11 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Save a report…",
+  "en": "Save a Report…",
   "section": "Settings (2.0)"
  },
  {
-  "en": "Performance report",
+  "en": "Performance Report",
   "section": "Settings (2.0)"
  },
  {
@@ -3396,7 +3392,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Wii banners",
+  "en": "Wii Banners",
   "section": "Settings (2.0)"
  },
  {
@@ -3404,11 +3400,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "PS5 scene",
-  "section": "Settings (2.0)"
- },
- {
-  "en": "Cheats and patches (beta)",
+  "en": "PS5 Scene",
   "section": "Settings (2.0)"
  },
  {
@@ -3432,7 +3424,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Saves from the USB drive",
+  "en": "Saves from the USB Drive",
   "section": "Settings (2.0)"
  },
  {
@@ -3448,11 +3440,11 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "It's in {path}. Scan the code beside Report a bug to open an issue on GitHub and attach its files.",
+  "en": "It's in {path}. Scan the code beside Report a Bug to open an issue on GitHub and attach its files.",
   "section": "Settings (2.0)"
  },
  {
-  "en": "It's in {path}, and on your USB drive as {usb}. Scan the code beside Report a bug to open an issue on GitHub and attach its files.",
+  "en": "It's in {path}, and on your USB drive as {usb}. Scan the code beside Report a Bug to open an issue on GitHub and attach its files.",
   "section": "Settings (2.0)"
  },
  {
@@ -3476,7 +3468,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "A patch from Dolphin: the game drawn in 16:9. Use it with Aspect ratio on Force 16:9.",
+  "en": "A patch from Dolphin: the game drawn in 16:9. Use it with Aspect Ratio on Force 16:9.",
   "section": "Cheats and patches"
  },
  {
@@ -3500,7 +3492,7 @@
   "section": "Cheats and patches"
  },
  {
-  "en": "Exact multiply-add",
+  "en": "Exact Multiply-Add",
   "section": "Settings (2.0)"
  },
  {
@@ -3508,7 +3500,7 @@
   "section": "Settings (2.0)"
  },
  {
-  "en": "Emulator on its own cores",
+  "en": "Emulator on Its Own Cores",
   "section": "Settings (2.0)"
  },
  {
@@ -3648,7 +3640,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Cover flow: the boxes in a row, the chosen one in front.",
+  "en": "Cover Flow: the boxes in a row, the chosen one in front.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3656,7 +3648,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Disc flow: your discs, spinning into place as you go.",
+  "en": "Disc Flow: your discs, spinning into place as you go.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3668,7 +3660,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Library view",
+  "en": "Library View",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3676,7 +3668,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Disc flow",
+  "en": "Disc Flow",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3696,11 +3688,11 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "By game: every save on both cards and the Wii, grouped by game.",
+  "en": "By Game: every save on both cards and the Wii, grouped by game.",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Memory Cards view",
+  "en": "Memory Cards View",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3712,7 +3704,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "By game",
+  "en": "By Game",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3720,7 +3712,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Text size",
+  "en": "Text Size",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3736,7 +3728,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Color filter",
+  "en": "Color Filter",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3744,15 +3736,15 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Red-weak",
+  "en": "Red-Weak",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Green-weak",
+  "en": "Green-Weak",
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Blue-weak",
+  "en": "Blue-Weak",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3760,7 +3752,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Color filter in games",
+  "en": "Color Filter in Games",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3768,7 +3760,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "High contrast",
+  "en": "High Contrast",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3776,7 +3768,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Still background",
+  "en": "Still Background",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3784,7 +3776,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Larger button hints",
+  "en": "Larger Button Hints",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3796,7 +3788,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Wii system memory",
+  "en": "Wii System Memory",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3820,7 +3812,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Tiles: a grid you point at, twelve to a page. Library view: your games in the Library view below.",
+  "en": "Tiles: a grid you point at, twelve to a page. Library View: your games in the Library View below.",
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
  },
  {
@@ -3856,11 +3848,11 @@
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
  },
  {
-  "en": "Games page",
+  "en": "Games Page",
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
  },
  {
-  "en": "Star Cube's Games page: your games as spinning discs, or as covers.",
+  "en": "Star Cube's Games Page: your games as spinning discs, or as covers.",
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
  },
  {
@@ -4004,7 +3996,7 @@
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
  },
  {
-  "en": "Theme default",
+  "en": "Theme Default",
   "section": "2.0: fonts, Reinitialize, first start"
  },
  {
@@ -4076,19 +4068,19 @@
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Accurate audio",
+  "en": "Accurate Audio",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Wii Remote speaker",
+  "en": "Wii Remote Speaker",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Audio buffer",
+  "en": "Audio Buffer",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Audio stretching",
+  "en": "Audio Stretching",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
@@ -4096,23 +4088,23 @@
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Wii widescreen",
+  "en": "Wii Widescreen",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "PAL games at 60 Hz",
+  "en": "PAL Games at 60 Hz",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Sensor bar",
+  "en": "Sensor Bar",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Start Wii discs in the Wii Menu",
+  "en": "Start Wii Discs in the Wii Menu",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "GameCube boot animation",
+  "en": "GameCube Boot Animation",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
@@ -4184,11 +4176,11 @@
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "It's in {path}. Scan the code beside Report a bug to join the Discord, and share its files in the bug reports.",
+  "en": "It's in {path}. Scan the code beside Report a Bug to join the Discord, and share its files in the bug reports.",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "It's in {path}, and on your USB drive as {usb}. Scan the code beside Report a bug to join the Discord, and share its files in the bug reports.",
+  "en": "It's in {path}, and on your USB drive as {usb}. Scan the code beside Report a Bug to join the Discord, and share its files in the bug reports.",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
@@ -4212,7 +4204,7 @@
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "Fast forward buttons",
+  "en": "Fast Forward Buttons",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
@@ -4256,15 +4248,15 @@
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Custom textures: 1 found ({pack})",
+  "en": "Custom Textures: 1 found ({pack})",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Custom textures: {n} found ({pack})",
+  "en": "Custom Textures: {n} found ({pack})",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Custom textures: none found in {pack}",
+  "en": "Custom Textures: none found in {pack}",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
@@ -4280,7 +4272,7 @@
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Don't show again",
+  "en": "Don't Show Again",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
@@ -4300,7 +4292,7 @@
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Start over from Porpoise's layout",
+  "en": "Start Over from Porpoise's Layout",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
@@ -4320,7 +4312,7 @@
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Online (beta)",
+  "en": "WiiConnect24 Channels",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
@@ -4340,7 +4332,7 @@
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Move Porpoise's folder to {place}",
+  "en": "Move Porpoise's Folder to {place}",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
@@ -4352,7 +4344,7 @@
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Sandbox message at start",
+  "en": "Sandbox Message at Start",
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
@@ -4544,7 +4536,7 @@
   "section": "2.1.1: widescreen codes, achievements list"
  },
  {
-  "en": "16:9 code",
+  "en": "16:9 Code",
   "section": "2.1.1: widescreen codes, achievements list"
  },
  {
@@ -4552,7 +4544,7 @@
   "section": "2.1.1: widescreen codes, achievements list"
  },
  {
-  "en": "4:3 only",
+  "en": "4:3 Only",
   "section": "2.1.1: widescreen codes, achievements list"
  },
  {
@@ -4564,7 +4556,7 @@
   "section": "2.1.1: widescreen codes, achievements list"
  },
  {
-  "en": "Emulated widescreen",
+  "en": "Emulated Widescreen",
   "section": "2.1.1: widescreen codes, achievements list"
  },
  {
@@ -4656,15 +4648,15 @@
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
-  "en": "The Wii's setting",
+  "en": "The Wii's Setting",
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
-  "en": "16:9 code + hack",
+  "en": "16:9 Code + Hack",
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
-  "en": "Emulated hack",
+  "en": "Emulated Hack",
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
@@ -4672,7 +4664,7 @@
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
-  "en": "Wii games are 16:9 when Wii widescreen is on in Porpoise's settings, as on a Wii.",
+  "en": "Wii games are 16:9 when Wii Widescreen is on in Porpoise's settings, as on a Wii.",
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
@@ -4692,7 +4684,7 @@
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
-  "en": "Cheats and patches",
+  "en": "Cheats and Patches",
   "section": "2.1.1: patches tab, widescreen status, game start reasons"
  },
  {
@@ -4716,7 +4708,7 @@
   "section": "2.1: RetroAchievements, folder move, Wii buttons, online"
  },
  {
-  "en": "Sound preset",
+  "en": "Sound Preset",
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
@@ -4724,7 +4716,7 @@
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
-  "en": "Extra smooth",
+  "en": "Extra Smooth",
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
@@ -4732,7 +4724,7 @@
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
-  "en": "Fill audio gaps",
+  "en": "Fill Audio Gaps",
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
@@ -4748,7 +4740,7 @@
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
-  "en": "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.",
+  "en": "Smooth: Dolphin's own mixer covers the gaps when a game runs slow, as on a PC, instead of crackling. Responsive keeps less sound ready, for a little less delay. Extra Smooth keeps more, for games that slow down often. Classic is the sound of Porpoise 2.1. A change to or from Classic applies the next time a game starts.",
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
@@ -4760,11 +4752,11 @@
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
-  "en": "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra smooth: for games that slow down often. Classic: 2.1's sound, from the next start.",
+  "en": "Smooth covers the gaps when the game runs slow, as Dolphin does on a PC. Responsive: less delay. Extra Smooth: for games that slow down often. Classic: 2.1's sound, from the next start.",
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
-  "en": "Classic is 2.1's sound. Smooth, Responsive and Extra smooth cover the gaps when the game runs slow; they apply the next time the game starts.",
+  "en": "Classic is 2.1's sound. Smooth, Responsive and Extra Smooth cover the gaps when the game runs slow; they apply the next time the game starts.",
   "section": "2.1.2: sound presets and the Audio tab"
  },
  {
@@ -4784,11 +4776,11 @@
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Use it",
+  "en": "Use It",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Start fresh",
+  "en": "Start Fresh",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
@@ -4820,11 +4812,11 @@
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "GameCube controller",
+  "en": "GameCube Controller",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "GameCube controller: for Wii games that take one, like Super Smash Bros. Brawl and Mario Kart Wii, with your GameCube buttons.",
+  "en": "GameCube Controller: for Wii games that take one, like Super Smash Bros. Brawl and Mario Kart Wii, with your GameCube buttons.",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
@@ -4836,7 +4828,7 @@
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Depth of field",
+  "en": "Depth of Field",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
@@ -4844,7 +4836,7 @@
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Native resolution goop",
+  "en": "Native Resolution Goop",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
@@ -4852,15 +4844,15 @@
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Native resolution",
+  "en": "Native Resolution",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Dolphin's graphics mod for this game's glow, which can look blocky at high resolutions. Off removes it, Blurred softens it, Native resolution draws it as the console did. Applies the next time the game starts.",
+  "en": "Dolphin's graphics mod for this game's glow, which can look blocky at high resolutions. Off removes it, Blurred softens it, Native Resolution draws it as the console did. Applies the next time the game starts.",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Dolphin's graphics mod for this game's depth of field (the blur on faraway things). Off removes it, Blurred softens it, Native resolution draws it as the console did. Applies the next time the game starts.",
+  "en": "Dolphin's graphics mod for this game's depth of field (the blur on faraway things). Off removes it, Blurred softens it, Native Resolution draws it as the console did. Applies the next time the game starts.",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
@@ -4896,31 +4888,31 @@
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Quick save buttons",
+  "en": "Quick Save Buttons",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Turbo button",
+  "en": "Turbo Button",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Trigger click",
+  "en": "Trigger Click",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Light bar, player 1",
+  "en": "Light Bar, Player 1",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Light bar, player 2",
+  "en": "Light Bar, Player 2",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Light bar, player 3",
+  "en": "Light Bar, Player 3",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
-  "en": "Light bar, player 4",
+  "en": "Light Bar, Player 4",
   "section": "2.5: Porpoise's folder, GameCube controller on Wii, graphics mods, controller extras"
  },
  {
@@ -4996,15 +4988,15 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Last time, Porpoise closed while your jailbreak was freeing it from the app sandbox, so this time it didn't ask. It can't see /data or USB drives, but games in /app0/porpoise/games work. Stay in the sandbox to always start this way (change it in Settings > Games), or try again.",
+  "en": "Last time, Porpoise closed while your jailbreak was freeing it from the app sandbox, so this time it didn't ask. It can't see /data or USB drives, but games in /app0/porpoise/games work. Stay in the Sandbox to always start this way (change it in Settings > Games), or try again.",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Stay in the sandbox",
+  "en": "Stay in the Sandbox",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Try again",
+  "en": "Try Again",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5016,7 +5008,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Diagnostic test",
+  "en": "Diagnostic Test",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5052,7 +5044,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Stay in the sandbox is on: Porpoise doesn't ask your jailbreak to free it.",
+  "en": "Stay in the Sandbox is on: Porpoise doesn't ask your jailbreak to free it.",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5076,7 +5068,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "The search gave up on {place} (too slow). Turn off Find games automatically and add your game folder instead.",
+  "en": "The search gave up on {place} (too slow). Turn off Find Games Automatically and add your game folder instead.",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5096,7 +5088,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Shadow mask",
+  "en": "Shadow Mask",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5112,7 +5104,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Download covers again",
+  "en": "Download Covers Again",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5124,7 +5116,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Download cover again",
+  "en": "Download Cover Again",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5160,7 +5152,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Restart now",
+  "en": "Restart Now",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5224,7 +5216,7 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Some of the changes take effect when the game starts again. Quick resume brings you back to this moment.",
+  "en": "Some of the changes take effect when the game starts again. Quick Resume brings you back to this moment.",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5248,15 +5240,15 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Find your games by itself? Porpoise looks in /data/porpoise/games, /data/games, /data/roms, /data/iso and on USB drives. With a big drive full of other things, choose your own folders instead (Settings > Games > Add a game folder).",
+  "en": "Find your games by itself? Porpoise looks in /data/porpoise/games, /data/games, /data/roms, /data/iso and on USB drives. With a big drive full of other things, choose your own folders instead (Settings > Games > Add a Game Folder).",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Find them",
+  "en": "Find Them",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "I'll choose folders",
+  "en": "I'll Choose Folders",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
@@ -5276,11 +5268,11 @@
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "The cover",
+  "en": "The Cover",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Your own",
+  "en": "Your Own",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
@@ -5288,7 +5280,7 @@
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Close Porpoise after the game",
+  "en": "Close Porpoise After the Game",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
@@ -5296,11 +5288,11 @@
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Update its home screen tile",
+  "en": "Update Its Home Screen Tile",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Add to home screen",
+  "en": "Add to Home Screen",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
@@ -5328,19 +5320,19 @@
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Invert the control stick",
+  "en": "Invert the Control Stick",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Invert the C-stick",
+  "en": "Invert the C-Stick",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Up and down",
+  "en": "Up and Down",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Left and right",
+  "en": "Left and Right",
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
@@ -5356,7 +5348,7 @@
   "section": "2.7: home screen tiles, inverted sticks"
  },
  {
-  "en": "Tile art",
+  "en": "Tile Art",
   "section": "2.7: tile art editor"
  },
  {
@@ -5384,23 +5376,23 @@
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Behind it",
+  "en": "Behind It",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "The back of the box",
+  "en": "The Back of the Box",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "A screenshot",
+  "en": "A Screenshot",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "The title screen",
+  "en": "The Title Screen",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Your picture",
+  "en": "Your Picture",
   "section": "2.7: tile art editor"
  },
  {
@@ -5408,7 +5400,7 @@
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Fill (cropped)",
+  "en": "Fill (Cropped)",
   "section": "2.7: tile art editor"
  },
  {
@@ -5424,31 +5416,31 @@
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Porpoise pattern",
+  "en": "Porpoise Pattern",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Porpoise's own background",
+  "en": "Porpoise's Own Background",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Move the picture",
+  "en": "Move the Picture",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Zoom in (L2: out)",
+  "en": "Zoom In (L2: Out)",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Choose your own picture",
+  "en": "Choose Your Own Picture",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Reset position",
+  "en": "Reset Position",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Save and make the tile",
+  "en": "Save and Make the Tile",
   "section": "2.7: tile art editor"
  },
  {
@@ -5484,11 +5476,11 @@
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Choose a picture",
+  "en": "Choose a Picture",
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Porpoise's tile art folder",
+  "en": "Porpoise's Tile Art Folder",
   "section": "2.7: tile art editor"
  },
  {
@@ -5504,7 +5496,7 @@
   "section": "2.7: tile art editor"
  },
  {
-  "en": "Use this picture",
+  "en": "Use This Picture",
   "section": "2.7: tile art editor"
  },
  {
@@ -5528,11 +5520,11 @@
   "section": "3.0: Riptide Boost, Enhancements"
  },
  {
-  "en": "FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with clean edges; Filter strength sets its sharpening. Best with an internal resolution below the output's.",
+  "en": "FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with clean edges; Filter Strength sets its sharpening. Best with an internal resolution below the output's.",
   "section": "3.0: Riptide Boost, Enhancements"
  },
  {
-  "en": "Build shaders before starting",
+  "en": "Build Shaders Before Starting",
   "section": "3.0: Riptide Boost, Enhancements"
  },
  {

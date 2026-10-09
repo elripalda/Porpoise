@@ -154,7 +154,7 @@ struct Settings
     bool ff_buttons = true; /* touch pad + R1 / R2: fast forward in games */
     int quick_slot = 0;     /* touch pad + L1 saves to this slot, + L2 loads it: 0 off, 1..3 */
     int turbo = 0;          /* the turbo button: 0 none, then kTurboControls */
-    int trigger_feel = 0;   /* adaptive triggers as the GameCube's L and R: 0 off, 1 light, 2 firm */
+    int trigger_feel = 2;   /* adaptive triggers as the GameCube's L and R: 0 off, 1 light, 2 firm, 3 extra firm */
     /* Each player's light bar colour (porpoise::pad::kLightColours): blue, red, green, pink. */
     int light_1 = 0, light_2 = 1, light_3 = 2, light_4 = 3;
     /* The controls turbo can be on, after "none" (porpoise::pad::Control). */

@@ -828,8 +828,8 @@ void App::offer_found_folder(const std::string &path, const std::string &place)
     open_dialog(DialogKind::UseFolder, trf("Porpoise's folder is on {place}", {{"place", tr(place)}}),
                 tr("Porpoise found its folder there, with settings and saves. Use it to pick up where you left "
                    "off. Porpoise closes; open it again."),
-                tr("Use it"));
-    dialog_.no = tr("Start fresh");
+                tr("Use It"));
+    dialog_.no = tr("Start Fresh");
     dialog_.choice = 1; /* Use it first */
     welcome_after_dialog_ = true;
 }
@@ -837,7 +837,7 @@ void App::offer_found_folder(const std::string &path, const std::string &place)
 void App::show_sandbox_notice(const std::string &title, const std::string &message)
 {
     open_dialog(DialogKind::SandboxNotice, title, message, tr("OK"));
-    dialog_.no = tr("Don't show again");
+    dialog_.no = tr("Don't Show Again");
     dialog_.choice = 1; /* OK first */
 }
 
@@ -846,9 +846,9 @@ void App::offer_jailbreak_retry()
     open_dialog(DialogKind::JailbreakClosed, tr("Porpoise stayed in the sandbox"),
                 tr("Last time, Porpoise closed while your jailbreak was freeing it from the app sandbox, so this "
                    "time it didn't ask. It can't see /data or USB drives, but games in /app0/porpoise/games work. "
-                   "Stay in the sandbox to always start this way (change it in Settings > Games), or try again."),
-                tr("Stay in the sandbox"));
-    dialog_.no = tr("Try again");
+                   "Stay in the Sandbox to always start this way (change it in Settings > Games), or try again."),
+                tr("Stay in the Sandbox"));
+    dialog_.no = tr("Try Again");
     dialog_.choice = 1;
 }
 
@@ -1768,11 +1768,11 @@ void App::draw_tile(Game *game, float cx, float cy, float w, float h, float yaw,
 void App::draw_empty()
 {
     Gfx &g = *g_;
-    g.text(Font::Bold, ts(54), 90, 132, kWhite, Align::Left, tr("Your games"));
+    g.text(Font::Bold, ts(54), 90, 132, kWhite, Align::Left, tr("Your Games"));
     g.text(Font::SemiBold, ts(32), 92, 200, kLavender, Align::Left, tr("No games yet"));
     g.panel(560, 330, 800, 380, rgba(0x13256F, 0.55f), 0.6f, kR, rgba(0x5A8CFF, 0.9f), 2.0f, 0, 0.2f);
     draw_mark(960, 420, 150, kCyan);
-    g.text(Font::Bold, ts(40), 960, 500, kWhite, Align::Center, tr("Add games"));
+    g.text(Font::Bold, ts(40), 960, 500, kWhite, Align::Center, tr("Add Games"));
     g.text(Font::Regular, ts(26), 960, 560, kSoft, Align::Center, tr("Copy .iso, .rvz or .ciso files with PS5 Upload into"));
     g.text(Font::SemiBold, ts(26), 960, 600, kIcy, Align::Center, data_dir_ + "/games");
     g.text(Font::Regular, ts(26), 960, 640, kSoft, Align::Center, tr("or add your own folder in Settings, under Games."));
@@ -1789,7 +1789,7 @@ void App::draw_library(double time)
         return;
     }
     const int shown = lib_->shown();
-    g.text(Font::Bold, ts(54), 90, 132, kWhite, Align::Left, tr("Your games"));
+    g.text(Font::Bold, ts(54), 90, 132, kWhite, Align::Left, tr("Your Games"));
     const float cw = g.text(Font::SemiBold, ts(32), 92, 200, kLavender, Align::Left, library_count());
     const std::string note = library_note();
     if (!note.empty())
@@ -1839,8 +1839,8 @@ void App::draw_library(double time)
                : lib_->show() == Library::Show::Channels ? tr("No channels here")
                                                          : tr("No GameCube games here"));
         g.text(Font::Regular, ts(28), 960, 580, kSoft, Align::Center,
-               tr("Sort & filter (Triangle) can show all of your games."));
-        draw_prompts({}, {{Glyph::Triangle, "Sort & filter"}}, "");
+               tr("Sort & Filter (Triangle) can show all of your games."));
+        draw_prompts({}, {{Glyph::Triangle, "Sort & Filter"}}, "");
         return;
     }
 
@@ -1862,7 +1862,7 @@ void App::draw_library(double time)
     std::snprintf(pos, sizeof pos, "%02d / %02d", selected_ + 1, shown);
     draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Play"}},
                  {{Glyph::Options, sel.favourite ? "Unfavorite" : "Favorite"}, {Glyph::Square, "Details"},
-                  {Glyph::Triangle, "Sort & filter"}},
+                  {Glyph::Triangle, "Sort & Filter"}},
                  pos);
 }
 
@@ -1891,10 +1891,10 @@ void App::draw_sort()
     g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.55f), 1, 0);
     const float w = 760, h = 440, x = 960 - w * 0.5f, y = 300;
     g.panel(x, y, w, h, rgba(0x13256F, 0.92f), 0.65f, kR, rgba(0x6FAEFF), 2.0f, 10, 0.25f);
-    g.text_mid(Font::Bold, ts(36), x + 40, y + 62, kWhite, Align::Left, tr("Sort & filter"));
-    const std::string orders[4] = {tr("Title A-Z"), tr("Recently played"), tr("Most played"), tr("Favorites first")};
-    const std::string shows[4] = {tr("All games"), tr("GameCube"), tr("Wii"), tr("Channels")};
-    const std::string names[3] = {tr("Sort by"), tr("Show"), tr("Get covers and info now")};
+    g.text_mid(Font::Bold, ts(36), x + 40, y + 62, kWhite, Align::Left, tr("Sort & Filter"));
+    const std::string orders[4] = {tr("Title A-Z"), tr("Recently Played"), tr("Most Played"), tr("Favorites First")};
+    const std::string shows[4] = {tr("All Games"), tr("GameCube"), tr("Wii"), tr("Channels")};
+    const std::string names[3] = {tr("Sort By"), tr("Show"), tr("Get Covers and Info Now")};
     const std::string values[3] = {orders[int(lib_->sort_order())], shows[int(lib_->show())], ""};
     for (int i = 0; i < 3; ++i)
     {
@@ -2007,9 +2007,9 @@ void App::draw_details(double time)
     if (!game.genre.empty()) facts.push_back({tr("Genre"), game.genre});
     if (game.players > 0) facts.push_back({tr("Players"), std::to_string(game.players)});
     if (!game.rating.empty()) facts.push_back({tr("Rating"), game.rating});
-    facts.push_back({tr("Last played"), relative_time(game.last_played, (long long)std::time(nullptr))});
+    facts.push_back({tr("Last Played"), relative_time(game.last_played, (long long)std::time(nullptr))});
     if (game.play_seconds > 0)
-        facts.push_back({tr("Play time"), play_time_text(game.play_seconds)});
+        facts.push_back({tr("Play Time"), play_time_text(game.play_seconds)});
     facts.push_back({tr("File"), game.format + "  \xE2\x80\xA2  " + human_size(game.bytes)});
     {
         /* A texture pack for it (Load/Textures/<ID> or its first three letters). */
@@ -2024,7 +2024,7 @@ void App::draw_details(double time)
                     details_tex_ = name;
         }
         if (!details_tex_.empty())
-            facts.push_back({tr("Texture pack"), settings_->custom_textures ? trf("On ({id})", {{"id", details_tex_}})
+            facts.push_back({tr("Texture Pack"), settings_->custom_textures ? trf("On ({id})", {{"id", details_tex_}})
                                                                              : trf("Found ({id}), turned off",
                                                                                    {{"id", details_tex_}})});
     }
@@ -2040,9 +2040,9 @@ void App::draw_details(double time)
             details_ws_ = int(widescreen::kind_of(game.id, sys_dir_, false));
         }
         const auto kind = widescreen::Kind(details_ws_);
-        facts.push_back({tr("Widescreen"), kind == widescreen::Kind::Patch    ? tr("16:9 code")
+        facts.push_back({tr("Widescreen"), kind == widescreen::Kind::Patch    ? tr("16:9 Code")
                                            : kind == widescreen::Kind::Native ? tr("In the game's options")
-                                                                              : tr("4:3 only")});
+                                                                              : tr("4:3 Only")});
     }
     /* Nine fit. When there are more (full game info, play time and a texture
      * pack), the least useful go first, so the texture pack and play time stay. */
@@ -2060,6 +2060,11 @@ void App::draw_details(double time)
     }
     if (facts.size() > 9)
         facts.resize(9);
+    /* The back of the box (Triangle) gives the description the whole panel:
+     * on the front, the facts leave it a few lines, often half a sentence. */
+    const bool whole_text = box_back_ && !game.synopsis.empty();
+    if (whole_text)
+        facts.clear();
     const float fy0 = std::max(ty + 34, py + 236), col_w = (pw - 104) / 3.0f;
     for (std::size_t i = 0; i < facts.size(); ++i)
     {
@@ -2068,26 +2073,53 @@ void App::draw_details(double time)
         g.text_mid(Font::SemiBold, ts(27), fx, fy + 28, kWhite, Align::Left,
                    fit(g, Font::SemiBold, ts(27), facts[i].second, col_w - 30));
     }
-    float dy = fy0 + float((facts.size() + 2) / 3) * 62 + 6;
+    float dy = whole_text ? ty + 20 : fy0 + float((facts.size() + 2) / 3) * 62 + 6;
 
     /* What the game is about. */
     const float actions_y = py + ph - 4 * 66 - 24;
-    const std::size_t room = std::size_t(std::max(0.0f, (actions_y - 16 - dy) / 34.0f));
-    if (!game.synopsis.empty() && room > 0)
+    if (whole_text)
     {
-        for (const std::string &l : wrap(g, Font::Regular, ts(25), game.synopsis, pw - 104, room))
+        /* All of it: the largest size it fits at. */
+        const float sizes[3] = {25, 23, 21};
+        float size = sizes[2], line = 30;
+        std::vector<std::string> lines;
+        for (float sz : sizes)
+        {
+            const float lh = sz * 1.36f;
+            const std::size_t fits = std::size_t(std::max(0.0f, (actions_y - 16 - dy) / lh));
+            lines = wrap(g, Font::Regular, ts(sz), game.synopsis, pw - 104, fits);
+            size = sz;
+            line = lh;
+            if (wrap(g, Font::Regular, ts(sz), game.synopsis, pw - 104).size() <= fits)
+                break;
+        }
+        for (const std::string &l : lines)
+        {
+            g.text_mid(Font::Regular, ts(size), px + 52, dy + 12, kSoft, Align::Left, l);
+            dy += line;
+        }
+    }
+    else if (const std::size_t room = std::size_t(std::max(0.0f, (actions_y - 16 - dy) / 34.0f));
+             !game.synopsis.empty() && room > 0)
+    {
+        /* More than fits: a line less of it, and where the rest is. */
+        const bool more = room >= 2 && wrap(g, Font::Regular, ts(25), game.synopsis, pw - 104).size() > room;
+        for (const std::string &l : wrap(g, Font::Regular, ts(25), game.synopsis, pw - 104, more ? room - 1 : room))
         {
             g.text_mid(Font::Regular, ts(25), px + 52, dy + 12, kSoft, Align::Left, l);
             dy += 34;
         }
+        if (more)
+            g.text_mid(Font::SemiBold, ts(22), px + 52, dy + 12, kCyan, Align::Left,
+                       tr("The whole description is on the back of the box (Triangle)."));
     }
-    else if (game.synopsis.empty() && room > 0)
+    else if (game.synopsis.empty() && actions_y - 16 - dy >= 34)
         g.text_mid(Font::Regular, ts(24), px + 52, dy + 12, with_alpha(kLavender, 0.8f), Align::Left,
                    settings_->download_info ? tr("No description yet. It arrives with the game info from GameTDB.com.")
-                                            : tr("Turn on Settings > Games > Download game info for a description."));
+                                            : tr("Turn on Settings > Games > Download Game Info for a description."));
 
-    const std::string actions[4] = {title_case(tr("Play")), title_case(tr("Save states")),
-                                    title_case(tr("Game settings")), title_case(tr("Save data"))};
+    const std::string actions[4] = {title_case(tr("Play")), title_case(tr("Save States")),
+                                    title_case(tr("Game Settings")), title_case(tr("Save Data"))};
     for (int i = 0; i < 4; ++i)
     {
         const float ry = actions_y + i * 66, rx = px + 52 + 40, rw = pw - 104 - 40, rh = 58;
@@ -2105,7 +2137,7 @@ void App::draw_details(double time)
             recommend::Pick pick;
             if (recommend::pick_for(game.id, pick))
                 g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right,
-                           tr("Recommended settings"));
+                           tr("Recommended Settings"));
         }
         if (on)
             g.glyph(Glyph::Arrow, rx - 26, ry + rh * 0.5f, 32, kWhite, kPi * 0.5f);
@@ -2114,7 +2146,7 @@ void App::draw_details(double time)
     if (screen_ != Screen::States) /* the save states bring their own */
     {
         std::vector<std::pair<Glyph, std::string>> right = {
-            {kKeyL2R2, "Other games"}, {Glyph::Triangle, box_back_ ? "Front of box" : "Back of box"}};
+            {kKeyL2R2, "Other Games"}, {Glyph::Triangle, box_back_ ? "Front of Box" : "Back of Box"}};
         if (details_achievements(game).valid())
             right.insert(right.begin() + 1, {Glyph::Square, "Achievements"});
         draw_prompts({{Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}}, right,
@@ -2321,11 +2353,11 @@ void App::draw_memory_cards(double time)
     else
         std::snprintf(pos, sizeof pos, "%s", trf("SLOT {slot}", {{"slot", card.slot}}).c_str());
     if (sel < n)
-        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}},
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii Saves"}, {Glyph::Circle, "Back"}},
                      {{Glyph::Options, "To USB"}, {Glyph::Square, trf("Copy to {slot}", {{"slot", mc_card_ == 0 ? "B" : "A"}})}, {Glyph::Triangle, "Delete"}},
                      pos);
     else
-        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}}, {}, pos);
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii Saves"}, {Glyph::Circle, "Back"}}, {}, pos);
 }
 
 void App::release_covers()

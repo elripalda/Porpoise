@@ -128,13 +128,13 @@ void App::draw_card_blocks(double time)
     }
 
     if (sel < n)
-        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}},
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii Saves"}, {Glyph::Circle, "Back"}},
                      {{Glyph::Options, "To USB"},
                       {Glyph::Square, trf("Copy to {slot}", {{"slot", mc_card_ == 0 ? "B" : "A"}})},
                       {Glyph::Triangle, "Delete"}},
                      "");
     else
-        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii saves"}, {Glyph::Circle, "Back"}}, {}, "");
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii Saves"}, {Glyph::Circle, "Back"}}, {}, "");
 }
 
 /* ---- By game --------------------------------------------------------------------------- */
@@ -195,7 +195,7 @@ void App::draw_saves_by_game(double time)
 
     const float lx = 150, ly = 136, lw = 1010, lh = 800;
     g.panel(lx, ly, lw, lh, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
-    g.text_mid(Font::Bold, ts(36), lx + 40, ly + 52, kWhite, Align::Left, tr("By game"));
+    g.text_mid(Font::Bold, ts(36), lx + 40, ly + 52, kWhite, Align::Left, tr("By Game"));
     g.text_mid(Font::Regular, ts(24), lx + lw - 40, ly + 52, kLavender, Align::Right,
                plural((long long)groups.size(), "1 game", "{n} games") + "   \xE2\x80\xA2   " +
                    plural(count, "1 save", "{n} saves"));
@@ -317,7 +317,7 @@ void App::draw_saves_by_game(double time)
             banner = wii_save_banner(s);
             title = s.title;
             detail = s.detail;
-            where = tr("Wii system memory");
+            where = tr("Wii System Memory");
             size = size_of(s.bytes);
             date = format_date(s.modified);
         }
@@ -349,7 +349,7 @@ void App::draw_saves_by_game(double time)
     }
     if (count > 0)
         draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Circle, "Back"}},
-                     {{Glyph::Options, "To USB"}, {Glyph::Square, focus.kind == 2 ? "Back up" : "Copy"},
+                     {{Glyph::Options, "To USB"}, {Glyph::Square, focus.kind == 2 ? "Back Up" : "Copy"},
                       {Glyph::Triangle, "Delete"}},
                      "");
     else

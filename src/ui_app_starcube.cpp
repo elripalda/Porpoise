@@ -502,7 +502,7 @@ void App::draw_sc_games(double time)
     if (games.empty())
     {
         draw_mark(960, 330, 150, kCyan);
-        g.text(Font::Bold, ts(40), 960, 410, kWhite, Align::Center, tr("Add games"));
+        g.text(Font::Bold, ts(40), 960, 410, kWhite, Align::Center, tr("Add Games"));
         g.text(Font::Regular, ts(26), 960, 470, kSoft, Align::Center,
                tr("Copy .iso, .rvz or .ciso files with PS5 Upload into"));
         g.text(Font::SemiBold, ts(26), 960, 510, kIcy, Align::Center, data_dir_ + "/games");
@@ -562,7 +562,7 @@ void App::draw_sc_games(double time)
     std::snprintf(pos, sizeof pos, "%02d / %02d", selected_ + 1, shown);
     g.text_mid(Font::ExtraBold, ts(30), kPageX + kPageW - 32, icy, kSoft, Align::Right, pos);
     draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Open"}, {Glyph::Circle, "Back"}},
-                 {{Glyph::Options, "Favorite"}, {Glyph::Triangle, "Sort & filter"}}, "");
+                 {{Glyph::Options, "Favorite"}, {Glyph::Triangle, "Sort & Filter"}}, "");
 }
 
 /* A game's own page: its disc (or box) turning on the left, what you can
@@ -588,8 +588,8 @@ void App::draw_sc_details(double time)
     g.text_mid(Font::Regular, ts(26), rx, 280, kLavender, Align::Left, game_meta(game));
     if (game.favourite)
         g.glyph(Glyph::Star, rx + rw - 10, 222, 36, rgba(0xFFD45C));
-    const std::string actions[4] = {title_case(tr("Play")), title_case(tr("Save states")),
-                                    title_case(tr("Game settings")), title_case(tr("Save data"))};
+    const std::string actions[4] = {title_case(tr("Play")), title_case(tr("Save States")),
+                                    title_case(tr("Game Settings")), title_case(tr("Save Data"))};
     const float t = settings_->reduced_motion ? 0.0f : float(time);
     for (int i = 0; i < 4; ++i)
     {
@@ -607,7 +607,7 @@ void App::draw_sc_details(double time)
     }
     if (screen_ != Screen::States)
     {
-        std::vector<std::pair<Glyph, std::string>> right = {{kKeyL2R2, "Other games"}, {Glyph::Options, "Favorite"}};
+        std::vector<std::pair<Glyph, std::string>> right = {{kKeyL2R2, "Other Games"}, {Glyph::Options, "Favorite"}};
         if (details_achievements(game).valid())
             right.insert(right.begin() + 1, {Glyph::Square, "Achievements"});
         draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Confirm"}, {Glyph::Circle, "Back"}}, right, "");
@@ -635,7 +635,7 @@ void App::draw_sc_calendar(double time)
     g.text_mid(Font::SemiBold, ts(32), lx + lw * 0.5f, kPageY + 190, kLavender, Align::Center,
                short_date() + "  " + std::to_string(today.tm_year + 1900));
     g.panel(lx + 40, kPageY + 238, lw - 80, 1.6f, rgba(0x6D6AF0, 0.4f), 1, 0);
-    g.text_mid(Font::ExtraBold, ts(30), lx + 40, kPageY + 278, kSoft, Align::Left, tr("Recently played"));
+    g.text_mid(Font::ExtraBold, ts(30), lx + 40, kPageY + 278, kSoft, Align::Left, tr("Recently Played"));
     const std::vector<int> recent = sc_recent_games();
     sc_recent_ = std::clamp(sc_recent_, 0, std::max(0, int(recent.size()) - 1));
     if (recent.empty())

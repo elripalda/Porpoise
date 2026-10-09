@@ -169,7 +169,7 @@ void App::draw_wii_saves(double time)
     long long total = 0;
     for (const WiiSave &s : wii_saves_)
         total += s.bytes;
-    g.text_mid(Font::Bold, ts(36), kPanelX + kPad, kPanelY + 52, kWhite, Align::Left, title_case(tr("Wii saves")));
+    g.text_mid(Font::Bold, ts(36), kPanelX + kPad, kPanelY + 52, kWhite, Align::Left, title_case(tr("Wii Saves")));
     g.text_mid(Font::Regular, ts(24), kPanelX + kPanelW - kPad, kPanelY + 52, kLavender, Align::Right,
                n ? plural(n, "1 game", "{n} games") + "   \xE2\x80\xA2   " + size_text(total) : std::string());
 
@@ -243,9 +243,9 @@ void App::draw_wii_saves(double time)
     if (n > 0)
         std::snprintf(pos, sizeof pos, "%02d / %02d", wii_sel_ + 1, n);
     if (wii_sel_ < n)
-        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "GameCube cards"}, {Glyph::Circle, "Back"}},
-                     {{Glyph::Options, "To USB"}, {Glyph::Square, "Back up"}, {Glyph::Triangle, "Delete"}}, pos);
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "GameCube Cards"}, {Glyph::Circle, "Back"}},
+                     {{Glyph::Options, "To USB"}, {Glyph::Square, "Back Up"}, {Glyph::Triangle, "Delete"}}, pos);
     else
-        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "GameCube cards"}, {Glyph::Circle, "Back"}}, {}, pos);
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "GameCube Cards"}, {Glyph::Circle, "Back"}}, {}, pos);
 }
 } // namespace porpoise::ui

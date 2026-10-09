@@ -22,13 +22,13 @@ struct BuiltIn
 };
 constexpr BuiltIn kBuiltIn[] = {
     {"porpoise", "Porpoise"},
-    {"glass", "Porpoise glass"},
+    {"glass", "Porpoise Glass"},
     {"midnight", "Midnight"},
     {"frost", "Frost"},
     {"carbon", "Carbon"},
-    {"arcade", "Arcade cabinet"},
-    {"arcade-retro", "Retro cabinet"},
-    {"arcade-synth", "Synthwave cabinet"},
+    {"arcade", "Arcade Cabinet"},
+    {"arcade-retro", "Retro Cabinet"},
+    {"arcade-synth", "Synthwave Cabinet"},
 };
 
 bool exists(const std::string &path)

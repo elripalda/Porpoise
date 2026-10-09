@@ -124,16 +124,16 @@ void App::wizard_next()
                        "jailbreak to free it each time it starts. If your jailbreak closes Porpoise when it does, "
                        "stay in the sandbox: games in /app0/porpoise/games still work."),
                     tr("Free it each start"));
-        dialog_.no = tr("Stay in the sandbox");
+        dialog_.no = tr("Stay in the Sandbox");
         dialog_.choice = settings_->stay_sandboxed ? 0 : 1;
         return;
     case 1:
         open_dialog(DialogKind::Wizard, title,
                     tr("Find your games by itself? Porpoise looks in /data/porpoise/games, /data/games, /data/roms, "
                        "/data/iso and on USB drives. With a big drive full of other things, choose your own folders "
-                       "instead (Settings > Games > Add a game folder)."),
-                    tr("Find them"));
-        dialog_.no = tr("I'll choose folders");
+                       "instead (Settings > Games > Add a Game Folder)."),
+                    tr("Find Them"));
+        dialog_.no = tr("I'll Choose Folders");
         dialog_.choice = settings_->auto_search ? 1 : 0;
         return;
     case 2:
