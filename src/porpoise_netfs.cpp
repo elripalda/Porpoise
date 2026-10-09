@@ -19,6 +19,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <sys/ioctl.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -270,12 +272,23 @@ bool probe(const std::string &server, std::string &error)
     }
     const int flags = fcntl(fd, F_GETFL, 0);
     const int set = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    int nbio_ioctl = 0, nbio_opt = 0;
+#ifdef __PROSPERO__
+    {
+        /* As libsmb2 is built to (lib/socket.c): fcntl alone doesn't make a
+         * socket non-blocking on the console. */
+        int one = 1;
+        nbio_ioctl = ioctl(fd, FIONBIO, &one);
+        nbio_opt = setsockopt(fd, SOL_SOCKET, 0x1200, &one, sizeof one);
+    }
+#endif
     const long long started = now_ms();
     const int rc = connect(fd, ai->ai_addr, socklen_t(ai->ai_addrlen));
     const int connect_errno = rc == 0 ? 0 : errno;
     lookup_free(ai);
-    note("probe: " + std::string(text) + ":" + service + " fd " + std::to_string(fd) + ", non-blocking " +
-         (flags >= 0 && set == 0 && (fcntl(fd, F_GETFL, 0) & O_NONBLOCK) ? "yes" : "NO") + ", connect " +
+    note("probe: " + std::string(text) + ":" + service + " fd " + std::to_string(fd) + ", O_NONBLOCK " +
+         (flags >= 0 && set == 0 && (fcntl(fd, F_GETFL, 0) & O_NONBLOCK) ? "yes" : "no") + ", FIONBIO " +
+         std::to_string(nbio_ioctl) + ", SO_NBIO " + std::to_string(nbio_opt) + ", connect " +
          std::to_string(rc) + " (" + (rc == 0 ? "done" : std::strerror(connect_errno)) + ") after " +
          std::to_string(now_ms() - started) + " ms, clock " + std::to_string((long long)std::time(nullptr)));
     bool ok = rc == 0;
@@ -296,6 +309,21 @@ bool probe(const std::string &server, std::string &error)
     }
     else if (!ok)
         error = std::string("connect failed: ") + std::strerror(connect_errno);
+    if (ok)
+    {
+        /* Non-blocking for real? A read with nothing sent yet (the server
+         * waits for the client to speak first) returns at once if so; a
+         * blocking one waits out the half-second limit set here. */
+        timeval limit{0, 500 * 1000};
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &limit, sizeof limit);
+        char byte = 0;
+        const long long before = now_ms();
+        const ssize_t got = recv(fd, &byte, 1, 0);
+        const int recv_errno = got < 0 ? errno : 0;
+        note("probe: an empty read returned " + std::to_string(got) + " (" +
+             (got < 0 ? std::strerror(recv_errno) : "data") + ") after " + std::to_string(now_ms() - before) +
+             " ms: the socket is " + (now_ms() - before < 250 ? "non-blocking" : "BLOCKING"));
+    }
     close(fd);
     return ok;
 }

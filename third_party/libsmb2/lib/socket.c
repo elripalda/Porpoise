@@ -1277,6 +1277,17 @@ set_nonblocking(t_socket fd)
         unsigned v;
         v = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, v | O_NONBLOCK);
+#ifdef __PROSPERO__
+        /* Porpoise: on the PS5, O_NONBLOCK through fcntl doesn't take on a
+         * socket (it stayed blocking, and a read waiting for more than the
+         * server had sent hung for ever). FIONBIO and the console's own
+         * SO_NBIO (0x1200) do. */
+        {
+                int one = 1;
+                ioctl(fd, FIONBIO, &one);
+                setsockopt(fd, SOL_SOCKET, 0x1200, (const void *)&one, sizeof one);
+        }
+#endif
 #endif
 }
 
@@ -1365,6 +1376,17 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 
         set_nonblocking(fd);
         set_tcp_sockopt(fd, TCP_NODELAY, 1);
+#ifdef __PROSPERO__
+        /* Porpoise: and should a read or write block after all, it gives up
+         * after a while instead of waiting for ever. */
+        {
+                struct timeval limit;
+                limit.tv_sec = smb2->timeout > 0 ? smb2->timeout : 10;
+                limit.tv_usec = 0;
+                setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const void *)&limit, sizeof limit);
+                setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const void *)&limit, sizeof limit);
+        }
+#endif
 #ifdef SO_NOSIGPIPE
         /* Porpoise: a write to a connection the server has closed fails
          * with EPIPE instead of sending SIGPIPE, which would end the app. */
