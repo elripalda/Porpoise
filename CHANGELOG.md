@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0 Alpha Build 2 — 2026-10-09
+
+- Wii games online: no more freeze connecting (Mario Kart Wii), the console's
+  real address for the game, WiiConnect24 downloads can look up their servers,
+  and a custom DNS server gets three tries before the console's own.
+- Universal widescreen (beta) uses the widescreen hack where it can't widen
+  the game itself, instead of staying 4:3.
+- Network steps of a Wii game going online are kept in core.log.
+
 ## 3.0 Alpha Build 1 — 2026-10-09
 
 A test build, shared ahead of 3.0. Everything in 3.0 Beta 1 below, and:

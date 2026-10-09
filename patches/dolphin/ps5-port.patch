@@ -3610,10 +3610,22 @@ index b1248b660b..c1c4d19578 100644
  std::string DenormalizePath(const std::string& path);
  
 diff --git a/Source/Core/DolphinLibretro/Log.cpp b/Source/Core/DolphinLibretro/Log.cpp
-index 1a1915cd1d..c6ee649d84 100644
+index 1a1915cd1d..90e42ae087 100644
 --- a/Source/Core/DolphinLibretro/Log.cpp
 +++ b/Source/Core/DolphinLibretro/Log.cpp
-@@ -112,18 +112,18 @@ void LogListener::Log(Common::Log::LogLevel level, const char* text)
+@@ -94,6 +94,11 @@ LogListener::LogListener(retro_log_printf_t log) : m_log(log)
+   Common::Log::LogManager::GetInstance()->SetEnable(
+     Common::Log::LogType::DSP_MAIL,
+     Libretro::Options::GetCached<bool>(Libretro::Options::main_interface::LOG_DSP_MAIL, false));
++
++  // Porpoise 3.0 alpha: a Wii game going online - its sockets and SSL, for
++  // finding why a game drops from a server.
++  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_NET, true);
++  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_SSL, true);
+ }
+ 
+ LogListener::~LogListener()
+@@ -112,18 +117,18 @@ void LogListener::Log(Common::Log::LogLevel level, const char* text)
    switch (level)
    {
    case Common::Log::LogLevel::LDEBUG:
