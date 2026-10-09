@@ -18,7 +18,9 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "libretro.h"
 
@@ -204,6 +206,100 @@ int last_errno(smb2_context *ctx)
     return -EIO;
 }
 
+#ifdef __PROSPERO__
+} // namespace
+} // namespace porpoise::netfs
+/* The console's name lookup (below): what libsmb2 is built to call. */
+extern "C" int porpoise_netfs_getaddrinfo(const char *, const char *, const struct addrinfo *, struct addrinfo **);
+extern "C" void porpoise_netfs_freeaddrinfo(struct addrinfo *);
+namespace porpoise::netfs
+{
+namespace
+{
+int lookup(const char *node, const char *service, addrinfo **res)
+{
+    return porpoise_netfs_getaddrinfo(node, service, nullptr, res);
+}
+void lookup_free(addrinfo *ai)
+{
+    porpoise_netfs_freeaddrinfo(ai);
+}
+#else
+int lookup(const char *node, const char *service, addrinfo **res)
+{
+    return getaddrinfo(node, service, nullptr, res);
+}
+void lookup_free(addrinfo *ai)
+{
+    freeaddrinfo(ai);
+}
+#endif
+
+/* A plain TCP connection to the computer's SMB port first, step by step in
+ * the log, with its own deadline: says what the network does (no answer,
+ * refused, no route) before libsmb2 tries, and fails fast when it can't. */
+bool probe(const std::string &server, std::string &error)
+{
+    std::string host = server;
+    int port = 445;
+    const std::size_t colon = host.rfind(':');
+    if (colon != std::string::npos && host.find(':') == colon)
+    {
+        port = std::atoi(host.c_str() + colon + 1);
+        host.resize(colon);
+    }
+    addrinfo *ai = nullptr;
+    const std::string service = std::to_string(port);
+    const int gai = lookup(host.c_str(), service.c_str(), &ai);
+    if (gai != 0 || !ai)
+    {
+        error = "Invalid address: can't resolve " + host;
+        note("probe: no address for " + host + " (" + std::to_string(gai) + ")");
+        return false;
+    }
+    char text[64] = "?";
+    if (ai->ai_family == AF_INET)
+        inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in *>(ai->ai_addr)->sin_addr, text, sizeof text);
+    const int fd = socket(ai->ai_family, SOCK_STREAM, 0);
+    if (fd < 0)
+    {
+        error = std::string("socket failed: ") + std::strerror(errno);
+        note("probe: " + error);
+        lookup_free(ai);
+        return false;
+    }
+    const int flags = fcntl(fd, F_GETFL, 0);
+    const int set = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    const long long started = now_ms();
+    const int rc = connect(fd, ai->ai_addr, socklen_t(ai->ai_addrlen));
+    const int connect_errno = rc == 0 ? 0 : errno;
+    lookup_free(ai);
+    note("probe: " + std::string(text) + ":" + service + " fd " + std::to_string(fd) + ", non-blocking " +
+         (flags >= 0 && set == 0 && (fcntl(fd, F_GETFL, 0) & O_NONBLOCK) ? "yes" : "NO") + ", connect " +
+         std::to_string(rc) + " (" + (rc == 0 ? "done" : std::strerror(connect_errno)) + ") after " +
+         std::to_string(now_ms() - started) + " ms, clock " + std::to_string((long long)std::time(nullptr)));
+    bool ok = rc == 0;
+    if (!ok && connect_errno == EINPROGRESS)
+    {
+        pollfd p{fd, POLLOUT, 0};
+        const int pr = poll(&p, 1, 5000);
+        int err = 0;
+        socklen_t len = sizeof err;
+        const int gs = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);
+        ok = pr == 1 && gs == 0 && err == 0;
+        note("probe: waited " + std::to_string(now_ms() - started) + " ms, poll " + std::to_string(pr) +
+             " revents " + std::to_string(p.revents) + ", socket error " + std::to_string(err) + " (" +
+             (err ? std::strerror(err) : "none") + "), clock " + std::to_string((long long)std::time(nullptr)));
+        if (!ok)
+            error = pr == 0 ? "connect failed: no answer in 5 s (Timeout)"
+                            : std::string("connect failed: ") + std::strerror(err ? err : errno);
+    }
+    else if (!ok)
+        error = std::string("connect failed: ") + std::strerror(connect_errno);
+    close(fd);
+    return ok;
+}
+
 /* A new context, connected to share (IPC$ to list the shares). */
 smb2_context *open_context(const Share &s, const std::string &share, std::string &error)
 {
@@ -231,6 +327,11 @@ smb2_context *open_context(const Share &s, const std::string &share, std::string
         smb2_set_password(ctx, s.password.c_str());
     }
     const std::string server = server_of(s);
+    if (!probe(server, error))
+    {
+        smb2_destroy_context(ctx);
+        return nullptr;
+    }
     note("connecting to " + server + "/" + share + (guest ? " as a guest" : " with a username"));
     const long long started = now_ms();
     const int rc = smb2_connect_share(ctx, server.c_str(), share.c_str(), guest ? nullptr : user.c_str());
@@ -1180,3 +1281,13 @@ int porpoise_netfs_gethostname(char *name, size_t len)
 int porpoise_netfs_isthreaded = 1;
 }
 #endif
+
+/* libsmb2's sync wait, in the log when it's slow: from its third round (two
+ * seconds without an answer), then every tenth. */
+extern "C" void porpoise_netfs_wait_note(int round, long waited, int fd, int events, int poll_rc, int revents)
+{
+    if (round == 2 || (round > 2 && round % 10 == 0))
+        note("wait: round " + std::to_string(round) + ", " + std::to_string(waited) + " s, fd " +
+             std::to_string(fd) + " events " + std::to_string(events) + ", poll " + std::to_string(poll_rc) +
+             " revents " + std::to_string(revents));
+}

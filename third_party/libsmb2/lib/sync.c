@@ -62,18 +62,29 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+/* Porpoise: what the wait sees, for its log (src/porpoise_netfs.cpp). */
+void porpoise_netfs_wait_note(int round, long waited, int fd, int events,
+                              int poll_rc, int revents);
+
 static int wait_for_reply(struct smb2_context *smb2,
                           struct sync_cb_data *cb_data)
 {
         time_t t = time(NULL);
+        time_t began = t;
+        int round = 0;
 
         while (!cb_data->is_finished) {
 		struct pollfd pfd;
+		int poll_rc;
 		memset(&pfd, 0, sizeof(struct pollfd));
 		pfd.fd = smb2_get_fd(smb2);
 		pfd.events = smb2_which_events(smb2);
 
-		if (poll(&pfd, 1, 1000) < 0) {
+		poll_rc = poll(&pfd, 1, 1000);
+		porpoise_netfs_wait_note(round++, (long)(time(NULL) - began),
+		                         (int)pfd.fd, pfd.events, poll_rc,
+		                         pfd.revents);
+		if (poll_rc < 0) {
 			smb2_set_error(smb2, "Poll failed");
 			return -1;
 		}
