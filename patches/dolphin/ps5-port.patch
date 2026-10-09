@@ -1783,7 +1783,7 @@ index da1be2db04..ab36c8eea6 100644
    void ResetFreeMemoryRanges();
  
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
-index 86f9e49178..fb324107bf 100644
+index 86f9e49178..ff12386950 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
 @@ -50,7 +50,8 @@ void Jit64::SetFPRFIfNeeded(const OpArg& input, bool single)
@@ -1796,7 +1796,27 @@ index 86f9e49178..fb324107bf 100644
    {
      if (packed)
      {
-@@ -379,7 +380,7 @@ void Jit64::fmaddXX(UGeckoInstruction inst)
+@@ -69,13 +70,12 @@ void Jit64::FinalizeSingleResult(X64Reg output, const OpArg& input, bool packed,
+   }
+   else
+   {
+-    if (!input.IsSimpleReg(output))
+-    {
+-      if (duplicate)
+-        MOVDDUP(output, input);
+-      else
+-        MOVAPD(output, input);
+-    }
++    // Porpoise: a packed result keeps both halves (as the rounding path above does);
++    // only a scalar result is duplicated.
++    if (!packed && duplicate)
++      MOVDDUP(output, input);
++    else if (!input.IsSimpleReg(output))
++      MOVAPD(output, input);
+ 
+     SetFPRFIfNeeded(input, false);
+   }
+@@ -379,7 +379,7 @@ void Jit64::fmaddXX(UGeckoInstruction inst)
    const bool madds0 = inst.SUBOP5 == 14;
    const bool madds1 = inst.SUBOP5 == 15;
    const bool single = inst.OPCD == 4 || inst.OPCD == 59;
@@ -2250,7 +2270,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..36d3d15406 100644
+index c53281053f..882135bd63 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2335,7 +2355,7 @@ index c53281053f..36d3d15406 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,24 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,23 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -2349,18 +2369,17 @@ index c53281053f..36d3d15406 100644
 +    // stores read them; anything else that reads them, and every exit from a
 +    // block, gets them rounded first (Jit64::PorpoisePlan). Leaving every result
 +    // unrounded ran Mario Superstar Baseball twice as fast but froze it.
-+    // Test 6: only Mario Superstar Baseball's two skinning loops (their results
-+    // only become vertex data), no quantizer retries.
++    // Every block (no list); quantizer retries off for now.
 +    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, fast);
 +    Config::SetBase(Config::MAIN_PAIRED_QUANTIZE_RETRIES, 0);
-+    Config::SetBase(Config::MAIN_FAST_PAIRED_BLOCKS, std::string("800c002c,800c03f4"));
-+    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (test 6: two skinning loops only)", fast ? "Yes" : "No");
++    Config::SetBase(Config::MAIN_FAST_PAIRED_BLOCKS, std::string());
++    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (test 7: deferred paired rounding, both halves kept)", fast ? "Yes" : "No");
 +  }
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +555,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +554,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -2373,7 +2392,7 @@ index c53281053f..36d3d15406 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +711,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +710,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -2384,7 +2403,7 @@ index c53281053f..36d3d15406 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +806,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +805,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2397,7 +2416,7 @@ index c53281053f..36d3d15406 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +879,7 @@ void retro_unload_game(void)
+@@ -804,6 +878,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
