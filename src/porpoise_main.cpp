@@ -1220,6 +1220,12 @@ int menu_paused(void *)
     }
     else if (key == "screen_filter" || key == "filter_strength")
         porpoise::core::set_picture(g_play.screen_filter, g_play.filter_strength / 10.0f);
+    else if (key == "bloom" || key.rfind("color_", 0) == 0)
+    {
+        float adjust[4];
+        g_play.picture_adjust(adjust);
+        porpoise::vk::set_picture_adjust(adjust[0], adjust[1], adjust[2], adjust[3]);
+    }
     else if (key == "setup")
     {
         /* A whole setup: the picture and every Dolphin option. */
@@ -2867,6 +2873,11 @@ int main(int argc, char **argv)
         core_paths.log = g_core_log.c_str();
         porpoise::core::set_fast_forward(1);
         porpoise::vk::set_game_colour_filter(g_settings.colour_filter_games ? g_settings.colour_filter : 0);
+        {
+            float adjust[4];
+            g_play.picture_adjust(adjust);
+            porpoise::vk::set_picture_adjust(adjust[0], adjust[1], adjust[2], adjust[3]);
+        }
         const long long played_from = now_ns();
 #ifdef PORPOISE_DESKTOP
         porpoise::platform::set_in_game(true);

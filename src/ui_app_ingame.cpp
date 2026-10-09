@@ -109,6 +109,7 @@ struct Patches
     const std::vector<Cheat> *cheats = nullptr;
 };
 
+const std::vector<std::string> kAdjust = {"-5", "-4", "-3", "-2", "-1", "0", "+1", "+2", "+3", "+4", "+5"};
 const std::vector<std::string> kPercent = {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
 
 std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches *patches = nullptr)
@@ -138,10 +139,14 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         r.push_back({Kind::Int, "anisotropy", "Anisotropic Filtering", &p.anisotropy, nullptr, 0,
                      {"1x", "2x", "4x", "8x", "16x"}});
         r.push_back({Kind::Int, "screen_filter", "Screen Filter", &p.screen_filter, nullptr, 0,
-                     {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-Bit", "Pocket",
-                      "Scanlines", "Shadow Mask", "LCD", "FSR 1"}});
+                     {"Smooth", "Sharp", "Sharpen (CAS)", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-Bit", "Pocket",
+                      "Scanlines", "Shadow Mask", "LCD", "FSR 1", "16-Bit", "NTSC Composite", "Aperture Grille"}});
         r.push_back({Kind::Int, "filter_strength", "Filter Strength", &p.filter_strength, nullptr, 1,
                      {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"}});
+        r.push_back({Kind::Int, "bloom", "Extra Bloom", &p.bloom, nullptr, 0, {"Off", "Low", "Medium", "High"}});
+        r.push_back({Kind::Int, "color_saturation", "Saturation", &p.color_saturation, nullptr, 0, kAdjust});
+        r.push_back({Kind::Int, "color_contrast", "Contrast", &p.color_contrast, nullptr, 0, kAdjust});
+        r.push_back({Kind::Int, "color_warmth", "Warmth", &p.color_warmth, nullptr, 0, kAdjust});
         r.push_back({Kind::Border, "border", "Border"});
         r.push_back({Kind::Bool, "fps_overlay", "FPS Counter", nullptr, &p.fps_overlay, 0, {"Off", "On"}});
         break;

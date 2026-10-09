@@ -152,6 +152,7 @@ struct Push
     float color[4];
     float params[4]; /* filter, strength 0..1, time, - (shaders/quad.frag) */
     float size[4];   /* picture texels w, h; on screen w, h */
+    float adjust[4]; /* saturation, contrast, warmth, bloom (Enhancements) */
 };
 
 struct State
@@ -1392,6 +1393,15 @@ double refresh_hz()
 }
 
 int g_colour_filter = 0;
+float g_adjust[4] = {1.0f, 1.0f, 0.0f, 0.0f}; /* set_picture_adjust */
+
+void set_picture_adjust(float saturation, float contrast, float warmth, float bloom)
+{
+    g_adjust[0] = saturation;
+    g_adjust[1] = contrast;
+    g_adjust[2] = warmth;
+    g_adjust[3] = bloom;
+}
 
 void set_game_colour_filter(int mode)
 {
@@ -1436,6 +1446,8 @@ void present_core_frame(unsigned width, unsigned height, float aspect, int filte
     quad.params[1] = strength;
     quad.params[2] = float(now.tv_sec % 3600) + float(now.tv_nsec) * 1e-9f;
     quad.params[3] = float(g_colour_filter);
+    for (int i = 0; i < 4; ++i)
+        quad.adjust[i] = g_adjust[i];
     quad.size[0] = float(width);
     quad.size[1] = float(height);
     quad.size[2] = w;

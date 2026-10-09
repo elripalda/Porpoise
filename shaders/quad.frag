@@ -2,13 +2,16 @@
 /* Porpoise: the game's picture on its way to the TV, with an optional screen
  * filter. Copyright (C) 2026 Ruben (Project Porpoise), GPL-3.0-or-later.
  *
- * params: x filter (0 smooth, 1 sharp, 2 sharpen, 3 CRT, 4 arcade CRT, 5 VHS,
- *           6 soft VHS, 7 8-bit, 8 pocket LCD, 9 scanlines, 10 shadow mask,
- *           11 LCD, 12 FSR 1),
+ * params: x filter (0 smooth, 1 sharp, 2 sharpen (CAS), 3 CRT, 4 arcade CRT,
+ *           5 VHS, 6 soft VHS, 7 8-bit, 8 pocket LCD, 9 scanlines, 10 shadow
+ *           mask, 11 LCD, 12 FSR 1, 13 16-bit, 14 NTSC composite, 15 aperture
+ *           grille),
  *         y strength 0..1, z time in seconds, w colour filter (0 off,
  *         1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale: Accessibility).
  * size:   x, y the picture's texture size in texels; z, w its size on screen
- *         in pixels. Smooth and sharp differ only in the sampler the host
+ *         in pixels.
+ * adjust: x saturation, y contrast (1 as it is), z warmth (0 as it is), w
+ *         bloom 0..1 (Enhancements), after the filter. Smooth and sharp differ only in the sampler the host
  *         binds; the others are worked out here. */
 layout(push_constant) uniform Push {
     vec4 rect;
@@ -16,6 +19,7 @@ layout(push_constant) uniform Push {
     vec4 color;
     vec4 params;
     vec4 size;
+    vec4 adjust;
 } p;
 layout(set = 0, binding = 0) uniform sampler2D tex;
 layout(location = 0) in vec2 v_uv;
@@ -124,7 +128,9 @@ vec3 soft_vhs(vec2 uv, float amount)
 /* Big pixels, few colours, an ordered dither: a home console of the 80s. */
 vec3 eight_bit(vec2 uv, float amount)
 {
-    float across = mix(320.0, 128.0, amount);
+    /* 3.0: bigger cells and fewer colours lost too much of the picture; the
+     * strongest is now what the gentlest used to be, roughly. */
+    float across = mix(400.0, 256.0, amount);
     vec2 cells = vec2(across, across * p.size.w / max(p.size.z, 1.0));
     vec2 cell = floor(uv * cells);
     vec3 c = sample_rgb((cell + 0.5) / cells);
@@ -132,7 +138,7 @@ vec3 eight_bit(vec2 uv, float amount)
                                       13.0, 5.0);
     int bx = int(mod(cell.x, 4.0)), by = int(mod(cell.y, 4.0));
     float d = (bayer[by * 4 + bx] + 0.5) / 16.0 - 0.5;
-    float levels = mix(6.0, 3.0, amount);
+    float levels = mix(8.0, 5.0, amount);
     c = floor(c * (levels - 1.0) + 0.5 + d) / (levels - 1.0);
     return clamp(c, 0.0, 1.0);
 }
@@ -325,6 +331,85 @@ vec3 colour_filter(vec3 c, int mode)
     return clamp(c + vec3(0.0, err.r * 0.7 + err.g, err.r * 0.7 + err.b), 0.0, 1.0);
 }
 
+/* A 16-bit console of the 90s: about 256 to 320 pixels across, 15-bit colour
+ * (32 shades a channel, fewer when stronger), a light dither. */
+vec3 sixteen_bit(vec2 uv, float amount)
+{
+    float across = mix(512.0, 320.0, amount);
+    vec2 cells = vec2(across, across * p.size.w / max(p.size.z, 1.0));
+    vec2 cell = floor(uv * cells);
+    vec3 c = sample_rgb((cell + 0.5) / cells);
+    const float bayer[4] = float[4](0.0, 2.0, 3.0, 1.0);
+    float d = (bayer[int(mod(cell.y, 2.0)) * 2 + int(mod(cell.x, 2.0))] + 0.5) / 4.0 - 0.5;
+    float levels = mix(32.0, 16.0, amount);
+    return clamp(floor(c * (levels - 1.0) + 0.5 + d * 0.6) / (levels - 1.0), 0.0, 1.0);
+}
+
+/* A composite cable into an old TV: the colour is softer than the brightness
+ * and bleeds sideways, a faint dot crawl rides the edges, and the whole
+ * picture is a touch soft. */
+vec3 ntsc_composite(vec2 uv, float amount)
+{
+    vec2 t = vec2(1.0 / p.size.x, 0.0);
+    float spread = mix(1.5, 3.5, amount);
+    vec3 y_blur = sample_rgb(uv - t) * 0.25 + sample_rgb(uv) * 0.5 + sample_rgb(uv + t) * 0.25;
+    vec3 c_blur = vec3(0.0);
+    for (int i = -3; i <= 3; ++i)
+        c_blur += sample_rgb(uv + t * float(i) * spread) * (4.0 - abs(float(i)));
+    c_blur /= 16.0;
+    float y = luma(y_blur);
+    vec3 col = vec3(y) + (c_blur - luma(c_blur));
+    /* Dot crawl: where the brightness changes sideways, a fine moving pattern. */
+    float edge = abs(luma(sample_rgb(uv + t)) - luma(sample_rgb(uv - t)));
+    float crawl = sin((gl_FragCoord.x + gl_FragCoord.y * 2.0) * 2.094 + p.params.z * 30.0);
+    col += crawl * edge * 0.12 * amount;
+    col = mix(col, col * vec3(1.02, 1.0, 0.97), amount); /* a little warm */
+    return clamp(mix(sample_rgb(uv), col, mix(0.6, 1.0, amount)), 0.0, 1.0);
+}
+
+/* A Trinitron-style tube: vertical phosphor stripes with no dots, fine
+ * scanlines, and a glow; flat, with no bend. */
+vec3 aperture_grille(vec2 uv, float amount)
+{
+    vec3 col = crt(uv, amount * 0.55, 480.0, 0.0);
+    int column = int(gl_FragCoord.x) % 3;
+    vec3 stripe = column == 0 ? vec3(1.0, 0.4, 0.4) : column == 1 ? vec3(0.4, 1.0, 0.4) : vec3(0.4, 0.4, 1.0);
+    col *= mix(vec3(1.0), stripe, 0.6 * amount);
+    return clamp(col * (1.0 + 0.5 * amount), 0.0, 1.0);
+}
+
+/* Bloom: the bright parts glow into what's round them (a wide, soft blur of
+ * what is over a threshold), added back. */
+vec3 bloom(vec2 uv, vec3 col, float amount)
+{
+    if (amount <= 0.0)
+        return col;
+    vec2 t = 1.0 / p.size.xy;
+    vec3 sum = vec3(0.0);
+    float weight = 0.0;
+    for (int ring = 1; ring <= 3; ++ring)
+        for (int k = 0; k < 8; ++k)
+        {
+            float a = float(k) * 0.7853982 + float(ring) * 0.4;
+            vec2 o = vec2(cos(a), sin(a)) * t * float(ring) * 4.0;
+            vec3 s = sample_rgb(uv + o);
+            float w = 1.0 / float(ring);
+            sum += max(s - 0.6, 0.0) * w;
+            weight += w;
+        }
+    return col + sum / weight * 2.2 * amount;
+}
+
+/* Saturation, contrast and warmth (Enhancements > Color). */
+vec3 adjust(vec3 col)
+{
+    float y = luma(col);
+    col = mix(vec3(y), col, p.adjust.x);
+    col = (col - 0.5) * p.adjust.y + 0.5;
+    col += vec3(p.adjust.z, p.adjust.z * 0.25, -p.adjust.z);
+    return clamp(col, 0.0, 1.0);
+}
+
 void main()
 {
     int filter_id = int(p.params.x + 0.5);
@@ -363,6 +448,12 @@ void main()
         col = shadow_mask(uv, amount);
     else if (filter_id == 11)
         col = lcd(uv, amount);
+    else if (filter_id == 13)
+        col = sixteen_bit(uv, amount);
+    else if (filter_id == 14)
+        col = ntsc_composite(uv, amount);
+    else if (filter_id == 15)
+        col = aperture_grille(uv, amount);
     else if (filter_id == 12)
     {
         /* Only when the picture is scaled up; then sharpened lightly by the
@@ -382,6 +473,9 @@ void main()
     }
     else
         col = texture(tex, uv).rgb;
+    col = bloom(uv, col, p.adjust.w);
+    if (p.adjust.x != 1.0 || p.adjust.y != 1.0 || p.adjust.z != 0.0)
+        col = adjust(col);
     col = colour_filter(col, int(p.params.w + 0.5));
     frag = vec4(col * edge, 1.0) * p.color;
 }

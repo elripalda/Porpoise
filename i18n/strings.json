@@ -5096,10 +5096,6 @@
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
  {
-  "en": "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor, a worn or a soft VHS tape, 8-bit pixels, a green handheld screen, scanlines, a TV's shadow mask, or a sharp LCD.",
-  "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
- },
- {
   "en": "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. Online play in games uses the game's own patch for its server (Wiimmfi, a custom server, or a mod's own), not this switch. Needs the console online.",
   "section": "2.7: Apply, the sandbox, diagnostic test, setup, covers again, filters"
  },
@@ -5654,5 +5650,69 @@
  {
   "en": "Your own Wii Menu, installed from your console, with or without a disc.",
   "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Sharpen (CAS)",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "16-Bit",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "NTSC Composite",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Aperture Grille",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Extra Bloom",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "A soft glow round the brightest parts of the picture, on top of the game's own.",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Advanced Options",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Shows every enhancement: color, texture filtering, resampling, lighting, fog, texture packs and the game's own graphics mods.",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Saturation",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "How rich the colors are. 0 is as the game has them.",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Contrast",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "How far apart the darks and the lights are. 0 is as the game has them.",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Warmth",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Warmer (more red) or cooler (more blue). 0 is as the game has it.",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, CRTs and an arcade monitor, VHS tapes, 8-bit and 16-bit pixels, a green handheld screen, scanlines, a composite cable, a TV's shadow mask, a Trinitron-style aperture grille, or a sharp LCD.",
+  "section": "3.0: Enhancements"
+ },
+ {
+  "en": "High",
+  "section": "3.0: Enhancements"
  }
 ]

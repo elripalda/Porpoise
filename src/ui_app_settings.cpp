@@ -502,8 +502,11 @@ void App::add_game_rows(Settings &t, bool per_game)
     if (!per_game)
         add_setup_rows(false);
 
-    /* 3.0: everything that makes a game look better, together. */
+    /* 3.0: everything that makes a game look better, together: the everyday
+     * options first; Advanced Options shows the rest (a view, the same for
+     * every game). */
     header("Enhancements");
+    const bool advanced = settings_->enh_advanced;
     choice("resolution", "Internal Resolution", "How sharp games render. Higher is sharper and can slow some games.",
            &t.resolution, 1, {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p)",
             "5x (1800p)", "6x (4K)"});
@@ -511,43 +514,71 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.antialiasing, 0, {"Off", "2x MSAA", "4x MSAA", "8x MSAA", "2x SSAA", "4x SSAA", "8x SSAA"});
     choice("anisotropy", "Anisotropic Filtering", "Sharper textures on floors and walls seen at an angle.",
            &t.anisotropy, 0, {"1x", "2x", "4x", "8x", "16x"});
-    choice("texture_filter", "Texture Filtering", "Force sharp or smooth textures, or leave it to the game.",
-           &t.texture_filter, 0, {"Game's Own", "Nearest (Sharp)", "Linear (Smooth)"});
-    choice("resampling", "Output Resampling", "How Dolphin scales its picture. Sharp Bilinear keeps pixels crisp.",
-           &t.resampling, 0,
-           {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp Bilinear", "Area Sampling"});
     choice("screen_filter", "Screen Filter",
-           "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, a CRT, an arcade monitor, a worn or a soft VHS tape, 8-bit pixels, a green handheld screen, scanlines, a TV's shadow mask, or a sharp LCD.",
+           "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, CRTs and an arcade "
+           "monitor, VHS tapes, 8-bit and 16-bit pixels, a green handheld screen, scanlines, a composite cable, a "
+           "TV's shadow mask, a Trinitron-style aperture grille, or a sharp LCD.",
            &t.screen_filter, 0,
-           {"Smooth", "Sharp", "Sharpen", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-Bit", "Pocket", "Scanlines",
-            "Shadow Mask", "LCD", "FSR 1"});
+           {"Smooth", "Sharp", "Sharpen (CAS)", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-Bit", "Pocket", "Scanlines",
+            "Shadow Mask", "LCD", "FSR 1", "16-Bit", "NTSC Composite", "Aperture Grille"});
     rows_.back().help += " " + tr("FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with "
                                   "clean edges; Filter Strength sets its sharpening. Best with an internal resolution "
                                   "below the output's.");
     choice("filter_strength", "Filter Strength", "How strong the screen filter is.", &t.filter_strength, 1,
            {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
-    toggle("pixel_lighting", "Per-Pixel Lighting", "Smoother lighting on surfaces. A little heavier.",
-           &t.pixel_lighting);
-    toggle("disable_fog", "Disable Fog", "Removes distance fog. Some games use fog for their look.", &t.disable_fog);
-    toggle("custom_textures", "Custom Textures",
-           "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in "
-           "/data/porpoise/saves/User/Load/Textures. A game's Details say when its pack is found.",
-           &t.custom_textures);
-    if (per_game && game_for_)
+    choice("bloom", "Extra Bloom", "A soft glow round the brightest parts of the picture, on top of the game's own.",
+           &t.bloom, 0, {"Off", "Low", "Medium", "High"});
     {
-        /* Dolphin's built-in graphics mods, for the games that have them. */
-        const porpoise::gfxmods::Offer mods = porpoise::gfxmods::offer(game_for_->id);
-        if (mods.bloom)
-            choice("gfx_bloom", "Bloom", kGfxBloomHelp, &t.gfx_bloom, 0,
-                   mods.own_bloom ? std::vector<std::string>{"Game's Own", "Off", "Blurred"}
-                                  : std::vector<std::string>{"Game's Own", "Off", "Blurred", "Native Resolution"});
-        if (mods.dof)
-            choice("gfx_dof", "Depth of Field", kGfxDofHelp, &t.gfx_dof, 0,
-                   {"Game's Own", "Off", "Blurred", "Native Resolution"});
-        if (mods.hud)
-            toggle("gfx_hud", "Hide the HUD", kGfxHudHelp, &t.gfx_hud);
-        if (!mods.extra_title.empty())
-            toggle("gfx_extra", "Native Resolution Goop", kGfxGoopHelp, &t.gfx_extra);
+        SettingRow r;
+        r.section = section;
+        r.key = "enh_advanced";
+        r.label = tr("Advanced Options");
+        r.help = tr("Shows every enhancement: color, texture filtering, resampling, lighting, fog, texture packs "
+                    "and the game's own graphics mods.");
+        r.bool_value = &settings_->enh_advanced;
+        r.values = {tr("Off"), tr("On")};
+        rows_.push_back(r);
+    }
+    if (advanced)
+    {
+        static const std::vector<std::string> kAdjust = {"-5", "-4", "-3", "-2", "-1", "0",
+                                                         "+1", "+2", "+3", "+4", "+5"};
+        choice("color_saturation", "Saturation", "How rich the colors are. 0 is as the game has them.",
+               &t.color_saturation, 0, kAdjust);
+        choice("color_contrast", "Contrast", "How far apart the darks and the lights are. 0 is as the game has them.",
+               &t.color_contrast, 0, kAdjust);
+        choice("color_warmth", "Warmth", "Warmer (more red) or cooler (more blue). 0 is as the game has it.",
+               &t.color_warmth, 0, kAdjust);
+        choice("texture_filter", "Texture Filtering", "Force sharp or smooth textures, or leave it to the game.",
+               &t.texture_filter, 0, {"Game's Own", "Nearest (Sharp)", "Linear (Smooth)"});
+        choice("resampling", "Output Resampling", "How Dolphin scales its picture. Sharp Bilinear keeps pixels crisp.",
+               &t.resampling, 0,
+               {"Default", "Bilinear", "B-Spline", "Mitchell-Netravali", "Catmull-Rom", "Sharp Bilinear",
+                "Area Sampling"});
+        toggle("pixel_lighting", "Per-Pixel Lighting", "Smoother lighting on surfaces. A little heavier.",
+               &t.pixel_lighting);
+        toggle("disable_fog", "Disable Fog", "Removes distance fog. Some games use fog for their look.",
+               &t.disable_fog);
+        toggle("custom_textures", "Custom Textures",
+               "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in "
+               "/data/porpoise/saves/User/Load/Textures. A game's Details say when its pack is found.",
+               &t.custom_textures);
+        if (per_game && game_for_)
+        {
+            /* Dolphin's built-in graphics mods, for the games that have them. */
+            const porpoise::gfxmods::Offer mods = porpoise::gfxmods::offer(game_for_->id);
+            if (mods.bloom)
+                choice("gfx_bloom", "Bloom", kGfxBloomHelp, &t.gfx_bloom, 0,
+                       mods.own_bloom ? std::vector<std::string>{"Game's Own", "Off", "Blurred"}
+                                      : std::vector<std::string>{"Game's Own", "Off", "Blurred", "Native Resolution"});
+            if (mods.dof)
+                choice("gfx_dof", "Depth of Field", kGfxDofHelp, &t.gfx_dof, 0,
+                       {"Game's Own", "Off", "Blurred", "Native Resolution"});
+            if (mods.hud)
+                toggle("gfx_hud", "Hide the HUD", kGfxHudHelp, &t.gfx_hud);
+            if (!mods.extra_title.empty())
+                toggle("gfx_extra", "Native Resolution Goop", kGfxGoopHelp, &t.gfx_extra);
+        }
     }
 
     header("Graphics");
@@ -1699,6 +1730,19 @@ void App::change_setting(int dir)
         if (r.text_value && r.int_value == &border_choice_)
             *r.text_value = border_names_[std::size_t(std::clamp(border_choice_, 0, int(border_names_.size()) - 1))];
     }
+    if (r.key == "enh_advanced")
+    {
+        /* A view, the same everywhere: kept at once, and the rows follow. */
+        draft_.enh_advanced = base_.enh_advanced = settings_->enh_advanced;
+        settings_->save(settings_path_);
+        const int row = settings_row_;
+        if (screen_ == Screen::GameSettings && game_for_)
+            build_game_settings();
+        else
+            build_settings();
+        settings_row_ = std::clamp(row, 0, int(rows_.size()) - 1);
+        return;
+    }
     if (r.key == "cheat" && screen_ == Screen::GameSettings && game_for_ && r.folder >= 0 &&
         r.folder < int(cheats_.size()))
     {
@@ -1817,7 +1861,8 @@ bool App::applies_at_once(const std::string &key)
         "ui_theme",      "ui_palette",   "ui_font",         "ui_layout",      "lib_view",     "mc_view",
         "sc_games",      "ui_pointer",   "text_size",       "high_contrast",  "reduced_motion", "still_background",
         "big_prompts",   "colour_filter", "colour_filter_games", "border",    "screen_filter", "filter_strength",
-        "menu_music",    "menu_sounds",  "music_volume",    "sounds_volume", "sound_set"};
+        "menu_music",    "menu_sounds",  "music_volume",    "sounds_volume", "sound_set",
+        "bloom",         "color_saturation", "color_contrast", "color_warmth"};
     for (const char *k : kKeys)
         if (key == k)
             return true;

@@ -37,6 +37,20 @@ struct Settings
      * picture. */
     int screen_filter = 0;   /* Smooth, Sharp, Sharpen, CRT, Arcade CRT, VHS, Soft VHS, 8-bit, Pocket */
     int filter_strength = 6; /* 1..10 */
+    /* 3.0 Enhancements on the picture: bloom 0..3 (Off, Low, Medium, High);
+     * saturation, contrast and warmth 0..10, 5 as the game has it. */
+    int bloom = 0;
+    int color_saturation = 5, color_contrast = 5, color_warmth = 5;
+    bool enh_advanced = false; /* Enhancements shows every option, not just the everyday ones */
+    /* The values porpoise::vk::set_picture_adjust takes. */
+    void picture_adjust(float out[4]) const
+    {
+        static const float kBloom[4] = {0.0f, 0.25f, 0.45f, 0.7f};
+        out[0] = 1.0f + float(color_saturation - 5) * 0.12f;
+        out[1] = 1.0f + float(color_contrast - 5) * 0.06f;
+        out[2] = float(color_warmth - 5) * 0.03f;
+        out[3] = kBloom[bloom < 0 ? 0 : bloom > 3 ? 3 : bloom];
+    }
     std::string border;      /* "" none, or a border's name (built in, or a PNG in /data/porpoise/borders) */
     bool fps_overlay = false;
     int output_res = 0;           /* the picture sent to the TV: 0 the PS5's own, 1 1080p, 2 1440p, 3 4K (next start) */
