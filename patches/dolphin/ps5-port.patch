@@ -1091,7 +1091,7 @@ index c4b5419a69..71778b9600 100644
      PanicAlertFmtT("Cannot boot this WAD because it could not be installed to the NAND.");
      return false;
 diff --git a/Source/Core/Core/Config/MainSettings.cpp b/Source/Core/Core/Config/MainSettings.cpp
-index f0cc8511b7..cc6413e50c 100644
+index f0cc8511b7..c0f08eb3c0 100644
 --- a/Source/Core/Core/Config/MainSettings.cpp
 +++ b/Source/Core/Core/Config/MainSettings.cpp
 @@ -46,7 +46,14 @@ const Info<bool> MAIN_JIT_FOLLOW_BRANCH{{System::Main, "Core", "JITFollowBranch"
@@ -1109,7 +1109,7 @@ index f0cc8511b7..cc6413e50c 100644
  const Info<bool> MAIN_ACCURATE_CPU_CACHE{{System::Main, "Core", "AccurateCPUCache"}, false};
  const Info<bool> MAIN_DSP_HLE{{System::Main, "Core", "DSPHLE"}, true};
  const Info<int> MAIN_MAX_FALLBACK{{System::Main, "Core", "MaxFallback"}, 100};
-@@ -229,6 +236,23 @@ const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS{{System::Main, "Core", "DivByZer
+@@ -229,6 +236,24 @@ const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS{{System::Main, "Core", "DivByZer
  const Info<bool> MAIN_FPRF{{System::Main, "Core", "FPRF"}, false};
  const Info<bool> MAIN_ACCURATE_NANS{{System::Main, "Core", "AccurateNaNs"}, false};
  const Info<bool> MAIN_ACCURATE_FMADDS{{System::Main, "Core", "AccurateFmadds"}, true};
@@ -1130,14 +1130,15 @@ index f0cc8511b7..cc6413e50c 100644
 +// guesses again with the values then current, this many times, before it reads
 +// them on every access for good.
 +const Info<int> MAIN_PAIRED_QUANTIZE_RETRIES{{System::Main, "Core", "PairedQuantizeRetries"}, 8};
++const Info<std::string> MAIN_FAST_PAIRED_BLOCKS{{System::Main, "Core", "FastPairedBlocks"}, ""};
  const Info<bool> MAIN_DISABLE_ICACHE{{System::Main, "Core", "DisableICache"}, false};
  const Info<float> MAIN_EMULATION_SPEED{{System::Main, "Core", "EmulationSpeed"}, 1.0f};
  #if defined(ANDROID)
 diff --git a/Source/Core/Core/Config/MainSettings.h b/Source/Core/Core/Config/MainSettings.h
-index 4bb1c36db9..a769c29503 100644
+index 4bb1c36db9..a2bbde2054 100644
 --- a/Source/Core/Core/Config/MainSettings.h
 +++ b/Source/Core/Core/Config/MainSettings.h
-@@ -134,6 +134,10 @@ extern const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS;
+@@ -134,6 +134,12 @@ extern const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS;
  extern const Info<bool> MAIN_FPRF;
  extern const Info<bool> MAIN_ACCURATE_NANS;
  extern const Info<bool> MAIN_ACCURATE_FMADDS;
@@ -1145,6 +1146,8 @@ index 4bb1c36db9..a769c29503 100644
 +extern const Info<bool> MAIN_FAST_SINGLE_PRECISION;
 +extern const Info<bool> MAIN_FAST_PAIRED_ROUNDING;
 +extern const Info<int> MAIN_PAIRED_QUANTIZE_RETRIES;
++// Porpoise 3.0: blocks (start addresses, hex, comma-separated) that defer paired rounding; empty: all.
++extern const Info<std::string> MAIN_FAST_PAIRED_BLOCKS;
  extern const Info<bool> MAIN_DISABLE_ICACHE;
  extern const Info<float> MAIN_EMULATION_SPEED;
  extern const Info<bool> MAIN_PRECISION_FRAME_TIMING;
@@ -1443,18 +1446,20 @@ index 871bb3f615..bad7c5d42a 100644
  #endif
  }
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit.cpp b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
-index 1248b1ab01..9d56527010 100644
+index 1248b1ab01..763dde53da 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit.cpp
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
-@@ -2,6 +2,7 @@
+@@ -2,6 +2,9 @@
  // SPDX-License-Identifier: GPL-2.0-or-later
  
  #include "Core/PowerPC/Jit64/Jit.h"
 +#include "Core/Config/MainSettings.h"
++#include "Common/StringUtil.h"
++#include <algorithm>
  
  #include <map>
  #include <span>
-@@ -21,6 +22,7 @@
+@@ -21,6 +24,7 @@
  #include "Common/GekkoDisassembler.h"
  #include "Common/HostDisassembler.h"
  #include "Common/IOFile.h"
@@ -1462,7 +1467,7 @@ index 1248b1ab01..9d56527010 100644
  #include "Common/Logging/Log.h"
  #include "Common/Swap.h"
  #include "Common/x64ABI.h"
-@@ -49,6 +51,10 @@
+@@ -49,6 +53,10 @@
  #include "Core/System.h"
  
  using namespace Gen;
@@ -1473,7 +1478,7 @@ index 1248b1ab01..9d56527010 100644
  using namespace PowerPC;
  
  // Dolphin's PowerPC->x86_64 JIT dynamic recompiler
-@@ -262,7 +268,7 @@ void Jit64::Init()
+@@ -262,7 +270,7 @@ void Jit64::Init()
    EnableBlockLink();
  
    jo.optimizeGatherPipe = true;
@@ -1482,7 +1487,7 @@ index 1248b1ab01..9d56527010 100644
    js.fastmemLoadStore = nullptr;
    js.compilerPC = 0;
  
-@@ -734,6 +740,19 @@ void Jit64::WriteExternalExceptionExit()
+@@ -734,6 +742,19 @@ void Jit64::WriteExternalExceptionExit()
  void Jit64::Run()
  {
    ProtectStack();
@@ -1502,7 +1507,7 @@ index 1248b1ab01..9d56527010 100644
    m_system.GetJitInterface().UpdateMembase();
  
    CompiledCode pExecAddr = (CompiledCode)asm_routines.enter_code;
-@@ -992,6 +1011,8 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+@@ -992,6 +1013,8 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
      IntializeSpeculativeConstants();
    }
  
@@ -1511,7 +1516,7 @@ index 1248b1ab01..9d56527010 100644
    // Translate instructions
    for (u32 i = 0; i < code_block.m_num_instructions; i++)
    {
-@@ -1035,6 +1056,7 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+@@ -1035,6 +1058,7 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
        // asynchronous.
        if (gatherPipeIntCheck)
        {
@@ -1519,7 +1524,7 @@ index 1248b1ab01..9d56527010 100644
          TEST(32, PPCSTATE(Exceptions), Imm32(EXCEPTION_EXTERNAL_INT));
          FixupBranch extException = J_CC(CC_NZ, Jump::Near);
  
-@@ -1064,6 +1086,11 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+@@ -1064,6 +1088,11 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
        }
      }
  
@@ -1531,7 +1536,7 @@ index 1248b1ab01..9d56527010 100644
      if (HandleFunctionHooking(op.address))
        break;
  
-@@ -1079,6 +1106,24 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+@@ -1079,6 +1108,24 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
      }
      else
      {
@@ -1556,7 +1561,7 @@ index 1248b1ab01..9d56527010 100644
        auto& cpu = m_system.GetCPU();
        auto& power_pc = m_system.GetPowerPC();
        if (IsDebuggingEnabled() && power_pc.GetBreakPoints().IsAddressBreakPoint(op.address) &&
-@@ -1240,6 +1285,15 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+@@ -1240,6 +1287,15 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
        gpr.Flush(~op.gprWillBeWritten & op.regsOut, RegCache::FlushMode::Undirty);
        fpr.Flush(~op.fprWillBeWritten & op.GetFregsOut(), RegCache::FlushMode::Undirty);
  
@@ -1572,7 +1577,7 @@ index 1248b1ab01..9d56527010 100644
        if (opinfo->flags & FL_LOADSTORE)
          ++js.numLoadStoreInst;
  
-@@ -1260,6 +1314,7 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+@@ -1260,6 +1316,7 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
  
    if (code_block.m_broken)
    {
@@ -1580,7 +1585,7 @@ index 1248b1ab01..9d56527010 100644
      gpr.Flush();
      fpr.Flush();
      WriteExit(nextPC);
-@@ -1386,6 +1441,157 @@ void Jit64::FlushRegistersBeforeSlowAccess()
+@@ -1386,6 +1443,177 @@ void Jit64::FlushRegistersBeforeSlowAccess()
    }
  }
  
@@ -1685,6 +1690,26 @@ index 1248b1ab01..9d56527010 100644
 +{
 +  m_porpoise_plan = m_fast_paired_rounding && jo.accurateSinglePrecision && !jo.memcheck &&
 +                    !jo.fp_exceptions && !bJITRegisterCacheOff;
++  if (m_porpoise_plan)
++  {
++    // Only the listed blocks, when there is a list.
++    static std::string s_list_text;
++    static std::vector<u32> s_list;
++    const std::string text = Config::Get(Config::MAIN_FAST_PAIRED_BLOCKS);
++    if (text != s_list_text)
++    {
++      s_list_text = text;
++      s_list.clear();
++      for (const std::string& part : SplitString(text, ','))
++      {
++        u32 address = 0;
++        if (TryParse("0x" + std::string(StripWhitespace(part)), &address))
++          s_list.push_back(address);
++      }
++    }
++    if (!s_list.empty() && std::find(s_list.begin(), s_list.end(), js.blockStart) == s_list.end())
++      m_porpoise_plan = false;
++  }
 +  m_porpoise_dirty = BitSet32();
 +  m_porpoise_tol_entry = BitSet32();
 +  for (u32 i = 0; i < count; i++)
@@ -2225,7 +2250,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..db4c2b1f2b 100644
+index c53281053f..36d3d15406 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2310,7 +2335,7 @@ index c53281053f..db4c2b1f2b 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,22 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,24 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -2324,16 +2349,18 @@ index c53281053f..db4c2b1f2b 100644
 +    // stores read them; anything else that reads them, and every exit from a
 +    // block, gets them rounded first (Jit64::PorpoisePlan). Leaving every result
 +    // unrounded ran Mario Superstar Baseball twice as fast but froze it.
-+    // Test 5B: the quantizer retries alone (no rounding change).
-+    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, false);
-+    Config::SetBase(Config::MAIN_PAIRED_QUANTIZE_RETRIES, fast ? 8 : 0);
-+    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (test 5B: quantizer retries only)", fast ? "Yes" : "No");
++    // Test 6: only Mario Superstar Baseball's two skinning loops (their results
++    // only become vertex data), no quantizer retries.
++    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, fast);
++    Config::SetBase(Config::MAIN_PAIRED_QUANTIZE_RETRIES, 0);
++    Config::SetBase(Config::MAIN_FAST_PAIRED_BLOCKS, std::string("800c002c,800c03f4"));
++    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (test 6: two skinning loops only)", fast ? "Yes" : "No");
 +  }
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +553,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +555,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -2346,7 +2373,7 @@ index c53281053f..db4c2b1f2b 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +709,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +711,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -2357,7 +2384,7 @@ index c53281053f..db4c2b1f2b 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +804,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +806,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2370,7 +2397,7 @@ index c53281053f..db4c2b1f2b 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +877,7 @@ void retro_unload_game(void)
+@@ -804,6 +879,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
