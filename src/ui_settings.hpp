@@ -136,6 +136,8 @@ struct Settings
     bool accurate_fma = false; /* dolphin_accurate_fmadds: exact multiply-add rounding (slow on the PS5) */
     bool own_cores = true;     /* the emulated CPU on a core of its own (porpoise_main.cpp, keep_cores) */
     bool fast_disc = false;  /* dolphin_fast_disc_speed */
+    bool keep_speed = false; /* dolphin_vi_skip: frames skipped, not the game slowed, when the CPU falls behind */
+    bool wait_shaders = true; /* dolphin_wait_for_shaders: the game's known shaders built before it starts */
     bool cheats = false;     /* dolphin_cheats_enabled */
     int language = 0;        /* 0..9: English first */
     bool progressive = true; /* dolphin_progressive_scan */

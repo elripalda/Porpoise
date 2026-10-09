@@ -524,6 +524,10 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("shader_mode", "Shader compilation",
            "Ubershaders hide the stutter when a game draws something new, at a GPU cost.", &t.shader_mode, 0,
            {"Synchronous", "Ubershaders", "Async ubershaders", "Async, skip drawing"});
+    toggle("wait_shaders", "Build shaders before starting",
+           "The shaders the game used last time are built while it loads, so effects you've seen don't stutter "
+           "the first time. The game takes a moment longer to start.",
+           &t.wait_shaders);
 #ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("threaded_gpu", "Threaded GPU recording (beta)",
            "The graphics driver records Dolphin's drawing on a thread of its own, so Dolphin's video thread spends "
@@ -759,6 +763,10 @@ void App::add_game_rows(Settings &t, bool per_game)
     header("System");
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
            &t.cpu_clock, 0, {"50%", "60%", "70%", "80%", "90%", "100%", "150%", "200%", "250%", "300%"});
+    toggle("keep_speed", "Keep full speed (beta)",
+           "When the emulated console can't keep up, frames are skipped instead of the game slowing down: the "
+           "game runs at full speed, a little less smoothly. For heavy games that run below 60 fps.",
+           &t.keep_speed);
     toggle("dual_core", "Dual core", "Faster. Turn it off for a game that freezes or glitches.", &t.dual_core);
 #ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("own_cores", "Emulator on its own cores",

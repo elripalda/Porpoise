@@ -1752,7 +1752,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..6881d71e58 100644
+index c53281053f..c8a2b06158 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -1848,7 +1848,20 @@ index c53281053f..6881d71e58 100644
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -646,6 +691,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +541,12 @@ bool retro_load_game(const struct retro_game_info* game)
+ 
+   Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
+     Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
++#ifdef __PROSPERO__
++  // Porpoise 3.0: two threads compile the shaders a game asks for (Dolphin's
++  // default is one), so its exact shaders replace the slower ubershaders
++  // sooner; the PS5 has cores to spare beside the CPU and GPU threads.
++  Config::SetBase(Config::GFX_SHADER_COMPILER_THREADS, 2);
++#endif
+ 
+   if (Common::is_uwp())
+     Config::SetBase(Config::GFX_SHADER_CACHE, false);
+@@ -646,6 +697,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -1859,7 +1872,7 @@ index c53281053f..6881d71e58 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +786,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +792,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -1872,7 +1885,7 @@ index c53281053f..6881d71e58 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +859,7 @@ void retro_unload_game(void)
+@@ -804,6 +865,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
@@ -2040,7 +2053,7 @@ index 1a1915cd1d..c6ee649d84 100644
    }
  #if defined(ANDROID) && defined(_DEBUG)
 diff --git a/Source/Core/DolphinLibretro/Main.cpp b/Source/Core/DolphinLibretro/Main.cpp
-index cd8753b666..0fcf1f6456 100644
+index cd8753b666..e4a8942bdd 100644
 --- a/Source/Core/DolphinLibretro/Main.cpp
 +++ b/Source/Core/DolphinLibretro/Main.cpp
 @@ -1,4 +1,5 @@
@@ -2215,7 +2228,7 @@ index cd8753b666..0fcf1f6456 100644
  
    RETRO_PERFORMANCE_STOP(dolphin_main_func);
  
-@@ -714,3 +840,71 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
+@@ -714,3 +840,90 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
    }, true);
  }
  } // extern "C"
@@ -2230,6 +2243,7 @@ index cd8753b666..0fcf1f6456 100644
 +#include "Core/PowerPC/JitCommon/JitCache.h"
 +#include "Core/PowerPC/JitInterface.h"
 +#include "Core/PowerPC/MMU.h"
++#include "Core/PowerPC/PowerPC.h"
 +
 +extern "C" __attribute__((visibility("default"))) void
 +porpoise_jit_describe(const unsigned long long* rips, const unsigned* counts, int n)
@@ -2284,6 +2298,24 @@ index cd8753b666..0fcf1f6456 100644
 +      std::fprintf(stderr, "jit:   %08x  %08x  %s\n", at, op,
 +                   Common::GekkoDisassembler::Disassemble(op, at).c_str());
 +    }
++    /* 3.0: the block's own machine code, for reading offline (the two
++     * hottest), 32 bytes a line. */
++    if (k < 2 && h.begin && h.end > h.begin && h.end - h.begin < 16384)
++      for (const u8* p = h.begin; p < h.end; p += 32)
++      {
++        std::fprintf(stderr, "jit: host %p ", static_cast<const void*>(p));
++        for (const u8* q = p; q < p + 32 && q < h.end; ++q)
++          std::fprintf(stderr, "%02x", *q);
++        std::fprintf(stderr, "\n");
++      }
++  }
++  /* The quantizers and the paired-single state the hot code runs with. */
++  {
++    const auto& ppc = system.GetPPCState();
++    std::fprintf(stderr, "jit: gqr");
++    for (int i = 0; i < 8; ++i)
++      std::fprintf(stderr, " %08x", ppc.spr[SPR_GQR0 + i]);
++    std::fprintf(stderr, " hid2 %08x msr %08x\n", ppc.spr[SPR_HID2], ppc.msr.Hex);
 +  }
 +  std::fflush(stderr);
 +}
