@@ -25,6 +25,7 @@
 #include "porpoise_update.hpp"
 #include "ui_widescreen.hpp"
 #include "ui_app.hpp"
+#include "porpoise_bios.hpp"
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
 #include "ui_recommend.hpp"
@@ -640,6 +641,10 @@ void App::add_game_rows(Settings &t, bool per_game)
         choice("music_volume", "Music Volume", "How loud the menu music plays.", &t.music_volume, 0,
                {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
         toggle("menu_sounds", "Menu Sounds", "The sounds of moving through the menus.", &t.menu_sounds);
+        choice("sound_set", "Sound Set",
+               "How the menus sound. GameCube BIOS: your own console's BIOS's sounds, when it's in "
+               "/data/porpoise/bios.",
+               &t.sound_set, 0, {"Porpoise", "Soft", "Crisp", "Chiptune", "Glass", "Retro PC", "GameCube BIOS"});
         choice("sounds_volume", "Sounds Volume", "How loud the menu sounds play.", &t.sounds_volume, 0,
                {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
     }
@@ -804,7 +809,7 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.wii_menu_boot);
     toggle("gc_bios", "GameCube Boot Animation (beta)",
            "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in "
-           "/data/porpoise/bios/USA, EUR or JAP. Porpoise includes none.",
+           "/data/porpoise/bios. Porpoise includes none.",
            &t.gc_bios);
     toggle("wii_online", "WiiConnect24 Channels (beta)",
            "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. Online play in games "
@@ -1153,6 +1158,20 @@ void App::build_settings()
         r.int_value = &version_pick_;
         r.action = kRowPickVersion;
         rows_.push_back(r);
+    }
+    {
+        /* The player's own GameCube BIOS, found by what is in it. */
+        std::string found;
+        for (const porpoise::bios::GameCubeBios &b : porpoise::bios::find_gamecube(data_dir_ + "/bios"))
+        {
+            const std::string one = (b.pal ? "PAL " : "NTSC ") + b.revision;
+            if (found.find(one) == std::string::npos)
+                found += (found.empty() ? "" : ", ") + one;
+        }
+        info("GameCube BIOS", found.empty() ? tr("None") : found,
+             "Your console's own BIOS (IPL.bin), for the GameCube Menu and the boot animation: put it in "
+             "/data/porpoise/bios, under any name. NTSC plays US and Japanese games, PAL European ones. Porpoise "
+             "includes none.");
     }
     /* Help and the community: the RIPALDA Discord (bug reports go there now),
      * with a code to scan beside it. */
@@ -1798,7 +1817,7 @@ bool App::applies_at_once(const std::string &key)
         "ui_theme",      "ui_palette",   "ui_font",         "ui_layout",      "lib_view",     "mc_view",
         "sc_games",      "ui_pointer",   "text_size",       "high_contrast",  "reduced_motion", "still_background",
         "big_prompts",   "colour_filter", "colour_filter_games", "border",    "screen_filter", "filter_strength",
-        "menu_music",    "menu_sounds",  "music_volume",    "sounds_volume"};
+        "menu_music",    "menu_sounds",  "music_volume",    "sounds_volume", "sound_set"};
     for (const char *k : kKeys)
         if (key == k)
             return true;

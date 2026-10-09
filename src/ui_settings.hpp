@@ -68,6 +68,7 @@ struct Settings
     bool menu_music = true;
     int music_volume = 4; /* 0..10: a quiet bed by default */
     bool menu_sounds = true;
+    int sound_set = 0;      /* the menus' sounds: porpoise_sfx::Set (0 Porpoise's own) */
     int sounds_volume = 8;
     /* Controls */
     /* 0 GameCube, 1 PlayStation, 2..5 the player's own layouts 1..4. */

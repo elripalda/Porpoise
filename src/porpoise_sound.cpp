@@ -42,6 +42,7 @@ struct Voice
 };
 
 Clip g_clips[int(Effect::Count)];
+Clip g_own[int(Effect::Count)]; /* the WAVs, kept for use_own_effects */
 Voice g_voices[kVoices];
 std::vector<unsigned char> g_music_file;
 stb_vorbis *g_music = nullptr;
@@ -111,7 +112,10 @@ bool load(const std::string &asset_dir)
                                                           "launch-game"};
     int ok = 0;
     for (int i = 0; i < int(Effect::Count); ++i)
+    {
         ok += load_wav(asset_dir + "/sounds/" + names[i] + ".wav", g_clips[i]) ? 1 : 0;
+        g_own[i] = g_clips[i];
+    }
     if (read_file(asset_dir + "/sounds/menu-music.ogg", g_music_file))
     {
         int error = 0;
@@ -159,6 +163,22 @@ void play(Effect e)
     }
     slot->clip = int(e);
     slot->at = 0;
+}
+
+void set_effect(Effect e, const std::vector<std::int16_t> &frames)
+{
+    for (Voice &v : g_voices)
+        if (v.clip == int(e))
+            v.clip = -1; /* the old one stops */
+    g_clips[int(e)].frames = frames;
+    if (g_clips[int(e)].frames.size() % 2)
+        g_clips[int(e)].frames.pop_back();
+}
+
+void use_own_effects()
+{
+    for (int i = 0; i < int(Effect::Count); ++i)
+        set_effect(Effect(i), g_own[i].frames);
 }
 
 void set_music(bool on, float volume)

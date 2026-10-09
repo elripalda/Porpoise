@@ -4152,7 +4152,7 @@
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
-  "en": "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in /data/porpoise/bios/USA, EUR or JAP. Porpoise includes none.",
+  "en": "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in /data/porpoise/bios. Porpoise includes none.",
   "section": "2.0: channels, sound, Wii options, About"
  },
  {
@@ -5538,5 +5538,121 @@
  {
   "en": "The whole description is on the back of the box (Triangle).",
   "section": "3.0: polish"
+ },
+ {
+  "en": "Change Disc",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Changing the disc…",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Disc changed.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Disc {n}",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "The disc couldn't be changed.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "That disc is already in the drive.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "GameCube BIOS",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "GameCube Menu",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Wii Menu",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Sound Set",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Soft",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Crisp",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Chiptune",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Glass",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Retro PC",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "How the menus sound. GameCube BIOS: your own console's BIOS's sounds, when it's in /data/porpoise/bios.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "No BIOS for This Disc's Region",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "No Disc",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "No GameCube BIOS Found",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "No Wii Menu Found",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Put your console's own BIOS (IPL.bin) in /data/porpoise/bios, under any name. Porpoise includes none.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Put your own Wii Menu's WAD, from your own console, with your games and start it once: Porpoise installs it. Porpoise includes none.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Start it with {game} in the disc drive, or with no disc?",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "The GameCube's own menu, from your console's BIOS, with or without a disc.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "This disc needs a PAL BIOS (European games). Yours is NTSC.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "This disc needs an NTSC BIOS (US and Japanese games). Yours is PAL.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "With This Disc",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Your console's own BIOS (IPL.bin), for the GameCube Menu and the boot animation: put it in /data/porpoise/bios, under any name. NTSC plays US and Japanese games, PAL European ones. Porpoise includes none.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
+ },
+ {
+  "en": "Your own Wii Menu, installed from your console, with or without a disc.",
+  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
  }
 ]

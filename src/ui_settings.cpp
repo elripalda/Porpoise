@@ -77,6 +77,7 @@ const Field kFields[] = {
     {"menu_music", nullptr, &Settings::menu_music, 0, 1},
     {"music_volume", &Settings::music_volume, nullptr, 0, 10},
     {"menu_sounds", nullptr, &Settings::menu_sounds, 0, 1},
+    {"sound_set", &Settings::sound_set, nullptr, 0, 6},
     {"sounds_volume", &Settings::sounds_volume, nullptr, 0, 10},
     {"button_layout", &Settings::button_layout, nullptr, 0, 5},
     {"invert_main", &Settings::invert_main, nullptr, 0, 3},

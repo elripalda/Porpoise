@@ -60,6 +60,10 @@ namespace
 {
 using porpoise::core::Paths;
 
+/* The core's disc control (RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE). */
+retro_disk_control_ext_callback g_disk{};
+bool g_has_disk = false;
+
 struct CoreApi
 {
     void (*init)();
@@ -584,7 +588,14 @@ bool environment(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_SET_CONTROLLER_INFO:
     case RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO:
     case RETRO_ENVIRONMENT_SET_MEMORY_MAPS:
+        return true;
     case RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE:
+        /* Kept for Change Disc (change_disc). */
+        if (data)
+        {
+            g_disk = *static_cast<const retro_disk_control_ext_callback *>(data);
+            g_has_disk = true;
+        }
         return true;
     /* Refused on purpose: the core then pushes audio itself each frame, paced
      * by the display (SET_AUDIO_CALLBACK, SET_FRAME_TIME_CALLBACK), reads files
@@ -1180,6 +1191,23 @@ void set_stick_invert(int main_stick, int c_stick)
     h.invert_c = c_stick;
 }
 
+bool change_disc(const char *path)
+{
+    if (!g_has_disk || !path || !*path || !g_disk.set_eject_state || !g_disk.get_num_images ||
+        !g_disk.add_image_index || !g_disk.replace_image_index || !g_disk.set_image_index)
+        return false;
+    /* Out, the new one in the list, in: as a frontend's disc menu does. */
+    if (!g_disk.get_eject_state || !g_disk.get_eject_state())
+        g_disk.set_eject_state(true);
+    const unsigned index = g_disk.get_num_images();
+    retro_game_info info{};
+    info.path = path;
+    const bool ok = g_disk.add_image_index() && g_disk.replace_image_index(index, &info) && g_disk.set_image_index(index);
+    g_disk.set_eject_state(false);
+    ps5::debug::mark(ok ? "core: disc changed" : "core: the disc couldn't be changed");
+    return ok;
+}
+
 void set_picture(int filter, float strength)
 {
     h.filter = filter;
@@ -1198,6 +1226,7 @@ std::string last_failure_reason()
 
 Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, const Playback &playback)
 {
+    g_has_disk = false; /* the core hands its disc control again as the game loads */
     const long long launch_ns = now_ns(); /* for the trace: how long each step of a launch takes */
     auto since_launch = [&](const char *what) { ps5::debug::mark_value(what, (now_ns() - launch_ns) / 1000000); };
     /* A fresh start: the previous game's core state is gone with its core. */

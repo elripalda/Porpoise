@@ -8,6 +8,7 @@
 #include "porpoise_states.hpp"
 #include "ui_widescreen.hpp"
 #include "ui_app.hpp"
+#include "porpoise_bios.hpp"
 
 #include <pthread.h>
 
@@ -461,7 +462,7 @@ App::Action App::update(const Input &in, double dt)
          * show at once behind the panel. */
         if (up || down)
         {
-            sort_row_ = (sort_row_ + (up ? 2 : 1)) % 3;
+            sort_row_ = (sort_row_ + (up ? 4 : 1)) % 5;
             sfx(Sound::MenuScroll);
         }
         const int step = left ? -1 : right ? +1 : 0;
@@ -481,6 +482,11 @@ App::Action App::update(const Input &in, double dt)
             sfx(Sound::LaunchGame);
             screen_ = Screen::Main;
             return Action::FetchCovers;
+        }
+        if (pressed(BtnCross) && sort_row_ >= 3)
+        {
+            screen_ = Screen::Main;
+            return console_menu(sort_row_ == 4);
         }
         if (pressed(BtnCross) && sort_row_ < 2)
         {
@@ -979,6 +985,8 @@ App::Action App::update_dialog(bool left, bool right)
             }
             return Action::None;
         }
+        if (kind == DialogKind::ConsoleMenu)
+            return start_console_menu(choice == 1 ? console_menu_disc_ : nullptr);
         if (kind == DialogKind::Resume && resume_game_)
         {
             /* Resume, or Start Over: the saved spot goes and the game boots afresh. */
@@ -1889,14 +1897,15 @@ void App::draw_sort()
 {
     Gfx &g = *g_;
     g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.55f), 1, 0);
-    const float w = 760, h = 440, x = 960 - w * 0.5f, y = 300;
+    const float w = 760, h = 624, x = 960 - w * 0.5f, y = 208;
     g.panel(x, y, w, h, rgba(0x13256F, 0.92f), 0.65f, kR, rgba(0x6FAEFF), 2.0f, 10, 0.25f);
     g.text_mid(Font::Bold, ts(36), x + 40, y + 62, kWhite, Align::Left, tr("Sort & Filter"));
     const std::string orders[4] = {tr("Title A-Z"), tr("Recently Played"), tr("Most Played"), tr("Favorites First")};
     const std::string shows[4] = {tr("All Games"), tr("GameCube"), tr("Wii"), tr("Channels")};
-    const std::string names[3] = {tr("Sort By"), tr("Show"), tr("Get Covers and Info Now")};
-    const std::string values[3] = {orders[int(lib_->sort_order())], shows[int(lib_->show())], ""};
-    for (int i = 0; i < 3; ++i)
+    const std::string names[5] = {tr("Sort By"), tr("Show"), tr("Get Covers and Info Now"), tr("GameCube Menu"),
+                                  tr("Wii Menu")};
+    const std::string values[5] = {orders[int(lib_->sort_order())], shows[int(lib_->show())], "", "", ""};
+    for (int i = 0; i < 5; ++i)
     {
         const float ry = y + 112 + i * 92, rh = 72, cy = ry + rh * 0.5f;
         const bool on = sort_row_ == i;
@@ -1919,11 +1928,14 @@ void App::draw_sort()
             g.glyph(Glyph::Cross, x + w - 90, cy, 34, kWhite);
     }
     g.text(Font::Regular, ts(22), 960, y + h - 34, kLavender, Align::Center,
-           sort_row_ == 2 ? tr("Downloads what's missing from GameTDB, and looks again for art it lacked.")
-           : revolution() ? tr("Left and right change it; Circle is done.")
-                          : tr("Changes show at once."));
+           sort_row_ == 2   ? tr("Downloads what's missing from GameTDB, and looks again for art it lacked.")
+           : sort_row_ == 3 ? tr("The GameCube's own menu, from your console's BIOS, with or without a disc.")
+           : sort_row_ == 4 ? tr("Your own Wii Menu, installed from your console, with or without a disc.")
+           : revolution()   ? tr("Left and right change it; Circle is done.")
+                            : tr("Changes show at once."));
     if (!revolution()) /* the home screen's bar has no room for the prompts */
-        draw_prompts({{Glyph::DPad, "Change"}, {Glyph::Cross, sort_row_ == 2 ? "Get" : "Next"}},
+        draw_prompts({{Glyph::DPad, "Change"},
+                      {Glyph::Cross, sort_row_ == 2 ? "Get" : sort_row_ >= 3 ? "Start" : "Next"}},
                      {{Glyph::Circle, "Done"}}, "");
 }
 
@@ -2727,6 +2739,103 @@ void App::draw_update_overlay(double time)
                tr("Keep Porpoise open until it's done."));
 }
 
+/* ---- the console's own menus ---------------------------------------------------------------- */
+
+bool App::wii_menu_installed() const
+{
+    struct stat st;
+    return stat((saves_dir_ + "/User/Wii/title/00000001/00000002/content/title.tmd").c_str(), &st) == 0;
+}
+
+App::Action App::console_menu(bool wii)
+{
+    auto &games = lib_->games();
+    const Game *sel = lib_->shown() > 0 ? &games[std::size_t(selected_)] : nullptr;
+    const bool disc = sel && sel->kind.empty() && sel->platform == (wii ? "Wii" : "GameCube");
+    console_menu_wii_ = wii;
+    console_menu_disc_ = nullptr;
+    if (wii)
+    {
+        if (!wii_menu_installed())
+        {
+            /* Its WAD in the library: started once, Dolphin installs it. */
+            for (Game &g : games)
+                if (g.format == "WAD" && g.title == "Wii Menu")
+                    return start_game(&g, "");
+            open_dialog(DialogKind::Info, tr("No Wii Menu Found"),
+                        tr("Put your own Wii Menu's WAD, from your own console, with your games and start it once: "
+                           "Porpoise installs it. Porpoise includes none."),
+                        "");
+            return Action::None;
+        }
+    }
+    else
+    {
+        const auto found = porpoise::bios::find_gamecube(data_dir_ + "/bios");
+        if (found.empty())
+        {
+            open_dialog(DialogKind::Info, tr("No GameCube BIOS Found"),
+                        tr("Put your console's own BIOS (IPL.bin) in /data/porpoise/bios, under any name. Porpoise "
+                           "includes none."),
+                        "");
+            return Action::None;
+        }
+    }
+    if (!disc)
+        return start_console_menu(nullptr);
+    console_menu_disc_ = sel;
+    open_dialog(DialogKind::ConsoleMenu, tr(wii ? "Wii Menu" : "GameCube Menu"),
+                trf("Start it with {game} in the disc drive, or with no disc?", {{"game", sel->title}}),
+                tr("With This Disc"));
+    dialog_.no = tr("No Disc");
+    dialog_.choice = 1;
+    return Action::None;
+}
+
+App::Action App::start_console_menu(const Game *disc)
+{
+    const bool wii = console_menu_wii_;
+    std::string region = "USA";
+    if (!wii)
+    {
+        /* The BIOS for the disc's region, else NTSC if there is one. */
+        const auto found = porpoise::bios::find_gamecube(data_dir_ + "/bios");
+        const bool disc_pal = disc && disc->region != "USA" && disc->region != "Japan" && disc->region != "Korea";
+        const bool pal = disc ? disc_pal : !porpoise::bios::for_region(found, false);
+        if (!porpoise::bios::for_region(found, pal))
+        {
+            open_dialog(DialogKind::Info, tr("No BIOS for This Disc's Region"),
+                        tr(pal ? "This disc needs a PAL BIOS (European games). Yours is NTSC."
+                               : "This disc needs an NTSC BIOS (US and Japanese games). Yours is PAL."),
+                        "");
+            return Action::None;
+        }
+        region = pal ? "Europe" : disc && (disc->region == "Japan" || disc->region == "Korea") ? "Japan" : "USA";
+    }
+    /* What the core boots (DolphinLibretro/Boot.cpp, ".porpoisemenu"): the
+     * menu, and the disc in its drive. */
+    const std::string dir = data_dir_ + "/menus";
+    mkdir(dir.c_str(), 0777);
+    const std::string path = dir + (wii ? "/wii-menu.porpoisemenu" : "/gamecube-menu.porpoisemenu");
+    std::FILE *f = std::fopen(path.c_str(), "w");
+    if (!f)
+        return Action::None;
+    const char *folder = region == "Europe" ? "EUR" : region == "Japan" ? "JAP" : "USA";
+    std::fprintf(f, "%s %s\n%s\n", wii ? "wii" : "gamecube", folder, disc ? disc->path.c_str() : "");
+    std::fclose(f);
+    console_menu_ = Game{};
+    console_menu_.path = path;
+    console_menu_.file = wii ? "wii-menu.porpoisemenu" : "gamecube-menu.porpoisemenu";
+    console_menu_.title = wii ? "Wii Menu" : "GameCube Menu";
+    console_menu_.platform = wii ? "Wii" : "GameCube";
+    console_menu_.kind = "Console Menu";
+    console_menu_.region = region;
+    sfx(Sound::LaunchGame);
+    launch_ = &console_menu_;
+    launch_state_.clear();
+    return Action::Launch;
+}
+
 /* ---- launch ------------------------------------------------------------------------------- */
 
 float App::launch_intro(double time) const
@@ -2744,7 +2853,7 @@ void App::begin_launch(Game *game)
     launch_status_ = "Loading Dolphin";
     launch_progress_ = -1;
     launch_start_ = time_;
-    if (game)
+    if (game && game->kind != "Console Menu") /* the console's menus aren't in the library */
         lib_->mark_played(*game);
 }
 

@@ -16,6 +16,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "porpoise_banner.hpp"
@@ -211,6 +212,9 @@ public:
     int update_game_menu(const Input &in, double dt);
     void draw_game_menu(double time);
     /* The key of a quick setting just changed in the menu ("" when none). */
+    /* Change Disc, chosen in the in-game menu: the disc's path, once. */
+    std::string take_disc_change() { return std::exchange(menu_disc_change_, std::string()); }
+    void menu_note(const std::string &note) { menu_note_ = note; menu_note_time_ = time_; }
     std::string take_menu_change()
     {
         std::string k;
@@ -388,6 +392,7 @@ private:
         RestartGame,     /* in a game: applied changes that need the game started again */
         CoversAgain,     /* every game's art downloaded again: Download, or Cancel */
         Wizard,          /* the first start's setup, one question a step (wizard_step_) */
+        ConsoleMenu,     /* the GameCube Menu or the Wii Menu: with the chosen disc, or none */
     };
     struct Dialog
     {
@@ -785,7 +790,15 @@ private:
     float right_x_ = 0;
     float layer_dx_ = 0, layer_dy_ = 0, layer_fade_ = 1; /* the screen's motion, this frame */
     bool details_custom_ = false; /* the game has its own settings */
-    int sort_row_ = 0;         /* Sort & filter: 0 sort, 1 show, 2 covers and info */
+    int sort_row_ = 0;         /* Sort & filter: 0 sort, 1 show, 2 covers and info, 3 GameCube Menu, 4 Wii Menu */
+    /* The console's own menus (Sort & Filter): the GameCube's from the
+     * player's BIOS, the Wii Menu from their NAND, with or without a disc. */
+    Game console_menu_;
+    const Game *console_menu_disc_ = nullptr;
+    bool console_menu_wii_ = false;
+    Action console_menu(bool wii);
+    Action start_console_menu(const Game *disc);
+    bool wii_menu_installed() const;
     void keep_selection(const std::string &key); /* after the order changed */
     void look_changed(int was);                 /* Settings > Interface > Look */
     void draw_revolution(double time);
@@ -899,7 +912,8 @@ private:
      * (menu_prompt_answer_ is how it was closing), 2 start the game over for
      * applied changes that need it. menu_prompt_choice_: 1 the first button. */
     int menu_prompt_ = 0, menu_prompt_choice_ = 1, menu_prompt_answer_ = 1;
-    bool menu_relaunch_ = false;   /* the game left to start afresh */
+    bool menu_relaunch_ = false;
+    std::string menu_disc_change_; /* take_disc_change */   /* the game left to start afresh */
     std::string menu_change_;
     int menu_tab_ = 0;   /* Game, Video, Graphics, Audio, Controls, Patches (and Achievements) */
     int menu_slot_ = 0;  /* the save-state slot under focus */

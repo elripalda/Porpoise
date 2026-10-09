@@ -63,6 +63,10 @@ int g_audio_preset = 0;
 bool g_sound_pulled = true;
 /* The game in the menu's ID: its graphics mods (porpoise_gfxmods). */
 std::string g_menu_game_id;
+/* Change Disc: the library's discs of the running game's console, its own
+ * other discs first, and the one chosen. */
+std::vector<std::string> g_menu_disc_titles, g_menu_disc_paths;
+int g_menu_disc = 0, g_menu_disc_in = 0;
 
 /* What a row does. */
 enum class Kind
@@ -82,6 +86,7 @@ enum class Kind
     Border,
     Info,  /* a fact to read (its help says more) */
     Cheat, /* one of the game's codes: on or off, from the next start */
+    Disc,  /* Change Disc: another of the library's discs into the drive */
 };
 
 struct Row
@@ -115,6 +120,8 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         r.push_back({Kind::Resume, "", "Resume"});
         r.push_back({Kind::Save, "", "Save State\xE2\x80\xA6"});
         r.push_back({Kind::Load, "", "Load State\xE2\x80\xA6"});
+        if (g_menu_disc_titles.size() > 1)
+            r.push_back({Kind::Disc, "", "Change Disc", &g_menu_disc, nullptr, 0});
         r.push_back({Kind::FastForward, "", "Fast Forward"});
         r.push_back({Kind::Restart, "", "Start Over"});
         r.push_back({Kind::Library, "", "Quit to Library", nullptr, nullptr, 0, {}, true});
@@ -122,8 +129,7 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
         break;
     case kTabVideo:
         r.push_back({Kind::Int, "resolution", "Internal Resolution", &p.resolution, nullptr, 1,
-                     {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p) \xE2\x80\xA2 exp.", "5x (1800p) \xE2\x80\xA2 exp.",
-                      "6x (4K) \xE2\x80\xA2 exp."}});
+                     {"1x (480p)", "2x (720p)", "3x (1080p)", "4x (1440p)", "5x (1800p)", "6x (4K)"}});
         r.push_back({Kind::Int, "wide", "Widescreen", &p.wide, nullptr, 0, {"Auto", "On", "Off"}});
         r.push_back({Kind::Int, "aspect", "Aspect Ratio", &p.aspect, nullptr, 0,
                      {"Auto", "Force 16:9", "Force 4:3", "Stretch to Fill"}});
@@ -515,6 +521,34 @@ void App::open_game_menu(Game *game, Settings *play)
     menu_busy_ = {};
     menu_busy_handed_ = false;
     menu_borders_ = porpoise::borders::list();
+    {
+        /* Change Disc: the game's own other discs, then the rest of its
+         * console's discs; the one in the drive chosen. */
+        g_menu_disc_titles.clear();
+        g_menu_disc_paths.clear();
+        g_menu_disc = g_menu_disc_in = 0;
+        const std::string &platform = game ? game->platform : std::string();
+        auto add = [&](const Game &g) {
+            if (std::find(g_menu_disc_paths.begin(), g_menu_disc_paths.end(), g.path) != g_menu_disc_paths.end())
+                return;
+            std::string title = g.title;
+            if (g.disc_number > 0 || (game && g.id == game->id && !g.id.empty()))
+                title += "  \xE2\x80\xA2  " + trf("Disc {n}", {{"n", std::to_string(g.disc_number + 1)}});
+            g_menu_disc_titles.push_back(title);
+            g_menu_disc_paths.push_back(g.path);
+        };
+        if (game && lib_ && (game->kind.empty() || game->kind == "Console Menu"))
+        {
+            if (game->kind.empty())
+                add(*game);
+            for (const Game &g : lib_->games())
+                if (g.kind.empty() && g.platform == platform && !game->id.empty() && g.id == game->id)
+                    add(g);
+            for (const Game &g : lib_->games())
+                if (g.kind.empty() && g.platform == platform && g_menu_disc_paths.size() < 400)
+                    add(g);
+        }
+    }
     if (menu_wide_open_ == -2) /* the first pause of this run */
         menu_wide_open_ = play ? play->wide : -1;
     /* The Patches tab: the game's codes and their switches as it has them. */
@@ -849,6 +883,29 @@ int App::update_game_menu(const Input &in, double dt)
                     }
             }
             sfx(Sound::DetailsFlip);
+        }
+        break;
+    case Kind::Disc:
+        if (left || right)
+        {
+            const int n = int(g_menu_disc_titles.size());
+            g_menu_disc = (g_menu_disc + (left ? n - 1 : 1)) % std::max(1, n);
+            sfx(Sound::MenuScroll);
+        }
+        else if (cross && g_menu_disc >= 0 && g_menu_disc < int(g_menu_disc_paths.size()))
+        {
+            if (g_menu_disc == g_menu_disc_in && menu_game_ && menu_game_->kind.empty())
+            {
+                menu_note_ = tr("That disc is already in the drive.");
+                menu_note_time_ = time_;
+                sfx(Sound::MovingTab);
+                break;
+            }
+            menu_disc_change_ = g_menu_disc_paths[std::size_t(g_menu_disc)];
+            g_menu_disc_in = g_menu_disc;
+            menu_note_ = tr("Changing the disc\xE2\x80\xA6");
+            menu_note_time_ = time_;
+            sfx(Sound::LaunchGame);
         }
         break;
     case Kind::FastForward:
@@ -1379,6 +1436,10 @@ void App::draw_game_menu(double time)
             break;
         case Kind::FastForward:
             value = menu_ff_ == 0 ? tr("Off") : menu_ff_ == 1 ? "2x" : "4x";
+            break;
+        case Kind::Disc:
+            if (g_menu_disc >= 0 && g_menu_disc < int(g_menu_disc_titles.size()))
+                value = g_menu_disc_titles[std::size_t(g_menu_disc)];
             break;
         case Kind::SaveSetup:
         case Kind::UseSetup:

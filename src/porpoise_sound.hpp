@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace porpoise::sound
 {
@@ -22,6 +23,11 @@ enum class Effect
 /* Loads <assets>/sounds/: the effects (48 kHz stereo WAV) and the music (Ogg). */
 bool load(const std::string &asset_dir);
 void play(Effect e);
+/* An effect's sound in place of its own (48 kHz interleaved stereo); a sound
+ * set (porpoise_sfx). */
+void set_effect(Effect e, const std::vector<std::int16_t> &frames);
+/* Back to the effects load() read: Porpoise's own. */
+void use_own_effects();
 /* A Wii disc's banner jingle (48 kHz stereo frames, copied); null stops it.
  * The music steps back while it plays. */
 void play_jingle(const std::int16_t *frames, std::size_t count);

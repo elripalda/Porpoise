@@ -38,6 +38,8 @@
 #include "memory_diagnostics.hpp"
 #include "porpoise_audio.hpp"
 #include "porpoise_gfxmods.hpp"
+#include "porpoise_bios.hpp"
+#include "porpoise_sfx.hpp"
 #include "porpoise_borders.hpp"
 #include "porpoise_atomic.hpp"
 #include "porpoise_forwarders.hpp"
@@ -793,28 +795,25 @@ void fetch_covers(bool force = false)
     }
 }
 
-/* The player's own GameCube BIOS for a game's region, from <data>/bios/<USA|EUR|JAP>/IPL.bin,
- * copied to where Dolphin looks for it. Porpoise ships none. */
-bool install_ipl(const porpoise::ui::Game &game)
+/* The player's own GameCube BIOS for a region, found in <data>/bios by what
+ * is in it (porpoise_bios: any name, in the folder or one inside it, the old
+ * USA / EUR / JAP folders too), copied to where Dolphin looks for it
+ * (User/GC/<USA|EUR|JAP>/IPL.bin). An NTSC BIOS serves US and Japanese games,
+ * a PAL one European games. Porpoise ships none. */
+bool install_ipl_for(const std::string &region)
 {
-    const std::string region = game.region == "USA"                               ? "USA"
-                               : game.region == "Japan" || game.region == "Korea" ? "JAP"
-                                                                                  : "EUR";
     const std::string to_dir = g_saves_path + "/User/GC/" + region, to = to_dir + "/IPL.bin";
     struct stat src_st, dst_st;
-    /* Only from the region's own folder: a BIOS of another region boots the
-     * wrong video mode. */
-    const std::string from = g_data + "/bios/" + region + "/IPL.bin";
-    if (stat(from.c_str(), &src_st) != 0)
+    const auto found = porpoise::bios::find_gamecube(g_data + "/bios");
+    const porpoise::bios::GameCubeBios *bios = porpoise::bios::for_region(found, region == "EUR");
+    if (!bios || stat(bios->path.c_str(), &src_st) != 0)
         return stat(to.c_str(), &dst_st) == 0; /* one already in place */
-    if (src_st.st_size < (1 << 20) || src_st.st_size > (4 << 20))
-        return false; /* a GameCube BIOS is 2 MiB */
     if (stat(to.c_str(), &dst_st) == 0 && dst_st.st_size == src_st.st_size && dst_st.st_mtime >= src_st.st_mtime)
         return true; /* the same one, already copied */
     mkdir((g_saves_path + "/User").c_str(), 0777);
     mkdir((g_saves_path + "/User/GC").c_str(), 0777);
     mkdir(to_dir.c_str(), 0777);
-    std::FILE *in = std::fopen(from.c_str(), "rb");
+    std::FILE *in = std::fopen(bios->path.c_str(), "rb");
     std::FILE *out = in ? std::fopen(to.c_str(), "wb") : nullptr;
     bool ok = in && out;
     char buf[65536];
@@ -827,6 +826,19 @@ bool install_ipl(const porpoise::ui::Game &game)
         ok = std::fclose(out) == 0 && ok;
     ps5::debug::mark(ok ? ("main: GameCube BIOS in place for " + region).c_str() : "main: couldn't copy the BIOS");
     return ok;
+}
+
+/* A game's region folder: USA, JAP (Japan, Korea) or EUR. */
+std::string ipl_region(const porpoise::ui::Game &game)
+{
+    return game.region == "USA"                               ? "USA"
+           : game.region == "Japan" || game.region == "Korea" ? "JAP"
+                                                              : "EUR";
+}
+
+bool install_ipl(const porpoise::ui::Game &game)
+{
+    return install_ipl_for(ipl_region(game));
 }
 
 /* The search for games runs on its own thread: a big or slow drive (a
@@ -999,10 +1011,48 @@ void apply_game_controls(bool wii_game)
     porpoise::pad::set_trigger_feel(gamecube_triggers ? g_play.trigger_feel : 0);
 }
 
+/* Settings > Audio > Sound Set: the menus' effects, made in code
+ * (porpoise_sfx) or read from the player's own GameCube BIOS. A set that
+ * changes plays a step of itself, so it can be heard as it's chosen. */
+bool g_sounds_ready = false; /* porpoise::sound::load has run */
+
+void apply_sound_set(int set)
+{
+    static int current = -1;
+    if (!g_sounds_ready || set == current)
+        return;
+    const bool first = current < 0;
+    current = set;
+    std::vector<std::int16_t> clips[5];
+    bool made = false;
+    if (set == porpoise::sfx::Console)
+    {
+        const auto found = porpoise::bios::find_gamecube(g_data + "/bios");
+        const porpoise::bios::GameCubeBios *bios = porpoise::bios::for_region(found, false);
+        if (!bios)
+            bios = porpoise::bios::for_region(found, true);
+        made = bios && porpoise::sfx::from_bios(bios->path, clips);
+        ps5::debug::mark(made ? "main: menu sounds from the player's GameCube BIOS" : "main: no GameCube BIOS sounds");
+    }
+    else if (set > porpoise::sfx::Own && set < porpoise::sfx::SetCount)
+    {
+        porpoise::sfx::make(porpoise::sfx::Set(set), clips);
+        made = true;
+    }
+    if (made)
+        for (int i = 0; i < 5; ++i)
+            porpoise::sound::set_effect(porpoise::sound::Effect(i), clips[i]);
+    else
+        porpoise::sound::use_own_effects();
+    if (!first)
+        porpoise::sound::play(porpoise::sound::Effect::GameRow);
+}
+
 void apply_settings()
 {
     porpoise::sound::set_music(g_settings.menu_music, g_settings.music_volume / 10.0f);
     porpoise::sound::set_effects(g_settings.menu_sounds, g_settings.sounds_volume / 10.0f);
+    apply_sound_set(g_settings.sound_set);
     porpoise::pad::set_mapping(g_settings.mapping());
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
     porpoise::pad::set_fast_forward_buttons(g_settings.ff_buttons);
@@ -1205,6 +1255,13 @@ int menu_paused(void *)
             porpoise::pad::set_rumble_enabled(g_play.rumble);
         apply_game_controls(porpoise::pad::wii().active);
     }
+    }
+    /* Change Disc, asked for in the menu: done here, as a frontend's disc
+     * menu does, with the game paused. */
+    if (const std::string disc = g_app.take_disc_change(); !disc.empty())
+    {
+        const bool ok = porpoise::core::change_disc(disc.c_str());
+        g_app.menu_note(ok ? porpoise::ui::tr("Disc changed.") : porpoise::ui::tr("The disc couldn't be changed."));
     }
     /* Save states, asked for in the menu, done here on the core's thread. */
     const porpoise::ui::App::MenuRequest request = g_app.take_menu_request();
@@ -2279,6 +2336,8 @@ int main(int argc, char **argv)
 #endif
     porpoise::banner::set_cache_dir(g_data + "/banners");
     porpoise::sound::load(PORPOISE_APP "/assets");
+    g_sounds_ready = true;
+    apply_sound_set(g_settings.sound_set);
     porpoise::states::set_data_dir(g_data);
     porpoise::borders::set_dirs(PORPOISE_APP "/assets", g_data);
     porpoise::ui::setups::set_dir(g_data);
@@ -2623,9 +2682,18 @@ int main(int argc, char **argv)
         g_controller_speakers = controller_speakers;
         porpoise::audio::set_buffer(g_play.audio_buffer);
         porpoise::audio::set_stretching(g_play.audio_stretch);
+        /* The console's own menus (Sort & Filter): nothing of a game's own,
+         * no quick resume; the GameCube's from the player's BIOS, in place. */
+        const bool console_menu = launch->kind == "Console Menu";
+        if (console_menu)
+        {
+            g_play.quick_resume = false;
+            if (launch->platform == "GameCube" && !install_ipl(*launch))
+                ps5::debug::mark("main: the GameCube Menu, but no BIOS could be put in place");
+        }
         /* The GameCube's start-up: only from the player's own BIOS, put where
          * Dolphin looks for the game's region; without one, straight in. */
-        if (g_play.gc_bios && launch->platform != "Wii" && !install_ipl(*launch))
+        if (!console_menu && g_play.gc_bios && launch->platform != "Wii" && !install_ipl(*launch))
         {
             g_play.gc_bios = false;
             g_play.write_core_options(g_options_path); /* straight into the game after all */
@@ -2811,7 +2879,7 @@ int main(int argc, char **argv)
         porpoise::speaker::close_ports();
         keep_cores(false);
         /* Play time: the whole visit, loading included, as consoles count it. */
-        if (exit != porpoise::core::Exit::Failed)
+        if (exit != porpoise::core::Exit::Failed && !console_menu)
             g_library.add_play_time(*launch, (now_ns() - played_from) / 1000000000LL);
         porpoise::states::wait(); /* a save still being written */
         g_playing = nullptr;
