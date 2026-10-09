@@ -755,6 +755,31 @@
       "modifications": "Unmodified. Upstream: https://github.com/nothings/stb."
     },
     {
+      "id": "amd-fsr1",
+      "name": "AMD FidelityFX Super Resolution 1.0 upscaler (EASU), the FSR 1 screen filter",
+      "kind": "code",
+      "always": true,
+      "artifacts": [
+        "eboot.bin"
+      ],
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2021 Advanced Micro Devices, Inc. All rights reserved."
+      ],
+      "texts": [
+        {
+          "from": "third_party/fsr1/LICENSE.txt",
+          "to": "LICENSE.txt"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/tree/{rev}/shaders/quad.frag"
+      },
+      "modifications": "Its edge-adaptive upscaler (EASU) ported to GLSL in shaders/quad.frag, sampling the game's picture directly; FSR's sharpening pass replaced by Porpoise's own. Upstream: https://github.com/GPUOpen-Effects/FidelityFX-FSR."
+    },
+    {
       "id": "wii-banner-player",
       "name": "Wii Banner Player (how Porpoise plays a Wii disc's banner, in altered form)",
       "kind": "code",
