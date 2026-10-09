@@ -1443,7 +1443,7 @@ index 871bb3f615..bad7c5d42a 100644
  #endif
  }
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit.cpp b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
-index 1248b1ab01..6ef7c77954 100644
+index 1248b1ab01..9d56527010 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit.cpp
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
 @@ -2,6 +2,7 @@
@@ -1462,7 +1462,18 @@ index 1248b1ab01..6ef7c77954 100644
  #include "Common/Logging/Log.h"
  #include "Common/Swap.h"
  #include "Common/x64ABI.h"
-@@ -262,7 +264,7 @@ void Jit64::Init()
+@@ -49,6 +51,10 @@
+ #include "Core/System.h"
+ 
+ using namespace Gen;
++
++bool PorpoiseTolerant(const PPCAnalyst::CodeOp& op);
++bool PorpoiseFullWrite(const PPCAnalyst::CodeOp& op);
++bool PorpoiseExitLike(const PPCAnalyst::CodeOp& op);
+ using namespace PowerPC;
+ 
+ // Dolphin's PowerPC->x86_64 JIT dynamic recompiler
+@@ -262,7 +268,7 @@ void Jit64::Init()
    EnableBlockLink();
  
    jo.optimizeGatherPipe = true;
@@ -1471,7 +1482,7 @@ index 1248b1ab01..6ef7c77954 100644
    js.fastmemLoadStore = nullptr;
    js.compilerPC = 0;
  
-@@ -734,6 +736,19 @@ void Jit64::WriteExternalExceptionExit()
+@@ -734,6 +740,19 @@ void Jit64::WriteExternalExceptionExit()
  void Jit64::Run()
  {
    ProtectStack();
@@ -1491,8 +1502,263 @@ index 1248b1ab01..6ef7c77954 100644
    m_system.GetJitInterface().UpdateMembase();
  
    CompiledCode pExecAddr = (CompiledCode)asm_routines.enter_code;
+@@ -992,6 +1011,8 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+     IntializeSpeculativeConstants();
+   }
+ 
++  PorpoisePlan(code_block.m_num_instructions);
++
+   // Translate instructions
+   for (u32 i = 0; i < code_block.m_num_instructions; i++)
+   {
+@@ -1035,6 +1056,7 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+       // asynchronous.
+       if (gatherPipeIntCheck)
+       {
++        PorpoiseRound(m_porpoise_dirty);
+         TEST(32, PPCSTATE(Exceptions), Imm32(EXCEPTION_EXTERNAL_INT));
+         FixupBranch extException = J_CC(CC_NZ, Jump::Near);
+ 
+@@ -1064,6 +1086,11 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+       }
+     }
+ 
++    if (m_porpoise_dirty &&
++        HLE::TryReplaceFunction(m_ppc_symbol_db, op.address, PowerPC::CoreMode::JIT))
++    {
++      PorpoiseRound(m_porpoise_dirty);
++    }
+     if (HandleFunctionHooking(op.address))
+       break;
+ 
+@@ -1079,6 +1106,24 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+     }
+     else
+     {
++      if (m_porpoise_plan && m_porpoise_dirty)
++      {
++        BitSet32 need;
++        if (PorpoiseExitLike(op))
++          need |= PorpoiseExitNeed(op);
++        // An exit compiled together with this op (a compare and its branch).
++        if (i + 1 < code_block.m_num_instructions && !PorpoiseTolerant(op) &&
++            PorpoiseExitLike(m_code_buffer[i + 1]))
++        {
++          need |= PorpoiseExitNeed(m_code_buffer[i + 1]);
++        }
++        if (!PorpoiseTolerant(op))
++          need |= op.fregsIn;
++        if (!PorpoiseFullWrite(op))
++          need |= op.GetFregsOut();
++        PorpoiseRound(need & m_porpoise_dirty);
++      }
++
+       auto& cpu = m_system.GetCPU();
+       auto& power_pc = m_system.GetPowerPC();
+       if (IsDebuggingEnabled() && power_pc.GetBreakPoints().IsAddressBreakPoint(op.address) &&
+@@ -1240,6 +1285,15 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+       gpr.Flush(~op.gprWillBeWritten & op.regsOut, RegCache::FlushMode::Undirty);
+       fpr.Flush(~op.fprWillBeWritten & op.GetFregsOut(), RegCache::FlushMode::Undirty);
+ 
++      if (m_porpoise_plan)
++      {
++        if (op.porpoiseDefer)
++          m_porpoise_dirty |= op.GetFregsOut();
++        else
++          m_porpoise_dirty &= ~op.GetFregsOut();
++        m_porpoise_dirty &= ~op.fprDiscardable;
++      }
++
+       if (opinfo->flags & FL_LOADSTORE)
+         ++js.numLoadStoreInst;
+ 
+@@ -1260,6 +1314,7 @@ bool Jit64::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
+ 
+   if (code_block.m_broken)
+   {
++    PorpoiseRound(m_porpoise_dirty);
+     gpr.Flush();
+     fpr.Flush();
+     WriteExit(nextPC);
+@@ -1386,6 +1441,157 @@ void Jit64::FlushRegistersBeforeSlowAccess()
+   }
+ }
+ 
++// Porpoise 3.0: deferred paired-single rounding.
++//
++// The GameCube rounds every paired-single result to single precision; Dolphin does it after each
++// op, and in long chains of paired math (skinning, matrix work) that rounding is most of the
++// time. A result read only by more paired math or by a paired store (which rounds as it stores)
++// can stay unrounded until something else reads it; it is rounded before any other reader,
++// before every exit from the block, and before anything that can leave the block and come back.
++static bool PorpoisePairedArith(UGeckoInstruction inst)
++{
++  if (inst.OPCD != 4)
++    return false;
++  switch (inst.SUBOP5)
++  {
++  case 10:  // ps_sum0
++  case 11:  // ps_sum1
++  case 12:  // ps_muls0
++  case 13:  // ps_muls1
++  case 14:  // ps_madds0
++  case 15:  // ps_madds1
++  case 18:  // ps_div
++  case 20:  // ps_sub
++  case 21:  // ps_add
++  case 25:  // ps_mul
++  case 28:  // ps_msub
++  case 29:  // ps_madd
++  case 30:  // ps_nmsub
++  case 31:  // ps_nmadd
++    return true;
++  default:
++    return false;
++  }
++}
++
++// Reads its inputs without needing them rounded first.
++bool PorpoiseTolerant(const PPCAnalyst::CodeOp& op)
++{
++  const UGeckoInstruction inst = op.inst;
++  if (inst.OPCD == 60 || inst.OPCD == 61)  // psq_st, psq_stu
++    return true;
++  if (inst.OPCD == 4 && (inst.SUBOP6 == 7 || inst.SUBOP6 == 39))  // psq_stx, psq_stux
++    return true;
++  return PorpoisePairedArith(inst);
++}
++
++// Overwrites both halves of its output register.
++bool PorpoiseFullWrite(const PPCAnalyst::CodeOp& op)
++{
++  const UGeckoInstruction inst = op.inst;
++  switch (inst.OPCD)
++  {
++  case 4:   // paired singles, psq_lx, psq_lux
++  case 56:  // psq_l
++  case 57:  // psq_lu
++  case 59:  // single-precision math (both halves)
++  case 48:  // lfs
++  case 49:  // lfsu
++    return true;
++  case 31:
++    return inst.SUBOP10 == 535 || inst.SUBOP10 == 567;  // lfsx, lfsux
++  default:
++    return false;
++  }
++}
++
++// Leaves the block (or may), or depends on FPSCR / machine state.
++bool PorpoiseExitLike(const PPCAnalyst::CodeOp& op)
++{
++  if (op.skip)
++    return false;
++  switch (op.opinfo->type)
++  {
++  case OpType::Branch:
++  case OpType::System:
++  case OpType::SystemFP:
++  case OpType::Unknown:
++  case OpType::Invalid:
++  case OpType::InstructionCache:
++    return true;
++  default:
++    break;
++  }
++  return (op.opinfo->flags & FL_ENDBLOCK) != 0 || op.canEndBlock;
++}
++
++static bool PorpoiseSelfLoop(const PPCAnalyst::CodeOp& op, u32 block_start)
++{
++  return !op.skip && op.inst.OPCD == 16 && !op.inst.LK && op.branchTo == block_start;
++}
++
++BitSet32 Jit64::PorpoiseExitNeed(const PPCAnalyst::CodeOp& op) const
++{
++  // Back to this block's start: what the start overwrites before reading can stay as it is.
++  if (PorpoiseSelfLoop(op, js.blockStart))
++    return m_porpoise_dirty & ~m_porpoise_tol_entry;
++  return m_porpoise_dirty;
++}
++
++void Jit64::PorpoisePlan(u32 count)
++{
++  m_porpoise_plan = m_fast_paired_rounding && jo.accurateSinglePrecision && !jo.memcheck &&
++                    !jo.fp_exceptions && !bJITRegisterCacheOff;
++  m_porpoise_dirty = BitSet32();
++  m_porpoise_tol_entry = BitSet32();
++  for (u32 i = 0; i < count; i++)
++  {
++    PPCAnalyst::CodeOp& op = m_code_buffer[i];
++    op.porpoiseDefer = m_porpoise_plan && PorpoisePairedArith(op.inst) && op.inst.SUBOP5 != 18 &&
++                       !op.inst.Rc && !(m_fprf && op.wantsFPRF) && op.fregOut >= 0;
++  }
++  if (!m_porpoise_plan)
++    return;
++
++  // Which registers the block's start overwrites before any other reader or any exit.
++  BitSet32 tol;
++  bool self_loop = false;
++  for (u32 n = count; n-- > 0;)
++  {
++    const PPCAnalyst::CodeOp& op = m_code_buffer[n];
++    if (op.skip)
++      continue;
++    if (PorpoiseExitLike(op))
++    {
++      tol = BitSet32();
++      self_loop |= PorpoiseSelfLoop(op, js.blockStart);
++      continue;
++    }
++    if (PorpoiseFullWrite(op))
++      tol |= op.GetFregsOut();
++    else
++      tol &= ~op.GetFregsOut();
++    if (!PorpoiseTolerant(op))
++      tol &= ~op.fregsIn;
++  }
++  m_porpoise_tol_entry = tol;
++  // Coming back around a loop, those registers may still be unrounded.
++  if (self_loop)
++    m_porpoise_dirty = tol;
++}
++
++void Jit64::PorpoiseRound(BitSet32 regs)
++{
++  for (int r : regs)
++  {
++    RCX64Reg reg = fpr.Bind(r, RCMode::ReadWrite);
++    RegCache::Realize(reg);
++    CVTPD2PS(reg, R(reg));
++    CVTPS2PD(reg, R(reg));
++  }
++  m_porpoise_dirty &= ~regs;
++}
++
+ bool Jit64::HandleFunctionHooking(u32 address)
+ {
+   const auto result = HLE::TryReplaceFunction(m_ppc_symbol_db, address, PowerPC::CoreMode::JIT);
+diff --git a/Source/Core/Core/PowerPC/Jit64/Jit.h b/Source/Core/Core/PowerPC/Jit64/Jit.h
+index da1be2db04..ab36c8eea6 100644
+--- a/Source/Core/Core/PowerPC/Jit64/Jit.h
++++ b/Source/Core/Core/PowerPC/Jit64/Jit.h
+@@ -277,6 +277,14 @@ private:
+ 
+   bool HandleFunctionHooking(u32 address);
+ 
++  // Porpoise 3.0: deferred paired-single rounding (Fast float math).
++  void PorpoisePlan(u32 count);
++  void PorpoiseRound(BitSet32 regs);
++  BitSet32 PorpoiseExitNeed(const PPCAnalyst::CodeOp& op) const;
++  bool m_porpoise_plan = false;
++  BitSet32 m_porpoise_dirty;
++  BitSet32 m_porpoise_tol_entry;
++
+   void FreeRanges();
+   void ResetFreeMemoryRanges();
+ 
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
-index 86f9e49178..6ea09d7b75 100644
+index 86f9e49178..fb324107bf 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
 @@ -50,7 +50,8 @@ void Jit64::SetFPRFIfNeeded(const OpArg& input, bool single)
@@ -1500,8 +1766,8 @@ index 86f9e49178..6ea09d7b75 100644
  {
    // Most games don't need these. Zelda requires it though - some platforms get stuck without them.
 -  if (jo.accurateSinglePrecision)
-+  // Porpoise 3.0: FastPairedRounding leaves paired-single results (ps_*) as computed.
-+  if (jo.accurateSinglePrecision && !(m_fast_paired_rounding && js.op && js.op->inst.OPCD == 4))
++  // Porpoise 3.0: a deferred paired-single result is rounded where it is read (PorpoisePlan).
++  if (jo.accurateSinglePrecision && !(js.op && js.op->porpoiseDefer))
    {
      if (packed)
      {
@@ -1510,12 +1776,12 @@ index 86f9e49178..6ea09d7b75 100644
    const bool madds1 = inst.SUBOP5 == 15;
    const bool single = inst.OPCD == 4 || inst.OPCD == 59;
 -  const bool round_input = single && !js.op->fprIsSingle[c];
-+  const bool round_input = single && !js.op->fprIsSingle[c] && !(m_fast_paired_math && inst.OPCD == 4);
++  const bool round_input = single && !js.op->fprIsSingle[c] && !js.op->porpoiseDefer;
  
    const bool error_free_transformation = single && m_accurate_fmadds;
    const bool packed =
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
-index 2e1b05cb42..afc7fde3b4 100644
+index 2e1b05cb42..b99786cdce 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
 @@ -79,7 +79,7 @@ void Jit64::ps_muls(UGeckoInstruction inst)
@@ -1523,7 +1789,7 @@ index 2e1b05cb42..afc7fde3b4 100644
    int a = inst.FA;
    int c = inst.FC;
 -  bool round_input = !js.op->fprIsSingle[c];
-+  bool round_input = !js.op->fprIsSingle[c] && !m_fast_paired_math;
++  bool round_input = !js.op->fprIsSingle[c] && !js.op->porpoiseDefer;
  
    RCOpArg Ra = fpr.Use(a, RCMode::Read);
    RCOpArg Rc = fpr.Use(c, RCMode::Read);
@@ -1629,6 +1895,19 @@ index f229be35f2..5363634406 100644
      exception_addresses->insert(ppc_state.pc);
  
      // Invalidate the JIT block so that it gets recompiled with the external exception check
+diff --git a/Source/Core/Core/PowerPC/PPCAnalyst.h b/Source/Core/Core/PowerPC/PPCAnalyst.h
+index f9081bae93..501a3266f7 100644
+--- a/Source/Core/Core/PowerPC/PPCAnalyst.h
++++ b/Source/Core/Core/PowerPC/PPCAnalyst.h
+@@ -76,6 +76,8 @@ struct CodeOp  // 16B
+   // denormals and SNaNs being preserved as long as no arithmetic operation is performed on them.)
+   BitSet32 fprIsStoreSafeBeforeInst;
+   BitSet32 fprIsStoreSafeAfterInst;
++  // Porpoise: a paired-single result left unrounded (rounded later, where it is read).
++  bool porpoiseDefer = false;
+ 
+   BitSet32 GetFregsOut() const
+   {
 diff --git a/Source/Core/DolphinLibretro/Achievements.cpp b/Source/Core/DolphinLibretro/Achievements.cpp
 new file mode 100644
 index 0000000000..db6cdbdacd
@@ -1946,7 +2225,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..1e87f3f8c0 100644
+index c53281053f..64622736bd 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2031,7 +2310,7 @@ index c53281053f..1e87f3f8c0 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,20 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,22 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -2041,18 +2320,20 @@ index c53281053f..1e87f3f8c0 100644
 +  {
 +    // Porpoise 3.0: fast float math, the game's own choice.
 +    const bool fast = Libretro::GetOption<bool>(core::FAST_FLOAT_MATH, /*def=*/false);
-+    // Paired-single math only (FastPairedMath, FastPairedRounding): with every
-+    // single-precision result unrounded (FastSinglePrecision), Mario Superstar
-+    // Baseball ran at twice the speed but stopped progressing.
-+    Config::SetBase(Config::MAIN_FAST_PAIRED_MATH, fast);
++    // Paired-single results stay unrounded only while paired math and paired
++    // stores read them; anything else that reads them, and every exit from a
++    // block, gets them rounded first (Jit64::PorpoisePlan). Leaving every result
++    // unrounded ran Mario Superstar Baseball twice as fast but froze it.
 +    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, fast);
-+    NOTICE_LOG_FMT(BOOT, "Fast float math = {}", fast ? "Yes" : "No");
++    // Quantizer guesses retried: off, Dolphin's own behavior.
++    Config::SetBase(Config::MAIN_PAIRED_QUANTIZE_RETRIES, fast ? 8 : 0);
++    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (deferred paired rounding)", fast ? "Yes" : "No");
 +  }
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +551,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +553,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -2065,7 +2346,7 @@ index c53281053f..1e87f3f8c0 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +707,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +709,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -2076,7 +2357,7 @@ index c53281053f..1e87f3f8c0 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +802,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +804,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2089,7 +2370,7 @@ index c53281053f..1e87f3f8c0 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +875,7 @@ void retro_unload_game(void)
+@@ -804,6 +877,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }

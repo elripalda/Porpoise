@@ -1117,7 +1117,7 @@ void App::build_settings()
            &draft_.big_prompts);
 
     header("About");
-    info("Porpoise", build_label(), "A GameCube and Wii emulator for PS5, powered by Dolphin.");
+    info("Porpoise (DolphinPS5)", build_label(), "A GameCube and Wii emulator for PS5, powered by Dolphin.");
     {
         SettingRow r;
         r.section = section;
