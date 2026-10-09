@@ -763,10 +763,12 @@ void App::add_game_rows(Settings &t, bool per_game)
     header("System");
     choice("cpu_clock", "CPU clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
            &t.cpu_clock, 0, {"50%", "60%", "70%", "80%", "90%", "100%", "150%", "200%", "250%", "300%"});
-    toggle("keep_speed", "Keep full speed (beta)",
-           "When the emulated console can't keep up, frames are skipped instead of the game slowing down: the "
-           "game runs at full speed, a little less smoothly. For heavy games that run below 60 fps.",
-           &t.keep_speed);
+    toggle("fast_float", "Fast float math (beta)",
+           "The emulated processor's single-precision math isn't rounded after every step, as Dolphin does on "
+           "a PC to match the console exactly. Up to twice as fast in games heavy on 3D math, like Mario "
+           "Superstar Baseball. If a game freezes, glitches or behaves oddly, turn it off. Applies when the "
+           "game starts.",
+           &t.fast_float);
     toggle("dual_core", "Dual core", "Faster. Turn it off for a game that freezes or glitches.", &t.dual_core);
 #ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("own_cores", "Emulator on its own cores",

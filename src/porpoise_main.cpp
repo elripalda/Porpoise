@@ -2699,9 +2699,6 @@ int main(int argc, char **argv)
                     std::fprintf(f, "# Set by Porpoise for this game only (its Dolphin settings):\n");
                     for (const auto &[k, v] : pinned)
                     {
-                        /* Keep full speed, when the player turned it on, wins. */
-                        if (k == "dolphin_vi_skip" && g_play.keep_speed)
-                            continue;
                         std::fprintf(f, "%s = %s\n", k.c_str(), v.c_str());
                         ps5::debug::mark(("main: core option for this game: " + k + " = " + v).c_str());
                     }

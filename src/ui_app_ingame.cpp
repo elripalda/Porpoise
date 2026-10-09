@@ -1004,7 +1004,8 @@ namespace
 bool needs_game_restart(const std::string &key)
 {
     return key == "wide" || key == "shader_mode" || key == "dsp_accurate" || key == "audio_pull" ||
-           key.rfind("gfx_", 0) == 0 || key.rfind("dolphin.", 0) == 0 || key == "cheats";
+           key.rfind("gfx_", 0) == 0 || key.rfind("dolphin.", 0) == 0 || key == "cheats" || key == "fast_float" || key == "accurate_fma" ||
+           key == "wait_shaders";
 }
 } // namespace
 

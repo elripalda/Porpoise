@@ -1091,7 +1091,7 @@ index c4b5419a69..71778b9600 100644
      PanicAlertFmtT("Cannot boot this WAD because it could not be installed to the NAND.");
      return false;
 diff --git a/Source/Core/Core/Config/MainSettings.cpp b/Source/Core/Core/Config/MainSettings.cpp
-index f0cc8511b7..ffbcace60a 100644
+index f0cc8511b7..c44e7229af 100644
 --- a/Source/Core/Core/Config/MainSettings.cpp
 +++ b/Source/Core/Core/Config/MainSettings.cpp
 @@ -46,7 +46,14 @@ const Info<bool> MAIN_JIT_FOLLOW_BRANCH{{System::Main, "Core", "JITFollowBranch"
@@ -1109,6 +1109,40 @@ index f0cc8511b7..ffbcace60a 100644
  const Info<bool> MAIN_ACCURATE_CPU_CACHE{{System::Main, "Core", "AccurateCPUCache"}, false};
  const Info<bool> MAIN_DSP_HLE{{System::Main, "Core", "DSPHLE"}, true};
  const Info<int> MAIN_MAX_FALLBACK{{System::Main, "Core", "MaxFallback"}, 100};
+@@ -229,6 +236,19 @@ const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS{{System::Main, "Core", "DivByZer
+ const Info<bool> MAIN_FPRF{{System::Main, "Core", "FPRF"}, false};
+ const Info<bool> MAIN_ACCURATE_NANS{{System::Main, "Core", "AccurateNaNs"}, false};
+ const Info<bool> MAIN_ACCURATE_FMADDS{{System::Main, "Core", "AccurateFmadds"}, true};
++// Porpoise 3.0 (a game's own settings, off by default):
++//  FastPairedMath: a paired-single multiply takes its multiplier as it is, not
++//   rounded to the 25 bits Gekko keeps (it is a paired single already).
++//  FastSinglePrecision: single-precision results stay as computed, not rounded
++//   to single after every operation; float math in long chains runs about
++//   twice as fast (Mario Superstar Baseball's skinning). Some games need the
++//   rounding (Dolphin names a Zelda that gets stuck without it).
++const Info<bool> MAIN_FAST_PAIRED_MATH{{System::Main, "Core", "FastPairedMath"}, false};
++const Info<bool> MAIN_FAST_SINGLE_PRECISION{{System::Main, "Core", "FastSinglePrecision"}, false};
++// Porpoise 3.0: a block whose guess at its quantizers (GQRs) turned out wrong
++// guesses again with the values then current, this many times, before it reads
++// them on every access for good.
++const Info<int> MAIN_PAIRED_QUANTIZE_RETRIES{{System::Main, "Core", "PairedQuantizeRetries"}, 8};
+ const Info<bool> MAIN_DISABLE_ICACHE{{System::Main, "Core", "DisableICache"}, false};
+ const Info<float> MAIN_EMULATION_SPEED{{System::Main, "Core", "EmulationSpeed"}, 1.0f};
+ #if defined(ANDROID)
+diff --git a/Source/Core/Core/Config/MainSettings.h b/Source/Core/Core/Config/MainSettings.h
+index 4bb1c36db9..c1906a031c 100644
+--- a/Source/Core/Core/Config/MainSettings.h
++++ b/Source/Core/Core/Config/MainSettings.h
+@@ -134,6 +134,9 @@ extern const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS;
+ extern const Info<bool> MAIN_FPRF;
+ extern const Info<bool> MAIN_ACCURATE_NANS;
+ extern const Info<bool> MAIN_ACCURATE_FMADDS;
++extern const Info<bool> MAIN_FAST_PAIRED_MATH;
++extern const Info<bool> MAIN_FAST_SINGLE_PRECISION;
++extern const Info<int> MAIN_PAIRED_QUANTIZE_RETRIES;
+ extern const Info<bool> MAIN_DISABLE_ICACHE;
+ extern const Info<float> MAIN_EMULATION_SPEED;
+ extern const Info<bool> MAIN_PRECISION_FRAME_TIMING;
 diff --git a/Source/Core/Core/Core.cpp b/Source/Core/Core/Core.cpp
 index cda66bffd1..f34121d4f1 100644
 --- a/Source/Core/Core/Core.cpp
@@ -1404,10 +1438,18 @@ index 871bb3f615..bad7c5d42a 100644
  #endif
  }
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit.cpp b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
-index 1248b1ab01..6a796b4834 100644
+index 1248b1ab01..6ef7c77954 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit.cpp
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit.cpp
-@@ -21,6 +21,7 @@
+@@ -2,6 +2,7 @@
+ // SPDX-License-Identifier: GPL-2.0-or-later
+ 
+ #include "Core/PowerPC/Jit64/Jit.h"
++#include "Core/Config/MainSettings.h"
+ 
+ #include <map>
+ #include <span>
+@@ -21,6 +22,7 @@
  #include "Common/GekkoDisassembler.h"
  #include "Common/HostDisassembler.h"
  #include "Common/IOFile.h"
@@ -1415,7 +1457,16 @@ index 1248b1ab01..6a796b4834 100644
  #include "Common/Logging/Log.h"
  #include "Common/Swap.h"
  #include "Common/x64ABI.h"
-@@ -734,6 +735,19 @@ void Jit64::WriteExternalExceptionExit()
+@@ -262,7 +264,7 @@ void Jit64::Init()
+   EnableBlockLink();
+ 
+   jo.optimizeGatherPipe = true;
+-  jo.accurateSinglePrecision = true;
++  jo.accurateSinglePrecision = !Config::Get(Config::MAIN_FAST_SINGLE_PRECISION);
+   js.fastmemLoadStore = nullptr;
+   js.compilerPC = 0;
+ 
+@@ -734,6 +736,19 @@ void Jit64::WriteExternalExceptionExit()
  void Jit64::Run()
  {
    ProtectStack();
@@ -1435,6 +1486,132 @@ index 1248b1ab01..6a796b4834 100644
    m_system.GetJitInterface().UpdateMembase();
  
    CompiledCode pExecAddr = (CompiledCode)asm_routines.enter_code;
+diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
+index 86f9e49178..2e39b0ef97 100644
+--- a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
++++ b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
+@@ -379,7 +379,7 @@ void Jit64::fmaddXX(UGeckoInstruction inst)
+   const bool madds0 = inst.SUBOP5 == 14;
+   const bool madds1 = inst.SUBOP5 == 15;
+   const bool single = inst.OPCD == 4 || inst.OPCD == 59;
+-  const bool round_input = single && !js.op->fprIsSingle[c];
++  const bool round_input = single && !js.op->fprIsSingle[c] && !(m_fast_paired_math && inst.OPCD == 4);
+ 
+   const bool error_free_transformation = single && m_accurate_fmadds;
+   const bool packed =
+diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
+index 2e1b05cb42..afc7fde3b4 100644
+--- a/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
++++ b/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
+@@ -79,7 +79,7 @@ void Jit64::ps_muls(UGeckoInstruction inst)
+   int d = inst.FD;
+   int a = inst.FA;
+   int c = inst.FC;
+-  bool round_input = !js.op->fprIsSingle[c];
++  bool round_input = !js.op->fprIsSingle[c] && !m_fast_paired_math;
+ 
+   RCOpArg Ra = fpr.Use(a, RCMode::Read);
+   RCOpArg Rc = fpr.Use(c, RCMode::Read);
+diff --git a/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp b/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp
+index b2ff246cce..d341b11d72 100644
+--- a/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp
++++ b/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp
+@@ -58,7 +58,7 @@
+ // After resetting the stack to the top, we call _resetstkoflw() to restore
+ // the guard page at the 256kb mark.
+ 
+-const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 25> JitBase::JIT_SETTINGS{{
++const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 26> JitBase::JIT_SETTINGS{{
+     {&JitBase::bJITOff, &Config::MAIN_DEBUG_JIT_OFF},
+     {&JitBase::bJITLoadStoreOff, &Config::MAIN_DEBUG_JIT_LOAD_STORE_OFF},
+     {&JitBase::bJITLoadStorelXzOff, &Config::MAIN_DEBUG_JIT_LOAD_STORE_LXZ_OFF},
+@@ -81,6 +81,7 @@ const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 25> JitB
+     {&JitBase::m_fprf, &Config::MAIN_FPRF},
+     {&JitBase::m_accurate_nans, &Config::MAIN_ACCURATE_NANS},
+     {&JitBase::m_accurate_fmadds, &Config::MAIN_ACCURATE_FMADDS},
++    {&JitBase::m_fast_paired_math, &Config::MAIN_FAST_PAIRED_MATH},
+     {&JitBase::m_fastmem_enabled, &Config::MAIN_FASTMEM},
+     {&JitBase::m_page_table_fastmem_enabled, &Config::MAIN_PAGE_TABLE_FASTMEM},
+     {&JitBase::m_accurate_cpu_cache_enabled, &Config::MAIN_ACCURATE_CPU_CACHE},
+diff --git a/Source/Core/Core/PowerPC/JitCommon/JitBase.h b/Source/Core/Core/PowerPC/JitCommon/JitBase.h
+index 612161b492..5983fa65b6 100644
+--- a/Source/Core/Core/PowerPC/JitCommon/JitBase.h
++++ b/Source/Core/Core/PowerPC/JitCommon/JitBase.h
+@@ -8,6 +8,7 @@
+ #include <iosfwd>
+ #include <map>
+ #include <string_view>
++#include <unordered_map>
+ #include <unordered_set>
+ #include <utility>
+ #include <vector>
+@@ -130,6 +131,9 @@ protected:
+ 
+     std::unordered_set<u32> fifoWriteAddresses;
+     std::unordered_set<u32> pairedQuantizeAddresses;
++    // Porpoise 3.0: how often a block's quantizer guess was wrong (see
++    // JitInterface::CompileExceptionCheck).
++    std::unordered_map<u32, u32> pairedQuantizeRetries;
+     std::unordered_set<u32> noSpeculativeConstantsAddresses;
+   };
+ 
+@@ -160,6 +164,7 @@ protected:
+   bool m_fprf = false;
+   bool m_accurate_nans = false;
+   bool m_accurate_fmadds = false;
++  bool m_fast_paired_math = false;
+   bool m_fastmem_enabled = false;
+   bool m_page_table_fastmem_enabled = false;
+   bool m_accurate_cpu_cache_enabled = false;
+@@ -168,7 +173,7 @@ protected:
+   bool m_cleanup_after_stackfault = false;
+   u8* m_stack_guard = nullptr;
+ 
+-  static const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 25> JIT_SETTINGS;
++  static const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 26> JIT_SETTINGS;
+ 
+   bool DoesConfigNeedRefresh() const;
+   void RefreshConfig();
+diff --git a/Source/Core/Core/PowerPC/JitCommon/JitCache.cpp b/Source/Core/Core/PowerPC/JitCommon/JitCache.cpp
+index 626a46b4a7..b526a43692 100644
+--- a/Source/Core/Core/PowerPC/JitCommon/JitCache.cpp
++++ b/Source/Core/Core/PowerPC/JitCommon/JitCache.cpp
+@@ -81,6 +81,7 @@ void JitBaseBlockCache::Clear()
+ #endif
+   m_jit.js.fifoWriteAddresses.clear();
+   m_jit.js.pairedQuantizeAddresses.clear();
++  m_jit.js.pairedQuantizeRetries.clear();
+   m_jit.js.noSpeculativeConstantsAddresses.clear();
+   for (auto& e : block_map)
+   {
+diff --git a/Source/Core/Core/PowerPC/JitInterface.cpp b/Source/Core/Core/PowerPC/JitInterface.cpp
+index f229be35f2..5363634406 100644
+--- a/Source/Core/Core/PowerPC/JitInterface.cpp
++++ b/Source/Core/Core/PowerPC/JitInterface.cpp
+@@ -3,6 +3,8 @@
+ 
+ #include "Core/PowerPC/JitInterface.h"
+ 
++#include "Core/Config/MainSettings.h"
++
+ #include <string>
+ #include <unordered_set>
+ 
+@@ -341,6 +343,14 @@ void JitInterface::CompileExceptionCheck(ExceptionType type)
+       if (optype != OpType::Store && optype != OpType::StoreFP && optype != OpType::StorePS)
+         return;
+     }
++    if (type == ExceptionType::PairedQuantize &&
++        static_cast<int>(++m_jit->js.pairedQuantizeRetries[ppc_state.pc]) <=
++            Config::Get(Config::MAIN_PAIRED_QUANTIZE_RETRIES))
++    {
++      // Guess again, with the quantizers as they are now.
++      m_jit->GetBlockCache()->InvalidateICache(ppc_state.pc, 4, true);
++      return;
++    }
+     exception_addresses->insert(ppc_state.pc);
+ 
+     // Invalidate the JIT block so that it gets recompiled with the external exception check
 diff --git a/Source/Core/DolphinLibretro/Achievements.cpp b/Source/Core/DolphinLibretro/Achievements.cpp
 new file mode 100644
 index 0000000000..db6cdbdacd
@@ -1752,7 +1929,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..c8a2b06158 100644
+index c53281053f..85610dd809 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -1837,18 +2014,25 @@ index c53281053f..c8a2b06158 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,17 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
 +#ifdef __PROSPERO__
 +  Config::SetBase(Config::MAIN_ACCURATE_FMADDS,
 +                  Libretro::GetOption<bool>(core::ACCURATE_FMADDS, /*def=*/false));
++  {
++    // Porpoise 3.0: fast float math, the game's own choice.
++    const bool fast = Libretro::GetOption<bool>(core::FAST_FLOAT_MATH, /*def=*/false);
++    Config::SetBase(Config::MAIN_FAST_SINGLE_PRECISION, fast);
++    Config::SetBase(Config::MAIN_FAST_PAIRED_MATH, fast);
++    NOTICE_LOG_FMT(BOOT, "Fast float math = {}", fast ? "Yes" : "No");
++  }
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +541,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +548,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -1861,7 +2045,7 @@ index c53281053f..c8a2b06158 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +697,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +704,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -1872,7 +2056,7 @@ index c53281053f..c8a2b06158 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +792,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +799,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -1885,7 +2069,7 @@ index c53281053f..c8a2b06158 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +865,7 @@ void retro_unload_game(void)
+@@ -804,6 +872,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
@@ -1905,7 +2089,7 @@ index 50497a7171..2e5629cfa6 100644
    Boot.cpp
    Host.cpp
 diff --git a/Source/Core/DolphinLibretro/Common/Options.cpp b/Source/Core/DolphinLibretro/Common/Options.cpp
-index 52791da8de..74bb0297af 100644
+index 52791da8de..2d5f1fd66d 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.cpp
 +++ b/Source/Core/DolphinLibretro/Common/Options.cpp
 @@ -1,6 +1,13 @@
@@ -1922,7 +2106,7 @@ index 52791da8de..74bb0297af 100644
  #include "DolphinLibretro/Common/Options.h"
  
  namespace Libretro
-@@ -243,6 +250,22 @@ static struct retro_core_option_v2_definition option_defs[] = {
+@@ -243,6 +250,37 @@ static struct retro_core_option_v2_definition option_defs[] = {
      },
      "disabled"
    },
@@ -1941,11 +2125,26 @@ index 52791da8de..74bb0297af 100644
 +    },
 +    "disabled"
 +  },
++  {
++    Libretro::Options::core::FAST_FLOAT_MATH,
++    "Core > Fast float math",
++    "Fast float math",
++    "Single-precision results are not rounded after every operation. Much faster in games heavy on "
++    "float math; a few games need the rounding.",
++    nullptr,
++    CATEGORY_CORE,
++    {
++      { "disabled", nullptr },
++      { "enabled",  nullptr },
++      { nullptr, nullptr }
++    },
++    "disabled"
++  },
 +#endif
    {
      Libretro::Options::core::CHEATS_ENABLED,
      "Core > Internal Cheats",
-@@ -1876,9 +1899,61 @@ void Init()
+@@ -1876,9 +1914,61 @@ void Init()
    CheckForUpdatedVariables();
  }
  
@@ -2008,10 +2207,10 @@ index 52791da8de..74bb0297af 100644
    struct retro_core_options_v2 options_us = {
      const_cast<retro_core_option_v2_category*>(option_cats),
 diff --git a/Source/Core/DolphinLibretro/Common/Options.h b/Source/Core/DolphinLibretro/Common/Options.h
-index 0601c80065..2f0345a32a 100644
+index 0601c80065..d3a7b9d8c9 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.h
 +++ b/Source/Core/DolphinLibretro/Common/Options.h
-@@ -140,6 +140,13 @@ namespace core {
+@@ -140,6 +140,17 @@ namespace core {
    constexpr const char FASTMEM[] = "dolphin_fastmem";
    constexpr const char FASTMEM_ARENA[] = "dolphin_fastmem_arena";
    constexpr const char MAIN_ACCURATE_CPU_CACHE[] = "dolphin_main_accurate_cpu_cache";
@@ -2021,6 +2220,10 @@ index 0601c80065..2f0345a32a 100644
 +  // fmadds then calls an error-correction routine; in Day of Reckoning 2 that
 +  // was a third of the emulated CPU's time on the console. Off by default here.
 +  constexpr const char ACCURATE_FMADDS[] = "dolphin_accurate_fmadds";
++  // Porpoise 3.0: single-precision float math kept as computed, not rounded to
++  // single after every operation (FastSinglePrecision, FastPairedMath): about
++  // twice as fast in long chains of float math. Per game; read at its start.
++  constexpr const char FAST_FLOAT_MATH[] = "dolphin_fast_float_math";
 +#endif
    constexpr const char CHEATS_ENABLED[] = "dolphin_cheats_enabled";
    constexpr const char SKIP_GC_BIOS[] = "dolphin_skip_gc_bios";
