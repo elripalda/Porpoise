@@ -340,6 +340,7 @@ public:
     }
     /* tools/ui-preview: the network share panel, a row in focus, typing or
      * not, with a message (ok: green). */
+    void preview_share_busy(bool find); /* tools/ui-preview: a test or search under way (ui_app_netshare.cpp) */
     void preview_share(int index, int row, int button, bool typing, const std::string &message, bool ok,
                        const std::vector<std::string> &found = {})
     {

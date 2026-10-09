@@ -785,6 +785,10 @@ int main(int argc, char **argv)
         ui.preview_share(-1, 0, 0, true, "", false);
         settle();
         render("share-typing", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 5, 1, false, "", false);
+        ui.preview_share_busy(false);
+        settle();
+        render("share-busy", [&] { ui.draw(12.1); });
         ui.preview_share(-1, 5, 1, false,
                          "Couldn't reach 192.168.1.20. Check the address, that the computer is on, and that it "
                          "shares files on the network.",

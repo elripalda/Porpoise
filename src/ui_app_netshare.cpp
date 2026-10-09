@@ -124,6 +124,15 @@ std::size_t field_limit(int field)
 }
 } // namespace
 
+#ifdef PORPOISE_HOST_PREVIEW
+void App::preview_share_busy(bool find)
+{
+    share_.job = std::make_shared<ShareJob>();
+    share_.job->kind = find ? ShareJob::Find : ShareJob::Test;
+    share_.job_started = time_;
+}
+#endif
+
 void App::open_share(int index)
 {
     share_ = SharePanel{};
@@ -470,12 +479,31 @@ void App::draw_share()
         }
         ly += 96;
     }
-    for (const std::string &l : note)
+    if (busy && !note.empty())
     {
-        g.text_mid(Font::SemiBold, ts(26), x + pad, ly, busy ? kIcy : p.message_ok ? rgba(0x7CF0A6) : kDanger,
-                   Align::Left, l);
+        /* Working: three dots bouncing in turn, then what it's doing (its
+         * own "..." left off, the dots say it). */
+        const bool still = settings_ && settings_->reduced_motion;
+        for (int i = 0; i < 3; ++i)
+        {
+            const float wave = still ? 0.0f : std::max(0.0f, std::sin(float(time_) * 7.0f - float(i) * 0.9f));
+            const float cx = x + pad + 9 + float(i) * 24, cy = ly - 9.0f * wave;
+            g.panel(cx - 8, cy - 8, 16, 16, with_alpha(kIcy, 0.4f + 0.6f * (still ? 1.0f : wave)), 1, 8);
+        }
+        std::string text = note_text;
+        const std::string ellipsis = "\xE2\x80\xA6";
+        if (text.size() >= ellipsis.size() && text.compare(text.size() - ellipsis.size(), ellipsis.size(), ellipsis) == 0)
+            text.resize(text.size() - ellipsis.size());
+        g.text_mid(Font::SemiBold, ts(26), x + pad + 84, ly, kIcy, Align::Left,
+                   fit(g, Font::SemiBold, ts(26), text, text_w - 84));
         ly += 34;
     }
+    else
+        for (const std::string &l : note)
+        {
+            g.text_mid(Font::SemiBold, ts(26), x + pad, ly, p.message_ok ? rgba(0x7CF0A6) : kDanger, Align::Left, l);
+            ly += 34;
+        }
 
     if (p.typing)
         draw_keyboard(p.kb, y + h + 44, face);
