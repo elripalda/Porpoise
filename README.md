@@ -169,22 +169,25 @@ BIOS or firmware files.
 - **Quick save buttons:** pick a slot, and **touch pad + L1** saves to it and
   **touch pad + L2** loads it, without opening the menu. Off until you pick one.
 - **Trigger click (beta):** the DualSense's adaptive triggers click near the
-  bottom of L2 and R2, as the GameCube's L and R do. Light or Firm, off by
-  default.
+  bottom of L2 and R2, as the GameCube's L and R do. Off, Light, Firm (the
+  default) or Extra Firm.
 
 ### Settings
 Settings are split into sections:
 
 | Section | What's inside |
 |---|---|
-| **Video** | **Output resolution** (*Match the PS5* by default, or 1080p, 1440p, 4K), internal resolution (1080p by default; 4x and above marked *experimental*), **Widescreen** (see [Widescreen](#widescreen)), aspect ratio, anisotropic filtering, texture filtering, anti-aliasing (MSAA/SSAA), output resampling, **screen filter** and its strength, **border**, FPS counter |
-| **Graphics** | Shader compilation (asynchronous ubershaders by default), texture cache accuracy, per-pixel lighting, disable fog, crop overscan, custom texture packs, skip duplicate frames; per game, **graphics mods** (see [Graphics mods](#graphics-mods)) |
-| **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume; the **sound preset**, **audio buffer** and **fill audio gaps** (see [Sound](#sound)); and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller) and the **microphone** |
+| **Video** | **Output resolution** (*Match the PS5* by default, or 1080p, 1440p, 4K), **Widescreen** (see [Widescreen](#widescreen)), aspect ratio, **border**, FPS overlay, V-Sync |
+| **Enhancements** | Internal resolution (1080p by default), anti-aliasing (MSAA/SSAA), anisotropic filtering, the **screen filter** and its strength, **Extra Bloom**; under **Advanced Options**, saturation, contrast and warmth, texture filtering, output resampling, per-pixel lighting, disable fog, custom texture packs and, per game, **graphics mods** (see [Graphics mods](#graphics-mods)) |
+| **Graphics** | Shader compilation (asynchronous ubershaders by default), build shaders before starting, threaded GPU recording (beta), texture cache accuracy, crop overscan, skip duplicate frames, quick resume (beta), fast save states |
+| **Audio** | Game volume and mute; **menu music** and **menu sounds**, each with its own switch and volume, and the **sound set** (Crisp, Soft or Porpoise's original); the **sound preset**, **audio buffer** and **fill audio gaps** (see [Sound](#sound)); and, in beta, **accurate audio**, the **Wii Remote speaker** (TV or controller) and the **microphone** |
 | **Controls** | Button layout (PlayStation, GameCube or one of your four), Customize buttons, vibration, **fast forward buttons**, **quick save buttons**, **turbo button**, **trigger click** (beta), each player's **light bar** color, connected controllers; per game, **Console** (Auto, GameCube or Wii) for a game Porpoise detected wrong |
 | **Wii Remote** | Wii Remote setup, presets, setup before each Wii game, How to hold it, Wii controller (including the **GameCube controller**, for Wii games that take one), pointer, pointer speed, grip, motion, flick to shake |
-| **System** | Emulated CPU clock (50–300%), dual core, emulator on its own cores, exact multiply-add, fast disc loading, cheats, console language, progressive scan; and, in beta, **Wii widescreen**, **PAL games at 60 Hz**, **sensor bar** position, **start Wii discs in the Wii Menu**, the **GameCube boot animation** (see [Your own BIOS and Wii Menu](#your-own-bios-and-wii-menu-beta)) and **Online** (WiiConnect24 channels through WiiLink) |
+| **System** | Emulated CPU clock (50–300%), **Riptide Boost** (beta), dual core, emulator on its own cores, exact multiply-add, fast disc loading, cheats, console language, progressive scan; and, in beta, **Wii widescreen**, **PAL games at 60 Hz**, **sensor bar** position, **start Wii discs in the Wii Menu**, the **GameCube boot animation** (see [Your own BIOS and Wii Menu](#your-own-bios-and-wii-menu-beta)) and **WiiConnect24 channels** (through WiiLink) |
 | **Games** | Find games automatically, add or remove game folders, search again, download covers, download game info, **move Porpoise's folder** to extended storage or a USB drive, **RetroAchievements** |
-| **Interface** | Menu language, **Theme** (fifteen, among them Porpoise, Star Cube and Revolution), **Colors**, **Font**, library and Memory Cards views, Revolution's home screen and pointer, **reset all settings**, **Reinitialize Porpoise** |
+| **Interface** | Menu language, **Theme** (nineteen, among them Porpoise, Star Cube, Revolution, 8-Bit, Beige, Translucent and Arcade), **Colors**, **Font**, library views (Cover Flow, Wheel, Disc Flow, Shelf, Box, List, Stack, Helix, Spines, Spotlight) and Memory Cards views, **Recently Played**, Revolution's home screen and pointer, **reset all settings**, **Reinitialize Porpoise** |
+| **Screenshots** | The **gallery** of every game's screenshots, the **screenshot buttons** (touch pad + Square) and where they're kept (`/data/porpoise/screenshots`) |
+| **Accessibility** | **Text size** (Smaller to Larger), color filters, high contrast, **Bolder Focus**, reduced motion, still background, larger button hints |
 | **About** | Version, **Updates** (check GitHub and install a new Porpoise), the **Discord** for help and bug reports (with a QR code), **Report a bug**, and credits |
 
 - **Per-game settings.** Any game can override the Video, Graphics, Audio, Controls
@@ -206,17 +209,22 @@ Settings are split into sections:
   from the in-game menu or the game's settings.
 
 ### Screen filters and borders
-- **Screen filters:** *Smooth*, *Sharp*, *Sharpen*, *CRT* (scanlines and an
+- **Screen filters:** *Smooth*, *Sharp*, *Sharpen (CAS)*, *CRT* (scanlines and an
   aperture grille), *Arcade CRT* (a curved tube with rounded corners), *VHS*
   (tracking wobble, color bleed and tape noise), *Soft VHS* (soft, faded
-  color and a gentle glow, no glitches), *8-bit* (a small palette, big pixels
-  and dithering) and *Pocket* (a four-green handheld screen), each with a
-  strength.
+  color and a gentle glow, no glitches), *8-Bit* and *16-Bit* (a small palette,
+  big pixels and dithering), *Pocket* (a four-green handheld screen),
+  *Scanlines*, *Shadow Mask*, *LCD*, *FSR 1* (AMD's upscaler), *NTSC Composite*
+  and *Aperture Grille*,
+  each with a strength. Enhancements adds Extra Bloom and saturation, contrast
+  and warmth.
 - **Borders** fill the bars beside a 4:3 picture when widescreen is off:
-  *Porpoise* (the logo and name), *Porpoise glass*, *Midnight*, *Frost*,
-  *Carbon*, and three cabinets with a curved opening — *Arcade cabinet*,
-  *Retro cabinet* (wood and 70s stripes) and *Synthwave cabinet* (a striped
-  sun and a neon grid).
+  *Porpoise* (the logo and name), *Porpoise Glass*, *Midnight*, *Frost*,
+  *Carbon*, three cabinets with a curved opening — *Arcade Cabinet*,
+  *Retro Cabinet* (wood and 70s stripes) and *Synthwave Cabinet* (a striped
+  sun and a neon grid) — TVs and a monitor from different eras (*80s TV*,
+  *Wood-Grain TV*, *90s TV*, *Black TV*, *Beige Monitor*), and *Revolution*
+  and *Star Cube* to match those themes.
   **Make your own:** a 1920×1080 PNG, transparent where the picture shows (the
   4:3 picture fills x 240–1680), in `/data/porpoise/borders/`. It appears in
   the list by its file name.
@@ -230,8 +238,8 @@ game has a RetroAchievements set:
 
 - **Game:** Resume, **Save state…** and **Load state…** (three slots, with
   pictures: pick a slot with left and right; saving over a used slot asks for a
-  second press, and a spinner shows while the state is written), **Fast
-  forward** (2x or 4x), Quit to library and Close Porpoise.
+  second press, and a spinner shows while the state is written), **Take
+  Screenshot**, **Fast forward** (2x or 4x), Quit to library and Close Porpoise.
 - **Video:** resolution, widescreen, aspect ratio, anti-aliasing, anisotropic
   filtering, screen filter and strength, border, FPS counter.
 - **Graphics:** shader compilation, texture cache, texture filtering, output
@@ -413,10 +421,10 @@ own console.
   Open its settings: **Controls → Console** sets it to GameCube or Wii.
 
 ### Your own BIOS and Wii Menu (beta)
-- **GameCube boot animation:** copy the `IPL.bin` you dumped from your own
-  GameCube to `/data/porpoise/bios/USA/`, `EUR/` or `JAP/` (the region of the
-  games you play), then turn on **Settings → System → GameCube boot
-  animation**. GameCube games then start with the console's own start-up. If
+- **GameCube boot animation:** copy the BIOS (`IPL.bin`) you dumped from your
+  own GameCube to `/data/porpoise/bios/`, under any name (Porpoise reads which
+  one it is, NTSC or PAL; Settings → About shows what it found), then turn on
+  **Settings → System → GameCube boot animation**. GameCube games then start with the console's own start-up. If
   there's no `IPL.bin` for a game's region, the game starts as usual.
 - **Wii Menu:** put the Wii Menu `.wad` from your own Wii in a games folder and
   start it once from the library; it stays installed. With **Settings → System
@@ -498,11 +506,11 @@ Put a game's codes in **`/data/porpoise/cheats/<game ID>.ini`** (the 6-letter
 ID, such as `GYQE01.ini`; 4 or 3 letters for all regions), in Dolphin's
 format: `[ActionReplay]` or `[Gecko]` sections, as Dolphin writes them. They
 turn on by themselves when the game starts, and each appears in the game's
-settings under **Cheats and patches** (and the in-game **Patches** tab) with
-its own switch. Porpoise makes the `cheats` folder the first time you open a
-game's cheats; you can also make it yourself. A Wii game's online patch codes
-(Wiimmfi, or one for a custom server) go here too. **Settings → System →
-Online** is only for the WiiConnect24 channels; it doesn't look for or need
+settings under **Cheats and Patches** (and the in-game **Patches** tab) with
+its own switch. Make the `cheats` folder yourself the first time (Porpoise
+doesn't make it on its own). A Wii game's online patch codes (Wiimmfi, or one
+for a custom server) go here too. **Settings → System → WiiConnect24
+Channels** is only for the WiiConnect24 channels; it doesn't look for or need
 any code.
 
 ## Controls
@@ -571,7 +579,8 @@ becomes the next player, up to four, and can join in the middle of a game.
 | `/data/porpoise/saves/User/Wii/backups/` | Wii saves you backed up from Memory Cards |
 | `/data/porpoise/latest-release.json` | What GitHub last said about the newest release |
 | `/data/porpoise/lang/` | Your own translation fixes (optional) |
-| `/data/porpoise/bios/` | Your own GameCube BIOS, as `USA/IPL.bin`, `EUR/IPL.bin` or `JAP/IPL.bin` (optional) |
+| `/data/porpoise/bios/` | Your own GameCube BIOS, under any name (optional) |
+| `/data/porpoise/screenshots/` | Your screenshots, a folder for each game |
 | `/data/porpoise/cheats/` | Your own cheat codes, one `<game ID>.ini` per game (optional) |
 | `/data/porpoise/retroachievements.ini` | Your RetroAchievements sign-in token (not your password) |
 | `/data/porpoise/achievements/` | Each game's achievement list as of your last play, and the badges |

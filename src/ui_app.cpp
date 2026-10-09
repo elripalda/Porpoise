@@ -566,7 +566,8 @@ App::Action App::update(const Input &in, double dt)
                 box_yaw_ = calm ? 0.0f : float(dir) * 1.25f; /* it swings in and settles */
                 details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
                 count_states(&games[std::size_t(selected_)]);
-            details_shots_ = count_shots(games[std::size_t(selected_)]);
+                details_shots_ = count_shots(games[std::size_t(selected_)]);
+                details_row_ = std::min(details_row_, details_shots_ > 0 ? 4 : 3);
                 lib_->set_selected(Library::key_of(games[std::size_t(selected_)]));
                 sfx(Sound::GameRow);
             }

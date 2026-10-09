@@ -1861,8 +1861,11 @@ void poll_shots(const porpoise::pad::State *pad)
         const bool asked = pad ? pad->screenshot : g_app.take_menu_shot();
         if (asked)
         {
-            const bool started = porpoise::shots::take(porpoise::ui::Library::key_of(*g_playing));
-            const std::string note = started ? tr("Saving the screenshot\xE2\x80\xA6") : tr("No picture to save yet.");
+            const bool busy = porpoise::shots::busy();
+            const bool started = !busy && porpoise::shots::take(porpoise::ui::Library::key_of(*g_playing));
+            const std::string note = busy      ? tr("Still saving\xE2\x80\xA6")
+                                     : started ? tr("Saving the screenshot\xE2\x80\xA6")
+                                               : tr("No picture to save yet.");
             if (pad)
                 quick_note(note);
             else

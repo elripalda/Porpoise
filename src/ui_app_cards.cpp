@@ -548,7 +548,7 @@ void App::draw_card_classic(double time)
     /* Scanlines and the glass's shine. */
     for (float y = sy + 4; y < sy + sh - 4; y += 4)
         g.panel(sx + 6, y, sw - 12, 1.6f, rgba(0x000000, 0.10f), 1, 0);
-    g.panel(sx + 10, sy + 8, sw - 20, sh * 0.35f, rgba(0xFFFFFF, 0.04f), 1.6f, 26);
+    g.panel(sx + 10, sy + 8, sw - 20, 60, rgba(0xFFFFFF, 0.025f), 1.6f, 22); /* the glass's shine, up top */
     g.set_solid(false);
     g.set_tone(toned);
 

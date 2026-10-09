@@ -526,7 +526,7 @@ void App::add_game_rows(Settings &t, bool per_game)
                                   "below the output's.");
     choice("filter_strength", "Filter Strength", "How strong the screen filter is.", &t.filter_strength, 1,
            {"10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
-    choice("bloom", "Extra Bloom", "A soft glow round the brightest parts of the picture, on top of the game's own.",
+    choice("bloom", "Extra Bloom", "A soft glow around the brightest parts of the picture, on top of the game's own.",
            &t.bloom, 0, {"Off", "Low", "Medium", "High"});
     {
         SettingRow r;
@@ -1115,7 +1115,7 @@ void App::build_settings()
             "Box: one box at a time, its whole cover wrapped round it. The right stick turns it.",
             "List: your games by name, the chosen one's box beside them. Up and down go through them.",
             "Stack: a deck of boxes; the front one flips away as you go.",
-            "Helix: the boxes climbing round a turning column.",
+            "Helix: the boxes climbing around a turning column.",
             "Spines: your cases side by side on a shelf, spine out; the chosen one comes out to show its cover.",
             "Spotlight: one game at a time over its own art, with what's known about it; the rest in a strip below."};
         choice("lib_view", "Library View", kHelp[std::clamp(draft_.lib_view, 0, 9)], &draft_.lib_view,

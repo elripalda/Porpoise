@@ -545,7 +545,7 @@ void App::draw_box_view(double time)
     }
     else if (facts.empty())
         g.text(Font::Regular, ts(24), px + 40, y, kSoft, Align::Left,
-               fit(g, Font::Regular, ts(24), tr("Turn the box round with the right stick."), pw - 80));
+               fit(g, Font::Regular, ts(24), tr("Turn the box around with the right stick."), pw - 80));
 }
 
 /* ---- list ------------------------------------------------------------------------------- */

@@ -20,10 +20,10 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "2.7";
-constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
-constexpr int kVersionMajor = 2, kVersionMinor = 7, kVersionPatch = 0;
-constexpr int kVersionBeta = 0; /* 0 for a final release; its betas come before it */
+constexpr const char *kVersion = "3.0 Beta 1";
+constexpr int kBuild = 2; /* a release named "... (build N)" with a higher N is newer */
+constexpr int kVersionMajor = 3, kVersionMinor = 0, kVersionPatch = 0;
+constexpr int kVersionBeta = 1; /* 0 for a final release; its betas come before it */
 
 /* What a settings row does when pressed, besides changing a value. */
 enum RowAction

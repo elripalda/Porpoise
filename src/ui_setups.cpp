@@ -33,6 +33,7 @@ const std::vector<std::string> &keys()
         "resolution",   "widescreen", "wide", "aspect",      "antialiasing",   "anisotropy",  "texture_filter",
         "resampling",   "screen_filter",  "filter_strength", "border",     "fps_overlay", "shader_mode",
         "texture_cache", "pixel_lighting", "disable_fog", "crop_overscan",  "skip_dupes",  "custom_textures",
+        "bloom",        "color_saturation", "color_contrast", "color_warmth",
     };
     return k;
 }

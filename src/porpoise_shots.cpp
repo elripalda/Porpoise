@@ -124,6 +124,11 @@ void set_data_dir(const std::string &data_dir)
     g_data_dir = data_dir;
 }
 
+bool busy()
+{
+    return g_running.load() && !g_done.load();
+}
+
 void wait()
 {
     if (g_running.exchange(false))

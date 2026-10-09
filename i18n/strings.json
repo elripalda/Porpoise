@@ -424,10 +424,6 @@
   "section": "In-game menu"
  },
  {
-  "en": "4x (1440p) • exp.",
-  "section": "In-game menu"
- },
- {
   "en": "Games",
   "section": "Settings: sections"
  },
@@ -1156,10 +1152,6 @@
   "section": "Settings: Interface"
  },
  {
-  "en": "Bigger labels across Porpoise.",
-  "section": "Settings: Interface"
- },
- {
   "en": "Reset All Settings",
   "section": "Settings: Interface"
  },
@@ -1377,14 +1369,6 @@
  },
  {
   "en": "1 saved",
-  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
- },
- {
-  "en": "5x (1800p) • exp.",
-  "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
- },
- {
-  "en": "6x (4K) • exp.",
   "section": "1.1: layouts, the in-game menu, save states, filters, borders, recommended settings, favourites"
  },
  {
@@ -3784,7 +3768,7 @@
   "section": "2.1: themes, views, accessibility"
  },
  {
-  "en": "Turn the box round with the right stick.",
+  "en": "Turn the box around with the right stick.",
   "section": "2.1: themes, views, accessibility"
  },
  {
@@ -3840,7 +3824,7 @@
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
  },
  {
-  "en": "Helix: the boxes climbing round a turning column.",
+  "en": "Helix: the boxes climbing around a turning column.",
   "section": "2.1 Beta 2: Star Cube, themes, views, colours"
  },
  {
@@ -5580,7 +5564,7 @@
   "section": "3.0: Enhancements"
  },
  {
-  "en": "A soft glow round the brightest parts of the picture, on top of the game's own.",
+  "en": "A soft glow around the brightest parts of the picture, on top of the game's own.",
   "section": "3.0: Enhancements"
  },
  {

@@ -1402,7 +1402,7 @@ int main(int argc, char **argv)
         render("settings-developer", [&] { ui.draw(12.0); });
         press(kCircle);
         /* Every section, top and bottom, for a look at the new rows. */
-        for (int sec = 0; sec < 10; ++sec)
+        for (int sec = 0; sec < 12; ++sec)
         {
             press(1u << 0, 12);
             press(kDown, sec);

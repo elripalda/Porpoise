@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.0 Beta 1 — 2026-10-09
+
+- **Riptide Boost** (beta, Settings → System) speeds up games that run slow
+  on the PS5.
+- **Enhancements** in Settings: the everyday picture options first, the rest
+  under Advanced Options. FSR 1 upscaling, Sharpen (CAS), Extra Bloom,
+  saturation, contrast and warmth, and new screen filters (16-Bit, NTSC
+  Composite, Aperture Grille, a gentler 8-Bit).
+- **Looks:** four new themes (8-Bit, Beige, Translucent, Arcade), eight more
+  colors, seven new borders (80s, wood-grain, 90s and black TVs, a beige
+  monitor, Revolution and Star Cube). Themes, borders, filters, fonts and
+  sounds apply as you choose them; Apply is for the technical settings.
+- **Library:** two new views, Spines and Spotlight, and a Recently Played dock
+  along the bottom (Settings → Interface). A Retro TV view for Memory Cards.
+- **Screenshots:** Take Screenshot in the in-game menu, or touch pad + Square.
+  They're in Settings → Screenshots, and in a game's Details (except in the
+  Revolution theme).
+- **Menu sounds:** Crisp by default, with Soft and Porpoise's original sounds
+  a choice away.
+- **Accessibility:** a Smaller text size and Bolder Focus.
+- **GameCube BIOS** found under any name in /data/porpoise/bios.
+- Optional 16:9 codes for Virtual Console N64 games (Admentus64's Enhancement
+  Codes), in each game's Cheats and Patches.
+- The trigger click is Firm for everyone (once, on updating; Off, Light and
+  the new Extra Firm stay a choice), Cheats and Patches is out of beta, and
+  the cheats folder is no longer made automatically.
+- Labels in title case, the whole description on the back of the box in
+  Details, and optimizations and fixes throughout.
+
 ## 2.7 — 2026-10-08
 
 - **Home screen tiles:** a game's settings → Home screen → **Add to home

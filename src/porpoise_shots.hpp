@@ -16,6 +16,8 @@ void set_data_dir(const std::string &data_dir);
 bool take(const std::string &game_key);
 /* Once, when a shot taken with take() is on disk (ok) or failed. */
 bool take_finished(bool &ok);
+/* A shot is still being written. */
+bool busy();
 /* Waits for a shot still being written. */
 void wait();
 /* The same, as the game closes: its note isn't shown in the next game. */

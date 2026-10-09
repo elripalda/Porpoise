@@ -288,14 +288,18 @@ void App::draw_shots(double time)
             if (!s.tried)
             {
                 s.tried = true;
-                s.wait = s.thumb; /* the full picture only in the viewer */
+                s.wait = s.thumb;
             }
             if (!s.wait.empty())
             {
                 bool pending = false;
                 s.tex = g.texture_file_async(s.wait, &pending, 400);
                 if (!pending)
-                    s.wait.clear();
+                {
+                    /* No thumbnail (one copied in, or not written): the
+                     * picture itself, once. */
+                    s.wait = !s.tex && s.wait == s.thumb ? s.path : std::string();
+                }
             }
         }
         g.panel(x - 4, y - 4, kShotW + 8, kShotH + 8, rgba(0x0A1236, 0.7f), 1, kR * 0.5f + 4,
