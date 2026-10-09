@@ -607,6 +607,12 @@ std::unique_ptr<NfsSession> nfs_connect(const Share &s, std::string &error)
             why[v] = std::strerror(-rc);
         note("mounting " + server + ":" + exp + " (NFS " + (v == 0 ? "3" : "4") + ") failed after " +
              std::to_string(now_ms() - started) + " ms: " + why[v]);
+        /* Version 4 only when version 3's mount service didn't answer at all
+         * (a version-4-only server). A server that answered version 3 is a
+         * version 3 one: a version 4 request can bring one down (WinNFSd). */
+        if (v == 0 && !(why[0].find("portmap") != std::string::npos || why[0].find("connect") != std::string::npos ||
+                        why[0].find("Timeout") != std::string::npos))
+            break;
     }
     /* Version 3's reason, unless it couldn't reach the mount service at all
      * (a version-4-only server) or version 4 says the path isn't there (a

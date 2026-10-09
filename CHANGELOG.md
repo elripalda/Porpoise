@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0 Alpha Build 3 — 2026-10-09
+
+- Wii games online: a port the console refuses a game (Mario Kart Wii's for
+  its players, error 67010) is taken lower instead.
+
 ## 3.0 Alpha Build 2 — 2026-10-09
 
 - Wii games online: no more freeze connecting (Mario Kart Wii), the console's
