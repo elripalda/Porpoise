@@ -1091,7 +1091,7 @@ index c4b5419a69..71778b9600 100644
      PanicAlertFmtT("Cannot boot this WAD because it could not be installed to the NAND.");
      return false;
 diff --git a/Source/Core/Core/Config/MainSettings.cpp b/Source/Core/Core/Config/MainSettings.cpp
-index f0cc8511b7..c44e7229af 100644
+index f0cc8511b7..cc6413e50c 100644
 --- a/Source/Core/Core/Config/MainSettings.cpp
 +++ b/Source/Core/Core/Config/MainSettings.cpp
 @@ -46,7 +46,14 @@ const Info<bool> MAIN_JIT_FOLLOW_BRANCH{{System::Main, "Core", "JITFollowBranch"
@@ -1109,7 +1109,7 @@ index f0cc8511b7..c44e7229af 100644
  const Info<bool> MAIN_ACCURATE_CPU_CACHE{{System::Main, "Core", "AccurateCPUCache"}, false};
  const Info<bool> MAIN_DSP_HLE{{System::Main, "Core", "DSPHLE"}, true};
  const Info<int> MAIN_MAX_FALLBACK{{System::Main, "Core", "MaxFallback"}, 100};
-@@ -229,6 +236,19 @@ const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS{{System::Main, "Core", "DivByZer
+@@ -229,6 +236,23 @@ const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS{{System::Main, "Core", "DivByZer
  const Info<bool> MAIN_FPRF{{System::Main, "Core", "FPRF"}, false};
  const Info<bool> MAIN_ACCURATE_NANS{{System::Main, "Core", "AccurateNaNs"}, false};
  const Info<bool> MAIN_ACCURATE_FMADDS{{System::Main, "Core", "AccurateFmadds"}, true};
@@ -1122,6 +1122,10 @@ index f0cc8511b7..c44e7229af 100644
 +//   rounding (Dolphin names a Zelda that gets stuck without it).
 +const Info<bool> MAIN_FAST_PAIRED_MATH{{System::Main, "Core", "FastPairedMath"}, false};
 +const Info<bool> MAIN_FAST_SINGLE_PRECISION{{System::Main, "Core", "FastSinglePrecision"}, false};
++//  FastPairedRounding: only paired-single results (ps_*) stay unrounded; the
++//   game's other single-precision math is rounded as on the console. Mario
++//   Superstar Baseball runs but stops progressing with FastSinglePrecision.
++const Info<bool> MAIN_FAST_PAIRED_ROUNDING{{System::Main, "Core", "FastPairedRounding"}, false};
 +// Porpoise 3.0: a block whose guess at its quantizers (GQRs) turned out wrong
 +// guesses again with the values then current, this many times, before it reads
 +// them on every access for good.
@@ -1130,15 +1134,16 @@ index f0cc8511b7..c44e7229af 100644
  const Info<float> MAIN_EMULATION_SPEED{{System::Main, "Core", "EmulationSpeed"}, 1.0f};
  #if defined(ANDROID)
 diff --git a/Source/Core/Core/Config/MainSettings.h b/Source/Core/Core/Config/MainSettings.h
-index 4bb1c36db9..c1906a031c 100644
+index 4bb1c36db9..a769c29503 100644
 --- a/Source/Core/Core/Config/MainSettings.h
 +++ b/Source/Core/Core/Config/MainSettings.h
-@@ -134,6 +134,9 @@ extern const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS;
+@@ -134,6 +134,10 @@ extern const Info<bool> MAIN_DIVIDE_BY_ZERO_EXCEPTIONS;
  extern const Info<bool> MAIN_FPRF;
  extern const Info<bool> MAIN_ACCURATE_NANS;
  extern const Info<bool> MAIN_ACCURATE_FMADDS;
 +extern const Info<bool> MAIN_FAST_PAIRED_MATH;
 +extern const Info<bool> MAIN_FAST_SINGLE_PRECISION;
++extern const Info<bool> MAIN_FAST_PAIRED_ROUNDING;
 +extern const Info<int> MAIN_PAIRED_QUANTIZE_RETRIES;
  extern const Info<bool> MAIN_DISABLE_ICACHE;
  extern const Info<float> MAIN_EMULATION_SPEED;
@@ -1487,10 +1492,20 @@ index 1248b1ab01..6ef7c77954 100644
  
    CompiledCode pExecAddr = (CompiledCode)asm_routines.enter_code;
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
-index 86f9e49178..2e39b0ef97 100644
+index 86f9e49178..6ea09d7b75 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
 +++ b/Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp
-@@ -379,7 +379,7 @@ void Jit64::fmaddXX(UGeckoInstruction inst)
+@@ -50,7 +50,8 @@ void Jit64::SetFPRFIfNeeded(const OpArg& input, bool single)
+ void Jit64::FinalizeSingleResult(X64Reg output, const OpArg& input, bool packed, bool duplicate)
+ {
+   // Most games don't need these. Zelda requires it though - some platforms get stuck without them.
+-  if (jo.accurateSinglePrecision)
++  // Porpoise 3.0: FastPairedRounding leaves paired-single results (ps_*) as computed.
++  if (jo.accurateSinglePrecision && !(m_fast_paired_rounding && js.op && js.op->inst.OPCD == 4))
+   {
+     if (packed)
+     {
+@@ -379,7 +380,7 @@ void Jit64::fmaddXX(UGeckoInstruction inst)
    const bool madds0 = inst.SUBOP5 == 14;
    const bool madds1 = inst.SUBOP5 == 15;
    const bool single = inst.OPCD == 4 || inst.OPCD == 59;
@@ -1513,7 +1528,7 @@ index 2e1b05cb42..afc7fde3b4 100644
    RCOpArg Ra = fpr.Use(a, RCMode::Read);
    RCOpArg Rc = fpr.Use(c, RCMode::Read);
 diff --git a/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp b/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp
-index b2ff246cce..d341b11d72 100644
+index b2ff246cce..90439557da 100644
 --- a/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp
 +++ b/Source/Core/Core/PowerPC/JitCommon/JitBase.cpp
 @@ -58,7 +58,7 @@
@@ -1521,20 +1536,21 @@ index b2ff246cce..d341b11d72 100644
  // the guard page at the 256kb mark.
  
 -const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 25> JitBase::JIT_SETTINGS{{
-+const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 26> JitBase::JIT_SETTINGS{{
++const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 27> JitBase::JIT_SETTINGS{{
      {&JitBase::bJITOff, &Config::MAIN_DEBUG_JIT_OFF},
      {&JitBase::bJITLoadStoreOff, &Config::MAIN_DEBUG_JIT_LOAD_STORE_OFF},
      {&JitBase::bJITLoadStorelXzOff, &Config::MAIN_DEBUG_JIT_LOAD_STORE_LXZ_OFF},
-@@ -81,6 +81,7 @@ const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 25> JitB
+@@ -81,6 +81,8 @@ const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 25> JitB
      {&JitBase::m_fprf, &Config::MAIN_FPRF},
      {&JitBase::m_accurate_nans, &Config::MAIN_ACCURATE_NANS},
      {&JitBase::m_accurate_fmadds, &Config::MAIN_ACCURATE_FMADDS},
 +    {&JitBase::m_fast_paired_math, &Config::MAIN_FAST_PAIRED_MATH},
++    {&JitBase::m_fast_paired_rounding, &Config::MAIN_FAST_PAIRED_ROUNDING},
      {&JitBase::m_fastmem_enabled, &Config::MAIN_FASTMEM},
      {&JitBase::m_page_table_fastmem_enabled, &Config::MAIN_PAGE_TABLE_FASTMEM},
      {&JitBase::m_accurate_cpu_cache_enabled, &Config::MAIN_ACCURATE_CPU_CACHE},
 diff --git a/Source/Core/Core/PowerPC/JitCommon/JitBase.h b/Source/Core/Core/PowerPC/JitCommon/JitBase.h
-index 612161b492..5983fa65b6 100644
+index 612161b492..97bf8c0b5c 100644
 --- a/Source/Core/Core/PowerPC/JitCommon/JitBase.h
 +++ b/Source/Core/Core/PowerPC/JitCommon/JitBase.h
 @@ -8,6 +8,7 @@
@@ -1555,20 +1571,21 @@ index 612161b492..5983fa65b6 100644
      std::unordered_set<u32> noSpeculativeConstantsAddresses;
    };
  
-@@ -160,6 +164,7 @@ protected:
+@@ -160,6 +164,8 @@ protected:
    bool m_fprf = false;
    bool m_accurate_nans = false;
    bool m_accurate_fmadds = false;
 +  bool m_fast_paired_math = false;
++  bool m_fast_paired_rounding = false;
    bool m_fastmem_enabled = false;
    bool m_page_table_fastmem_enabled = false;
    bool m_accurate_cpu_cache_enabled = false;
-@@ -168,7 +173,7 @@ protected:
+@@ -168,7 +174,7 @@ protected:
    bool m_cleanup_after_stackfault = false;
    u8* m_stack_guard = nullptr;
  
 -  static const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 25> JIT_SETTINGS;
-+  static const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 26> JIT_SETTINGS;
++  static const std::array<std::pair<bool JitBase::*, const Config::Info<bool>*>, 27> JIT_SETTINGS;
  
    bool DoesConfigNeedRefresh() const;
    void RefreshConfig();
@@ -1929,7 +1946,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..85610dd809 100644
+index c53281053f..1e87f3f8c0 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2014,7 +2031,7 @@ index c53281053f..85610dd809 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,17 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,20 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -2024,15 +2041,18 @@ index c53281053f..85610dd809 100644
 +  {
 +    // Porpoise 3.0: fast float math, the game's own choice.
 +    const bool fast = Libretro::GetOption<bool>(core::FAST_FLOAT_MATH, /*def=*/false);
-+    Config::SetBase(Config::MAIN_FAST_SINGLE_PRECISION, fast);
++    // Paired-single math only (FastPairedMath, FastPairedRounding): with every
++    // single-precision result unrounded (FastSinglePrecision), Mario Superstar
++    // Baseball ran at twice the speed but stopped progressing.
 +    Config::SetBase(Config::MAIN_FAST_PAIRED_MATH, fast);
++    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, fast);
 +    NOTICE_LOG_FMT(BOOT, "Fast float math = {}", fast ? "Yes" : "No");
 +  }
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +548,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +551,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -2045,7 +2065,7 @@ index c53281053f..85610dd809 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +704,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +707,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -2056,7 +2076,7 @@ index c53281053f..85610dd809 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +799,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +802,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2069,7 +2089,7 @@ index c53281053f..85610dd809 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +872,7 @@ void retro_unload_game(void)
+@@ -804,6 +875,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
@@ -2089,7 +2109,7 @@ index 50497a7171..2e5629cfa6 100644
    Boot.cpp
    Host.cpp
 diff --git a/Source/Core/DolphinLibretro/Common/Options.cpp b/Source/Core/DolphinLibretro/Common/Options.cpp
-index 52791da8de..2d5f1fd66d 100644
+index 52791da8de..85e8b26456 100644
 --- a/Source/Core/DolphinLibretro/Common/Options.cpp
 +++ b/Source/Core/DolphinLibretro/Common/Options.cpp
 @@ -1,6 +1,13 @@
@@ -2129,8 +2149,8 @@ index 52791da8de..2d5f1fd66d 100644
 +    Libretro::Options::core::FAST_FLOAT_MATH,
 +    "Core > Fast float math",
 +    "Fast float math",
-+    "Single-precision results are not rounded after every operation. Much faster in games heavy on "
-+    "float math; a few games need the rounding.",
++    "Paired-single results are not rounded after every operation. Much faster in games heavy on "
++    "paired-single math; a few games may need the rounding.",
 +    nullptr,
 +    CATEGORY_CORE,
 +    {
