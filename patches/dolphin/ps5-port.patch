@@ -2225,7 +2225,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..64622736bd 100644
+index c53281053f..f83a694b67 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2324,10 +2324,10 @@ index c53281053f..64622736bd 100644
 +    // stores read them; anything else that reads them, and every exit from a
 +    // block, gets them rounded first (Jit64::PorpoisePlan). Leaving every result
 +    // unrounded ran Mario Superstar Baseball twice as fast but froze it.
++    // Test 5A: the rounding alone (no quantizer retries).
 +    Config::SetBase(Config::MAIN_FAST_PAIRED_ROUNDING, fast);
-+    // Quantizer guesses retried: off, Dolphin's own behavior.
-+    Config::SetBase(Config::MAIN_PAIRED_QUANTIZE_RETRIES, fast ? 8 : 0);
-+    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (deferred paired rounding)", fast ? "Yes" : "No");
++    Config::SetBase(Config::MAIN_PAIRED_QUANTIZE_RETRIES, 0);
++    NOTICE_LOG_FMT(BOOT, "Fast float math = {} (test 5A: deferred paired rounding, no retries)", fast ? "Yes" : "No");
 +  }
 +#endif
  
