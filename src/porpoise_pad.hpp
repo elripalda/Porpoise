@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace porpoise::pad
 {
@@ -180,6 +181,7 @@ struct WiiConfig
     int grip = GripAuto;
     bool motion = true;  /* the sensors go to the core */
     bool shake = true;   /* a flick of the controller is a shake */
+    bool motion_plus = false; /* a Wii MotionPlus on the Remote, its gyroscope the DualSense's */
     bool invert_x = false, invert_y = false;
     /* The screen as measured by the Wii Remote setup: radians from its middle
      * to its edges (0: use speed). */
@@ -216,6 +218,12 @@ int expected_pose(const WiiConfig &config, bool second = false);
 
 /* The libretro device a Wii game's port gets for a WiiController. */
 unsigned wii_device(int controller);
+/* The core's device for the controller with a Wii MotionPlus on it (the same
+ * when the controller can't take one). */
+unsigned wii_device_with_motion_plus(int controller);
+/* Whether a game gets a Wii MotionPlus: setting 0 Auto (the games that need
+ * one), 1 On, 2 Off. game_id: "RZTE01". */
+bool wants_motion_plus(int setting, const std::string &game_id);
 
 struct Motion
 {

@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.0 Alpha Build 1 — 2026-10-09
+
+A test build, shared ahead of 3.0. Everything in 3.0 Beta 1 below, and:
+
+- **Network shares:** games from a shared folder on a computer or NAS (SMB or
+  NFS). Porpoise finds the computers on your network that share files, has a
+  number pad for an address, and lists their shared folders to pick from.
+- **Wii games online:** the emulator can look up servers' names now (it
+  couldn't before), for Wiimmfi, custom servers and WiiConnect24 through
+  WiiLink; a DNS server for a custom server in Settings → System.
+- **Wii MotionPlus**, played by the DualSense's gyroscope: on by itself for
+  Wii Sports Resort, Skyward Sword, Red Steel 2 and Wii Play: Motion, or set
+  per game.
+- **Universal widescreen** (beta), and an optional 16:9 code for Mario
+  Superstar Baseball.
+- Settings: one Move Porpoise's Folder row, and the menu sounds in Interface.
+- An ALPHA tag by the logo, and a note at the first start on reporting
+  problems.
+
 ## 3.0 Beta 1 — 2026-10-09
 
 - **Riptide Boost** (beta, Settings → System) speeds up games that run slow

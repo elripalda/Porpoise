@@ -347,6 +347,16 @@ public:
     /* tools/ui-preview: the computers found (scanning: still looking); nfs: the NFS type. */
     void preview_share_network(const std::vector<netfs::Found> &computers, bool scanning, bool nfs, int card);
     void preview_share_open(int index) { open_share(index); }
+    void preview_dns(const std::string &text, const std::string &message)
+    {
+        open_dns();
+        dns_.text = text;
+        dns_.message = message;
+        dns_.kb.kr = 3;
+        dns_.kb.kc = 0;
+        dns_.anim = 1;
+    }
+    void preview_dns_close() { dns_ = DnsPanel{}; }
     bool preview_share_waiting(); /* a scan, search or test going on */
     std::string preview_share_state();
     void preview_share_numeric()
@@ -532,6 +542,21 @@ private:
     Action update_share(bool up, bool down, bool left, bool right);
     void draw_share();
     std::string shares_file() const { return data_dir_ + "/network-shares.txt"; }
+
+    /* The DNS server for Wii games online, typed on the number pad
+     * (ui_app_dns.cpp). Settings > System opens it. */
+    struct DnsPanel
+    {
+        bool open = false;
+        std::string text;
+        Keyboard kb;
+        std::string message;
+        float anim = 0;
+    };
+    DnsPanel dns_;
+    void open_dns();
+    Action update_dns(bool up, bool down, bool left, bool right);
+    void draw_dns();
     std::function<RaState()> ra_state_;
     /* The host's own checks for the diagnostic test (the jailbreak, the
      * folder, the search, the last game's speed): ok and what was found. */

@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "이 빌드의 Porpoise는 아직 개발 중입니다. 문제가 생기거나 강제 종료될 수도 있습니다.",
  "This build is still being tested: some things may not work as they should.": "이 빌드는 아직 테스트 중입니다. 일부 기능이 제대로 작동하지 않을 수 있습니다.",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "문제가 생기면 '설정 > 정보 > 버그 신고'에서 로그를 저장한 다음, RIPALDA Discord의 버그 신고에서 게임 이름, 발생한 일과 함께 공유하세요. 테스트에 참여해 주셔서 감사합니다!",
- "Share Type": "연결 유형"
+ "Share Type": "연결 유형",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "리모컨에 Wii MotionPlus를 달고 DualSense의 자이로스코프로 조작합니다 (모션: 켜기). 자동: 필요한 게임 (Wii 스포츠 리조트, 젤다의 전설 스카이워드 소드, Red Steel 2, Wii Play: Motion)에서 사용합니다. 게임을 시작하거나 컨트롤러가 바뀔 때 적용됩니다.",
+ "DNS Server for Online Play": "온라인 플레이용 DNS 서버",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Wii 게임이 온라인 서버를 찾는 곳입니다. 자동: 본체의 DNS를 사용합니다. 커스텀 서버를 쓰려면 실제 Wii에서처럼 그 안내에 나온 DNS 주소를 입력하세요.",
+ "Automatic": "자동",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Wii 게임 온라인용 커스텀 서버의 DNS 주소입니다. Wii 본체의 네트워크 설정에서처럼 그 안내에 나온 주소를 입력합니다. 비어 있음: 자동 (본체의 DNS).",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "주소가 아닙니다. 192.168.1.2처럼 입력하거나, 모두 지워 자동으로 설정하세요."
 }

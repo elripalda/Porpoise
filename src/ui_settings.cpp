@@ -119,6 +119,7 @@ const Field kFields[] = {
     {"wii_grip", &Settings::wii_grip, nullptr, 0, 3},
     {"wii_motion", nullptr, &Settings::wii_motion, 0, 1},
     {"wii_shake", nullptr, &Settings::wii_shake, 0, 1},
+    {"wii_motion_plus", &Settings::wii_motion_plus, nullptr, 0, 2},
     {"wii_invert_x", nullptr, &Settings::wii_invert_x, 0, 1},
     {"wii_invert_y", nullptr, &Settings::wii_invert_y, 0, 1},
     {"wii_screen_x", &Settings::wii_screen_x, nullptr, 0, 900},
@@ -177,7 +178,7 @@ bool is_dolphin_key(const std::string &key)
 
 bool is_text_key(const std::string &key)
 {
-    return key == "border" || is_dolphin_key(key);
+    return key == "border" || key == "online_dns" || is_dolphin_key(key);
 }
 
 const Field *field(const std::string &key)
@@ -268,6 +269,12 @@ bool Settings::load(const std::string &path, bool overlay)
         if (k == "border")
         {
             border = v;
+            continue;
+        }
+        if (k == "online_dns")
+        {
+            if (!overlay)
+                online_dns = v; /* the console's setting: never a game's own */
             continue;
         }
         if (is_dolphin_key(k))
@@ -426,6 +433,7 @@ bool Settings::save(const std::string &path) const
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     std::fprintf(f, "border = %s\n", border.c_str());
+    std::fprintf(f, "online_dns = %s\n", online_dns.c_str());
     for (int p = 0; p < kPresets; ++p)
     {
         std::fprintf(f, "layout%d =", p + 1);
@@ -472,6 +480,8 @@ bool Settings::save_keys(const std::string &path, const std::vector<std::string>
             write_field(f, *this, *fd);
         else if (k == "border")
             std::fprintf(f, "border = %s\n", border.c_str());
+        else if (k == "online_dns")
+            std::fprintf(f, "online_dns = %s\n", online_dns.c_str());
         else if (is_dolphin_key(k) && !get(k).empty())
             std::fprintf(f, "%s = %s\n", k.c_str(), get(k).c_str());
     }
@@ -676,6 +686,11 @@ bool Settings::set(const std::string &key, const std::string &value)
         border = value;
         return true;
     }
+    if (key == "online_dns")
+    {
+        online_dns = value;
+        return true;
+    }
     if (is_dolphin_key(key))
     {
         for (auto &kv : dolphin)
@@ -705,6 +720,8 @@ std::vector<std::string> Settings::changed_keys(const Settings &before) const
             keys.push_back(fd.key);
     if (border != before.border)
         keys.push_back("border");
+    if (online_dns != before.online_dns)
+        keys.push_back("online_dns");
     if (stay_sandboxed != before.stay_sandboxed)
         keys.push_back("stay_sandboxed");
     auto add_dolphin = [&](const std::vector<std::pair<std::string, std::string>> &from) {
@@ -741,6 +758,8 @@ std::string Settings::get(const std::string &key) const
 {
     if (key == "border")
         return border;
+    if (key == "online_dns")
+        return online_dns;
     if (is_dolphin_key(key))
     {
         for (const auto &kv : dolphin)
@@ -797,7 +816,7 @@ bool Settings::use_wii_preset(int slot)
     return true;
 }
 
-porpoise::pad::WiiConfig Settings::wii_config(bool active) const
+porpoise::pad::WiiConfig Settings::wii_config(bool active, const std::string &game_id) const
 {
     porpoise::pad::WiiConfig c;
     c.active = active;
@@ -817,6 +836,7 @@ porpoise::pad::WiiConfig Settings::wii_config(bool active) const
     c.grip = std::clamp(wii_grip, 0, int(porpoise::pad::GripCount) - 1);
     c.motion = wii_motion;
     c.shake = wii_shake;
+    c.motion_plus = active && porpoise::pad::wants_motion_plus(wii_motion_plus, game_id);
     c.smooth = std::clamp(wii_smooth, 0, 3);
     c.reach = std::clamp(wii_reach, 50, 200);
     c.invert_x = developer && wii_invert_x; /* developer options only */
@@ -840,6 +860,7 @@ void Settings::reset()
     /* The game folders, the player's own button layouts and a seen notice stay. */
     const std::vector<std::string> keep = folders;
     const int notice = testing_notice; /* a test build's notice, already seen */
+    const std::string dns = online_dns; /* the network's, not a look or a feel */
     int own[kPresets][porpoise::pad::GcCount];
     std::memcpy(own, presets, sizeof own);
     int wii[kWiiButtonSets][porpoise::pad::CtlCount];
@@ -847,6 +868,7 @@ void Settings::reset()
     *this = Settings{};
     folders = keep;
     testing_notice = notice;
+    online_dns = dns;
     std::memcpy(presets, own, sizeof own);
     std::memcpy(wii_buttons, wii, sizeof wii);
 }

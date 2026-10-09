@@ -12,6 +12,7 @@
  * the launch screen, the hand-over of the display to Dolphin's device, and the
  * game (src/porpoise_core.cpp). */
 #include "porpoise_netfs.hpp"
+#include "porpoise_dns.hpp"
 #include "porpoise_paths.hpp"
 #include <algorithm>
 #include <atomic>
@@ -324,6 +325,7 @@ bool g_menu_open = false;
 /* Black over the screen with Porpoise's mark (App::draw_curtain): leaving a
  * game, coming back to the library, and the start. */
 float g_curtain = 0.0f;
+std::string g_wii_game_id; /* the game playing, for the Wii MotionPlus's Auto */
 bool g_controller_speakers = false; /* this game's Remote sounds go to the controllers */
 porpoise::ui::App g_app;
 double g_time = 0;
@@ -697,7 +699,7 @@ void read_latest_release()
 {
     /* A beta of Porpoise always looks for the next beta; a final release
      * only when Beta updates is on. */
-    const bool betas = g_settings.beta_updates || porpoise::ui::look::kVersionBeta > 0;
+    const bool betas = g_settings.beta_updates || porpoise::ui::look::kVersionBeta != 0;
     porpoise::update::Release r;
     if (porpoise::update::read_cached(g_data + "/latest-release.json", r, betas))
     {
@@ -1263,7 +1265,7 @@ int menu_paused(void *)
     {
         /* The Wii Remote: the pad and the core's ports; the pointer's source
          * is also a Dolphin option. */
-        porpoise::core::set_wii(g_play.wii_config(true));
+        porpoise::core::set_wii(g_play.wii_config(true, g_wii_game_id));
         apply_game_controls(true); /* the GameCube controller gets the trigger click */
         if (key == "wii_pointer" || key == "wii_setup")
             for (const auto &[k, v] : g_play.core_options())
@@ -2871,7 +2873,11 @@ int main(int argc, char **argv)
         /* A Wii game: the DualSense as a Wii Remote; a test build logs it. */
         /* The game's console: as detected, or as its own settings say. */
         const bool is_wii = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
-        playback.wii = g_play.wii_config(is_wii);
+        g_wii_game_id = launch->id;
+#ifndef PORPOISE_DESKTOP
+        porpoise::dns::set_server(g_settings.online_dns); /* a Wii game going online */
+#endif
+        playback.wii = g_play.wii_config(is_wii, g_wii_game_id);
         playback.controller_speakers = g_controller_speakers;
         playback.audio_pull = g_play.audio_pull;
         playback.audio_buffer_ms = g_play.audio_buffer_ms();

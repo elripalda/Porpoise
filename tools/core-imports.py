@@ -69,7 +69,10 @@ def generate(imports):
                'statvfs': 'ps5_statvfs', 'strcasestr': 'ps5_strcasestr',
                'memccpy': 'ps5_memccpy', 'times': 'ps5_times', 'sockatmark': 'ps5_sockatmark',
                'getpwuid': 'ps5_getpwuid', 'gethostbyaddr': 'ps5_gethostbyaddr',
-               'gethostbyname': 'ps5_gethostbyname', 'getnameinfo': 'ps5_getnameinfo',
+               # src/porpoise_dns.cpp: a name through the console's network
+               # (a Wii game going online), the DNS server the player set first.
+               'gethostbyname': 'porpoise_core_gethostbyname', 'getnameinfo': 'porpoise_core_getnameinfo',
+               'getaddrinfo': 'porpoise_core_getaddrinfo', 'freeaddrinfo': 'porpoise_core_freeaddrinfo',
                'gai_strerror': 'ps5_gai_strerror',
                # libc's getcwd calls __getcwd, which only libkernel_sys has.
                'getcwd': 'ps5_getcwd', 'tmpfile': 'ps5_tmpfile',

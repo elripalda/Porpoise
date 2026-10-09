@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "Nesta versão, o Porpoise ainda está em desenvolvimento: conta com problemas e até encerramentos inesperados.",
  "This build is still being tested: some things may not work as they should.": "Esta versão ainda está a ser testada: algumas coisas podem não funcionar como deviam.",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "Se algo correr mal, vai a Definições > Sobre > Reportar um erro para guardar os registos e depois partilha-os nos relatórios de erros do Discord RIPALDA com o jogo e o que aconteceu. Obrigado por testares!",
- "Share Type": "Tipo de ligação"
+ "Share Type": "Tipo de ligação",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "Um Wii MotionPlus no Remote, controlado pelo giroscópio do DualSense (Movimento: Sim). Auto: para os jogos que precisam dele (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Aplica-se quando o jogo inicia ou o comando muda.",
+ "DNS Server for Online Play": "Servidor DNS para jogo online",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Onde os jogos Wii procuram os seus servidores online. Automático: o da consola. Para um servidor personalizado, escreve o endereço DNS indicado nas instruções dele, como numa Wii verdadeira.",
+ "Automatic": "Automático",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Para um servidor personalizado para jogos Wii online: o endereço DNS indicado nas instruções dele, como nas definições de rede de uma Wii. Vazio: Automático, o da consola.",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Isso não é um endereço. Escreve um como 192.168.1.2, ou apaga tudo para Automático."
 }

@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "In questa versione Porpoise è ancora in lavorazione: aspettati problemi, e persino crash.",
  "This build is still being tested: some things may not work as they should.": "Questa versione è ancora in fase di test: alcune cose potrebbero non funzionare come dovrebbero.",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "Se qualcosa va storto, vai su Impostazioni > Info > Segnala un bug per salvare i log, poi condividili nelle segnalazioni di bug del Discord RIPALDA indicando il gioco e cosa è successo. Grazie per i test!",
- "Share Type": "Tipo di connessione"
+ "Share Type": "Tipo di connessione",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "Un Wii MotionPlus sul telecomando, gestito dal giroscopio del DualSense (Movimento: Sì). Auto: per i giochi che lo richiedono (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Vale dall'avvio del gioco o quando cambia il controller.",
+ "DNS Server for Online Play": "Server DNS per il gioco online",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Dove i giochi Wii cercano i loro server online. Automatico: quello della console. Per un server personalizzato, inserisci l'indirizzo DNS indicato nelle sue istruzioni, come su una vera Wii.",
+ "Automatic": "Automatico",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Per un server personalizzato per i giochi Wii online: l'indirizzo DNS indicato nelle sue istruzioni, come nelle impostazioni di rete di una Wii. Vuoto: Automatico, quello della console.",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Questo non è un indirizzo. Inseriscine uno come 192.168.1.2, oppure cancella tutto per Automatico."
 }

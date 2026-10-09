@@ -52,7 +52,9 @@ std::string App::version_label(const std::string &tag, int build)
     std::string shown = std::to_string(major) + "." + std::to_string(minor);
     if (patch)
         shown += "." + std::to_string(patch);
-    if (beta)
+    if (beta < 0)
+        shown += " Alpha " + std::to_string(beta + 1000);
+    else if (beta)
         shown += " Beta " + std::to_string(beta);
     if (build > 0)
         shown += " (build " + std::to_string(build) + ")";
@@ -787,6 +789,11 @@ void App::add_game_rows(Settings &t, bool per_game)
            {"Auto", "Both Hands", "Upright, trigger to the TV", "Upright, facing you"});
     toggle("wii_motion", "Motion", "The DualSense's motion is the Remote's: tilt, swing and point.", &t.wii_motion);
     toggle("wii_shake", "Flick to Shake", "A quick flick of the controller shakes the Remote.", &t.wii_shake);
+    choice("wii_motion_plus", "Wii MotionPlus",
+           "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games "
+           "that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game "
+           "starts or the controller changes.",
+           &t.wii_motion_plus, 0, {"Auto", "On", "Off"});
 
     header("System");
     choice("cpu_clock", "CPU Clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
@@ -833,6 +840,20 @@ void App::add_game_rows(Settings &t, bool per_game)
            "uses the game's own patch for its server (Wiimmfi, a custom server, or a mod's own), not this switch. "
            "Needs the console online.",
            &t.wii_online);
+#ifndef PORPOISE_DESKTOP
+    if (!per_game)
+    {
+        /* Wii games online: the DNS server a custom server asks for. */
+        SettingRow r;
+        r.section = section;
+        r.label = tr("DNS Server for Online Play");
+        r.help = tr("Where Wii games look up their online servers. Automatic: the console's own. For a custom "
+                    "server, type the DNS address its instructions give, as on a real Wii.");
+        r.values = {settings_ && !settings_->online_dns.empty() ? settings_->online_dns : tr("Automatic")};
+        r.action = kRowOnlineDns;
+        rows_.push_back(r);
+    }
+#endif
     if (!per_game)
         toggle("debug_logs", "Debug Logs",
                "For testing: Porpoise keeps notes on what it did in /data/porpoise/debug, for bug reports.",
@@ -2015,6 +2036,9 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowEditShare:
         open_share(row.folder);
         return Action::None;
+    case kRowOnlineDns:
+        open_dns();
+        return Action::None;
     case kRowMoveData:
         if (move_choice_ >= 0 && move_choice_ < int(move_places_.size()))
         {
@@ -2903,6 +2927,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Show"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowWiiSetup)
         draw_prompts({{Glyph::Cross, "Start"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowOnlineDns)
+        draw_prompts({{Glyph::Cross, "Change"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMoveData)
         draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Cross, "Move"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowUpdate)

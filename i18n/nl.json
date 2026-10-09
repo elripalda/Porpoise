@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "In deze versie wordt nog aan Porpoise gewerkt: verwacht problemen, en zelfs crashes.",
  "This build is still being tested: some things may not work as they should.": "Deze versie wordt nog getest: sommige dingen werken misschien niet zoals het hoort.",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "Als er iets misgaat, ga dan naar Instellingen > Over > Bug melden om de logs op te slaan en deel ze daarna in de bugmeldingen op de RIPALDA-Discord, met de game en wat er gebeurde. Bedankt voor het testen!",
- "Share Type": "Verbindingstype"
+ "Share Type": "Verbindingstype",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "Een Wii MotionPlus op de Remote, bediend met de gyroscoop van de DualSense (Beweging: Aan). Auto: voor de games die er een nodig hebben (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Geldt vanaf de start van de game of als de controller wisselt.",
+ "DNS Server for Online Play": "DNS-server voor online spelen",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Waar Wii-games hun online servers opzoeken. Automatisch: die van de console. Voor een eigen server typ je het DNS-adres uit de instructies ervan, zoals op een echte Wii.",
+ "Automatic": "Automatisch",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Voor een eigen server voor Wii-games online: het DNS-adres uit de instructies ervan, zoals in de netwerkinstellingen van een Wii. Leeg: Automatisch, die van de console.",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Dat is geen adres. Typ er een zoals 192.168.1.2, of wis alles voor Automatisch."
 }

@@ -254,6 +254,8 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
                          {"Auto", "Both Hands", "Upright, trigger to the TV", "Upright, facing you"}});
             r.push_back({Kind::Bool, "wii_motion", "Motion", nullptr, &p.wii_motion, 0, {"Off", "On"}});
             r.push_back({Kind::Bool, "wii_shake", "Flick to Shake", nullptr, &p.wii_shake, 0, {"Off", "On"}});
+            r.push_back({Kind::Int, "wii_motion_plus", "Wii MotionPlus", &p.wii_motion_plus, nullptr, 0,
+                         {"Auto", "On", "Off"}});
             if (p.developer)
                 r.push_back({Kind::Bool, "motion_readout", "Motion Readout", nullptr, &p.motion_readout, 0,
                              {"Off", "On"}});

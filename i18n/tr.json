@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "Bu sürümde Porpoise üzerinde hâlâ çalışılıyor: sorunlarla, hatta çökmelerle karşılaşabilirsiniz.",
  "This build is still being tested: some things may not work as they should.": "Bu sürüm hâlâ test ediliyor: bazı şeyler olması gerektiği gibi çalışmayabilir.",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "Bir sorun çıkarsa günlükleri kaydetmek için Ayarlar > Hakkında > Hata bildir'e gidin, ardından bunları RIPALDA Discord'undaki hata raporları bölümünde, oyunu ve ne olduğunu belirterek paylaşın. Test ettiğiniz için teşekkürler!",
- "Share Type": "Bağlantı türü"
+ "Share Type": "Bağlantı türü",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "Wii Remote'a takılı bir Wii MotionPlus; DualSense'in jiroskopuyla kullanılır (Hareket: Açık). Otomatik: ihtiyaç duyan oyunlar için (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Oyun başladığında veya kumanda değiştiğinde geçerli olur.",
+ "DNS Server for Online Play": "Çevrimiçi oyun için DNS sunucusu",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Wii oyunlarının çevrimiçi sunucularını aradığı yer. Otomatik: konsolun kendi DNS'i. Özel bir sunucu için, gerçek bir Wii'deki gibi, onun talimatlarında verilen DNS adresini yazın.",
+ "Automatic": "Otomatik",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Wii oyunlarında çevrimiçi özel bir sunucu için: talimatlarında verilen DNS adresi, Wii'nin kendi ağ ayarlarındaki gibi. Boş: Otomatik, konsolun kendi DNS'i.",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Bu bir adres değil. 192.168.1.2 gibi bir adres yazın veya Otomatik için tümünü silin."
 }

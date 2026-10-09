@@ -1290,6 +1290,35 @@ unsigned wii_device(int controller)
     }
 }
 
+unsigned wii_device_with_motion_plus(int controller)
+{
+    /* The core's MotionPlus devices (Input.cpp): the five Remotes plus 6. */
+    const unsigned base = wii_device(controller);
+    switch (base >> 8)
+    {
+    case 0: return (7u << 8) | RETRO_DEVICE_JOYPAD;  /* Remote */
+    case 2: return (8u << 8) | RETRO_DEVICE_JOYPAD;  /* sideways */
+    case 3: return (9u << 8) | RETRO_DEVICE_JOYPAD;  /* with the Nunchuk */
+    case 4: return (10u << 8) | RETRO_DEVICE_JOYPAD; /* with the Classic Controller */
+    default: return base;                            /* a GameCube controller takes none */
+    }
+}
+
+bool wants_motion_plus(int setting, const std::string &game_id)
+{
+    if (setting == 1)
+        return true;
+    if (setting != 0)
+        return false;
+    /* The games that won't play without one: Wii Sports Resort, Skyward
+     * Sword, Red Steel 2 and Wii Play: Motion, every region. */
+    static const char *const kNeedIt[] = {"RZT", "SOU", "RD2", "SC8"};
+    for (const char *id : kNeedIt)
+        if (game_id.compare(0, 3, id) == 0)
+            return true;
+    return false;
+}
+
 void recenter(int player)
 {
     std::lock_guard<std::recursive_mutex> lock(g_lock);

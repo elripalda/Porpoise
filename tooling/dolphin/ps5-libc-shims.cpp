@@ -33,9 +33,12 @@
  *   fork, execvp, waitpid              imgui's "open in shell"
  *   mkdtemp                            Common's temporary directories (NetPlay,
  *                                      movie export)
- *   gethostbyname, getaddrinfo, freeaddrinfo, gai_strerror, getnameinfo,
- *   __res_init, __res_state            name resolution (the Wii network stack,
- *                                      enet, curl, SFML), unused offline
+ *   gai_strerror, __res_init,
+ *   __res_state                        the resolver's own state and messages
+ *                                      (gethostbyname, getaddrinfo, freeaddrinfo
+ *                                      and getnameinfo are Porpoise's, through
+ *                                      the console's network: src/porpoise_dns.cpp,
+ *                                      for a Wii game going online)
  *   isatty                             terminal detection for log colour: the
  *                                      title's output is a log file
  */
@@ -128,30 +131,9 @@ extern "C"
         return nullptr;
     }
 
-    struct hostent *gethostbyname(const char *)
-    {
-        return nullptr;
-    }
-
-    int getaddrinfo(const char *, const char *, const struct addrinfo *, struct addrinfo **result)
-    {
-        if (result)
-            *result = nullptr;
-        return EAI_FAIL;
-    }
-
-    void freeaddrinfo(struct addrinfo *)
-    {
-    }
-
     const char *gai_strerror(int)
     {
-        return "name resolution is not available in this core";
-    }
-
-    int getnameinfo(const struct sockaddr *, socklen_t, char *, size_t, char *, size_t, int)
-    {
-        return EAI_FAIL;
+        return "the name couldn't be looked up";
     }
 
     void *__res_state()

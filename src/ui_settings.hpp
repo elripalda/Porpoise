@@ -52,6 +52,7 @@ struct Settings
         out[3] = kBloom[bloom < 0 ? 0 : bloom > 3 ? 3 : bloom];
     }
     std::string border;      /* "" none, or a border's name (built in, or a PNG in /data/porpoise/borders) */
+    std::string online_dns;  /* Wii games online: the DNS server to ask ("" the console's own; global only) */
     bool fps_overlay = false;
     int output_res = 0;           /* the picture sent to the TV: 0 the PS5's own, 1 1080p, 2 1440p, 3 4K (next start) */
     bool vsync = true;            /* frames on the TV's own vblank (porpoise_pacer); off: Porpoise's timer */
@@ -110,6 +111,7 @@ struct Settings
     int wii_grip = 0;       /* auto; both hands; upright, trigger to the TV; upright, facing you (pad::WiiGrip) */
     bool wii_motion = true; /* the DualSense's motion is the Remote's */
     bool wii_shake = true;  /* a flick shakes the Remote */
+    int wii_motion_plus = 0; /* Wii MotionPlus: Auto (the games that need one), On, Off */
     bool wii_invert_x = false, wii_invert_y = false;
     /* The Wii Remote setup: the screen's half-width and half-height as angles
      * from where the player sits, in tenths of a degree (0: not measured); and
@@ -263,7 +265,8 @@ struct Settings
     /* Takes those keys' values from another (an edit being applied). */
     void copy_keys(const Settings &from, const std::vector<std::string> &keys);
     /* The Wii Remote's settings, for a Wii game (active) or not. */
-    porpoise::pad::WiiConfig wii_config(bool active) const;
+    /* game_id: the game playing, for the Wii MotionPlus's Auto. */
+    porpoise::pad::WiiConfig wii_config(bool active, const std::string &game_id = "") const;
     static const std::vector<std::string> &wii_preset_names();
     /* The buttons in effect: a ready-made layout, or one of the player's own. */
     porpoise::pad::Mapping mapping() const;

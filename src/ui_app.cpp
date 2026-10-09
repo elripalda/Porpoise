@@ -434,7 +434,7 @@ App::Action App::update(const Input &in, double dt)
         update_failed_ = false;
         open_dialog(DialogKind::Info, tr("The update didn't finish"), tr(update_error_), "");
     }
-    if (testing_notice_ && !dialog_.open && !acct_.open && !share_.open && screen_ == Screen::Main &&
+    if (testing_notice_ && !dialog_.open && !acct_.open && !share_.open && !dns_.open && screen_ == Screen::Main &&
         wizard_step_ < 0 && !welcome_after_dialog_)
     {
         /* A test build's notice, once the start's own messages are seen. */
@@ -458,6 +458,8 @@ App::Action App::update(const Input &in, double dt)
         return update_account(up, down, left, right);
     if (share_.open)
         return update_share(up, down, left, right);
+    if (dns_.open)
+        return update_dns(up, down, left, right);
     if (screen_ == Screen::Achievements)
         return update_achievements_screen(up, down);
     if (screen_ == Screen::Welcome)
@@ -1227,6 +1229,7 @@ void App::draw_dialog()
         draw_achievements_screen(); /* over whichever look's library */
     draw_account(); /* under any dialog */
     draw_share();
+    draw_dns();
     if (!dialog_.open)
         return;
     Gfx &g = *g_;
@@ -1612,7 +1615,8 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
                        const std::vector<std::pair<Glyph, std::string>> &right_in, const std::string &center)
 {
     Gfx &g = *g_;
-    if ((dialog_.open || acct_.open || share_.open || screen_ == Screen::Achievements) && !drawing_dialog_)
+    if ((dialog_.open || acct_.open || share_.open || dns_.open || screen_ == Screen::Achievements) &&
+        !drawing_dialog_)
         return; /* the dialog (or the account panel, the achievements page) brings its own */
     /* Every prompt is translated here, so callers write plain English. */
     std::vector<std::pair<Glyph, std::string>> left_tr, right_tr;

@@ -31,7 +31,7 @@ struct Release
     std::string sha256;  /* of the zip, as GitHub gives it ("" when it doesn't) */
     std::size_t size = 0;
     int build = 0;       /* from the release's name, "Porpoise 1.1 (build 14)"; 0 when it has none */
-    int beta = 0;        /* from the tag, "v2.0-beta.1": 1; 0 for a final release */
+    int beta = 0;        /* from the tag, "v2.0-beta.1": 1; 0 for a final release; an alpha -1000 + n */
     bool prerelease = false;
     std::string name;    /* "Porpoise 2.0 beta 1" */
 };
@@ -48,7 +48,8 @@ bool read_cached_list(const std::string &path, std::vector<Release> &out);
  * betas -, build). Returns <0, 0 or >0. */
 int compare_versions(int major_a, int minor_a, int patch_a, int beta_a, int build_a, int major_b, int minor_b,
                      int patch_b, int beta_b, int build_b);
-/* A tag's numbers: "v1.5.1" -> 1 5 1, "v2.0-beta.1" -> 2 0 0 beta 1. */
+/* A tag's numbers: "v1.5.1" -> 1 5 1, "v2.0-beta.1" -> 2 0 0 beta 1,
+ * "v3.0-alpha.1" -> 3 0 0 beta -999 (an alpha comes before the betas). */
 bool tag_version(const std::string &tag, int &major, int &minor, int &patch, int &beta);
 
 enum class Phase

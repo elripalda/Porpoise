@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "В этой версии Porpoise ещё в разработке: возможны проблемы и даже вылеты.",
  "This build is still being tested: some things may not work as they should.": "Эта версия ещё тестируется: что-то может работать не так, как должно.",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "Если что-то пойдёт не так, откройте Настройки > О программе > Сообщить об ошибке, чтобы сохранить логи, а затем поделитесь ими в разделе отчётов об ошибках на Discord-сервере RIPALDA, указав игру и что случилось. Спасибо за тестирование!",
- "Share Type": "Тип подключения"
+ "Share Type": "Тип подключения",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "Wii MotionPlus на Wii Remote, управляемый гироскопом DualSense (Движение: Вкл.). Авто: для игр, которым он нужен (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Применяется при запуске игры или смене контроллера.",
+ "DNS Server for Online Play": "DNS-сервер для сетевой игры",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Где игры для Wii ищут свои онлайн-серверы. Автоматически: DNS консоли. Для стороннего сервера введите DNS-адрес из его инструкций, как на настоящей Wii.",
+ "Automatic": "Автоматически",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Для стороннего сервера для сетевой игры на Wii: DNS-адрес из его инструкций, как в сетевых настройках самой Wii. Пусто: Автоматически, DNS консоли.",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Это не адрес. Введите адрес вида 192.168.1.2 или сотрите всё для режима «Автоматически»."
 }

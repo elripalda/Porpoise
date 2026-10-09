@@ -954,6 +954,13 @@ int main(int argc, char **argv)
         press(kDown, row);
         settle();
         render("share-settings", [&] { ui.draw(12.0); });
+        /* The DNS server for online play. */
+        ui.preview_dns("172.8.199.18", "");
+        settle();
+        render("dns-panel", [&] { ui.draw(12.0); });
+        ui.preview_dns("172.8.199", "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.");
+        render("dns-problem", [&] { ui.draw(12.0); });
+        ui.preview_dns_close();
         /* The test build's notice, over the library. */
         press(kCircle, 3);
         ui.show_testing_notice();

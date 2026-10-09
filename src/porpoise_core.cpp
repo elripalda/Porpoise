@@ -686,7 +686,8 @@ unsigned port_device(int)
 {
     if (!h.wii.active)
         return RETRO_DEVICE_JOYPAD;
-    return porpoise::pad::wii_device(h.wii.controller);
+    return h.wii.motion_plus ? porpoise::pad::wii_device_with_motion_plus(h.wii.controller)
+                             : porpoise::pad::wii_device(h.wii.controller);
 }
 
 /* A line for the debug folder's motion.csv: what the controller felt and
@@ -1091,16 +1092,18 @@ void set_wii(const porpoise::pad::WiiConfig &config)
 {
     if (!h.wii.active)
         return;
-    const bool device_changed = config.controller != h.wii.controller;
+    const bool device_changed = config.controller != h.wii.controller || config.motion_plus != h.wii.motion_plus;
+    /* (the same device for the GameCube controller either way: re-plugged all the same, harmlessly) */
     h.wii = config;
     h.wii.active = true;
     porpoise::pad::set_wii(h.wii);
     h.wii_changed |= device_changed;
     if (h.log)
         std::fprintf(h.log,
-                     "[porpoise] Wii controller now %d, pointer %d, grip %d, speed %d, screen %.1f x %.1f deg, "
+                     "[porpoise] Wii controller now %d%s, pointer %d, grip %d, speed %d, screen %.1f x %.1f deg, "
                      "smoothing %d, reach %d%%\n",
-                     h.wii.controller, h.wii.pointer, h.wii.grip, h.wii.speed, h.wii.half_x * 57.29578f,
+                     h.wii.controller, h.wii.motion_plus ? " with MotionPlus" : "", h.wii.pointer, h.wii.grip,
+                     h.wii.speed, h.wii.half_x * 57.29578f,
                      h.wii.half_y * 57.29578f, h.wii.smooth, h.wii.reach);
 }
 

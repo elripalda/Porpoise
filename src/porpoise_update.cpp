@@ -507,13 +507,26 @@ bool tag_version(const std::string &tag, int &major, int &minor, int &patch, int
         ++t;
     if (std::sscanf(t, "%d.%d.%d", &major, &minor, &patch) < 2)
         return false;
-    const std::size_t b = tag.find("beta");
+    std::string lower = tag;
+    for (char &c : lower)
+        if (c >= 'A' && c <= 'Z')
+            c = char(c - 'A' + 'a');
+    const std::size_t b = lower.find("beta");
     if (b != std::string::npos)
     {
         const char *n = tag.c_str() + b + 4;
         while (*n && (*n < '0' || *n > '9'))
             ++n;
         beta = *n ? std::max(1, std::atoi(n)) : 1;
+    }
+    /* "v3.0-alpha.1": before every beta of that version. */
+    const std::size_t a = lower.find("alpha");
+    if (b == std::string::npos && a != std::string::npos)
+    {
+        const char *n = tag.c_str() + a + 5;
+        while (*n && (*n < '0' || *n > '9'))
+            ++n;
+        beta = -1000 + (*n ? std::clamp(std::atoi(n), 1, 999) : 1);
     }
     return true;
 }

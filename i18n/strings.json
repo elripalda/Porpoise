@@ -6102,5 +6102,33 @@
  {
   "en": "Share Type",
   "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Wii MotionPlus",
+  "section": "3.0 Alpha 1: MotionPlus, online play"
+ },
+ {
+  "en": "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.",
+  "section": "3.0 Alpha 1: MotionPlus, online play"
+ },
+ {
+  "en": "DNS Server for Online Play",
+  "section": "3.0 Alpha 1: MotionPlus, online play"
+ },
+ {
+  "en": "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.",
+  "section": "3.0 Alpha 1: MotionPlus, online play"
+ },
+ {
+  "en": "Automatic",
+  "section": "3.0 Alpha 1: MotionPlus, online play"
+ },
+ {
+  "en": "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.",
+  "section": "3.0 Alpha 1: MotionPlus, online play"
+ },
+ {
+  "en": "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.",
+  "section": "3.0 Alpha 1: MotionPlus, online play"
  }
 ]

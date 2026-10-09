@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "Dans cette version, Porpoise est encore en chantier : attends-toi à des problèmes, voire à des plantages.",
  "This build is still being tested: some things may not work as they should.": "Cette version est encore en test : certaines choses peuvent ne pas marcher comme prévu.",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "Si quelque chose ne va pas, va dans Paramètres > À propos > Signaler un bug pour enregistrer les journaux, puis partage-les dans les rapports de bug du Discord RIPALDA avec le jeu et ce qui s'est passé. Merci de tester !",
- "Share Type": "Type de connexion"
+ "Share Type": "Type de connexion",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "Un Wii MotionPlus sur la télécommande, piloté par le gyroscope de la DualSense (Mouvements : Oui). Auto : pour les jeux qui en ont besoin (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). S'applique au lancement du jeu ou au changement de manette.",
+ "DNS Server for Online Play": "Serveur DNS pour le jeu en ligne",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Où les jeux Wii cherchent leurs serveurs en ligne. Automatique : celui de la console. Pour un serveur personnalisé, saisis l'adresse DNS indiquée dans ses instructions, comme sur une vraie Wii.",
+ "Automatic": "Automatique",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Pour un serveur personnalisé pour les jeux Wii en ligne : l'adresse DNS indiquée dans ses instructions, comme dans les paramètres réseau d'une Wii. Vide : Automatique, celui de la console.",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Ce n'est pas une adresse. Saisis-en une comme 192.168.1.2, ou efface tout pour Automatique."
 }

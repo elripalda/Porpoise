@@ -1524,5 +1524,12 @@
  "Porpoise is still being worked on in this build: expect problems, and even crashes.": "此版本的 Porpoise 仍在開發中：可能會出現問題，甚至當機。",
  "This build is still being tested: some things may not work as they should.": "此版本仍在測試中：部分功能可能無法正常運作。",
  "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!": "如果發生問題，請前往「設定 > 關於 > 回報錯誤」儲存記錄檔，然後在 RIPALDA Discord 的錯誤回報中分享，並附上遊戲名稱與發生的狀況。感謝你協助測試！",
- "Share Type": "連線類型"
+ "Share Type": "連線類型",
+ "Wii MotionPlus": "Wii MotionPlus",
+ "A Wii MotionPlus on the Remote, played by the DualSense's gyroscope (Motion on). Auto: for the games that need one (Wii Sports Resort, Skyward Sword, Red Steel 2, Wii Play: Motion). Applies when the game starts or the controller changes.": "為遙控器裝上 Wii MotionPlus，由 DualSense 的陀螺儀操控（動作感應：開啟）。自動：用於需要它的遊戲（Wii Sports Resort、薩爾達傳說 禦天之劍、Red Steel 2、Wii Play: Motion）。在遊戲啟動或更換控制器時套用。",
+ "DNS Server for Online Play": "線上對戰 DNS 伺服器",
+ "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Wii 遊戲查詢其線上伺服器的位置。自動：使用主機本身的 DNS。若要使用自訂伺服器，請像在真正的 Wii 上一樣，輸入其說明中提供的 DNS 位址。",
+ "Automatic": "自動",
+ "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "用於 Wii 遊戲連線的自訂伺服器：輸入其說明中提供的 DNS 位址，就像在 Wii 本身的網路設定中一樣。留空：自動，使用主機本身的 DNS。",
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "這不是有效的位址。請輸入類似 192.168.1.2 的位址，或全部刪除以使用「自動」。"
 }
