@@ -1381,5 +1381,7 @@
  "FSR 1": "FSR 1",
  "FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with clean edges; Filter Strength sets its sharpening. Best with an internal resolution below the output's.": "FSR 1：AMD的放大技术将游戏画面提升到电视的分辨率，边缘清晰；“滤镜强度”设置其锐化程度。内部分辨率低于输出分辨率时效果最佳。",
  "Build Shaders Before Starting": "启动前编译着色器",
- "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "游戏上次使用过的着色器会在加载时编译，这样已见过的特效首次出现时就不会卡顿。游戏启动会稍慢一些。"
+ "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "游戏上次使用过的着色器会在加载时编译，这样已见过的特效首次出现时就不会卡顿。游戏启动会稍慢一些。",
+ "Extra Firm": "超硬",
+ "The whole description is on the back of the box (Triangle).": "完整的简介在包装盒背面（△）。"
 }

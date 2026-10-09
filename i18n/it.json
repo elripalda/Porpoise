@@ -1381,5 +1381,7 @@
  "FSR 1": "FSR 1",
  "FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with clean edges; Filter Strength sets its sharpening. Best with an internal resolution below the output's.": "FSR 1: l'upscaler di AMD porta l'immagine del gioco alla risoluzione della TV con bordi puliti; Intensità filtro regola la nitidezza. Ideale con una risoluzione interna inferiore a quella di uscita.",
  "Build Shaders Before Starting": "Compila gli shader prima di avviare",
- "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "Gli shader usati dal gioco l'ultima volta vengono compilati durante il caricamento, così gli effetti già visti non scattano la prima volta. Il gioco impiega un po' di più ad avviarsi."
+ "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "Gli shader usati dal gioco l'ultima volta vengono compilati durante il caricamento, così gli effetti già visti non scattano la prima volta. Il gioco impiega un po' di più ad avviarsi.",
+ "Extra Firm": "Extra deciso",
+ "The whole description is on the back of the box (Triangle).": "La descrizione completa è sul retro della confezione (Triangolo)."
 }

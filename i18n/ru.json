@@ -1381,5 +1381,7 @@
  "FSR 1": "FSR 1",
  "FSR 1: AMD's upscaler brings the game's picture up to the TV's resolution with clean edges; Filter Strength sets its sharpening. Best with an internal resolution below the output's.": "FSR 1: апскейлер AMD поднимает изображение игры до разрешения телевизора с чёткими краями; «Сила фильтра» задаёт его резкость. Лучше всего при внутреннем разрешении ниже выходного.",
  "Build Shaders Before Starting": "Компилировать шейдеры перед запуском",
- "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "Шейдеры, которые игра использовала в прошлый раз, компилируются во время загрузки, поэтому уже знакомые эффекты не вызывают подтормаживаний при первом появлении. Игра запускается чуть дольше."
+ "The shaders the game used last time are built while it loads, so effects you've seen don't stutter the first time. The game takes a moment longer to start.": "Шейдеры, которые игра использовала в прошлый раз, компилируются во время загрузки, поэтому уже знакомые эффекты не вызывают подтормаживаний при первом появлении. Игра запускается чуть дольше.",
+ "Extra Firm": "Очень тугой",
+ "The whole description is on the back of the box (Triangle).": "Полное описание — на обороте коробки (Треугольник)."
 }
