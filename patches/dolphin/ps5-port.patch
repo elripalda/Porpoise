@@ -2270,7 +2270,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..e45680121a 100644
+index c53281053f..275ac93636 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2355,13 +2355,16 @@ index c53281053f..e45680121a 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +398,20 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +398,23 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
 +#ifdef __PROSPERO__
-+  Config::SetBase(Config::MAIN_ACCURATE_FMADDS,
-+                  Libretro::GetOption<bool>(core::ACCURATE_FMADDS, /*def=*/false));
++  {
++    const bool exact_fma = Libretro::GetOption<bool>(core::ACCURATE_FMADDS, /*def=*/false);
++    Config::SetBase(Config::MAIN_ACCURATE_FMADDS, exact_fma);
++    NOTICE_LOG_FMT(BOOT, "Exact multiply-add rounding (AccurateFmadds) = {}", exact_fma ? "Yes" : "No");
++  }
 +  {
 +    // Porpoise 3.0: fast float math, the game's own choice.
 +    const bool fast = Libretro::GetOption<bool>(core::FAST_FLOAT_MATH, /*def=*/false);
@@ -2376,7 +2379,7 @@ index c53281053f..e45680121a 100644
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +551,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +554,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -2389,7 +2392,7 @@ index c53281053f..e45680121a 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +707,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +710,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -2400,7 +2403,7 @@ index c53281053f..e45680121a 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +802,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +805,12 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2413,7 +2416,7 @@ index c53281053f..e45680121a 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +875,7 @@ void retro_unload_game(void)
+@@ -804,6 +878,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }

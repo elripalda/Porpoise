@@ -1746,9 +1746,11 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             pacer.start(content_hz(), "game");
         }
 #ifndef PORPOISE_DESKTOP
-        /* Performance report: a few times a game, the emulated CPU's busiest
-         * places told as the game's own code (the core's porpoise_jit_describe). */
-        if (rate_checked && jit_described < 4 && ++jit_frames >= (jit_described == 0 ? 1800 : 1200))
+        /* Performance report: every 20 seconds (the first after 30), the
+         * emulated CPU's busiest places told as the game's own code (the core's
+         * porpoise_jit_describe). Up to 30 of them, about ten minutes: a report
+         * that stopped after four missed the slow part of a game reached later. */
+        if (rate_checked && jit_described < 30 && ++jit_frames >= (jit_described == 0 ? 1800 : 1200))
         {
             jit_frames = 0;
             unsigned long long rips[48];
