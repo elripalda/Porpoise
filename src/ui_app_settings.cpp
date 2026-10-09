@@ -465,7 +465,8 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("wide", "Widescreen",
            "Auto: 16:9 for a game with a widescreen code or a 16:9 option of its own, 4:3 for the rest. On: the same, "
            "and Dolphin's emulated widescreen hack for a game with neither, which can glitch at the screen edges. "
-           "Off: always 4:3. Universal (beta): Porpoise widens the game's own 3D view to 16:9 where it can.",
+           "Off: always 4:3. Universal (beta): Porpoise widens the game's own 3D view to 16:9 where it can, and uses "
+           "the widescreen hack where it can't.",
            &t.wide, 0, {"Auto", "On", "Off", "Universal (Beta)"});
     if (per_game && game_for_)
     {

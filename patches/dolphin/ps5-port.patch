@@ -1927,10 +1927,10 @@ index 31b6c2d1ed..e9d09a5296 100644
  void Reload(Core::System& system)
 diff --git a/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.cpp b/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.cpp
 new file mode 100644
-index 0000000000..d5c9604a7a
+index 0000000000..1039ba713e
 --- /dev/null
 +++ b/Source/Core/Core/HLE/HLE_PorpoiseWidescreen.cpp
-@@ -0,0 +1,252 @@
+@@ -0,0 +1,256 @@
 +// Porpoise's universal widescreen (beta).
 +// Copyright (C) 2026 Ruben (Project Porpoise)
 +// SPDX-License-Identifier: GPL-2.0-or-later
@@ -2079,6 +2079,19 @@ index 0000000000..d5c9604a7a
 +  s_enabled = enabled;
 +}
 +
++namespace
++{
++// Where the game's own projection can't be widened: Dolphin's widescreen hack
++// instead, so the game still plays in 16:9 (its HUD stretched, things at the
++// edges perhaps popping in, as with the hack chosen outright).
++bool UseHack(const char* why)
++{
++  NOTICE_LOG_FMT(BOOT, "Universal widescreen: {}; Dolphin's widescreen hack instead", why);
++  Config::SetCurrent(Config::GFX_WIDESCREEN_HACK, true);
++  return false;
++}
++}  // namespace
++
 +bool Apply(Core::System& system, const Core::CPUThreadGuard& guard,
 +           const DiscIO::VolumeDisc& volume)
 +{
@@ -2086,17 +2099,11 @@ index 0000000000..d5c9604a7a
 +  if (!s_enabled)
 +    return false;
 +  if (system.IsWii() || volume.GetVolumeType() != DiscIO::Platform::GameCubeDisc)
-+  {
-+    NOTICE_LOG_FMT(OSHLE, "Universal widescreen: GameCube games only, left off");
-+    return false;
-+  }
++    return UseHack("a Wii game (GameCube games' projections only)");
 +
 +  const std::vector<Section> sections = TextSections(volume);
 +  if (sections.empty())
-+  {
-+    WARN_LOG_FMT(OSHLE, "Universal widescreen: the program's sections weren't readable; 4:3");
-+    return false;
-+  }
++    return UseHack("the program's sections weren't readable");
 +
 +  u32 perspective = FindKnown(guard, sections, PERSPECTIVE);
 +  u32 frustum = 0;
@@ -2110,16 +2117,13 @@ index 0000000000..d5c9604a7a
 +
 +  if (!perspective && !frustum)
 +  {
-+    NOTICE_LOG_FMT(OSHLE,
-+                   "Universal widescreen: no projection function found (ortho {:08x}); the game "
-+                   "stays 4:3",
-+                   ortho);
-+    return false;
++    NOTICE_LOG_FMT(BOOT, "Universal widescreen: no known projection function (ortho {:08x})", ortho);
++    return UseHack("the game's own projection function wasn't found");
 +  }
 +
 +  s_perspective = perspective;
 +  s_frustum = frustum;
-+  NOTICE_LOG_FMT(OSHLE,
++  NOTICE_LOG_FMT(BOOT,
 +                 "Universal widescreen: C_MTXPerspective {:08x}, C_MTXFrustum {:08x}, "
 +                 "C_MTXOrtho {:08x}",
 +                 perspective, frustum, ortho);
@@ -2156,7 +2160,7 @@ index 0000000000..d5c9604a7a
 +    return;
 +  ppc_state.ps[2].Fill(double(float(*wide)));
 +  if (!s_logged_perspective.exchange(true))
-+    NOTICE_LOG_FMT(OSHLE, "Universal widescreen: perspective {:.3f} widened to {:.3f}", aspect,
++    NOTICE_LOG_FMT(BOOT, "Universal widescreen: perspective {:.3f} widened to {:.3f}", aspect,
 +                   *wide);
 +}
 +
@@ -2179,7 +2183,7 @@ index 0000000000..d5c9604a7a
 +  ppc_state.ps[3].Fill(double(float(new_l)));
 +  ppc_state.ps[4].Fill(double(float(new_r)));
 +  if (!s_logged_frustum.exchange(true))
-+    NOTICE_LOG_FMT(OSHLE, "Universal widescreen: frustum {:.3f}..{:.3f} widened to {:.3f}..{:.3f}",
++    NOTICE_LOG_FMT(BOOT, "Universal widescreen: frustum {:.3f}..{:.3f} widened to {:.3f}..{:.3f}",
 +                   l, r, new_l, new_r);
 +}
 +}  // namespace HLE_PorpoiseWidescreen

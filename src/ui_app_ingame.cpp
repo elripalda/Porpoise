@@ -387,8 +387,8 @@ const char *ws_help(int plan, bool wii)
         return "This game has a 16:9 option of its own: turn it on in the game's options, and the picture follows.";
     case 3: return "Dolphin's emulated widescreen hack is on. Things at the edges of the screen may pop in and out.";
     case 5:
-        return "Porpoise's universal widescreen (beta) widens the game's own 3D view to 16:9 when it finds how; if it "
-               "can't, the game stays 4:3. The menus and HUD may look stretched.";
+        return "Porpoise's universal widescreen (beta) widens the game's own 3D view to 16:9 when it finds how, and "
+               "uses Dolphin's widescreen hack when it doesn't. The menus and HUD may look stretched.";
     default: return "This game plays in 4:3. Widescreen, in the Video tab, changes that the next time it starts.";
     }
 }
