@@ -354,6 +354,7 @@ int g_light[kMaxPlayers] = {0, 1, 2, 3};
 std::atomic<int> g_trigger_feel{0}; /* set_trigger_feel */
 std::atomic<int> g_turbo{-1};       /* set_turbo: the control, or -1 */
 std::atomic<bool> g_quick_buttons{false};
+std::atomic<bool> g_shot_buttons{true};
 /* Dolphin reads input and sets rumble from its own CPU thread while the main
  * thread polls and players come and go: slots change under this lock. */
 std::recursive_mutex g_lock;
@@ -718,7 +719,7 @@ State read_slot(Slot &slot)
     if (count == 0)
     {
         slot.state.ff_step = false; /* a press counts once, not again on every repeat of the state */
-        slot.state.quick_save = slot.state.quick_load = false;
+        slot.state.quick_save = slot.state.quick_load = slot.state.screenshot = false;
         return slot.state; /* nothing new: keep the last state */
     }
     if (count < 0 || count > sample_capacity)
@@ -740,7 +741,8 @@ State read_slot(Slot &slot)
     std::uint8_t left_trigger = newest->left_trigger;
     State next;
     const bool quick = g_quick_buttons.load(std::memory_order_relaxed);
-    const bool touch_shortcuts = g_ff_buttons || quick;
+    const bool shot = g_shot_buttons.load(std::memory_order_relaxed);
+    const bool touch_shortcuts = g_ff_buttons || quick || shot;
     if (touch_shortcuts && (b & pad_options) && (b & pad_touch_pad))
     {
         /* Options + touch pad (the menu): the touch pad's own press doesn't
@@ -785,6 +787,16 @@ State read_slot(Slot &slot)
                 }
                 b &= ~(pad_l1 | pad_l2);
                 left_trigger = 0;
+            }
+            if (shot)
+            {
+                /* Touch pad + Square: a screenshot. */
+                if ((b & pad_square) && !(slot.raw_prev & pad_square))
+                {
+                    next.screenshot = true;
+                    slot.touch_combo = true;
+                }
+                b &= ~pad_square;
             }
             b &= ~pad_touch_pad;
         }
@@ -1005,6 +1017,11 @@ void set_turbo(int control)
 void set_quick_buttons(bool enabled)
 {
     g_quick_buttons.store(enabled, std::memory_order_relaxed);
+}
+
+void set_shot_buttons(bool enabled)
+{
+    g_shot_buttons.store(enabled, std::memory_order_relaxed);
 }
 
 std::int32_t user_of(int player)

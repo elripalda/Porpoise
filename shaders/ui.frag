@@ -51,6 +51,10 @@ const int BG_SYNTH = 10;    /* a neon sunset over a racing grid */
 const int BG_PAPER = 11;    /* warm paper */
 const int BG_CRYSTAL = 12;  /* light split by a prism */
 const int BG_STARCUBE = 13; /* black, a fine grid far below */
+const int BG_PIXEL = 14;    /* 8-Bit: a pixel-art night, hills and clouds drifting */
+const int BG_BEIGE = 15;    /* Beige: a home computer's warm plastic */
+const int BG_CLEAR = 16;    /* Translucent: see-through colored plastic, its insides showing */
+const int BG_ARCADE = 17;   /* Arcade: cabinets glowing along the wall, a carpet that glows */
 
 float sdRoundBox(vec2 p, vec2 b, float r)
 {
@@ -519,6 +523,188 @@ vec3 starcube(vec2 uv)
     return col;
 }
 
+/* 8-Bit: a night drawn in big pixels (a 320 x 180 screen): a dithered sky,
+ * blocky clouds and two rows of hills drifting past, stars blinking. */
+float bayer4(vec2 p)
+{
+    ivec2 i = ivec2(mod(p, 4.0));
+    int m[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+    return (float(m[i.y * 4 + i.x]) + 0.5) / 16.0;
+}
+
+vec3 pixel_night(vec2 uv)
+{
+    vec2 res = pc.screen.xy;
+    float t = now();
+    vec2 virt = vec2(180.0 * res.x / res.y, 180.0);
+    vec2 px = floor(uv * virt);              /* the big pixel this is in */
+    vec2 pu = (px + 0.5) / virt;
+    float th = bayer4(px);
+    /* The sky: four bands, dithered where they meet. */
+    float k = clamp(pu.y / 0.70, 0.0, 1.0) * 3.0;
+    float band = floor(k + (fract(k) > th ? 1.0 : 0.0));
+    vec3 deep = vec3(0.02, 0.02, 0.07), dusk = pc.look1.rgb * 0.30 + vec3(0.03, 0.01, 0.06);
+    vec3 col = mix(deep, dusk, band / 3.0);
+    /* Stars, a few of them blinking. */
+    float s = hash(px);
+    if (pu.y < 0.55 && s > 0.992)
+        col = mix(col, vec3(0.85, 0.88, 1.0), step(0.3, sin(t * (1.0 + 3.0 * hash(px + 7.0)) + s * 40.0)) * 0.9);
+    /* Clouds: blocks that drift. */
+    vec2 cq = vec2(px.x + floor(t * 2.0), px.y);
+    float cloud = noise(cq / vec2(22.0, 6.0)) * 0.7 + noise(cq / vec2(9.0, 3.0)) * 0.3;
+    if (pu.y > 0.10 && pu.y < 0.40 && cloud > 0.68)
+        col = mix(col, pc.look0.rgb * 0.22 + vec3(0.06, 0.06, 0.10), cloud > 0.74 ? 1.0 : (th > 0.5 ? 1.0 : 0.0));
+    /* The moon, round in big pixels, a few craters on it (in front of the clouds). */
+    vec2 mc = vec2(0.80 * virt.x, 0.16 * virt.y);
+    vec2 mp = px + 0.5 - mc;
+    float md = length(mp);
+    vec3 moon = vec3(0.94, 0.91, 0.79);
+    if (length(mp - vec2(-3.0, -2.0)) < 2.5 || length(mp - vec2(3.5, 3.0)) < 2.0 || length(mp - vec2(4.0, -4.0)) < 1.2)
+        moon = vec3(0.80, 0.77, 0.66);
+    if (md > 9.5)
+        moon = vec3(0.82, 0.79, 0.68); /* its rim */
+    if (md < 11.0)
+        col = moon;
+    /* Two rows of hills, the near one quicker. */
+    for (int layer = 0; layer < 2; ++layer)
+    {
+        float fl = float(layer);
+        float x = px.x + floor(t * (3.0 + 6.0 * fl));
+        float step_x = floor(x / 6.0);
+        float h0 = hash(vec2(step_x, fl)), h1 = hash(vec2(step_x + 1.0, fl));
+        float h = mix(h0, h1, smoothstep(0.0, 1.0, fract(x / 6.0)));
+        float top = virt.y * (0.62 + 0.10 * fl) - floor((0.10 + 0.06 * fl) * virt.y * (0.5 + 0.5 * sin(x * 0.035 + fl * 2.0)) + 6.0 * h);
+        if (px.y >= top)
+        {
+            vec3 hill = layer == 0 ? pc.look1.rgb * 0.16 + vec3(0.03, 0.02, 0.07) : pc.look0.rgb * 0.12 + vec3(0.02, 0.05, 0.05);
+            col = px.y < top + 1.0 ? hill * 1.8 : hill; /* a lit edge on top */
+        }
+    }
+    /* The ground: a checker strip running by. */
+    float ground = virt.y * 0.86;
+    if (px.y >= ground)
+    {
+        float c = mod(floor((px.x + floor(t * 12.0)) / 8.0) + floor((px.y - ground) / 4.0), 2.0);
+        col = mix(pc.look0.rgb * 0.10, pc.look0.rgb * 0.16, c) + vec3(0.02);
+        if (px.y < ground + 1.0)
+            col = pc.look0.rgb * 0.45;
+    }
+    return col;
+}
+
+/* Beige: a home computer's plastic, warm and lit from the top left, with the
+ * fine texture of a molded case. */
+vec3 beige(vec2 uv)
+{
+    vec2 res = pc.screen.xy;
+    vec3 col = mix(vec3(0.880, 0.845, 0.765), vec3(0.775, 0.740, 0.660), smoothstep(0.0, 1.0, uv.y * 0.8 + uv.x * 0.2));
+    col += vec3(0.04, 0.035, 0.02) * exp(-dot(uv - vec2(0.1, -0.1), uv - vec2(0.1, -0.1)) / 0.4);
+    /* The molded texture: a little grain and a faint ribbing. */
+    col += (hash(floor(uv * res)) - 0.5) * 0.012;
+    col += (noise(uv * vec2(6.0, 700.0)) - 0.5) * 0.010;
+    vec2 vc = uv - 0.5;
+    col *= 1.0 - dot(vc, vc) * 0.12;
+    return col;
+}
+
+/* Translucent: colored see-through plastic with light through it, its
+ * insides showing soft and blurred, a gloss across the top. */
+vec3 clear_plastic(vec2 uv)
+{
+    vec2 res = pc.screen.xy;
+    float t = now();
+    float aspect = res.x / res.y;
+    vec2 p = vec2(uv.x * aspect, uv.y);
+    vec3 tint = pc.look0.rgb, glow_c = pc.look1.rgb;
+    /* Thicker plastic is deeper in color: two slow curved layers. */
+    float layers = 0.5 + 0.25 * sin(p.x * 2.2 + p.y * 1.4 + t * 0.05) + 0.25 * sin(p.x * 1.1 - p.y * 2.7 + 1.3 - t * 0.04);
+    vec3 col = tint * mix(0.24, 0.48, layers) + vec3(0.015, 0.015, 0.03);
+    /* The insides: soft dark shapes seen through it. */
+    for (int i = 0; i < 7; ++i)
+    {
+        float fi = float(i);
+        vec2 c = vec2(hash(vec2(fi, 11.0)) * aspect, 0.15 + 0.75 * hash(vec2(fi, 12.0)));
+        vec2 b = vec2(0.06 + 0.16 * hash(vec2(fi, 13.0)), 0.03 + 0.10 * hash(vec2(fi, 14.0)));
+        float d = sdRoundBox(p - c, b, 0.02);
+        col *= 1.0 - 0.28 * smoothstep(0.05, -0.02, d);
+    }
+    /* Light through it from below, and the color it throws. */
+    col += glow_c * 0.20 * exp(-dot(uv - vec2(0.5, 1.15), uv - vec2(0.5, 1.15)) / 0.25);
+    /* A gloss along the top, and a long highlight that drifts. */
+    col += vec3(1.0) * 0.10 * smoothstep(0.30, 0.0, uv.y);
+    float streak = exp(-pow((uv.y - 0.12 - 0.05 * sin(uv.x * 2.0 + t * 0.07)) / 0.012, 2.0));
+    col += vec3(1.0) * streak * 0.16;
+    vec2 vc = uv - 0.5;
+    col *= 1.0 - dot(vc, vc) * 0.5;
+    return col;
+}
+
+/* Arcade: a dark arcade at night: cabinets along the back wall, their
+ * screens and marquees lit, and a carpet whose shapes glow under black light. */
+vec3 arcade(vec2 uv)
+{
+    vec2 res = pc.screen.xy;
+    float t = now();
+    float aspect = res.x / res.y;
+    vec3 a = pc.look0.rgb, b = pc.look1.rgb, c3 = vec3(1.0, 0.85, 0.25);
+    float horizon = 0.60;
+    vec3 col = mix(vec3(0.012, 0.006, 0.030), vec3(0.030, 0.012, 0.060), smoothstep(0.0, horizon, uv.y));
+    /* A neon line along the top of the wall. */
+    col += a * exp(-pow((uv.y - 0.06) / 0.004, 2.0)) * 0.45 + a * exp(-pow((uv.y - 0.06) / 0.05, 2.0)) * 0.08;
+    /* The cabinets: dark bodies with lit edges, a marquee, a glowing screen
+     * in its bezel, a control panel and two coin slots. */
+    float w = 0.115;
+    float x = uv.x * aspect / w + 0.5;
+    float id = floor(x), f = fract(x);
+    float top = horizon - 0.33 - 0.03 * hash(vec2(id, 2.0));
+    float half_w = 0.36 + 0.03 * hash(vec2(id, 5.0));
+    float cx = abs(f - 0.5);
+    if (uv.y < horizon && uv.y > top && cx < half_w)
+    {
+        vec3 tone = mix(a, mix(b, c3, step(0.6, hash(vec2(id, 3.0)))), step(0.35, hash(vec2(id, 4.0))));
+        float my = (uv.y - top) / (horizon - top); /* 0 top .. 1 floor */
+        col = vec3(0.016, 0.010, 0.028);
+        col += tone * 0.10 * smoothstep(half_w - 0.025, half_w, cx); /* the lit edges */
+        if (my < 0.10 && cx < half_w - 0.03) /* the marquee */
+            col = tone * (0.24 + 0.05 * sin(t * 2.0 + id)) * (0.8 + 0.2 * smoothstep(0.10, 0.0, abs(my - 0.05)));
+        else if (my > 0.16 && my < 0.46 && cx < half_w - 0.07) /* the screen in its bezel */
+        {
+            float flick = 0.75 + 0.25 * noise(vec2(id * 3.0, t * 4.0));
+            float lines = 0.85 + 0.15 * sin(uv.y * res.y * 1.5);
+            col = mix(tone, vec3(0.55, 0.75, 1.0), 0.35) * 0.17 * flick * lines;
+        }
+        else if (my > 0.50 && my < 0.56) /* the control panel */
+            col = vec3(0.045, 0.035, 0.07) + tone * 0.04;
+        else if (my > 0.70 && my < 0.74 && abs(cx - 0.07) < 0.025) /* the coin slots */
+            col = vec3(0.45, 0.12, 0.05);
+    }
+    /* A neon sign high on the wall between them. */
+    col += b * 0.05 * exp(-pow((uv.y - 0.14) / 0.04, 2.0)) * (0.6 + 0.4 * sin(uv.x * 3.0 + t * 0.3));
+    /* Their glow on the floor. */
+    if (uv.y >= horizon)
+    {
+        float depth = 0.25 / (uv.y - horizon + 0.002);
+        vec2 g = vec2((uv.x - 0.5) * aspect * depth * 4.0, depth * 4.0 + t * 0.05);
+        vec2 cid = floor(g), cf = fract(g) - 0.5;
+        float h = hash(cid);
+        float shape;
+        if (h < 0.33)
+            shape = abs(length(cf) - 0.22) - 0.035;                     /* a ring */
+        else if (h < 0.66)
+            shape = abs(sdTriangleUp(rotate(cf, h * 6.28), 0.18)) - 0.03; /* a triangle */
+        else
+            shape = abs(cf.y - 0.10 * sin(cf.x * 18.0 + h * 9.0)) - 0.03; /* a squiggle */
+        vec3 sc = h < 0.33 ? a : h < 0.66 ? b : c3;
+        float lit = smoothstep(0.03, 0.0, shape) * exp(-depth * 0.18) * (0.5 + 0.5 * hash(cid + 1.0));
+        lit *= 1.0 - 0.7 * smoothstep(0.86, 0.96, uv.y); /* quiet under the button hints */
+        col = vec3(0.010, 0.006, 0.022) + sc * lit * 0.32;
+        col += mix(a, b, uv.x) * 0.05 * exp(-pow((uv.y - horizon) / 0.10, 2.0));
+    }
+    vec2 vc = uv - 0.5;
+    col *= 1.0 - dot(vc, vc) * 0.6;
+    return col;
+}
+
 vec3 background_at(vec2 uv)
 {
     int kind = int(pc.extra.y + 0.5);
@@ -549,6 +735,14 @@ vec3 background_at(vec2 uv)
         col = crystal(uv);
     else if (kind == BG_STARCUBE)
         col = starcube(uv);
+    else if (kind == BG_PIXEL)
+        col = pixel_night(uv);
+    else if (kind == BG_BEIGE)
+        col = beige(uv);
+    else if (kind == BG_CLEAR)
+        col = clear_plastic(uv);
+    else if (kind == BG_ARCADE)
+        col = arcade(uv);
     else
         col = room(uv);
     /* Dim darkens for the launch screen. */

@@ -36,8 +36,12 @@ enum class ThemeId
     Paper,
     Crystal,
     StarCube, /* its own interface: a glass cube with a section on each edge */
+    EightBit,
+    Beige,
+    Translucent,
+    Arcade,
 };
-constexpr int kThemes = 15;
+constexpr int kThemes = 19;
 
 struct Theme
 {
@@ -66,7 +70,7 @@ struct Palette
     float dark;
     Color light0, light1;
 };
-constexpr int kPalettes = 15;
+constexpr int kPalettes = 23;
 const Palette &palette(int id);
 
 /* The fonts any theme can use (Settings > Interface > Font); each theme

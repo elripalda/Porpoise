@@ -59,6 +59,7 @@
 #include "porpoise_ra.hpp"
 #include "ui_widescreen.hpp"
 #include "porpoise_sound.hpp"
+#include "porpoise_shots.hpp"
 #include "porpoise_states.hpp"
 #include "porpoise_update.hpp"
 #include "porpoise_vk.hpp"
@@ -808,13 +809,25 @@ bool install_ipl_for(const std::string &region)
     const porpoise::bios::GameCubeBios *bios = porpoise::bios::for_region(found, region == "EUR");
     if (!bios || stat(bios->path.c_str(), &src_st) != 0)
         return stat(to.c_str(), &dst_st) == 0; /* one already in place */
-    if (stat(to.c_str(), &dst_st) == 0 && dst_st.st_size == src_st.st_size && dst_st.st_mtime >= src_st.st_mtime)
-        return true; /* the same one, already copied */
+    auto head = [](const std::string &path, std::vector<char> &out) {
+        out.assign(4096, 0);
+        std::FILE *f = std::fopen(path.c_str(), "rb");
+        const bool got = f && std::fread(out.data(), 1, out.size(), f) == out.size();
+        if (f)
+            std::fclose(f);
+        return got;
+    };
+    std::vector<char> a, b;
+    if (stat(to.c_str(), &dst_st) == 0 && dst_st.st_size == src_st.st_size && head(bios->path, a) && head(to, b) &&
+        a == b)
+        return true; /* the same one, already copied (its header and revision say so) */
     mkdir((g_saves_path + "/User").c_str(), 0777);
     mkdir((g_saves_path + "/User/GC").c_str(), 0777);
     mkdir(to_dir.c_str(), 0777);
+    /* Copied whole beside it, then put in place: a short copy never stays. */
+    const std::string part = to + ".part";
     std::FILE *in = std::fopen(bios->path.c_str(), "rb");
-    std::FILE *out = in ? std::fopen(to.c_str(), "wb") : nullptr;
+    std::FILE *out = in ? std::fopen(part.c_str(), "wb") : nullptr;
     bool ok = in && out;
     char buf[65536];
     std::size_t n;
@@ -824,6 +837,9 @@ bool install_ipl_for(const std::string &region)
         std::fclose(in);
     if (out)
         ok = std::fclose(out) == 0 && ok;
+    ok = ok && std::rename(part.c_str(), to.c_str()) == 0;
+    if (!ok)
+        std::remove(part.c_str());
     ps5::debug::mark(ok ? ("main: GameCube BIOS in place for " + region).c_str() : "main: couldn't copy the BIOS");
     return ok;
 }
@@ -1006,14 +1022,15 @@ void apply_game_controls(bool wii_game)
     porpoise::core::set_stick_invert(g_play.invert_main, g_play.invert_c);
     porpoise::pad::set_fast_forward_buttons(g_play.ff_buttons);
     porpoise::pad::set_quick_buttons(g_play.quick_slot > 0);
+    porpoise::pad::set_shot_buttons(g_play.shot_buttons);
     porpoise::pad::set_turbo(g_play.turbo_control());
     const bool gamecube_triggers = !wii_game || g_play.wii_controller == porpoise::pad::WiiGameCube;
     porpoise::pad::set_trigger_feel(gamecube_triggers ? g_play.trigger_feel : 0);
 }
 
 /* Settings > Audio > Sound Set: the menus' effects, made in code
- * (porpoise_sfx) or read from the player's own GameCube BIOS. A set that
- * changes plays a step of itself, so it can be heard as it's chosen. */
+ * (porpoise_sfx) or Porpoise's own WAVs. A set that changes plays a step of
+ * itself, so it can be heard as it's chosen. */
 bool g_sounds_ready = false; /* porpoise::sound::load has run */
 
 void apply_sound_set(int set)
@@ -1023,25 +1040,13 @@ void apply_sound_set(int set)
         return;
     const bool first = current < 0;
     current = set;
-    std::vector<std::int16_t> clips[5];
-    bool made = false;
-    if (set == porpoise::sfx::Console)
+    if (set == porpoise::sfx::Crisp || set == porpoise::sfx::Soft)
     {
-        const auto found = porpoise::bios::find_gamecube(g_data + "/bios");
-        const porpoise::bios::GameCubeBios *bios = porpoise::bios::for_region(found, false);
-        if (!bios)
-            bios = porpoise::bios::for_region(found, true);
-        made = bios && porpoise::sfx::from_bios(bios->path, clips);
-        ps5::debug::mark(made ? "main: menu sounds from the player's GameCube BIOS" : "main: no GameCube BIOS sounds");
-    }
-    else if (set > porpoise::sfx::Own && set < porpoise::sfx::SetCount)
-    {
+        std::vector<std::int16_t> clips[5];
         porpoise::sfx::make(porpoise::sfx::Set(set), clips);
-        made = true;
-    }
-    if (made)
         for (int i = 0; i < 5; ++i)
             porpoise::sound::set_effect(porpoise::sound::Effect(i), clips[i]);
+    }
     else
         porpoise::sound::use_own_effects();
     if (!first)
@@ -1063,6 +1068,7 @@ void apply_settings()
     }
     /* The game's extras are a game's only. */
     porpoise::pad::set_quick_buttons(false);
+    porpoise::pad::set_shot_buttons(false);
     porpoise::pad::set_turbo(-1);
     porpoise::pad::set_trigger_feel(0);
     porpoise::pacer::set_vsync(g_settings.vsync);
@@ -1189,6 +1195,8 @@ void menu_opened(void *)
     g_app.open_game_menu(g_playing, &g_play);
 }
 
+void poll_shots(const porpoise::pad::State *pad); /* below */
+
 int menu_paused(void *)
 {
     const porpoise::pad::State &pad = porpoise::pad::state();
@@ -1262,13 +1270,6 @@ int menu_paused(void *)
         apply_game_controls(porpoise::pad::wii().active);
     }
     }
-    /* Change Disc, asked for in the menu: done here, as a frontend's disc
-     * menu does, with the game paused. */
-    if (const std::string disc = g_app.take_disc_change(); !disc.empty())
-    {
-        const bool ok = porpoise::core::change_disc(disc.c_str());
-        g_app.menu_note(ok ? porpoise::ui::tr("Disc changed.") : porpoise::ui::tr("The disc couldn't be changed."));
-    }
     /* Save states, asked for in the menu, done here on the core's thread. */
     const porpoise::ui::App::MenuRequest request = g_app.take_menu_request();
     if (request.kind != porpoise::ui::App::MenuRequest::None && g_playing)
@@ -1296,6 +1297,7 @@ int menu_paused(void *)
             g_app.menu_state_done(porpoise::ui::App::MenuRequest::Save, slot, ok);
         }
     }
+    poll_shots(nullptr);
     porpoise::sound::pump(); /* the menu's own sounds, while the game is still */
     if (answer != porpoise::core::kMenuStay)
     {
@@ -1849,6 +1851,35 @@ void quick_states(const porpoise::pad::State &pad)
     }
 }
 
+/* Screenshots: touch pad + Square in a game, Take Screenshot in its menu;
+ * each written in the background, and said when it's done. */
+void poll_shots(const porpoise::pad::State *pad)
+{
+    using porpoise::ui::tr;
+    if (g_playing)
+    {
+        const bool asked = pad ? pad->screenshot : g_app.take_menu_shot();
+        if (asked)
+        {
+            const bool started = porpoise::shots::take(porpoise::ui::Library::key_of(*g_playing));
+            const std::string note = started ? tr("Saving the screenshot\xE2\x80\xA6") : tr("No picture to save yet.");
+            if (pad)
+                quick_note(note);
+            else
+                g_app.menu_note(note);
+        }
+    }
+    bool ok = false;
+    if (porpoise::shots::take_finished(ok))
+    {
+        const std::string note = ok ? tr("Screenshot saved.") : tr("The screenshot couldn't be saved.");
+        if (g_menu_open)
+            g_app.menu_note(note);
+        else
+            quick_note(note);
+    }
+}
+
 void draw_quick_note()
 {
     using namespace porpoise::ui;
@@ -1941,6 +1972,7 @@ void launch_frame(bool core_frame, double fps, void *)
             porpoise::core::set_fast_forward(holding ? 4 : g_app.menu_fast_forward());
         }
         quick_states(pad);
+        poll_shots(&pad);
     }
     draw_border();
     if ((g_app.menu_fast_forward() > 1 || porpoise::core::fast_forward() > 1) && !g_menu_open)
@@ -2345,6 +2377,7 @@ int main(int argc, char **argv)
     g_sounds_ready = true;
     apply_sound_set(g_settings.sound_set);
     porpoise::states::set_data_dir(g_data);
+    porpoise::shots::set_data_dir(g_data);
     porpoise::borders::set_dirs(PORPOISE_APP "/assets", g_data);
     porpoise::ui::setups::set_dir(g_data);
     porpoise::ui::recommend::set_paths(g_data + "/recommended.ini", PORPOISE_APP "/system/dolphin-emu/Sys/GameSettings",
@@ -2688,18 +2721,9 @@ int main(int argc, char **argv)
         g_controller_speakers = controller_speakers;
         porpoise::audio::set_buffer(g_play.audio_buffer);
         porpoise::audio::set_stretching(g_play.audio_stretch);
-        /* The console's own menus (Sort & Filter): nothing of a game's own,
-         * no quick resume; the GameCube's from the player's BIOS, in place. */
-        const bool console_menu = launch->kind == "Console Menu";
-        if (console_menu)
-        {
-            g_play.quick_resume = false;
-            if (launch->platform == "GameCube" && !install_ipl(*launch))
-                ps5::debug::mark("main: the GameCube Menu, but no BIOS could be put in place");
-        }
         /* The GameCube's start-up: only from the player's own BIOS, put where
          * Dolphin looks for the game's region; without one, straight in. */
-        if (!console_menu && g_play.gc_bios && launch->platform != "Wii" && !install_ipl(*launch))
+        if (g_play.gc_bios && launch->platform != "Wii" && !install_ipl(*launch))
         {
             g_play.gc_bios = false;
             g_play.write_core_options(g_options_path); /* straight into the game after all */
@@ -2890,9 +2914,10 @@ int main(int argc, char **argv)
         porpoise::speaker::close_ports();
         keep_cores(false);
         /* Play time: the whole visit, loading included, as consoles count it. */
-        if (exit != porpoise::core::Exit::Failed && !console_menu)
+        if (exit != porpoise::core::Exit::Failed)
             g_library.add_play_time(*launch, (now_ns() - played_from) / 1000000000LL);
         porpoise::states::wait(); /* a save still being written */
+        porpoise::shots::forget(); /* and a screenshot */
         g_playing = nullptr;
         g_menu_open = false;
         if (exit == porpoise::core::Exit::Home)

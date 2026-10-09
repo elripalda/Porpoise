@@ -82,7 +82,7 @@ struct Settings
     bool menu_music = true;
     int music_volume = 4; /* 0..10: a quiet bed by default */
     bool menu_sounds = true;
-    int sound_set = 0;      /* the menus' sounds: porpoise_sfx::Set (0 Porpoise's own) */
+    int sound_set = 0;      /* the menus' sounds: porpoise::sfx::Set (0 Crisp, 1 Soft, 2 Porpoise's own) */
     int sounds_volume = 8;
     /* Controls */
     /* 0 GameCube, 1 PlayStation, 2..5 the player's own layouts 1..4. */
@@ -163,11 +163,15 @@ struct Settings
     int ui_theme = 0;  /* the theme: porpoise::ui::ThemeId (0 Porpoise, 1 Revolution, ...) */
     int ui_palette = 0; /* the theme's colours: 0 its own, n palette n - 1 (ui_theme.hpp) */
     int ui_font = 0;    /* the menus' font: 0 the theme's own, n font_set(n - 1) */
-    int lib_view = 0;   /* the library: 0 cover flow, 1 wheel, 2 disc flow, 3 shelf, 4 box */
-    int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes */
+    int lib_view = 0;   /* the library: 0 cover flow, 1 wheel, 2 disc flow, 3 shelf, 4 box, 5 list, 6 stack,
+                           7 helix, 8 spines, 9 spotlight */
+    bool recent_dock = true; /* Recently Played: the last games played, along the bottom of the library */
+    int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes,
+                           4 retro TV */
     int sc_games = 0;       /* Star Cube's Games page: 0 spinning discs, 1 covers */
     bool ff_buttons = true; /* touch pad + R1 / R2: fast forward in games */
     int quick_slot = 0;     /* touch pad + L1 saves to this slot, + L2 loads it: 0 off, 1..3 */
+    bool shot_buttons = true; /* touch pad + Square: a screenshot */
     int turbo = 0;          /* the turbo button: 0 none, then kTurboControls */
     int trigger_feel = 2;   /* adaptive triggers as the GameCube's L and R: 0 off, 1 light, 2 firm, 3 extra firm */
     /* Each player's light bar colour (porpoise::pad::kLightColours): blue, red, green, pink. */
@@ -210,10 +214,11 @@ struct Settings
     bool gc_bios = false;   /* the GameCube's start-up, from the player's own IPL.bin */
     bool wii_online = false; /* WiiConnect24 through WiiLink (Dolphin.ini: Core/EnableWiiLink) */
     /* Accessibility */
-    int text_size = 0;          /* 0 normal, 1 large, 2 larger */
+    int text_size = 0;          /* 0 normal, 1 large, 2 larger, 3 smaller */
     int colour_filter = 0;      /* 0 off, 1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale */
     bool colour_filter_games = false; /* the same filter on the game's picture */
     bool high_contrast = false;
+    bool bold_focus = false;    /* the chosen item's edge thicker and brighter */
     bool big_prompts = false;   /* the button hints along the bottom, larger */
     bool still_background = false;
     int ui_layout = 0; /* Revolution's home: 0 a grid of tiles, 1 the cover flow */

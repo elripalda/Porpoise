@@ -267,12 +267,80 @@ Theme make_starcube()
     return t;
 }
 
+Theme make_eight_bit()
+{
+    Theme t;
+    t.name = "8-Bit";
+    t.about = "A night drawn in big pixels: hills and clouds drifting by, square corners and pixel lettering.";
+    t.look.background = 14;
+    t.look.light0 = rgb(0.30f, 0.62f, 1.0f);
+    t.look.light1 = rgb(0.75f, 0.30f, 0.95f);
+    t.look.dark = 0.8f;
+    t.look.fill_alpha = 1.35f;
+    t.look.flat = true;
+    t.radius = 0;
+    t.fonts = "vt";
+    t.palettes = true;
+    return t;
+}
+
+Theme make_beige()
+{
+    Theme t;
+    t.name = "Beige";
+    t.about = "The warm plastic of a home computer from the 80s and 90s: light, solid and plain.";
+    t.look.background = 15;
+    t.look.hue = 0.58f;
+    t.look.hue_spread = 0.3f;
+    t.look.saturation = 0.5f;
+    t.look.flat = true;
+    t.radius = 6;
+    t.light = true;
+    t.palettes = true;
+    return t;
+}
+
+Theme make_translucent()
+{
+    Theme t;
+    t.name = "Translucent";
+    t.about = "See-through colored plastic from the late 90s: bright, glossy, its insides showing.";
+    t.look.background = 16;
+    t.look.panel_style = 1;
+    t.look.light0 = rgb(0.10f, 0.72f, 0.80f);
+    t.look.light1 = rgb(0.55f, 0.95f, 1.0f);
+    t.look.hue = 0.50f;
+    t.look.hue_spread = 0.4f;
+    t.radius = 26;
+    t.pills = true;
+    t.palettes = true;
+    return t;
+}
+
+Theme make_arcade()
+{
+    Theme t;
+    t.name = "Arcade";
+    t.about = "An arcade at night: cabinets glowing along the wall and a carpet that lights up under black light.";
+    t.look.background = 17;
+    t.look.panel_style = 1;
+    t.look.light0 = rgb(1.0f, 0.22f, 0.70f);
+    t.look.light1 = rgb(0.20f, 0.85f, 1.0f);
+    t.look.hue = 0.88f;
+    t.look.hue_spread = 0.6f;
+    t.radius = 12;
+    t.fonts = "exo";
+    t.palettes = true;
+    return t;
+}
+
 const Theme *themes()
 {
-    static const Theme all[kThemes] = {make_porpoise(), make_revolution(), make_midnight(), make_minimal(),
-                                       make_cube(),     make_broadcast(),  make_terminal(), make_depth(),
-                                       make_aurora(),   make_aero(),       make_dots(),     make_synthwave(),
-                                       make_paper(),    make_crystal(),    make_starcube()};
+    static const Theme all[kThemes] = {make_porpoise(),   make_revolution(),  make_midnight(),  make_minimal(),
+                                       make_cube(),       make_broadcast(),   make_terminal(),  make_depth(),
+                                       make_aurora(),     make_aero(),        make_dots(),      make_synthwave(),
+                                       make_paper(),      make_crystal(),     make_starcube(),  make_eight_bit(),
+                                       make_beige(),      make_translucent(), make_arcade()};
     return all;
 }
 
@@ -293,6 +361,14 @@ const Palette kPaletteList[kPalettes] = {
     {"Ocean", 0.53f, 0.45f, 1.0f, 1.0f, rgb(0.05f, 0.85f, 0.90f), rgb(0.10f, 0.45f, 1.0f)},
     {"Sunset", 0.02f, 0.80f, 1.0f, 1.0f, rgb(1.0f, 0.45f, 0.20f), rgb(0.95f, 0.25f, 0.65f)},
     {"Midnight Violet", 0.78f, 0.40f, 0.9f, 0.75f, rgb(0.55f, 0.25f, 0.95f), rgb(0.30f, 0.15f, 0.65f)},
+    {"Tangerine", 0.065f, 0.35f, 1.0f, 1.0f, rgb(1.0f, 0.58f, 0.12f), rgb(1.0f, 0.78f, 0.30f)},
+    {"Grape", 0.80f, 0.40f, 0.95f, 1.0f, rgb(0.62f, 0.28f, 0.95f), rgb(0.88f, 0.40f, 0.90f)},
+    {"Teal", 0.48f, 0.35f, 0.95f, 1.0f, rgb(0.08f, 0.78f, 0.72f), rgb(0.20f, 0.60f, 0.85f)},
+    {"Mint", 0.40f, 0.30f, 0.60f, 1.0f, rgb(0.55f, 1.0f, 0.78f), rgb(0.70f, 0.95f, 0.95f)},
+    {"Coral", 0.015f, 0.35f, 0.85f, 1.0f, rgb(1.0f, 0.48f, 0.42f), rgb(1.0f, 0.65f, 0.50f)},
+    {"Lavender", 0.74f, 0.35f, 0.45f, 1.0f, rgb(0.72f, 0.65f, 1.0f), rgb(0.88f, 0.78f, 1.0f)},
+    {"Arctic", 0.55f, 0.30f, 0.40f, 1.0f, rgb(0.70f, 0.90f, 1.0f), rgb(0.88f, 0.96f, 1.0f)},
+    {"Cherry", 0.985f, 0.25f, 1.0f, 0.9f, rgb(0.95f, 0.10f, 0.20f), rgb(1.0f, 0.35f, 0.40f)},
 };
 } // namespace
 
@@ -337,7 +413,8 @@ Look look_for(const porpoise::Settings &s)
         l.dark *= p.dark;
         /* The rooms lit in colour take the palette's lights. */
         const int bg = l.background;
-        if (bg == 0 || bg == 1 || bg == 3 || bg == 6 || bg == 7 || bg == 9 || bg == 10 || bg == 12 || bg == 13)
+        if (bg == 0 || bg == 1 || bg == 3 || bg == 6 || bg == 7 || bg == 9 || bg == 10 || bg == 12 || bg == 13 ||
+            bg == 14 || bg == 16 || bg == 17)
         {
             l.light0 = p.light0;
             l.light1 = p.light1;
@@ -345,6 +422,7 @@ Look look_for(const porpoise::Settings &s)
     }
     l.colour_filter = std::clamp(s.colour_filter, 0, 4);
     l.high_contrast = s.high_contrast;
+    l.bold_focus = s.bold_focus;
     l.still = s.still_background || s.reduced_motion;
     return l;
 }

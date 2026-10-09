@@ -8,7 +8,6 @@
 #include "porpoise_states.hpp"
 #include "ui_widescreen.hpp"
 #include "ui_app.hpp"
-#include "porpoise_bios.hpp"
 
 #include <pthread.h>
 
@@ -403,6 +402,7 @@ App::Action App::update(const Input &in, double dt)
     scroll_ = smooth(scroll_, float(selected_), dt, rate);
     lift_ = smooth(lift_, 1.0f, dt, 10.0f);
     mc_lift_ = smooth(mc_lift_, 1.0f, dt, 10.0f);
+    dock_lift_ = smooth(dock_lift_, 1.0f, dt, 10.0f);
     tab_anim_ = calm ? 0.0f : std::max(0.0f, tab_anim_ - float(dt) * 3.6f);
     screen_anim_ = calm ? 0.0f : std::max(0.0f, screen_anim_ - float(dt) * 4.5f);
     dialog_.anim = calm ? 1.0f : std::min(1.0f, dialog_.anim + float(dt) * 6.0f);
@@ -456,13 +456,15 @@ App::Action App::update(const Input &in, double dt)
         return update_wii_setup(up, down, left, right);
     if (screen_ == Screen::States)
         return update_states(left, right);
+    if (screen_ == Screen::Shots)
+        return update_shots(left, right, up, down);
     if (screen_ == Screen::Sort)
     {
         /* Sort & filter: the order, which games, covers and info now. Changes
          * show at once behind the panel. */
         if (up || down)
         {
-            sort_row_ = (sort_row_ + (up ? 4 : 1)) % 5;
+            sort_row_ = (sort_row_ + (up ? 2 : 1)) % 3;
             sfx(Sound::MenuScroll);
         }
         const int step = left ? -1 : right ? +1 : 0;
@@ -482,11 +484,6 @@ App::Action App::update(const Input &in, double dt)
             sfx(Sound::LaunchGame);
             screen_ = Screen::Main;
             return Action::FetchCovers;
-        }
-        if (pressed(BtnCross) && sort_row_ >= 3)
-        {
-            screen_ = Screen::Main;
-            return console_menu(sort_row_ == 4);
         }
         if (pressed(BtnCross) && sort_row_ < 2)
         {
@@ -569,6 +566,7 @@ App::Action App::update(const Input &in, double dt)
                 box_yaw_ = calm ? 0.0f : float(dir) * 1.25f; /* it swings in and settles */
                 details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
                 count_states(&games[std::size_t(selected_)]);
+            details_shots_ = count_shots(games[std::size_t(selected_)]);
                 lib_->set_selected(Library::key_of(games[std::size_t(selected_)]));
                 sfx(Sound::GameRow);
             }
@@ -578,7 +576,7 @@ App::Action App::update(const Input &in, double dt)
             --details_row_;
             sfx(Sound::MenuScroll);
         }
-        if (down && details_row_ < 3)
+        if (down && details_row_ < (details_shots_ > 0 ? 4 : 3))
         {
             ++details_row_;
             sfx(Sound::MenuScroll);
@@ -612,6 +610,8 @@ App::Action App::update(const Input &in, double dt)
                 open_game_settings(games[std::size_t(selected_)]);
                 sfx(Sound::MenuScroll);
             }
+            else if (details_row_ == 4)
+                open_shots(Library::key_of(games[std::size_t(selected_)]), Screen::Details);
             else
             {
                 /* Straight to this game's save, when there is one. */
@@ -638,14 +638,56 @@ App::Action App::update(const Input &in, double dt)
             update_home(left, right, up, down, play, details, fav, dt);
         else
         {
-            if (update_view_nav(left, right, up, down, dt))
+            if (dock_focus_ && !dock_shown())
+                dock_focus_ = false;
+            if (dock_focus_)
             {
-                lift_ = 0.4f;
-                sfx(Sound::GameRow);
+                /* Recently Played: left and right along it, Cross plays,
+                 * Square shows the game's details, up or Circle goes back. */
+                const std::vector<int> recent = recent_games();
+                dock_sel_ = std::clamp(dock_sel_, 0, int(recent.size()) - 1);
+                if ((left && dock_sel_ > 0) || (right && dock_sel_ + 1 < int(recent.size())))
+                {
+                    dock_sel_ += left ? -1 : 1;
+                    dock_lift_ = 0.4f;
+                    sfx(Sound::GameRow);
+                }
+                if (up || pressed(BtnCircle))
+                {
+                    dock_focus_ = false;
+                    sfx(Sound::MenuScroll);
+                }
+                else if (pressed(BtnCross))
+                {
+                    action = start_game(&games[std::size_t(recent[std::size_t(dock_sel_)])], "");
+                    sfx(Sound::LaunchGame);
+                }
+                else if (pressed(BtnSquare) && recent[std::size_t(dock_sel_)] < shown)
+                {
+                    selected_ = recent[std::size_t(dock_sel_)];
+                    scroll_ = float(selected_);
+                    dock_focus_ = false;
+                    details = true;
+                }
             }
-            play = pressed(BtnCross);
-            details = pressed(BtnSquare);
-            fav = pressed(BtnOptions);
+            else
+            {
+                if (update_view_nav(left, right, up, down, dt))
+                {
+                    lift_ = 0.4f;
+                    sfx(Sound::GameRow);
+                }
+                else if (down && dock_shown())
+                {
+                    dock_focus_ = true;
+                    dock_sel_ = 0;
+                    dock_lift_ = 0.4f;
+                    sfx(Sound::MenuScroll);
+                }
+                play = pressed(BtnCross);
+                details = pressed(BtnSquare);
+                fav = pressed(BtnOptions);
+            }
         }
         if (play && shown > 0)
         {
@@ -667,6 +709,7 @@ App::Action App::update(const Input &in, double dt)
             details_row_ = 0;
             details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
             count_states(&games[std::size_t(selected_)]);
+            details_shots_ = count_shots(games[std::size_t(selected_)]);
             if (revolution())
             {
                 rd_focus_ = 0;
@@ -706,6 +749,8 @@ App::Action App::update(const Input &in, double dt)
         }
         if (mc_wii_)
             update_wii_saves(left, right, up, down);
+        else if (cards_scanned_ && mc_view() == 4)
+            update_card_classic(left, right, up, down);
         else if (cards_scanned_ && mc_view() == 1)
         {
             /* Blocks: up and down the card's saves, left and right the other card. */
@@ -776,6 +821,8 @@ void App::set_tab(int tab, int dir)
         start_save_scan(); /* fresh from disk each visit, read on a worker thread */
     if (tab_ == Tab::Settings)
     {
+        shots_total_ = -1; /* looked at again each visit */
+        bios_looked_ = false;
         on_rail_ = true;
         build_settings(); /* game counts and folders may have changed */
     }
@@ -985,8 +1032,6 @@ App::Action App::update_dialog(bool left, bool right)
             }
             return Action::None;
         }
-        if (kind == DialogKind::ConsoleMenu)
-            return start_console_menu(choice == 1 ? console_menu_disc_ : nullptr);
         if (kind == DialogKind::Resume && resume_game_)
         {
             /* Resume, or Start Over: the saved spot goes and the game boots afresh. */
@@ -1080,6 +1125,9 @@ App::Action App::confirm_dialog(DialogKind kind)
         return Action::InstallVersion;
     case DialogKind::CopyGame:
         start_game_copy(browse_copy_name_);
+        return Action::None;
+    case DialogKind::DeleteShot:
+        delete_shot();
         return Action::None;
     case DialogKind::DeleteState:
         if (states_game_)
@@ -1815,9 +1863,11 @@ void App::draw_library(double time)
     }
 
     /* The games, in the view chosen in Settings > Interface. */
-    const int view = std::clamp(settings_->lib_view, 0, 7);
+    const int view = std::clamp(settings_->lib_view, 0, 9);
     switch (view)
     {
+    case 8: draw_spines(time); break;
+    case 9: draw_spotlight(time); break;
     case 1: draw_wheel(time); break;
     case 2: draw_disc_flow(time); break;
     case 3: draw_shelf(time); break;
@@ -1827,11 +1877,11 @@ void App::draw_library(double time)
     case 7: draw_helix(time); break;
     default: draw_cover_flow(time); break;
     }
-    release_far_art(view == 3 || view == 5 ? 20 : 9);
+    release_far_art(view == 3 || view == 5 ? 20 : view == 9 ? 10 : 9);
 
     /* Side arrows. (No marker over the chosen cover: its glow says it, and a
      * triangle there read as the Triangle button.) */
-    if (view != 3 && view != 5)
+    if (view != 3 && view != 5 && view != 9)
     {
         if (selected_ > 0)
             g.glyph(Glyph::Arrow, 34, kCy, 46, rgba(0x58B8FF), -kPi * 0.5f);
@@ -1854,9 +1904,9 @@ void App::draw_library(double time)
 
     /* Title and details (the shelf and the box show their own). */
     Game &sel = games[std::size_t(selected_)];
-    if (view <= 2 || view >= 6)
+    if (view <= 2 || (view >= 6 && view <= 8))
     {
-        const float ty = view == 0 || view == 6 ? 748.0f : 800.0f;
+        const float ty = view == 0 || view == 6 || view == 8 ? 748.0f : 800.0f;
         g.text(Font::Bold, ts(46), kCx, ty, kWhite, Align::Center, sel.title);
         g.text(Font::SemiBold, ts(28), kCx, ty + 64, kLavender, Align::Center, game_meta(sel));
         if (sel.favourite)
@@ -1866,12 +1916,88 @@ void App::draw_library(double time)
         }
     }
 
+    if (dock_shown())
+        draw_dock(time);
+    if (dock_focus_)
+    {
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Play"}},
+                     {{Glyph::Square, "Details"}, {Glyph::Circle, "Back"}}, "");
+        return;
+    }
     char pos[32];
     std::snprintf(pos, sizeof pos, "%02d / %02d", selected_ + 1, shown);
     draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Play"}},
                  {{Glyph::Options, sel.favourite ? "Unfavorite" : "Favorite"}, {Glyph::Square, "Details"},
                   {Glyph::Triangle, "Sort & Filter"}},
                  pos);
+}
+
+/* ---- recently played ----------------------------------------------------------------------- */
+
+std::vector<int> App::recent_games()
+{
+    std::vector<int> out;
+    auto &games = lib_->games();
+    for (int i = 0; i < int(games.size()); ++i)
+        if (games[std::size_t(i)].last_played > 0)
+            out.push_back(i);
+    const std::size_t n = std::min<std::size_t>(out.size(), 6);
+    std::partial_sort(out.begin(), out.begin() + std::ptrdiff_t(n), out.end(), [&](int a, int b) {
+        return games[std::size_t(a)].last_played > games[std::size_t(b)].last_played;
+    });
+    out.resize(n);
+    return out;
+}
+
+bool App::dock_shown()
+{
+    if (!settings_ || !settings_->recent_dock || tab_ != Tab::Library || starcube() ||
+        (revolution() && settings_->ui_layout == 0) || lib_->shown() == 0)
+        return false;
+    for (const Game &g : lib_->games())
+        if (g.last_played > 0)
+            return true;
+    return false;
+}
+
+/* A glass dock along the bottom: "Recently Played", then the boxes. */
+void App::draw_dock(double time)
+{
+    (void)time;
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    const std::vector<int> recent = recent_games();
+    const int n = int(recent.size());
+    if (n == 0)
+        return;
+    const float ch = 74, cw = ch * 5.0f / 7.0f, gap = 18, label_w = 290, h = 96, y = 902;
+    const float w = 32 + label_w + float(n) * (cw + gap) - gap + 32, x0 = kCx - w * 0.5f;
+    g.panel(x0, y, w, h, rgba(0x0F1F63, dock_focus_ ? 0.80f : 0.55f), 0.75f, kR,
+            rgba(0x4C6FD8, dock_focus_ ? 0.95f : 0.55f), 1.6f, 0, 0.12f);
+    g.text(Font::SemiBold, ts(22), x0 + 32, y + 22, kLavender, Align::Left,
+           fit(g, Font::SemiBold, ts(22), tr("Recently Played"), label_w - 20));
+    const Game &first = games[std::size_t(recent[std::size_t(dock_focus_ ? std::clamp(dock_sel_, 0, n - 1) : 0)])];
+    g.text(Font::Bold, ts(24), x0 + 32, y + 54, dock_focus_ ? kWhite : kSoft, Align::Left,
+           fit(g, Font::Bold, ts(24), first.title, label_w - 20));
+    for (int j = 0; j < n; ++j)
+    {
+        Game &game = games[std::size_t(recent[std::size_t(j)])];
+        const bool on = dock_focus_ && j == dock_sel_;
+        const float grow = on ? 1.0f + 0.22f * dock_lift_ : 1.0f;
+        const float cx = x0 + 32 + label_w + float(j) * (cw + gap) + cw * 0.5f;
+        const float cy = y + h * 0.5f - (on ? 10.0f : 0.0f);
+        const float bw = cw * grow, bh = ch * grow;
+        if (on)
+            g.panel(cx - bw * 0.5f - 4, cy - bh * 0.5f - 4, bw + 8, bh + 8, kClear, 1, 8, kIcy, 2.4f, 10);
+        if (Texture *cover = cover_of(game))
+        {
+            float uv[4];
+            cover_uv(cover, bw, bh, uv);
+            g.image_part(cover, cx - bw * 0.5f, cy - bh * 0.5f, bw, bh, uv, with_alpha(kWhite, on || !dock_focus_ ? 1.0f : 0.75f), 5);
+        }
+        else
+            g.panel(cx - bw * 0.5f, cy - bh * 0.5f, bw, bh, with_alpha(kTileFill, 0.6f), 0.7f, 5, with_alpha(kEdge, 0.6f), 1.2f);
+    }
 }
 
 std::string App::library_count() const
@@ -1897,15 +2023,14 @@ void App::draw_sort()
 {
     Gfx &g = *g_;
     g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.55f), 1, 0);
-    const float w = 760, h = 624, x = 960 - w * 0.5f, y = 208;
+    const float w = 760, h = 440, x = 960 - w * 0.5f, y = 300;
     g.panel(x, y, w, h, rgba(0x13256F, 0.92f), 0.65f, kR, rgba(0x6FAEFF), 2.0f, 10, 0.25f);
     g.text_mid(Font::Bold, ts(36), x + 40, y + 62, kWhite, Align::Left, tr("Sort & Filter"));
     const std::string orders[4] = {tr("Title A-Z"), tr("Recently Played"), tr("Most Played"), tr("Favorites First")};
     const std::string shows[4] = {tr("All Games"), tr("GameCube"), tr("Wii"), tr("Channels")};
-    const std::string names[5] = {tr("Sort By"), tr("Show"), tr("Get Covers and Info Now"), tr("GameCube Menu"),
-                                  tr("Wii Menu")};
-    const std::string values[5] = {orders[int(lib_->sort_order())], shows[int(lib_->show())], "", "", ""};
-    for (int i = 0; i < 5; ++i)
+    const std::string names[3] = {tr("Sort By"), tr("Show"), tr("Get Covers and Info Now")};
+    const std::string values[3] = {orders[int(lib_->sort_order())], shows[int(lib_->show())], ""};
+    for (int i = 0; i < 3; ++i)
     {
         const float ry = y + 112 + i * 92, rh = 72, cy = ry + rh * 0.5f;
         const bool on = sort_row_ == i;
@@ -1928,14 +2053,11 @@ void App::draw_sort()
             g.glyph(Glyph::Cross, x + w - 90, cy, 34, kWhite);
     }
     g.text(Font::Regular, ts(22), 960, y + h - 34, kLavender, Align::Center,
-           sort_row_ == 2   ? tr("Downloads what's missing from GameTDB, and looks again for art it lacked.")
-           : sort_row_ == 3 ? tr("The GameCube's own menu, from your console's BIOS, with or without a disc.")
-           : sort_row_ == 4 ? tr("Your own Wii Menu, installed from your console, with or without a disc.")
-           : revolution()   ? tr("Left and right change it; Circle is done.")
-                            : tr("Changes show at once."));
+           sort_row_ == 2 ? tr("Downloads what's missing from GameTDB, and looks again for art it lacked.")
+           : revolution() ? tr("Left and right change it; Circle is done.")
+                          : tr("Changes show at once."));
     if (!revolution()) /* the home screen's bar has no room for the prompts */
-        draw_prompts({{Glyph::DPad, "Change"},
-                      {Glyph::Cross, sort_row_ == 2 ? "Get" : sort_row_ >= 3 ? "Start" : "Next"}},
+        draw_prompts({{Glyph::DPad, "Change"}, {Glyph::Cross, sort_row_ == 2 ? "Get" : "Next"}},
                      {{Glyph::Circle, "Done"}}, "");
 }
 
@@ -2088,7 +2210,8 @@ void App::draw_details(double time)
     float dy = whole_text ? ty + 20 : fy0 + float((facts.size() + 2) / 3) * 62 + 6;
 
     /* What the game is about. */
-    const float actions_y = py + ph - 4 * 66 - 24;
+    const int action_count = details_shots_ > 0 ? 5 : 4; /* Screenshots, when it has some */
+    const float actions_y = py + ph - float(action_count) * 66 - 24;
     if (whole_text)
     {
         /* All of it: the largest size it fits at. */
@@ -2130,9 +2253,10 @@ void App::draw_details(double time)
                    settings_->download_info ? tr("No description yet. It arrives with the game info from GameTDB.com.")
                                             : tr("Turn on Settings > Games > Download Game Info for a description."));
 
-    const std::string actions[4] = {title_case(tr("Play")), title_case(tr("Save States")),
-                                    title_case(tr("Game Settings")), title_case(tr("Save Data"))};
-    for (int i = 0; i < 4; ++i)
+    const std::string actions[5] = {title_case(tr("Play")), title_case(tr("Save States")),
+                                    title_case(tr("Game Settings")), title_case(tr("Save Data")),
+                                    title_case(tr("Screenshots"))};
+    for (int i = 0; i < action_count; ++i)
     {
         const float ry = actions_y + i * 66, rx = px + 52 + 40, rw = pw - 104 - 40, rh = 58;
         const bool on = details_row_ == i;
@@ -2142,6 +2266,9 @@ void App::draw_details(double time)
         if (i == 1 && details_states_ > 0)
             g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right,
                        plural(details_states_, "1 saved", "{n} saved"));
+        if (i == 4)
+            g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right,
+                       plural(details_shots_, "1 screenshot", "{n} screenshots"));
         if (i == 2 && details_custom_)
             g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, ry + rh * 0.5f, kCyan, Align::Right, tr("Custom"));
         else if (i == 2)
@@ -2302,6 +2429,11 @@ void App::draw_memory_cards(double time)
     if (mc_view() == 1)
     {
         draw_card_blocks(time);
+        return;
+    }
+    if (mc_view() == 4)
+    {
+        draw_card_classic(time);
         return;
     }
     ensure_saves(false);
@@ -2531,6 +2663,9 @@ void App::draw(double time)
         return;
     }
     g.background();
+    if (tab_ == Tab::Library && (screen_ == Screen::Main || screen_ == Screen::Sort) && settings_ &&
+        settings_->lib_view == 9)
+        draw_spotlight_backdrop();
     if (th().light)
         g.set_tone(true);
     intro_stage(0.0f);
@@ -2567,6 +2702,8 @@ void App::draw(double time)
         draw_browser();
     else if (screen_ == Screen::TileArt)
         draw_tile_art(time);
+    else if (screen_ == Screen::Shots)
+        draw_shots(time);
     else if (screen_ == Screen::GameSettings)
         draw_settings();
     else if (screen_ == Screen::Mapping)
@@ -2617,7 +2754,7 @@ void App::draw_revolution(double time)
     /* The full-screen pages (the setups, the guide, a folder) have headings of their own. */
     const bool full_page = screen_ == Screen::WiiSetup || screen_ == Screen::WiiGuide || screen_ == Screen::Mapping ||
                            screen_ == Screen::Browse || screen_ == Screen::GameSettings ||
-                           screen_ == Screen::TileArt;
+                           screen_ == Screen::TileArt || screen_ == Screen::Shots;
     if (!full_page)
         draw_rev_top_bar(!home);
     draw_zoom(time);
@@ -2646,6 +2783,8 @@ void App::draw_revolution(double time)
         draw_browser();
     else if (screen_ == Screen::TileArt)
         draw_tile_art(time);
+    else if (screen_ == Screen::Shots)
+        draw_shots(time);
     else if (screen_ == Screen::GameSettings)
         draw_settings();
     else if (screen_ == Screen::Mapping)
@@ -2739,103 +2878,6 @@ void App::draw_update_overlay(double time)
                tr("Keep Porpoise open until it's done."));
 }
 
-/* ---- the console's own menus ---------------------------------------------------------------- */
-
-bool App::wii_menu_installed() const
-{
-    struct stat st;
-    return stat((saves_dir_ + "/User/Wii/title/00000001/00000002/content/title.tmd").c_str(), &st) == 0;
-}
-
-App::Action App::console_menu(bool wii)
-{
-    auto &games = lib_->games();
-    const Game *sel = lib_->shown() > 0 ? &games[std::size_t(selected_)] : nullptr;
-    const bool disc = sel && sel->kind.empty() && sel->platform == (wii ? "Wii" : "GameCube");
-    console_menu_wii_ = wii;
-    console_menu_disc_ = nullptr;
-    if (wii)
-    {
-        if (!wii_menu_installed())
-        {
-            /* Its WAD in the library: started once, Dolphin installs it. */
-            for (Game &g : games)
-                if (g.format == "WAD" && g.title == "Wii Menu")
-                    return start_game(&g, "");
-            open_dialog(DialogKind::Info, tr("No Wii Menu Found"),
-                        tr("Put your own Wii Menu's WAD, from your own console, with your games and start it once: "
-                           "Porpoise installs it. Porpoise includes none."),
-                        "");
-            return Action::None;
-        }
-    }
-    else
-    {
-        const auto found = porpoise::bios::find_gamecube(data_dir_ + "/bios");
-        if (found.empty())
-        {
-            open_dialog(DialogKind::Info, tr("No GameCube BIOS Found"),
-                        tr("Put your console's own BIOS (IPL.bin) in /data/porpoise/bios, under any name. Porpoise "
-                           "includes none."),
-                        "");
-            return Action::None;
-        }
-    }
-    if (!disc)
-        return start_console_menu(nullptr);
-    console_menu_disc_ = sel;
-    open_dialog(DialogKind::ConsoleMenu, tr(wii ? "Wii Menu" : "GameCube Menu"),
-                trf("Start it with {game} in the disc drive, or with no disc?", {{"game", sel->title}}),
-                tr("With This Disc"));
-    dialog_.no = tr("No Disc");
-    dialog_.choice = 1;
-    return Action::None;
-}
-
-App::Action App::start_console_menu(const Game *disc)
-{
-    const bool wii = console_menu_wii_;
-    std::string region = "USA";
-    if (!wii)
-    {
-        /* The BIOS for the disc's region, else NTSC if there is one. */
-        const auto found = porpoise::bios::find_gamecube(data_dir_ + "/bios");
-        const bool disc_pal = disc && disc->region != "USA" && disc->region != "Japan" && disc->region != "Korea";
-        const bool pal = disc ? disc_pal : !porpoise::bios::for_region(found, false);
-        if (!porpoise::bios::for_region(found, pal))
-        {
-            open_dialog(DialogKind::Info, tr("No BIOS for This Disc's Region"),
-                        tr(pal ? "This disc needs a PAL BIOS (European games). Yours is NTSC."
-                               : "This disc needs an NTSC BIOS (US and Japanese games). Yours is PAL."),
-                        "");
-            return Action::None;
-        }
-        region = pal ? "Europe" : disc && (disc->region == "Japan" || disc->region == "Korea") ? "Japan" : "USA";
-    }
-    /* What the core boots (DolphinLibretro/Boot.cpp, ".porpoisemenu"): the
-     * menu, and the disc in its drive. */
-    const std::string dir = data_dir_ + "/menus";
-    mkdir(dir.c_str(), 0777);
-    const std::string path = dir + (wii ? "/wii-menu.porpoisemenu" : "/gamecube-menu.porpoisemenu");
-    std::FILE *f = std::fopen(path.c_str(), "w");
-    if (!f)
-        return Action::None;
-    const char *folder = region == "Europe" ? "EUR" : region == "Japan" ? "JAP" : "USA";
-    std::fprintf(f, "%s %s\n%s\n", wii ? "wii" : "gamecube", folder, disc ? disc->path.c_str() : "");
-    std::fclose(f);
-    console_menu_ = Game{};
-    console_menu_.path = path;
-    console_menu_.file = wii ? "wii-menu.porpoisemenu" : "gamecube-menu.porpoisemenu";
-    console_menu_.title = wii ? "Wii Menu" : "GameCube Menu";
-    console_menu_.platform = wii ? "Wii" : "GameCube";
-    console_menu_.kind = "Console Menu";
-    console_menu_.region = region;
-    sfx(Sound::LaunchGame);
-    launch_ = &console_menu_;
-    launch_state_.clear();
-    return Action::Launch;
-}
-
 /* ---- launch ------------------------------------------------------------------------------- */
 
 float App::launch_intro(double time) const
@@ -2853,7 +2895,7 @@ void App::begin_launch(Game *game)
     launch_status_ = "Loading Dolphin";
     launch_progress_ = -1;
     launch_start_ = time_;
-    if (game && game->kind != "Console Menu") /* the console's menus aren't in the library */
+    if (game)
         lib_->mark_played(*game);
 }
 

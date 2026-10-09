@@ -367,7 +367,7 @@ vec3 ntsc_composite(vec2 uv, float amount)
     return clamp(mix(sample_rgb(uv), col, mix(0.6, 1.0, amount)), 0.0, 1.0);
 }
 
-/* A Trinitron-style tube: vertical phosphor stripes with no dots, fine
+/* An aperture-grille tube: vertical phosphor stripes with no dots, fine
  * scanlines, and a glow; flat, with no bend. */
 vec3 aperture_grille(vec2 uv, float amount)
 {

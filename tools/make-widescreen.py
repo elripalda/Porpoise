@@ -3,7 +3,11 @@
 # code collection (the "Force 16:9" sets: Force_16x9_Dolphin_WS_Codes, the games
 # with codes, and GC_Native_16x9_Forced, the games with their own 16:9 option).
 #
-#   python3 tools/make-widescreen.py <Force_16x9_Dolphin_WS_Codes> <GC_Native_16x9_Forced>
+#   python3 tools/make-widescreen.py <Force_16x9_Dolphin_WS_Codes> <GC_Native_16x9_Forced> [<Enhancement-Codes>]
+#
+# With Admentus64's Enhancement Codes (GPL-3.0, github.com/Admentus64/Enhancement-Codes)
+# as the third, its 16:9 codes for the Wii's Virtual Console N64 games are added too,
+# off: a choice in each game's Cheats and Patches.
 #
 # Writes:
 #   assets/widescreen/codes.ini   each game's codes, as [[<ID>]] then Dolphin's
@@ -87,11 +91,51 @@ def dolphin_names(game):
     return names
 
 
+VC_16x9 = re.compile(r"16:9|^\$widescreen$", re.I)
+
+
+def vc_blocks(vc_dir, dropped):
+    """The Virtual Console N64 games' 16:9 codes from Enhancement Codes: every
+    "(VC)" folder's game files, the codes made for 16:9 (not 21:9 or 48:9), none
+    turned on."""
+    blocks = []
+    for folder in sorted(os.listdir(vc_dir)):
+        if not folder.endswith("(VC)"):
+            continue
+        for fname in sorted(os.listdir(os.path.join(vc_dir, folder))):
+            game = fname[:-4].upper()
+            if not fname.lower().endswith(".ini") or not re.fullmatch(r"[A-Z0-9]{6}", game):
+                continue
+            codes, _ = parse(os.path.join(vc_dir, folder, fname))
+            kept = []
+            for kind, name, lines in codes:
+                if not VC_16x9.search(name):
+                    continue
+                body = [l for l in lines if not l.startswith(("*", "#"))]
+                if not body or not all(GECKO_LINE.match(l) for l in body):
+                    dropped.append(f"{game} {kind} {name}: a line Dolphin can't read")
+                    continue
+                kept.append((kind, name, lines))
+            if not kept:
+                continue
+            out = [f"[[{game}]]"]
+            for kind in KINDS:
+                mine = [k for k in kept if k[0] == kind]
+                if mine:
+                    out.append(f"[{kind}]")
+                    for _, name, lines in mine:
+                        out.append(name)
+                        out.extend(lines)
+            blocks.append("\n".join(out))
+    return blocks
+
+
 def main():
-    if len(sys.argv) != 3:
-        print(__doc__ or "usage: make-widescreen.py <codes dir> <native dir>")
+    if len(sys.argv) not in (3, 4):
+        print(__doc__ or "usage: make-widescreen.py <codes dir> <native dir> [<Enhancement-Codes dir>]")
         return 2
     codes_dir, native_dir = sys.argv[1], sys.argv[2]
+    vc_dir = sys.argv[3] if len(sys.argv) == 4 else None
     out_dir = os.path.join(ROOT, "assets", "widescreen")
     os.makedirs(out_dir, exist_ok=True)
     blocks, dropped, renamed = [], [], []
@@ -162,10 +206,15 @@ def main():
                 out.append(f"[{kind}_Enabled]")
                 out.extend(on)
         blocks.append("\n".join(out))
+    if vc_dir:
+        blocks += vc_blocks(vc_dir, dropped)
     natives = sorted({RENAMED_FILES.get(f[:-4], f[:-4]).upper() for f in os.listdir(native_dir)
                       if f.lower().endswith(".ini")})
     header = ("# Porpoise: GameCube widescreen codes, from Warped Polygon's collection (the Force 16:9 set),\n"
               "# made by tools/make-widescreen.py. Each game is [[<ID>]] followed by Dolphin's sections.\n")
+    if vc_dir:
+        header += ("# The Virtual Console N64 games' 16:9 codes (off, a choice in Cheats and Patches) are from\n"
+                   "# Admentus64's Enhancement Codes (GPL-3.0), with their authors' names where they give them.\n")
     with open(os.path.join(out_dir, "codes.ini"), "w", encoding="utf-8", newline="\n") as f:
         f.write(header + "\n" + "\n\n".join(blocks) + "\n")
     with open(os.path.join(out_dir, "native.txt"), "w", encoding="utf-8", newline="\n") as f:

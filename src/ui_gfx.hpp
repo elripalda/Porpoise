@@ -155,6 +155,7 @@ struct Look
     bool mono = false;     /* everything but warnings in mono's hue */
     Color mono_color{};
     bool high_contrast = false;
+    bool bold_focus = false; /* what is chosen drawn with a thicker, brighter edge */
     bool flat = false;     /* no glows or sheen: plain, crisp panels */
     float content_scale = 1; /* everything but the room shrunk about the middle (a TV's frame round it) */
 };
@@ -237,6 +238,8 @@ public:
     /* Pictures asked for in the last frames still being read or copied in. */
     bool loading() const;
     bool toned() const { return tone_; }
+    /* Panels drawn plain (no liquid glass) while set: a screen, a sticker. */
+    void set_solid(bool solid) { solid_ = solid; }
     Color tone(Color c) const;
 
     /* Where a picture was drawn: the largest place it took in the last
@@ -380,6 +383,7 @@ private:
     std::size_t vcapacity_ = 0; /* vertices per slot */
 
     bool tone_ = false;
+    bool solid_ = false; /* set_solid */
     Texture *white_ = nullptr;
     Texture *atlas_ = nullptr;
     Texture *icons_ = nullptr;

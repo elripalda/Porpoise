@@ -913,6 +913,39 @@ int main(int argc, char **argv)
         }
         return 0;
     }
+    /* PREVIEW_SHOTS=1: the screenshot gallery and the viewer, with the covers
+     * standing in for screenshots; and the library with Recently Played
+     * focused. Then stop. */
+    if (std::getenv("PREVIEW_SHOTS"))
+    {
+        const std::string dir = out + "/screenshots/PRVW01";
+        mkdir((out + "/screenshots").c_str(), 0777);
+        mkdir(dir.c_str(), 0777);
+        mkdir((dir + "/.thumbs").c_str(), 0777);
+        int n = 0;
+        for (const char *name : {"PRVW02", "PRVW03", "PRVW04", "PRVW05", "PRVW06", "PRVW07", "PRVW08"})
+        {
+            const std::string from = covers + "/" + name + ".png", to = dir + "/2026-10-0" + std::to_string(++n) + "_12-00-00.png";
+            std::FILE *in = std::fopen(from.c_str(), "rb");
+            std::FILE *o = in ? std::fopen(to.c_str(), "wb") : nullptr;
+            char buf[65536];
+            std::size_t got;
+            while (in && o && (got = std::fread(buf, 1, sizeof buf, in)) > 0)
+                std::fwrite(buf, 1, got, o);
+            if (in)
+                std::fclose(in);
+            if (o)
+                std::fclose(o);
+        }
+        for (int view = 0; view < 2; ++view)
+        {
+            ui.preview_shots(view == 1);
+            for (int i = 0; i < 30; ++i)
+                settle();
+            render(view ? "shots-view" : "shots", [&] { ui.draw(12.0); });
+        }
+        return 0;
+    }
     /* PREVIEW_LOOKS=theme:colours:view[:memcards],...: the library (and, with
      * PREVIEW_PAGES=1, Settings > Interface and Accessibility and Memory
      * Cards) in each, then stop. */

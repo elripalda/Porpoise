@@ -444,4 +444,165 @@ void App::draw_card_cubes(Card &card, int which, float x, float y, double time)
                                 rgba(0x1C48D8, 0.55f), focused ? kIcy : kEdge, save_icon(s), 1.0f, focused);
             }
 }
+
+/* ---- Retro TV ----------------------------------------------------------------------------- */
+
+/* The card in your hand, the other behind it, and its saves on an old TV:
+ * big pixel icons on a blue screen with scanlines, the chosen one hopping. */
+void App::draw_card_classic(double time)
+{
+    Gfx &g = *g_;
+    ensure_saves(false);
+    Card &card = mc_card_ == 0 ? card_a_ : card_b_;
+    Card &other = mc_card_ == 0 ? card_b_ : card_a_;
+    const int n = int(card.saves.size());
+    const int sel = std::clamp(mc_sel_[mc_card_], 0, std::max(0, n - 1));
+    const float t = settings_->reduced_motion ? 0.0f : float(time);
+
+    /* The cards: plastic you can see into, a label with the slot's letter, and
+     * the contacts along the top edge. */
+    auto physical = [&](const Card &c, float x, float y, float fade, bool front) {
+        const float w = 300, h = 400;
+        g.panel(x, y, w, h, rgba(0x8E98AE, 0.50f * fade), 0.75f, 26, rgba(0xD6DDEB, 0.85f * fade), 2.0f,
+                front ? 8.0f : 0.0f, 0.35f);
+        g.panel(x + 26, y + 24, w - 52, 26, rgba(0x2A2F3A, 0.55f * fade), 1, 6);
+        for (int i = 0; i < 8; ++i)
+            g.panel(x + 40 + float(i) * 28, y + 30, 16, 14, rgba(0xE8C25C, 0.9f * fade), 0.8f, 3);
+        g.set_solid(true); /* the label is paper */
+        g.panel(x + 30, y + 90, w - 60, h - 150, rgba(0xF2EEE2, 0.95f * fade), 0.92f, 10, rgba(0xFFFFFF, 0.6f * fade), 1.2f);
+        g.set_solid(false);
+        g.text_mid(Font::ExtraBold, 150, x + w * 0.5f, y + 210, with_alpha(rgba(0x1B2A6B), fade), Align::Center, c.slot);
+        const std::string free = c.present ? std::to_string(c.free_blocks) : std::to_string(c.total_blocks);
+        g.text_mid(Font::SemiBold, ts(22), x + w * 0.5f, y + 312, with_alpha(rgba(0x3A4370), fade), Align::Center,
+                   fit(g, Font::SemiBold, ts(22), trf("{n} blocks free", {{"n", free}}), w - 80));
+    };
+    const bool toned = g.toned();
+    g.set_tone(false); /* plastic and paper in every theme */
+    physical(other, 210, 250, 0.45f, false);
+    physical(card, 150, 200, 1.0f, true);
+    g.set_tone(toned);
+    g.glyph(Glyph::Arrow, 110, 400, 30, rgba(0x58B8FF), -kPi * 0.5f);
+    g.glyph(Glyph::Arrow, 560, 400, 30, rgba(0x58B8FF), kPi * 0.5f);
+
+    /* The TV: its plastic, then the screen. */
+    const float tx = 640, ty = 140, tw = 1140, th = 760;
+    g.set_tone(false);
+    g.set_solid(true);
+    g.panel(tx, ty, tw, th, rgba(0x15171D, 0.96f), 0.8f, 44, rgba(0x343844, 0.9f), 2.0f);
+    const float sx = tx + 40, sy = ty + 36, sw = tw - 80, sh = th - 72;
+    g.set_tone(false); /* the screen is a screen in every theme */
+    g.panel(sx, sy, sw, sh, rgba(0x0D2E7A), 0.45f, 30, rgba(0x000000, 0.6f), 3.0f);
+    g.text_mid(Font::Bold, ts(30), sx + 40, sy + 46, rgba(0xF4F7FF), Align::Left, trf("Slot {slot}", {{"slot", card.slot}}));
+    const std::string free = card.present ? std::to_string(card.free_blocks) : std::to_string(card.total_blocks);
+    g.text_mid(Font::SemiBold, ts(24), sx + sw - 40, sy + 46, rgba(0xBFD3FF), Align::Right,
+               trf("{n} blocks free", {{"n", free}}));
+
+    /* The saves: twelve to a screen, the rows following the chosen one. */
+    const int rows_total = std::max(kClassicRows, (n + kClassicCols - 1) / kClassicCols);
+    mc_classic_first_ = std::clamp(mc_classic_first_, sel / kClassicCols - (kClassicRows - 1), sel / kClassicCols);
+    mc_classic_first_ = std::clamp(mc_classic_first_, 0, rows_total - kClassicRows);
+    const float cell_w = (sw - 80) / float(kClassicCols), cell_h = 150, gx = sx + 40, gy = sy + 90;
+    for (int r = 0; r < kClassicRows; ++r)
+        for (int c = 0; c < kClassicCols; ++c)
+        {
+            const int idx = (mc_classic_first_ + r) * kClassicCols + c;
+            const float cx = gx + (float(c) + 0.5f) * cell_w, cy = gy + (float(r) + 0.5f) * cell_h;
+            if (idx >= n)
+            {
+                g.panel(cx - 44, cy - 44, 88, 88, rgba(0x0A2466, 0.6f), 1, 8, rgba(0x2E58B8, 0.5f), 1.2f);
+                continue;
+            }
+            Save &s = card.saves[std::size_t(idx)];
+            const bool on = idx == sel;
+            const float hop = on ? -std::fabs(std::sin(t * 5.0f)) * 16.0f : 0.0f;
+            if (on)
+                g.panel(cx - 62, cy - 62, 124, 124, kClear, 1, 12,
+                        rgba(0xFFF3A0, 0.65f + 0.35f * std::sin(t * 7.0f)), 3.0f, 8);
+            if (Texture *icon = save_icon(s))
+                g.image(icon, cx - 48, cy - 48 + hop, 96, 96, kWhite);
+            else
+                g.panel(cx - 44, cy - 44 + hop, 88, 88, rgba(0x2E58B8, 0.8f), 1, 8);
+        }
+    if (mc_classic_first_ > 0)
+        g.glyph(Glyph::Arrow, sx + sw - 28, gy + 14, 18, rgba(0xBFD3FF), 0);
+    if ((mc_classic_first_ + kClassicRows) * kClassicCols < n)
+        g.glyph(Glyph::Arrow, sx + sw - 28, gy + cell_h * kClassicRows - 14, 18, rgba(0xBFD3FF), kPi);
+
+    /* The chosen save, along the bottom of the screen. */
+    const float iy = gy + cell_h * kClassicRows + 24;
+    if (sel < n)
+    {
+        Save &s = card.saves[std::size_t(sel)];
+        const std::string title = s.title.empty() ? s.file_name : s.title;
+        g.text_mid(Font::Bold, ts(30), sx + 40, iy + 22, rgba(0xF4F7FF), Align::Left,
+                   fit(g, Font::Bold, ts(30), title, sw - 380));
+        g.text_mid(Font::Regular, ts(23), sx + 40, iy + 62, rgba(0xBFD3FF), Align::Left,
+                   fit(g, Font::Regular, ts(23), s.detail.empty() ? s.game_code : s.detail, sw - 380));
+        g.text_mid(Font::Bold, ts(28), sx + sw - 40, iy + 22, rgba(0xF4F7FF), Align::Right,
+                   plural(s.blocks, "1 block", "{n} blocks"));
+        g.text_mid(Font::Regular, ts(23), sx + sw - 40, iy + 62, rgba(0xBFD3FF), Align::Right, format_date(s.modified));
+    }
+    else
+        g.text_mid(Font::Regular, ts(26), sx + 40, iy + 40, rgba(0xBFD3FF), Align::Left,
+                   tr("Your saves appear here after you save in a game."));
+    /* Scanlines and the glass's shine. */
+    for (float y = sy + 4; y < sy + sh - 4; y += 4)
+        g.panel(sx + 6, y, sw - 12, 1.6f, rgba(0x000000, 0.10f), 1, 0);
+    g.panel(sx + 10, sy + 8, sw - 20, sh * 0.35f, rgba(0xFFFFFF, 0.04f), 1.6f, 26);
+    g.set_solid(false);
+    g.set_tone(toned);
+
+    if (sel < n)
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii Saves"}, {Glyph::Circle, "Back"}},
+                     {{Glyph::Options, "To USB"},
+                      {Glyph::Square, trf("Copy to {slot}", {{"slot", mc_card_ == 0 ? "B" : "A"}})},
+                      {Glyph::Triangle, "Delete"}},
+                     "");
+    else
+        draw_prompts({{Glyph::DPad, "Browse"}, {kKeyL2R2, "Wii Saves"}, {Glyph::Circle, "Back"}}, {}, "");
+}
+
+/* Retro TV: through the grid; left from the first save or right from the
+ * last goes to the other card. */
+void App::update_card_classic(bool left, bool right, bool up, bool down)
+{
+    const int n = int((mc_card_ == 0 ? card_a_ : card_b_).saves.size());
+    int &sel = mc_sel_[mc_card_];
+    sel = std::clamp(sel, 0, std::max(0, n - 1));
+    const int before = sel;
+    bool other = false;
+    if (left)
+    {
+        if (sel % kClassicCols > 0)
+            --sel;
+        else
+            other = mc_card_ == 1;
+    }
+    if (right)
+    {
+        if (sel % kClassicCols < kClassicCols - 1 && sel + 1 < n)
+            ++sel;
+        else
+            other = mc_card_ == 0;
+    }
+    if (up && sel >= kClassicCols)
+        sel -= kClassicCols;
+    if (down && sel + kClassicCols < n)
+        sel += kClassicCols;
+    if (other)
+    {
+        mc_card_ = 1 - mc_card_;
+        tab_anim_ = 0.5f;
+        tab_dir_ = right ? +1 : -1;
+        sfx(Sound::MovingTab);
+    }
+    else if (sel != before)
+        sfx(Sound::MenuScroll);
+    if (pressed(BtnTriangle))
+        ask_delete_save();
+    if (pressed(BtnSquare))
+        ask_copy_save();
+    if (pressed(BtnOptions))
+        export_save_to_usb();
+}
 } // namespace porpoise::ui

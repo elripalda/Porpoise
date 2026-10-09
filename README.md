@@ -707,6 +707,7 @@ It stands on the work of many people. The full list, with licenses, is in
   **[M PLUS 1](https://github.com/coz-m/MPLUS_FONTS)** (SIL OFL), and **[stb](https://github.com/nothings/stb)** by Sean Barrett.
 - **Warped Polygon**, for the GameCube widescreen code collection Porpoise's
   widescreen uses.
+- **Admentus64**, for the Enhancement Codes, whose 16:9 codes for Virtual Console N64 games Porpoise offers.
 - **[RetroAchievements](https://retroachievements.org)** and its
   **[rcheevos](https://github.com/RetroAchievements/rcheevos)** library (MIT),
   which Dolphin's achievements are built on.

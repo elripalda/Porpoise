@@ -258,6 +258,7 @@ struct State
     bool ff_hold = false;       /* touch pad + R2 held: fast forward while held */
     bool quick_save = false;    /* touch pad + L1 pressed: save to the quick slot (set_quick_buttons) */
     bool quick_load = false;    /* touch pad + L2 pressed: load the quick slot */
+    bool screenshot = false;    /* touch pad + Square pressed: a screenshot (set_shot_buttons) */
     std::uint32_t buttons = 0;  /* Button bits */
 };
 
@@ -271,6 +272,9 @@ void set_fast_forward_buttons(bool enabled);
 /* Touch pad + L1 saves to a quick slot, touch pad + L2 loads it (State::quick_save,
  * quick_load). Off: the touch pad, L1 and L2 go to the game as they are. */
 void set_quick_buttons(bool enabled);
+/* Touch pad + Square takes a screenshot (State::screenshot). Off: Square goes
+ * to the game while the touch pad is held, as it is. */
+void set_shot_buttons(bool enabled);
 /* Turbo: while this control (Control, -1 none) is held, it presses and lets go
  * about fifteen times a second. Only in games. */
 void set_turbo(int control);

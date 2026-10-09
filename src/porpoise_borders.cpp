@@ -29,6 +29,13 @@ constexpr BuiltIn kBuiltIn[] = {
     {"arcade", "Arcade Cabinet"},
     {"arcade-retro", "Retro Cabinet"},
     {"arcade-synth", "Synthwave Cabinet"},
+    {"tv-80s", "80s TV"},
+    {"tv-woodgrain", "Wood-Grain TV"},
+    {"tv-90s", "90s TV"},
+    {"tv-black", "Black TV"},
+    {"monitor-beige", "Beige Monitor"},
+    {"revolution", "Revolution"},
+    {"star-cube", "Star Cube"},
 };
 
 bool exists(const std::string &path)

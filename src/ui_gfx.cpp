@@ -1847,9 +1847,16 @@ void Gfx::panel(float x, float y, float w, float h, Color fill_c, float bottom_m
         if (border.a > 0.05f && border_w > 0)
             border_w = std::max(border_w * 1.6f, 2.5f);
     }
+    if (look_.bold_focus && glow > 0 && border_w > 0 && border.a > 0.5f && std::max({border.r, border.g, border.b}) > 0.55f)
+    {
+        /* Bolder Focus: a lit edge (what is chosen) thick and solid. */
+        border_w = std::max(border_w * 2.2f, 4.5f);
+        border.a = 1.0f;
+        glow *= 1.3f;
+    }
     const float px = target_w_ / kDesignW; /* design px -> screen px */
     float margin = glow > 0 ? glow * 3.0f : 1.0f;
-    if (look_.panel_style == 1 && fill_c.a > 0.05f && !look_.high_contrast)
+    if (look_.panel_style == 1 && fill_c.a > 0.05f && !look_.high_contrast && !solid_)
         margin = std::max(margin, std::min(30.0f, std::min(w, h) * 0.5f + 8)); /* room for its shadow */
     Vertex v[4]{};
     float pos[4][4];
@@ -1862,7 +1869,7 @@ void Gfx::panel(float x, float y, float w, float h, Color fill_c, float bottom_m
         fill(v[i].color, {fill_c.r, fill_c.g, fill_c.b, fill_c.a});
         fill(v[i].p0, {float(K_PANEL), radius * px, border_w * px, glow * px});
         fill(v[i].p1, {(w + margin * 2) * px, (h + margin * 2) * px, w * px, h * px});
-        fill(v[i].p2, {bottom_mul, sheen, 0, 0});
+        fill(v[i].p2, {bottom_mul, sheen, solid_ ? 1.0f : 0.0f, 0});
         fill(v[i].bcolor, {border.r, border.g, border.b, border.a});
     }
     push(nullptr, v);
@@ -2052,8 +2059,14 @@ void Gfx::panel3d(const Corner c[4], float shape_w, float shape_h, float margin,
     push(nullptr, v);
 }
 
-void Gfx::glass(const Corner c[4], float shape_w, float shape_h, float margin, const Glass &g0)
+void Gfx::glass(const Corner c[4], float shape_w, float shape_h, float margin, const Glass &g_in)
 {
+    Glass g0 = g_in;
+    if (look_.bold_focus && g0.glow > 0 && g0.face == 0)
+    {
+        g0.rim_w = std::max(g0.rim_w * 2.0f, 5.0f); /* Bolder Focus */
+        g0.glow *= 1.3f;
+    }
     if (tone_)
     {
         /* The light look: glass is white and flat, rimmed; its thickness and

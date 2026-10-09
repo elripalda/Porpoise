@@ -82,7 +82,7 @@ const Field kFields[] = {
     {"menu_music", nullptr, &Settings::menu_music, 0, 1},
     {"music_volume", &Settings::music_volume, nullptr, 0, 10},
     {"menu_sounds", nullptr, &Settings::menu_sounds, 0, 1},
-    {"sound_set", &Settings::sound_set, nullptr, 0, 6},
+    {"sound_set", &Settings::sound_set, nullptr, 0, 2},
     {"sounds_volume", &Settings::sounds_volume, nullptr, 0, 10},
     {"button_layout", &Settings::button_layout, nullptr, 0, 5},
     {"invert_main", &Settings::invert_main, nullptr, 0, 3},
@@ -90,6 +90,7 @@ const Field kFields[] = {
     {"rumble", nullptr, &Settings::rumble, 0, 1},
     {"ff_buttons", nullptr, &Settings::ff_buttons, 0, 1},
     {"quick_slot", &Settings::quick_slot, nullptr, 0, 3},
+    {"shot_buttons", nullptr, &Settings::shot_buttons, 0, 1},
     {"turbo", &Settings::turbo, nullptr, 0, 8},
     {"trigger_feel", &Settings::trigger_feel, nullptr, 0, 3},
     {"light_1", &Settings::light_1, nullptr, 0, 9},
@@ -147,16 +148,18 @@ const Field kFields[] = {
     {"progressive", nullptr, &Settings::progressive, 0, 1},
     {"reduced_motion", nullptr, &Settings::reduced_motion, 0, 1},
     {"large_text", nullptr, &Settings::large_text, 0, 1},
-    {"ui_theme", &Settings::ui_theme, nullptr, 0, 14},
-    {"ui_palette", &Settings::ui_palette, nullptr, 0, 15},
+    {"ui_theme", &Settings::ui_theme, nullptr, 0, 18},
+    {"ui_palette", &Settings::ui_palette, nullptr, 0, 23},
     {"ui_font", &Settings::ui_font, nullptr, 0, 8},
-    {"lib_view", &Settings::lib_view, nullptr, 0, 7},
-    {"mc_view", &Settings::mc_view, nullptr, 0, 3},
+    {"lib_view", &Settings::lib_view, nullptr, 0, 9},
+    {"recent_dock", nullptr, &Settings::recent_dock, 0, 1},
+    {"mc_view", &Settings::mc_view, nullptr, 0, 4},
     {"sc_games", &Settings::sc_games, nullptr, 0, 1},
-    {"text_size", &Settings::text_size, nullptr, 0, 2},
+    {"text_size", &Settings::text_size, nullptr, 0, 3},
     {"colour_filter", &Settings::colour_filter, nullptr, 0, 4},
     {"colour_filter_games", nullptr, &Settings::colour_filter_games, 0, 1},
     {"high_contrast", nullptr, &Settings::high_contrast, 0, 1},
+    {"bold_focus", nullptr, &Settings::bold_focus, 0, 1},
     {"big_prompts", nullptr, &Settings::big_prompts, 0, 1},
     {"still_background", nullptr, &Settings::still_background, 0, 1},
     {"ui_layout", &Settings::ui_layout, nullptr, 0, 1},
@@ -391,6 +394,10 @@ bool Settings::load(const std::string &path, bool overlay)
      * Extra Firm stay a choice away. */
     if (!overlay && versioned && version < 15)
         trigger_feel = 2;
+    /* 16 (3.0): the menu sounds are Crisp for everyone, once; Soft and
+     * Porpoise's original sounds stay a choice away. */
+    if (!overlay && versioned && version < 16)
+        sound_set = 0;
     /* 2.1.1: the widescreen hack switch became the Widescreen choice; on, it
      * is On (the hack for games with no code of their own). Per game too. */
     if (!saw_wide && legacy_wide >= 0)
@@ -414,7 +421,7 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = open_atomic(path);
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 15\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 16\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     std::fprintf(f, "border = %s\n", border.c_str());

@@ -173,6 +173,13 @@ public:
     }
     void preview_home_page(int page) { home_page_ = page, home_scroll_ = float(page), home_synced_ = true; }
     void preview_starcube(int face, bool page);
+    void preview_shots(bool view) /* tools/ui-preview: the gallery, or one picture */
+    {
+        open_shots("", Screen::Main);
+        shot_sel_ = 1;
+        shot_view_ = view;
+    }
+    void preview_dock(int sel) { dock_focus_ = sel >= 0, dock_sel_ = sel, dock_lift_ = 1; } /* tools/ui-preview */
 #endif
     /* The save state to start it from ("" for none); asking clears it. */
     std::string take_launch_state()
@@ -212,9 +219,6 @@ public:
     int update_game_menu(const Input &in, double dt);
     void draw_game_menu(double time);
     /* The key of a quick setting just changed in the menu ("" when none). */
-    /* Change Disc, chosen in the in-game menu: the disc's path, once. */
-    std::string take_disc_change() { return std::exchange(menu_disc_change_, std::string()); }
-    void menu_note(const std::string &note) { menu_note_ = note; menu_note_time_ = time_; }
     std::string take_menu_change()
     {
         std::string k;
@@ -240,6 +244,13 @@ public:
         int slot = 0;
     };
     MenuRequest take_menu_request();
+    /* Take Screenshot, chosen in the menu: once. And a note to show in it. */
+    bool take_menu_shot() { return std::exchange(menu_shot_, false); }
+    void menu_note(const std::string &note)
+    {
+        menu_note_ = note;
+        menu_note_time_ = time_;
+    }
     /* Saving or loading is under way (the menu shows it). */
     bool menu_busy() const { return menu_busy_.kind != MenuRequest::None; }
     void menu_state_done(MenuRequest::Kind kind, int slot, bool ok);
@@ -349,6 +360,7 @@ private:
         Welcome,      /* the first start: choose a theme */
         Achievements, /* a game's RetroAchievements, from its Details (Square) */
         TileArt,      /* a game's home screen tile art (its settings > Home screen) */
+        Shots,        /* screenshots: every game's (Settings) or one game's (Details) */
     };
     struct SettingRow
     {
@@ -392,7 +404,7 @@ private:
         RestartGame,     /* in a game: applied changes that need the game started again */
         CoversAgain,     /* every game's art downloaded again: Download, or Cancel */
         Wizard,          /* the first start's setup, one question a step (wizard_step_) */
-        ConsoleMenu,     /* the GameCube Menu or the Wii Menu: with the chosen disc, or none */
+        DeleteShot,      /* a screenshot (Screen::Shots) */
     };
     struct Dialog
     {
@@ -490,6 +502,10 @@ private:
     void draw_card_blocks(double time);
     void draw_saves_by_game(double time);
     void draw_card_cubes(Card &card, int which, float x, float y, double time);
+    void draw_card_classic(double time);
+    void update_card_classic(bool left, bool right, bool up, bool down);
+    static constexpr int kClassicCols = 4, kClassicRows = 3;
+    int mc_classic_first_ = 0; /* Retro TV: the first row in view */
     void update_saves_by_game(bool up, bool down);
     int mc_game_sel_ = 0;
     float mc_game_scroll_ = 0;
@@ -505,7 +521,20 @@ private:
     void draw_glass_cube(float cx, float cy, float size, float yaw, float pitch, float roll, Color tint, Color rim,
                          Texture *front, float alpha, bool lit);
     void draw_disc(Game *game, float cx, float cy, float d, float spin, float yaw, float alpha, bool focused);
-    void draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha);
+    /* load_art false: only art already loaded (the spines view's far cases). */
+    void draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha,
+                    bool load_art = true);
+    void draw_spines(double time);
+    void draw_spotlight(double time);
+    void draw_spotlight_backdrop(); /* under the top bar */
+    /* Recently Played: the last games played, in a dock along the bottom of
+     * the library (Settings > Interface). Down goes to it. */
+    std::vector<int> recent_games();
+    void draw_dock(double time);
+    bool dock_shown();
+    bool dock_focus_ = false;
+    int dock_sel_ = 0;
+    float dock_lift_ = 0;
     void release_far_art(int keep);
     std::string game_meta(const Game &g) const;
     bool update_view_nav(bool left, bool right, bool up, bool down, double dt);
@@ -730,7 +759,12 @@ private:
     bool has_banner(const Game &game) const;
     bool draw_banner(Game &game, float x, float y, float w, float h, double time, float fade, bool big);
     std::string clock_text() const;
-    float ts(float size) const { return settings_ ? size * (1.0f + 0.15f * float(settings_->text_size)) : size; }
+    float ts(float size) const
+    {
+        if (!settings_)
+            return size;
+        return size * (settings_->text_size == 3 ? 0.88f : 1.0f + 0.15f * float(settings_->text_size)); /* 3: Smaller */
+    }
     /* The theme in use, and the renderer set for it (each frame). */
     const Theme &th() const { return theme(settings_ ? settings_->ui_theme : 0); }
     void apply_look();
@@ -790,15 +824,7 @@ private:
     float right_x_ = 0;
     float layer_dx_ = 0, layer_dy_ = 0, layer_fade_ = 1; /* the screen's motion, this frame */
     bool details_custom_ = false; /* the game has its own settings */
-    int sort_row_ = 0;         /* Sort & filter: 0 sort, 1 show, 2 covers and info, 3 GameCube Menu, 4 Wii Menu */
-    /* The console's own menus (Sort & Filter): the GameCube's from the
-     * player's BIOS, the Wii Menu from their NAND, with or without a disc. */
-    Game console_menu_;
-    const Game *console_menu_disc_ = nullptr;
-    bool console_menu_wii_ = false;
-    Action console_menu(bool wii);
-    Action start_console_menu(const Game *disc);
-    bool wii_menu_installed() const;
+    int sort_row_ = 0;         /* Sort & filter: 0 sort, 1 show, 2 covers and info */
     void keep_selection(const std::string &key); /* after the order changed */
     void look_changed(int was);                 /* Settings > Interface > Look */
     void draw_revolution(double time);
@@ -912,8 +938,8 @@ private:
      * (menu_prompt_answer_ is how it was closing), 2 start the game over for
      * applied changes that need it. menu_prompt_choice_: 1 the first button. */
     int menu_prompt_ = 0, menu_prompt_choice_ = 1, menu_prompt_answer_ = 1;
-    bool menu_relaunch_ = false;
-    std::string menu_disc_change_; /* take_disc_change */   /* the game left to start afresh */
+    bool menu_relaunch_ = false;   /* the game left to start afresh */
+    bool menu_shot_ = false;       /* take_menu_shot */
     std::string menu_change_;
     int menu_tab_ = 0;   /* Game, Video, Graphics, Audio, Controls, Patches (and Achievements) */
     int menu_slot_ = 0;  /* the save-state slot under focus */
@@ -948,6 +974,32 @@ private:
     Game *states_game_ = nullptr;
     int states_sel_ = 0;
     int details_states_ = 0; /* how many slots the game in Details has */
+    int details_shots_ = 0;  /* and how many screenshots */
+    /* Screenshots (ui_app_shots.cpp). */
+    struct ShotItem
+    {
+        std::string path, thumb, key, title, wait;
+        long long time = 0;
+        Texture *tex = nullptr;
+        bool tried = false;
+    };
+    std::vector<ShotItem> find_shots(const std::string &game_key) const; /* "" every game's; newest first */
+    int count_shots(const Game &game) const;
+    void open_shots(const std::string &game_key, Screen back_to);
+    Action update_shots(bool left, bool right, bool up, bool down);
+    void draw_shots(double time);
+    void delete_shot();
+    void free_shots();
+    std::vector<ShotItem> shots_;
+    std::string shots_key_;
+    Screen shots_back_ = Screen::Main;
+    int shot_sel_ = 0, shot_first_ = 0;
+    bool shot_view_ = false;
+    Texture *shot_full_ = nullptr;
+    int shots_total_ = -1;      /* Settings > Screenshots' count: -1 counted again when asked */
+    std::string bios_found_;    /* About's GameCube BIOS line, found when Settings opens */
+    bool bios_looked_ = false;
+    std::string shot_full_for_, shot_full_wait_;
     std::string launch_state_; /* the state to start the launched game from */
     void draw_controller_lines(float x, float y, float w, const porpoise::pad::Mapping &m);
     /* A Wii game's controls: the DualSense as held, each Wii button on its control.

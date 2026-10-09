@@ -517,7 +517,7 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("screen_filter", "Screen Filter",
            "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, CRTs and an arcade "
            "monitor, VHS tapes, 8-bit and 16-bit pixels, a green handheld screen, scanlines, a composite cable, a "
-           "TV's shadow mask, a Trinitron-style aperture grille, or a sharp LCD.",
+           "TV's shadow mask, an aperture grille, or a sharp LCD.",
            &t.screen_filter, 0,
            {"Smooth", "Sharp", "Sharpen (CAS)", "CRT", "Arcade CRT", "VHS", "Soft VHS", "8-Bit", "Pocket", "Scanlines",
             "Shadow Mask", "LCD", "FSR 1", "16-Bit", "NTSC Composite", "Aperture Grille"});
@@ -672,10 +672,8 @@ void App::add_game_rows(Settings &t, bool per_game)
         choice("music_volume", "Music Volume", "How loud the menu music plays.", &t.music_volume, 0,
                {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
         toggle("menu_sounds", "Menu Sounds", "The sounds of moving through the menus.", &t.menu_sounds);
-        choice("sound_set", "Sound Set",
-               "How the menus sound. GameCube BIOS: your own console's BIOS's sounds, when it's in "
-               "/data/porpoise/bios.",
-               &t.sound_set, 0, {"Porpoise", "Soft", "Crisp", "Chiptune", "Glass", "Retro PC", "GameCube BIOS"});
+        choice("sound_set", "Sound Set", "How the menus sound: Crisp, Soft or Porpoise's original sounds.",
+               &t.sound_set, 0, {"Crisp", "Soft", "Porpoise"});
         choice("sounds_volume", "Sounds Volume", "How loud the menu sounds play.", &t.sounds_volume, 0,
                {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
     }
@@ -1109,7 +1107,7 @@ void App::build_settings()
                &draft_.sc_games, {"Discs", "Covers"});
     else
     {
-        static const char *const kHelp[8] = {
+        static const char *const kHelp[10] = {
             "Cover Flow: the boxes in a row, the chosen one in front.",
             "Wheel: the boxes around a turning wheel; the one at the front is chosen.",
             "Disc Flow: your discs, spinning into place as you go.",
@@ -1117,19 +1115,25 @@ void App::build_settings()
             "Box: one box at a time, its whole cover wrapped round it. The right stick turns it.",
             "List: your games by name, the chosen one's box beside them. Up and down go through them.",
             "Stack: a deck of boxes; the front one flips away as you go.",
-            "Helix: the boxes climbing round a turning column."};
-        choice("lib_view", "Library View", kHelp[std::clamp(draft_.lib_view, 0, 7)], &draft_.lib_view,
-               {"Cover Flow", "Wheel", "Disc Flow", "Shelf", "Box", "List", "Stack", "Helix"});
+            "Helix: the boxes climbing round a turning column.",
+            "Spines: your cases side by side on a shelf, spine out; the chosen one comes out to show its cover.",
+            "Spotlight: one game at a time over its own art, with what's known about it; the rest in a strip below."};
+        choice("lib_view", "Library View", kHelp[std::clamp(draft_.lib_view, 0, 9)], &draft_.lib_view,
+               {"Cover Flow", "Wheel", "Disc Flow", "Shelf", "Box", "List", "Stack", "Helix", "Spines", "Spotlight"});
+        toggle("recent_dock", "Recently Played",
+               "The games you played last, in a row along the bottom of the library. Down goes to it.",
+               &draft_.recent_dock);
     }
     if (draft_.ui_theme != int(ThemeId::StarCube))
     {
-        static const char *const kHelp[4] = {
+        static const char *const kHelp[5] = {
             "Cards: both memory cards side by side, their saves as icons.",
             "Blocks: one card at a time, drawn as the card itself with each save's blocks.",
             "By Game: every save on both cards and the Wii, grouped by game.",
-            "Cubes: both cards side by side, each save a little glass cube on a grid."};
-        choice("mc_view", "Memory Cards View", kHelp[std::clamp(draft_.mc_view, 0, 3)], &draft_.mc_view,
-               {"Cards", "Blocks", "By Game", "Cubes"});
+            "Cubes: both cards side by side, each save a little glass cube on a grid.",
+            "Retro TV: the card in your hand, its saves on an old TV, the chosen one hopping."};
+        choice("mc_view", "Memory Cards View", kHelp[std::clamp(draft_.mc_view, 0, 4)], &draft_.mc_view,
+               {"Cards", "Blocks", "By Game", "Cubes", "Retro TV"});
     }
     action("Reset All Settings", "Every setting back to how Porpoise ships. Games, folders and saves stay.",
            "Reset\xE2\x80\xA6", kRowResetAll);
@@ -1138,9 +1142,32 @@ void App::build_settings()
            "memory cards, saves and save states stay.",
            "Reinitialize\xE2\x80\xA6", kRowReinitialize);
 
+    header("Screenshots");
+    {
+        if (shots_total_ < 0)
+            shots_total_ = int(find_shots("").size());
+        const int count = shots_total_;
+        action("Screenshots", "Every game's screenshots, newest first. Cross shows one over the whole screen; Triangle deletes it.",
+               plural(count, "1 screenshot", "{n} screenshots"), kRowShots);
+    }
+    toggle("shot_buttons", "Screenshot Buttons",
+           "In a game, touch pad + Square takes a screenshot. The game's menu has Take Screenshot too.",
+           &draft_.shot_buttons);
+    info("Screenshot Folder", data_dir_ + "/screenshots",
+         "Where screenshots are kept, a folder for each game. PS5 Upload or FTP can copy them to a computer.");
+
     header("Accessibility");
-    choice("text_size", "Text Size", "Bigger labels across Porpoise.", &draft_.text_size,
-           {"Normal", "Large", "Larger"});
+    {
+        SettingRow r;
+        r.section = section;
+        r.key = "text_size";
+        r.label = tr("Text Size");
+        r.help = tr("Smaller or bigger labels across Porpoise.");
+        r.int_value = &draft_.text_size;
+        r.values = {tr("Smaller"), tr("Normal"), tr("Large"), tr("Larger")};
+        r.order = {3, 0, 1, 2};
+        rows_.push_back(r);
+    }
     choice("colour_filter", "Color Filter",
            "For color blindness: moves the colors you may not tell apart to ones you can. Red-weak and "
            "green-weak help with reds and greens, blue-weak with blues and yellows.",
@@ -1149,6 +1176,8 @@ void App::build_settings()
            &draft_.colour_filter_games);
     toggle("high_contrast", "High Contrast", "Solid panels, clearer edges and brighter text.",
            &draft_.high_contrast);
+    toggle("bold_focus", "Bolder Focus", "What is chosen gets a thick, bright edge, easier to follow.",
+           &draft_.bold_focus);
     toggle("reduced_motion", "Reduced Motion", "Stops the moving lights and shortens animations.",
            &draft_.reduced_motion);
     toggle("still_background", "Still Background", "The background holds still; everything else moves as usual.",
@@ -1192,15 +1221,19 @@ void App::build_settings()
     }
     {
         /* The player's own GameCube BIOS, found by what is in it. */
-        std::string found;
-        for (const porpoise::bios::GameCubeBios &b : porpoise::bios::find_gamecube(data_dir_ + "/bios"))
+        if (!bios_looked_)
         {
-            const std::string one = (b.pal ? "PAL " : "NTSC ") + b.revision;
-            if (found.find(one) == std::string::npos)
-                found += (found.empty() ? "" : ", ") + one;
+            bios_looked_ = true;
+            bios_found_.clear();
+            for (const porpoise::bios::GameCubeBios &b : porpoise::bios::find_gamecube(data_dir_ + "/bios"))
+            {
+                const std::string one = (b.pal ? "PAL " : "NTSC ") + b.revision;
+                if (bios_found_.find(one) == std::string::npos)
+                    bios_found_ += (bios_found_.empty() ? "" : ", ") + one;
+            }
         }
-        info("GameCube BIOS", found.empty() ? tr("None") : found,
-             "Your console's own BIOS (IPL.bin), for the GameCube Menu and the boot animation: put it in "
+        info("GameCube BIOS", bios_found_.empty() ? tr("None") : bios_found_,
+             "Your console's own BIOS (IPL.bin), for the boot animation: put it in "
              "/data/porpoise/bios, under any name. NTSC plays US and Japanese games, PAL European ones. Porpoise "
              "includes none.");
     }
@@ -1858,8 +1891,8 @@ void App::change_setting(int dir)
 bool App::applies_at_once(const std::string &key)
 {
     static const char *const kKeys[] = {
-        "ui_theme",      "ui_palette",   "ui_font",         "ui_layout",      "lib_view",     "mc_view",
-        "sc_games",      "ui_pointer",   "text_size",       "high_contrast",  "reduced_motion", "still_background",
+        "ui_theme",      "ui_palette",   "ui_font",         "ui_layout",      "lib_view",     "mc_view",  "recent_dock",
+        "sc_games",      "ui_pointer",   "text_size",       "high_contrast",  "bold_focus",  "reduced_motion", "still_background",
         "big_prompts",   "colour_filter", "colour_filter_games", "border",    "screen_filter", "filter_strength",
         "menu_music",    "menu_sounds",  "music_volume",    "sounds_volume", "sound_set",
         "bloom",         "color_saturation", "color_contrast", "color_warmth"};
@@ -2091,6 +2124,9 @@ App::Action App::activate_row(const SettingRow &row)
         return Action::None;
     case kRowMapping:
         open_mapping();
+        return Action::None;
+    case kRowShots:
+        open_shots("", Screen::Main);
         return Action::None;
     case kRowWiiGuide:
         open_wii_guide();
@@ -2507,6 +2543,8 @@ void App::draw_settings()
         subtitle = tr("How Porpoise looks and reads");
     else if (current == "Accessibility")
         subtitle = tr("Easier to see, read and follow");
+    else if (current == "Screenshots")
+        subtitle = tr("Pictures of your games, taken while you play");
     else if (current == "Developer")
         subtitle = tr("For tuning the Wii Remote; nothing here is needed to play");
     else if (current == "Home Screen")
@@ -2779,6 +2817,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Search"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowMapping)
         draw_prompts({{Glyph::Cross, "Customize"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowShots)
+        draw_prompts({{Glyph::Cross, "Open"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowWiiGuide)
         draw_prompts({{Glyph::Cross, "Show"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowWiiSetup)

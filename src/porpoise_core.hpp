@@ -85,9 +85,6 @@ std::string last_failure_reason();
  * picks it up on its next frame), and Porpoise's own screen filter. */
 void set_option(const char *key, const char *value);
 void set_picture(int filter, float strength);
-/* Puts another disc in the running game's drive (the in-game menu's Change
- * Disc), through the core's disc control; false when it has none. */
-bool change_disc(const char *path);
 /* The sticks turned around (0 no, 1 up-down, 2 left-right, 3 both). */
 void set_stick_invert(int main_stick, int c_stick);
 /* Fast forward: 1 is normal speed, 2 or 4 run that many frames for each shown. */

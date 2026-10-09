@@ -44,10 +44,12 @@ void App::release_far_art(int keep)
     const int shown = lib_->shown();
     const int view = starcube() ? (settings_->sc_games == 0 ? 2 : 0) : settings_->lib_view;
     const int disc_keep = starcube() ? keep : 5;
+    const std::vector<int> docked = dock_shown() ? recent_games() : std::vector<int>(); /* Recently Played's */
     for (int i = 0; i < int(games.size()); ++i)
     {
         Game &game = games[std::size_t(i)];
-        const bool far = std::abs(i - selected_) > keep || i >= shown;
+        const bool far = (std::abs(i - selected_) > keep || i >= shown) &&
+                         std::find(docked.begin(), docked.end(), i) == docked.end();
         if (far && game.cover)
         {
             g.free_texture(game.cover);
@@ -57,13 +59,14 @@ void App::release_far_art(int keep)
         /* Discs, backs and spines are only kept near the selection in the
          * views that show them (Details keeps the chosen game's). */
         const bool near_disc = view == 2 && std::abs(i - selected_) <= disc_keep;
+        const bool near_spine = view == 8 && std::abs(i - selected_) <= 22 && i < shown;
         if (!near_disc && i != selected_ && game.disc)
         {
             g.free_texture(game.disc);
             game.disc = nullptr;
             game.disc_tried = false;
         }
-        if (i != selected_ && game.spine)
+        if (i != selected_ && !near_spine && game.spine)
         {
             g.free_texture(game.spine);
             game.spine = nullptr;
@@ -281,9 +284,13 @@ void App::draw_shelf(double time)
     auto &games = lib_->games();
     const int shown = lib_->shown();
     const int cols = kShelfCols;
-    const float tw = 214, th = 300, gap_x = 50, row_h = 352;
+    /* With Recently Played below, the boxes a little smaller: two rows still fit. */
+    const bool dock = dock_shown();
+    const float tw = dock ? 180.0f : 214.0f, th = dock ? 252.0f : 300.0f, gap_x = dock ? 60.0f : 50.0f;
+    const float row_h = dock ? 300.0f : 352.0f;
     const float x0 = kCx - (float(cols) * tw + float(cols - 1) * gap_x) * 0.5f + tw * 0.5f;
-    const float y0 = 420;
+    const float y0 = dock ? 400.0f : 420.0f;
+    const float bottom = dock ? 980.0f : 1040.0f;
 
     /* The chosen game's name, top right. */
     if (shown > 0)
@@ -301,7 +308,7 @@ void App::draw_shelf(double time)
         const float y = y0 + (float(r) - row_scroll_) * row_h;
         if (y < 140 || y > 1150)
             continue;
-        const float fade = std::clamp((1040 - y) / 160.0f, 0.0f, 1.0f) * std::clamp((y - 150) / 120.0f, 0.0f, 1.0f);
+        const float fade = std::clamp((bottom - y) / 160.0f, 0.0f, 1.0f) * std::clamp((y - 150) / 120.0f, 0.0f, 1.0f);
         g.panel(x0 - tw * 0.5f - 30, y + th * 0.5f + 14, float(cols) * (tw + gap_x) - gap_x + 60, 16,
                 rgba(0x0A1236, 0.65f * fade), 0.7f, 8, rgba(0x5CD3FF, 0.35f * fade), 1.2f);
     }
@@ -320,7 +327,7 @@ void App::draw_shelf(double time)
         const float x = x0 + float(c) * (tw + gap_x);
         const float y = y0 + (float(r) - row_scroll_) * row_h;
         const bool focused = i == selected_;
-        const float fade = std::clamp((1040 - y) / 160.0f, 0.0f, 1.0f) * std::clamp((y - 150) / 120.0f, 0.0f, 1.0f);
+        const float fade = std::clamp((bottom - y) / 160.0f, 0.0f, 1.0f) * std::clamp((y - 150) / 120.0f, 0.0f, 1.0f);
         const float grow = focused ? 1.0f + 0.10f * std::min(1.0f, lift_) : 1.0f;
         const float sway = focused && !settings_->reduced_motion ? std::sin(float(time) * 0.9f) * 0.05f : 0.0f;
         draw_tile(&games[std::size_t(i)], x, y - (focused ? 14.0f * lift_ : 0.0f), tw * grow, th * grow, sway, fade,
@@ -335,7 +342,8 @@ void App::draw_shelf(double time)
  * and plastic on the open side, top and bottom. A face is drawn when its
  * corners, as projected, turn clockwise (it faces you), so at any angle each
  * shows cleanly and none bleeds through another. */
-void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha)
+void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha,
+                     bool load_art)
 {
     Gfx &g = *g_;
     const bool toned = g.toned();
@@ -369,6 +377,7 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
                               tl.z + du.z * uv[i][0] + dv.z * uv[i][1]});
     };
     const Color black = Color{0.035f, 0.038f, 0.045f, alpha};
+    Texture *const cover_art = load_art ? cover_of(game) : game.cover; /* far: no new loads */
     const Color edge_light = Color{0.16f, 0.17f, 0.19f, alpha};
 
     /* Its shadow on the floor. */
@@ -409,10 +418,17 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
         face(spine, 3, paper, in);
         if (Texture *art = spine_of(game))
             g.quad3d(art, in, depth - 6, h - paper * 2, with_alpha(kWhite, alpha), 1, false, false);
-        else if (Texture *cover = cover_of(game))
+        else if (Texture *cover = cover_art)
         {
             const float uv[4] = {0.0f, 0.0f, 0.06f, 1.0f};
             g.quad3d(cover, in, depth - 6, h - paper * 2, Color{0.62f, 0.64f, 0.70f, alpha}, 1, false, false, uv);
+        }
+        else
+        {
+            /* No spine art: the plastic, a light strip down it. */
+            Corner strip[4];
+            face(spine, depth * 0.42f, paper * 3, strip);
+            g.quad3d(nullptr, strip, depth * 0.16f, h - paper * 6, edge_light, 1, false, false);
         }
         gloss_over(g, q, depth, h, 2, cx / 1920.0f + yaw * 0.1f, alpha * 0.6f);
     }
@@ -423,7 +439,7 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
         g.quad3d(nullptr, q, w, h, black, 6, false, false);
         Corner in[4];
         face(back, paper, paper, in);
-        if (Texture *art = back_of(game))
+        if (Texture *art = load_art ? back_of(game) : game.back)
         {
             float uv[4];
             cover_uv(art, w - paper * 2, h - paper * 2, uv);
@@ -445,7 +461,7 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
         g.quad3d(nullptr, q, w, h, black, 6, false, false);
         Corner in[4];
         face(front, paper, paper, in);
-        if (Texture *cover = cover_of(game))
+        if (Texture *cover = cover_art)
         {
             float uv[4];
             cover_uv(cover, w - paper * 2, h - paper * 2, uv);
@@ -544,12 +560,13 @@ void App::draw_list_view(double time)
         return;
     Game &sel = games[std::size_t(selected_)];
     const float sway = settings_->reduced_motion ? 0.0f : std::sin(float(time) * 0.6f) * 0.08f;
-    draw_tile(&sel, 470, kCy + 30, kTileW * 1.05f, kTileH * 1.05f, 0.18f + sway, 1.0f, true, false);
-    g.text(Font::Bold, ts(40), 470, 840, kWhite, Align::Center, fit(g, Font::Bold, ts(40), sel.title, 640));
-    g.text(Font::SemiBold, ts(24), 470, 900, kLavender, Align::Center, game_meta(sel));
+    const bool dock = dock_shown(); /* Recently Played below */
+    draw_tile(&sel, 470, kCy + (dock ? 10.0f : 30.0f), kTileW * 1.05f, kTileH * 1.05f, 0.18f + sway, 1.0f, true, false);
+    g.text(Font::Bold, ts(40), 470, dock ? 790.0f : 840.0f, kWhite, Align::Center, fit(g, Font::Bold, ts(40), sel.title, 640));
+    g.text(Font::SemiBold, ts(24), 470, dock ? 846.0f : 900.0f, kLavender, Align::Center, game_meta(sel));
 
     const float lx = 860, ly = 250, lw = 980, row_h = 76;
-    const int visible = 9;
+    const int visible = dock ? 8 : 9;
     /* The list slides so the chosen row stays near the middle. */
     const float top = std::clamp(scroll_ - 3.5f, 0.0f, std::max(0.0f, float(shown - visible)));
     g.panel(lx, ly - 14, lw, row_h * visible + 28, rgba(0x0F1F63, 0.55f), 0.75f, kR, rgba(0x4C6FD8, 0.8f), 1.6f, 0, 0.1f);
@@ -656,6 +673,144 @@ void App::draw_helix(double time)
         const float alpha = room * std::clamp((4.0f - std::fabs(k)) / 1.2f, 0.0f, 1.0f) * (it.z > radius ? 0.5f : 1.0f);
         const bool focused = it.i == selected_ && std::fabs(k) < 0.5f;
         draw_tile(&games[std::size_t(it.i)], x, y, kTileW * 0.66f * s, kTileH * 0.66f * s, it.a, alpha, focused, false);
+    }
+}
+
+/* ---- spines ----------------------------------------------------------------------------- */
+
+/* A collection on a shelf: every case side by side, spine out, the way they
+ * stand at home. The chosen one is pulled out and turned to show its cover. */
+void App::draw_spines(double time)
+{
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    const int shown = lib_->shown();
+    const float h = 430, w = h * 135.0f / 190.0f, depth = 40;
+    const float pitch = 46, gap = 250; /* spine to spine, and the room either side of the one pulled out */
+    const float cy = kCy - 20;
+    const float spine_yaw = kPi * 0.5f;
+    /* The shelf under them. */
+    g.panel(-40, cy + h * 0.5f + 18, 2000, 20, rgba(0x0A1236, 0.7f), 0.7f, 6, rgba(0x5CD3FF, 0.30f), 1.2f);
+    std::vector<int> order;
+    for (int i = 0; i < shown; ++i)
+        if (std::fabs(float(i) - scroll_) < 22.0f)
+            order.push_back(i);
+    std::sort(order.begin(), order.end(),
+              [&](int a, int b) { return std::fabs(float(a) - scroll_) > std::fabs(float(b) - scroll_); });
+    const float sway = settings_->reduced_motion ? 0.0f : std::sin(float(time) * 0.7f) * 0.05f;
+    for (int i : order)
+    {
+        const float k = float(i) - scroll_, a = std::fabs(k), side = k < 0 ? -1.0f : 1.0f;
+        float x, yaw = spine_yaw, s = 1.0f, y = cy;
+        if (a < 1.0f)
+        {
+            const float out = ease_inout(1.0f - a) * std::min(1.0f, 0.4f + lift_);
+            x = kCx + k * gap;
+            yaw = spine_yaw + (0.30f + sway - spine_yaw) * out;
+            s = 1.0f + 0.10f * out;
+            y = cy - 12.0f * out;
+        }
+        else
+            x = kCx + side * (gap + (a - 1.0f) * pitch);
+        if (x < -80 || x > 2000)
+            continue;
+        const float alpha = std::clamp((21.0f - a) / 3.0f, 0.0f, 1.0f);
+        draw_box3d(games[std::size_t(i)], x, y, w * s, h * s, depth * s, yaw, alpha, a <= 8.0f);
+    }
+}
+
+/* ---- spotlight -------------------------------------------------------------------------- */
+
+/* The chosen game's cover over the whole room, large and dim: drawn before
+ * the top bar, fading in as the selection settles. */
+void App::draw_spotlight_backdrop()
+{
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    if (lib_->shown() == 0 || selected_ < 0 || selected_ >= lib_->shown())
+        return;
+    Texture *cover = cover_of(games[std::size_t(selected_)]);
+    if (!cover)
+        return;
+    const float settle = std::clamp(1.0f - std::fabs(scroll_ - float(selected_)) * 1.5f, 0.0f, 1.0f);
+    float uv[4];
+    cover_uv(cover, 1920, 1080, uv);
+    g.image_part(cover, 0, 0, 1920, 1080, uv, with_alpha(kWhite, 0.22f * settle));
+    /* Darker toward the bottom, where the strip and the hints are. */
+    g.panel(0, 0, 1920, 1080, rgba(0x02040C, 0.35f), 0.4f, 0, kClear, 0);
+}
+
+/* One game in the spotlight: its cover over the whole screen, softly, its box
+ * and what's known about it in front, and the rest of the library in a strip
+ * below to move through. */
+void App::draw_spotlight(double time)
+{
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    const int shown = lib_->shown();
+    if (shown == 0)
+        return;
+    Game &sel = games[std::size_t(selected_)];
+
+    /* The box, and what's known about it. */
+    const float sway = settings_->reduced_motion ? 0.0f : std::sin(float(time) * 0.6f) * 0.06f;
+    draw_tile(&sel, 470, 470, kTileW * 0.98f, kTileH * 0.98f, 0.16f + sway, 1.0f, true, false);
+    const float px = 790, pw = 1040;
+    float y = 268;
+    for (const std::string &line : wrap(g, Font::Bold, ts(48), sel.title, pw, 2))
+    {
+        g.text(Font::Bold, ts(48), px, y, kWhite, Align::Left, line);
+        y += ts(48) * 1.15f;
+    }
+    if (sel.favourite)
+        g.glyph(Glyph::Star, px + pw - 20, 290, 34, rgba(0xFFD45C));
+    y += 6;
+    g.text(Font::SemiBold, ts(26), px, y, kLavender, Align::Left, game_meta(sel));
+    y += 52;
+    std::string facts;
+    for (const std::string &f : {sel.developer, sel.released})
+        if (!f.empty())
+            facts += (facts.empty() ? "" : "   \xE2\x80\xA2   ") + f;
+    if (sel.players > 0)
+        facts += (facts.empty() ? "" : "   \xE2\x80\xA2   ") +
+                 plural((long long)sel.players, "1 player", "{n} players");
+    if (!facts.empty())
+    {
+        g.text(Font::SemiBold, ts(24), px, y, kSoft, Align::Left, fit(g, Font::SemiBold, ts(24), facts, pw));
+        y += 48;
+    }
+    if (!sel.synopsis.empty())
+        for (const std::string &line : wrap(g, Font::Regular, ts(25), sel.synopsis, pw, 5))
+        {
+            g.text(Font::Regular, ts(25), px, y, kSoft, Align::Left, line);
+            y += ts(25) * 1.38f;
+        }
+
+    /* The strip: the games either side, the chosen one in the middle. */
+    const float sw = 84, sh = sw * 7.0f / 5.0f, step = 104, sy = dock_shown() ? 812 : 860;
+    for (int i = std::max(0, selected_ - 9); i < std::min(shown, selected_ + 10); ++i)
+    {
+        const float d = float(i) - scroll_;
+        const float x = kCx + d * step;
+        if (x < 40 || x > 1880)
+            continue;
+        const bool on = i == selected_;
+        const float edge = std::clamp((900.0f - std::fabs(x - kCx)) / 120.0f, 0.0f, 1.0f);
+        const float grow = on ? 1.18f : 1.0f;
+        Game &game = games[std::size_t(i)];
+        if (on)
+            g.panel(x - sw * grow * 0.5f - 6, sy - sh * grow * 0.5f - 6, sw * grow + 12, sh * grow + 12, kClear, 1, 10,
+                    with_alpha(kIcy, edge), 2.4f, 10);
+        if (Texture *cover = cover_of(game))
+        {
+            float uv[4];
+            cover_uv(cover, sw, sh, uv);
+            g.image_part(cover, x - sw * grow * 0.5f, sy - sh * grow * 0.5f, sw * grow, sh * grow, uv,
+                         with_alpha(kWhite, (on ? 1.0f : 0.7f) * edge), 6);
+        }
+        else
+            g.panel(x - sw * 0.5f, sy - sh * 0.5f, sw, sh, with_alpha(kTileFill, 0.6f * edge), 0.7f, 6,
+                    with_alpha(kEdge, 0.6f * edge), 1.2f);
     }
 }
 

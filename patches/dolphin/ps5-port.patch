@@ -2289,7 +2289,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..68fb23e2c3 100644
+index c53281053f..591b8d98d7 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -2422,68 +2422,7 @@ index c53281053f..68fb23e2c3 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -677,6 +745,47 @@ bool retro_load_game(const struct retro_game_info* game)
-   }
- #endif
- 
-+  // Porpoise: the console's own menus (the frontend's Sort & Filter): a small
-+  // file naming the menu, the BIOS's region folder and the disc in the drive:
-+  //   gamecube USA|EUR|JAP   or   wii -
-+  //   <the disc's path, or an empty line>
-+  std::unique_ptr<BootParameters> menu_boot;
-+  if (extension == ".porpoisemenu")
-+  {
-+    std::string kind, folder, disc;
-+    {
-+      std::ifstream in(normalized_game_paths.front());
-+      in >> kind >> folder;
-+      std::getline(in, disc);
-+      std::getline(in, disc);
-+    }
-+    normalized_game_paths.clear();
-+    if (!disc.empty())
-+      normalized_game_paths.push_back(Libretro::VFile::NormalizePath(disc));
-+    if (kind == "gamecube")
-+    {
-+      const DiscIO::Region region = folder == "EUR"   ? DiscIO::Region::PAL :
-+                                    folder == "JAP"   ? DiscIO::Region::NTSC_J :
-+                                                        DiscIO::Region::NTSC_U;
-+      if (!normalized_game_paths.empty())
-+      {
-+        if (auto volume = DiscIO::CreateDisc(normalized_game_paths.front()))
-+          menu_boot = std::make_unique<BootParameters>(BootParameters::IPL{
-+              region, BootParameters::Disc{normalized_game_paths.front(), std::move(volume), {}}});
-+      }
-+      if (!menu_boot)
-+        menu_boot = std::make_unique<BootParameters>(BootParameters::IPL{region});
-+      NOTICE_LOG_FMT(BOOT, "Porpoise: the GameCube Menu ({}), disc: {}", folder, disc.empty() ? "none" : disc);
-+    }
-+    else
-+    {
-+      if (!normalized_game_paths.empty())
-+        Config::SetBase(Config::MAIN_DEFAULT_ISO, normalized_game_paths.front());
-+      menu_boot = std::make_unique<BootParameters>(BootParameters::NANDTitle{Titles::SYSTEM_MENU});
-+      NOTICE_LOG_FMT(BOOT, "Porpoise: the Wii Menu, disc: {}", disc.empty() ? "none" : disc);
-+    }
-+  }
-+
-   if (extension == ".m3u" || extension == ".m3u8")
-   {
-     normalized_game_paths = ReadM3UFile(normalized_game_paths.front(), folder_path_str);
-@@ -705,8 +814,10 @@ bool retro_load_game(const struct retro_game_info* game)
-       Libretro::GetOption<bool>(sysconf::WII_LOGI_MICROPHONE_ENABLE, /*def=*/false));
-   }
- 
--  const bool disc_based_games_boot_to_wii_menu = Libretro::GetOption<bool>(Libretro::Options::core::DISC_BASED_GAMES_BOOT_TO_WII_MENU, false);
--  std::unique_ptr<BootParameters> boot_params = BootParameters::GenerateFromFile(normalized_game_paths);
-+  const bool disc_based_games_boot_to_wii_menu =
-+      !menu_boot && Libretro::GetOption<bool>(Libretro::Options::core::DISC_BASED_GAMES_BOOT_TO_WII_MENU, false);
-+  std::unique_ptr<BootParameters> boot_params =
-+      menu_boot ? std::move(menu_boot) : BootParameters::GenerateFromFile(normalized_game_paths);
- 
-   if (disc_based_games_boot_to_wii_menu)
-   {
-@@ -737,6 +848,13 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +805,13 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -2497,7 +2436,7 @@ index c53281053f..68fb23e2c3 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +922,7 @@ void retro_unload_game(void)
+@@ -804,6 +879,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }

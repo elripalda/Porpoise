@@ -158,6 +158,7 @@ void App::sc_open_details()
     details_row_ = 0;
     details_custom_ = !Settings::keys_in(game_settings_path(games[std::size_t(selected_)])).empty();
     count_states(&games[std::size_t(selected_)]);
+    details_shots_ = count_shots(games[std::size_t(selected_)]);
     lib_->set_selected(Library::key_of(games[std::size_t(selected_)]));
 }
 
@@ -588,10 +589,11 @@ void App::draw_sc_details(double time)
     g.text_mid(Font::Regular, ts(26), rx, 280, kLavender, Align::Left, game_meta(game));
     if (game.favourite)
         g.glyph(Glyph::Star, rx + rw - 10, 222, 36, rgba(0xFFD45C));
-    const std::string actions[4] = {title_case(tr("Play")), title_case(tr("Save States")),
-                                    title_case(tr("Game Settings")), title_case(tr("Save Data"))};
+    const std::string actions[5] = {title_case(tr("Play")), title_case(tr("Save States")),
+                                    title_case(tr("Game Settings")), title_case(tr("Save Data")),
+                                    title_case(tr("Screenshots"))};
     const float t = settings_->reduced_motion ? 0.0f : float(time);
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < (details_shots_ > 0 ? 5 : 4); ++i)
     {
         const bool on = details_row_ == i;
         const float y = 360 + float(i) * 112, h = 88;
@@ -604,6 +606,9 @@ void App::draw_sc_details(double time)
                    actions[i]);
         if (i == 2 && details_custom_)
             g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, y + h * 0.5f, kCyan, Align::Right, tr("Custom"));
+        if (i == 4)
+            g.text_mid(Font::SemiBold, ts(22), rx + rw - 30, y + h * 0.5f, kCyan, Align::Right,
+                       plural(details_shots_, "1 screenshot", "{n} screenshots"));
     }
     if (screen_ != Screen::States)
     {
@@ -809,6 +814,8 @@ void App::draw_starcube(double time)
             draw_browser();
         else if (screen_ == Screen::TileArt)
             draw_tile_art(time);
+        else if (screen_ == Screen::Shots)
+            draw_shots(time);
         else if (screen_ == Screen::GameSettings)
             draw_settings();
         else if (screen_ == Screen::Mapping)

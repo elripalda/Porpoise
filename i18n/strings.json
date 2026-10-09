@@ -5536,35 +5536,7 @@
   "section": "3.0: polish"
  },
  {
-  "en": "Change Disc",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Changing the disc…",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Disc changed.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Disc {n}",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "The disc couldn't be changed.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "That disc is already in the drive.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
   "en": "GameCube BIOS",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "GameCube Menu",
   "section": "3.0: console menus, BIOS, sound sets, Change Disc"
  },
  {
@@ -5584,71 +5556,7 @@
   "section": "3.0: console menus, BIOS, sound sets, Change Disc"
  },
  {
-  "en": "Chiptune",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Glass",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Retro PC",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "How the menus sound. GameCube BIOS: your own console's BIOS's sounds, when it's in /data/porpoise/bios.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "No BIOS for This Disc's Region",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "No Disc",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "No GameCube BIOS Found",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "No Wii Menu Found",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Put your console's own BIOS (IPL.bin) in /data/porpoise/bios, under any name. Porpoise includes none.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Put your own Wii Menu's WAD, from your own console, with your games and start it once: Porpoise installs it. Porpoise includes none.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Start it with {game} in the disc drive, or with no disc?",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "The GameCube's own menu, from your console's BIOS, with or without a disc.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "This disc needs a PAL BIOS (European games). Yours is NTSC.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "This disc needs an NTSC BIOS (US and Japanese games). Yours is PAL.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "With This Disc",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Your console's own BIOS (IPL.bin), for the GameCube Menu and the boot animation: put it in /data/porpoise/bios, under any name. NTSC plays US and Japanese games, PAL European ones. Porpoise includes none.",
-  "section": "3.0: console menus, BIOS, sound sets, Change Disc"
- },
- {
-  "en": "Your own Wii Menu, installed from your console, with or without a disc.",
+  "en": "Your console's own BIOS (IPL.bin), for the boot animation: put it in /data/porpoise/bios, under any name. NTSC plays US and Japanese games, PAL European ones. Porpoise includes none.",
   "section": "3.0: console menus, BIOS, sound sets, Change Disc"
  },
  {
@@ -5708,11 +5616,219 @@
   "section": "3.0: Enhancements"
  },
  {
-  "en": "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, CRTs and an arcade monitor, VHS tapes, 8-bit and 16-bit pixels, a green handheld screen, scanlines, a composite cable, a TV's shadow mask, a Trinitron-style aperture grille, or a sharp LCD.",
+  "en": "Porpoise's own filter on the way to the TV: smooth or sharp scaling, sharpening, CRTs and an arcade monitor, VHS tapes, 8-bit and 16-bit pixels, a green handheld screen, scanlines, a composite cable, a TV's shadow mask, an aperture grille, or a sharp LCD.",
   "section": "3.0: Enhancements"
  },
  {
   "en": "High",
   "section": "3.0: Enhancements"
+ },
+ {
+  "en": "80s TV",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Wood-Grain TV",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "90s TV",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Black TV",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Beige Monitor",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Beige",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Translucent",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Arcade",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "A night drawn in big pixels: hills and clouds drifting by, square corners and pixel lettering.",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "The warm plastic of a home computer from the 80s and 90s: light, solid and plain.",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "See-through colored plastic from the late 90s: bright, glossy, its insides showing.",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "An arcade at night: cabinets glowing along the wall and a carpet that lights up under black light.",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Tangerine",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Grape",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Teal",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Mint",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Coral",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Lavender",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Arctic",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Cherry",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "How the menus sound: Crisp, Soft or Porpoise's original sounds.",
+  "section": "3.0: borders, themes, colors"
+ },
+ {
+  "en": "Bolder Focus",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "What is chosen gets a thick, bright edge, easier to follow.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Smaller",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Smaller or bigger labels across Porpoise.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Spines",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Spotlight",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Spines: your cases side by side on a shelf, spine out; the chosen one comes out to show its cover.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Spotlight: one game at a time over its own art, with what's known about it; the rest in a strip below.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "The games you played last, in a row along the bottom of the library. Down goes to it.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Screenshots",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "1 screenshot",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "{n} screenshots",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Take Screenshot",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Screenshot Buttons",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Screenshot Folder",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "In a game, touch pad + Square takes a screenshot. The game's menu has Take Screenshot too.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Every game's screenshots, newest first. Cross shows one over the whole screen; Triangle deletes it.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Where screenshots are kept, a folder for each game. PS5 Upload or FTP can copy them to a computer.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Pictures of your games, taken while you play",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "No screenshots yet",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "In a game, press touch pad + Square, or open its menu and choose Take Screenshot.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Delete this screenshot?",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "This screenshot of {game} will be deleted.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Saving the screenshot…",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Screenshot saved.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "The screenshot couldn't be saved.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "No picture to save yet.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "View",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "{n} blocks free",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Retro TV: the card in your hand, its saves on an old TV, the chosen one hopping.",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
+ },
+ {
+  "en": "Retro TV",
+  "section": "3.0: library views, Recently Played, Retro TV, screenshots, accessibility"
  }
 ]
