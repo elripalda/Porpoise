@@ -24,6 +24,18 @@ constexpr const char *kVersion = "3.0 Beta 1";
 constexpr int kBuild = 2; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 3, kVersionMinor = 0, kVersionPatch = 0;
 constexpr int kVersionBeta = 1; /* 0 for a final release; its betas come before it */
+/* A test build's tag: shown by the logo, and in a notice at the first start
+ * of each such build. Release for neither. */
+enum class Channel
+{
+    Release,
+    Beta,
+    Alpha,
+};
+constexpr Channel kChannel = Channel::Alpha;
+/* This build, for the notice: shown again when any of these change. */
+constexpr int kNoticeId = (((((kVersionMajor * 10 + kVersionMinor) * 10 + kVersionPatch) * 100 + kVersionBeta) * 100 +
+                            kBuild) * 4 + int(kChannel));
 
 /* What a settings row does when pressed, besides changing a value. */
 enum RowAction

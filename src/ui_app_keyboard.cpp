@@ -43,6 +43,27 @@ float wide_span(WideKey k)
 {
     return k == KeyShift || k == KeySymbols || k == KeyDelete ? 2 : k == KeySpace ? 3 : 1;
 }
+/* The number pad: three columns of digits, then a dot, 0 and Delete, then
+ * the letters and OK under them. */
+constexpr int kPadCols = 3, kPadRows = 5;
+constexpr float kPadW = 150, kPadH = 82, kPadGap = 12;
+const char *const kPad[4] = {"123", "456", "789", ".0"};
+enum PadKey
+{
+    PadType,    /* a digit or the dot */
+    PadDelete,  /* row 3, column 2 */
+    PadLetters, /* row 4, columns 0-1 */
+    PadDone,    /* row 4, column 2 */
+};
+PadKey pad_key(int r, int c)
+{
+    if (r == 4)
+        return c < 2 ? PadLetters : PadDone;
+    if (r == 3 && c == 2)
+        return PadDelete;
+    return PadType;
+}
+
 /* The character a key types, or 0. */
 char key_char(int r, int c, bool shift, bool symbols)
 {
@@ -63,9 +84,68 @@ float App::keyboard_height()
     return kKeyboardRows * kKeyH + (kKeyboardRows - 1) * kKeyGap;
 }
 
+float App::keyboard_height_for(const Keyboard &kb) const
+{
+    return kb.numeric ? kPadRows * kPadH + (kPadRows - 1) * kPadGap : keyboard_height();
+}
+
 bool App::keyboard_update(Keyboard &kb, std::string &text, std::size_t limit, bool spaces, bool up, bool down,
                           bool left, bool right)
 {
+    if (kb.numeric)
+    {
+        /* The number pad. */
+        if (up)
+            kb.kr = (kb.kr + kPadRows - 1) % kPadRows;
+        if (down)
+            kb.kr = (kb.kr + 1) % kPadRows;
+        if (left)
+            kb.kc = (kb.kc + kPadCols - 1) % kPadCols;
+        if (right)
+            kb.kc = (kb.kc + 1) % kPadCols;
+        if (up || down || left || right)
+            sfx(Sound::MenuScroll);
+        auto letters = [&] {
+            kb = Keyboard{};
+            sfx(Sound::DetailsFlip);
+        };
+        auto erase = [&] {
+            if (!text.empty())
+                text.pop_back();
+            sfx(Sound::MenuScroll);
+        };
+        if (pressed(BtnCross))
+        {
+            switch (pad_key(kb.kr, kb.kc))
+            {
+            case PadType:
+                if (text.size() < limit)
+                {
+                    text += kPad[kb.kr][kb.kc];
+                    sfx(Sound::MenuScroll);
+                }
+                break;
+            case PadDelete:
+                erase();
+                break;
+            case PadLetters:
+                letters();
+                return false;
+            case PadDone:
+                sfx(Sound::MenuScroll);
+                return true;
+            }
+        }
+        if (pressed(BtnSquare))
+            erase();
+        if (pressed(BtnTriangle))
+        {
+            letters();
+            return false;
+        }
+        return pressed(BtnOptions | BtnCircle) != 0;
+    }
+
     if (up)
         kb.kr = (kb.kr + kKeyboardRows - 1) % kKeyboardRows;
     if (down)
@@ -146,6 +226,42 @@ bool App::keyboard_update(Keyboard &kb, std::string &text, std::size_t limit, bo
 void App::draw_keyboard(const Keyboard &kb, float y, const Glass &face)
 {
     Gfx &g = *g_;
+    if (kb.numeric)
+    {
+        const float pw = kPadCols * kPadW + (kPadCols - 1) * kPadGap;
+        const float ph = kPadRows * kPadH + (kPadRows - 1) * kPadGap;
+        const float px = 960 - pw * 0.5f;
+        Glass board = face;
+        board.tint = rgba(0x0F2770, 0.94f);
+        glass_block(g, 960, y + ph * 0.5f, pw + 48, ph + 44, 14, 0, 0, 30, board);
+        auto key = [&](float kx, float ky, float kw, bool on, const std::string &label, Font font, float size) {
+            g.panel(kx, ky, kw, kPadH, on ? rgba(0x1F63F0, 0.95f) : rgba(0x07102E, 0.6f), 1, kR,
+                    on ? kIcy : rgba(0x3D5AB0, 0.7f), on ? 2.2f : 1.2f, on ? 8 : 0, on ? 0.25f : 0.0f);
+            g.text_mid(font, ts(size), kx + kw * 0.5f, ky + kPadH * 0.5f, kWhite, Align::Center,
+                       fit(g, font, ts(size), label, kw - 16));
+        };
+        for (int r = 0; r < kPadRows; ++r)
+        {
+            const float ry = y + float(r) * (kPadH + kPadGap);
+            if (r == 4)
+            {
+                const float wide = 2 * kPadW + kPadGap;
+                key(px, ry, wide, kb.kr == 4 && kb.kc < 2, "ABC", Font::Bold, 28);
+                key(px + wide + kPadGap, ry, kPadW, kb.kr == 4 && kb.kc == 2, tr("OK"), Font::Bold, 28);
+                continue;
+            }
+            for (int c = 0; c < kPadCols; ++c)
+            {
+                const float cx = px + float(c) * (kPadW + kPadGap);
+                const bool on = kb.kr == r && kb.kc == c;
+                if (pad_key(r, c) == PadDelete)
+                    key(cx, ry, kPadW, on, tr("Delete"), Font::Bold, 26);
+                else
+                    key(cx, ry, kPadW, on, std::string(1, kPad[r][c]), Font::Bold, kPad[r][c] == '.' ? 56 : 38);
+            }
+        }
+        return;
+    }
     const float kx = 960 - (kKeyCols * kKeyW + (kKeyCols - 1) * kKeyGap) * 0.5f;
     const float keys_h = keyboard_height();
     Glass board = face;
@@ -190,8 +306,14 @@ void App::draw_keyboard(const Keyboard &kb, float y, const Glass &face)
     }
 }
 
-void App::draw_keyboard_prompts()
+void App::draw_keyboard_prompts(bool numeric)
 {
+    if (numeric)
+    {
+        draw_prompts({{Glyph::Cross, "Type"}, {Glyph::Square, "Delete"}, {Glyph::Triangle, "Letters"}},
+                     {{Glyph::Options, "Done"}}, "");
+        return;
+    }
     draw_prompts({{Glyph::Cross, "Type"}, {Glyph::Square, "Delete"}, {Glyph::Triangle, "Space"},
                   {Glyph::L2, "Capitals"}, {Glyph::R2, "Symbols"}},
                  {{Glyph::Options, "Done"}}, "");

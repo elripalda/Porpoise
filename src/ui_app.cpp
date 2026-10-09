@@ -434,6 +434,24 @@ App::Action App::update(const Input &in, double dt)
         update_failed_ = false;
         open_dialog(DialogKind::Info, tr("The update didn't finish"), tr(update_error_), "");
     }
+    if (testing_notice_ && !dialog_.open && !acct_.open && !share_.open && screen_ == Screen::Main &&
+        wizard_step_ < 0 && !welcome_after_dialog_)
+    {
+        /* A test build's notice, once the start's own messages are seen. */
+        testing_notice_ = false;
+        const bool alpha = kChannel == Channel::Alpha;
+        open_dialog(DialogKind::Testing, alpha ? tr("This is an alpha build") : tr("This is a beta build"),
+                    (alpha ? tr("Porpoise is still being worked on in this build: expect problems, and even crashes.")
+                           : tr("This build is still being tested: some things may not work as they should.")) +
+                        "\n" +
+                        tr("If something goes wrong, go to Settings > About > Report a Bug to save the logs, then "
+                           "share them in the RIPALDA Discord's bug reports with the game and what happened. "
+                           "Thanks for testing!"),
+                    "");
+        /* Seen: not again until the next test build. */
+        settings_->testing_notice = kNoticeId;
+        settings_->save(settings_path_);
+    }
     if (dialog_.open)
         return update_dialog(left, right);
     if (acct_.open)
@@ -1456,7 +1474,15 @@ void App::draw_brand(float cy)
             g.image(g.brand_mask(), x, cy - 32, 64, 64, kCyan);
         x += 82;
     }
-    g.text_mid(Font::SemiBold, 30, x, cy, rgba(0xBFE9FF), Align::Left, "PORPOISE", 7.0f);
+    const float word = g.text_mid(Font::SemiBold, 30, x, cy, rgba(0xBFE9FF), Align::Left, "PORPOISE", 7.0f);
+    if (kChannel != Channel::Release)
+    {
+        /* A test build: its tag after the wordmark. */
+        const std::string tag = kChannel == Channel::Alpha ? "ALPHA" : "BETA";
+        const float tx = x + word + 10, tw = g.measure(Font::Bold, 20, tag, 2.0f) + 22;
+        g.panel(tx, cy - 16, tw, 32, rgba(0xFFB547, 0.95f), 1, 16);
+        g.text_mid(Font::Bold, 20, tx + tw * 0.5f, cy, rgba(0x2A1A00), Align::Center, tag, 2.0f);
+    }
 }
 
 void App::draw_curtain(float amount)

@@ -293,6 +293,9 @@ public:
     }
     /* The sandbox message at start, which the player can turn off. */
     void show_sandbox_notice(const std::string &title, const std::string &message);
+    /* An alpha or beta build: its notice, once nothing else is showing, the
+     * first time this build starts (ui_app.cpp). */
+    void show_testing_notice() { testing_notice_ = true; }
     /* Freeing Porpoise from the sandbox closed it last time, so it didn't ask. */
     void offer_jailbreak_retry();
     /* RetroAchievements: the account the panel shows, and signing in and out
@@ -341,18 +344,36 @@ public:
     /* tools/ui-preview: the network share panel, a row in focus, typing or
      * not, with a message (ok: green). */
     void preview_share_busy(bool find); /* tools/ui-preview: a test or search under way (ui_app_netshare.cpp) */
+    /* tools/ui-preview: the computers found (scanning: still looking); nfs: the NFS type. */
+    void preview_share_network(const std::vector<netfs::Found> &computers, bool scanning, bool nfs, int card);
+    void preview_share_open(int index) { open_share(index); }
+    bool preview_share_waiting(); /* a scan, search or test going on */
+    std::string preview_share_state();
+    void preview_share_numeric()
+    {
+        share_.kb = Keyboard{};
+        share_.kb.numeric = true;
+        share_.kb.kr = 2;
+        share_.kb.kc = 1;
+    }
     void preview_share(int index, int row, int button, bool typing, const std::string &message, bool ok,
                        const std::vector<std::string> &found = {})
     {
         open_share(index);
         if (index < 0)
-            share_.share = netfs::Share{"", "192.168.1.20", "Games", "", "", ""};
+        {
+            share_.share = netfs::Share{"", "192.168.1.20", "", "", "", "", ""};
+            share_.path = "Games";
+        }
         share_.row = row;
         share_.button = button;
         share_.typing = typing;
         share_.message = message;
         share_.message_ok = ok;
         share_.found = found;
+        share_.find_key = "x";
+        share_.scan.reset();
+        share_.scanned = true;
         share_.anim = 1;
     }
 #endif
@@ -423,6 +444,7 @@ private:
         CoversAgain,     /* every game's art downloaded again: Download, or Cancel */
         Wizard,          /* the first start's setup, one question a step (wizard_step_) */
         DeleteShot,      /* a screenshot (Screen::Shots) */
+        Testing,         /* an alpha or beta build's notice, at its first start (look::kChannel) */
     };
     struct Dialog
     {
@@ -445,6 +467,7 @@ private:
     {
         int kr = 1, kc = 0; /* the key in focus */
         bool shift = false, symbols = false;
+        bool numeric = false; /* the number pad (an address): digits, a dot, and letters a key away */
     };
     static constexpr int kKeyboardRows = 5;
     /* A frame of typing into text: true when OK (or Options, or Circle) ends it. */
@@ -453,7 +476,8 @@ private:
     /* The keyboard, its top at y; the panel's glass for its board. */
     void draw_keyboard(const Keyboard &kb, float y, const Glass &face);
     static float keyboard_height();
-    void draw_keyboard_prompts();
+    void draw_keyboard_prompts(bool numeric = false);
+    float keyboard_height_for(const Keyboard &kb) const;
 
     /* The RetroAchievements account panel and its keyboard. */
     struct AccountPanel
@@ -472,21 +496,35 @@ private:
     /* A network share, added or changed (ui_app_netshare.cpp). */
     struct ShareJob; /* a connection test or a search for shared folders, on its own thread */
     static void *run_share_job(void *job);
+    static void start_share_job(std::shared_ptr<ShareJob> job);
+    void start_share_scan(); /* looks around the network for computers that share files */
+    void start_share_find(); /* looks for the computer's shared folders */
     struct SharePanel
     {
         bool open = false;
         int index = -1;       /* the share changed, or -1 for a new one */
-        netfs::Share share;
-        int row = 0;          /* 0 computer, 1 shared folder, 2 folder inside, 3 username, 4 password, 5 buttons */
-        int button = 0;       /* on the buttons: 0 find shared folders, 1 test, 2 save, 3 remove */
+        netfs::Share share;   /* host, user, password and protocol; the folder is path */
+        netfs::Share saved;   /* the share being changed, as saved (no password) */
+        std::string path;     /* the shared folder (or export) and any folder inside it, as typed */
+        std::string other_path; /* the path kept for the other type (SMB or NFS), for switching back */
+        std::vector<std::string> other_found;
+        int row = 0;          /* a ShareRow (ui_app_netshare.cpp) */
+        int button = 0;       /* on the buttons: 0 test, 1 save, 2 remove */
+        int card = 0;         /* on the network row: the computer in focus */
         bool typing = false;
         Keyboard kb;
         std::vector<std::string> found; /* the computer's shared folders, once looked for */
-        std::shared_ptr<ShareJob> job;
+        std::string find_key;           /* what they were last looked for with (not again for the same) */
+        std::shared_ptr<ShareJob> job;  /* a test or a search for shared folders */
         double job_started = 0; /* when it began (time_): given up on after a while */
+        std::shared_ptr<ShareJob> scan; /* the look around the network */
+        std::vector<netfs::Found> computers; /* what answered */
+        bool scanned = false;
         std::string message;
         bool message_ok = false;
         float anim = 0;
+        float slide = 0; /* the type switch's highlight: 0 SMB, 1 NFS */
+        float cards_x = 0; /* the network row, scrolled */
     };
     SharePanel share_;
     void open_share(int index);
@@ -1179,6 +1217,8 @@ private:
     bool browse_images_ = false;      /* the folder browser lists pictures, for the tile art */
     void make_forwarder();
     int audio_preset_ = 0; /* Settings > Audio's Sound preset row (Settings::audio_preset) */
+    int music_level_ = 0, sounds_level_ = 0; /* Settings > Interface's Menu Music and Menu Sounds rows */
+    int move_choice_ = 0; /* Settings > Games' Move Porpoise's Folder row: the drive picked */
     Game *map_game_ = nullptr;       /* the game whose settings those are, if any */
     bool map_in_game_ = false;       /* opened from the in-game menu */
     int map_preset_ = 0;             /* the player's layout being edited, 0..3 */
@@ -1193,6 +1233,7 @@ private:
      * path), the one picked, and the one confirmed. */
     std::vector<std::pair<std::string, std::string>> move_places_;
     int move_pick_ = -1;
+    bool testing_notice_ = false;
     bool welcome_after_dialog_ = false; /* offer_found_folder: Start fresh goes on to the welcome */
     std::string move_target_; /* 0 GameCube; 1..4 a Wii controller's buttons (porpoise::pad::wii_button_set + 1) */
 

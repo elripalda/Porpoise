@@ -98,6 +98,7 @@ const Field kFields[] = {
     {"light_3", &Settings::light_3, nullptr, 0, 9},
     {"light_4", &Settings::light_4, nullptr, 0, 9},
     {"sandbox_notice", nullptr, &Settings::sandbox_notice, 0, 1},
+    {"testing_notice", &Settings::testing_notice, nullptr, 0, 2000000000},
     {"console", &Settings::console, nullptr, 0, 2},
     {"dsp_accurate", nullptr, &Settings::dsp_accurate, 0, 1},
     {"wiimote_speaker", &Settings::wiimote_speaker, nullptr, 0, 2},
@@ -836,14 +837,16 @@ porpoise::pad::Mapping Settings::mapping() const
 
 void Settings::reset()
 {
-    /* The game folders and the player's own button layouts stay. */
+    /* The game folders, the player's own button layouts and a seen notice stay. */
     const std::vector<std::string> keep = folders;
+    const int notice = testing_notice; /* a test build's notice, already seen */
     int own[kPresets][porpoise::pad::GcCount];
     std::memcpy(own, presets, sizeof own);
     int wii[kWiiButtonSets][porpoise::pad::CtlCount];
     std::memcpy(wii, wii_buttons, sizeof wii);
     *this = Settings{};
     folders = keep;
+    testing_notice = notice;
     std::memcpy(presets, own, sizeof own);
     std::memcpy(wii_buttons, wii, sizeof wii);
 }

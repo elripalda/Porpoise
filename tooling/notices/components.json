@@ -864,6 +864,43 @@
         "url": "https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/tree/{rev}/third_party/libsmb2"
       },
       "modifications": "Altered: a PS5 configuration (ps5/config.h), SO_NOSIGPIPE on the client socket (lib/socket.c), and its name lookups renamed to Porpoise's at build time; see README.porpoise. Upstream: https://github.com/sahlberg/libsmb2 (commit fc710a3)."
+    },
+    {
+      "id": "libnfs",
+      "name": "libnfs (games on an NFS share)",
+      "kind": "code",
+      "always": true,
+      "artifacts": [
+        "eboot.bin"
+      ],
+      "licence": "LGPL-2.1-or-later AND BSD-2-Clause",
+      "copyright": [
+        "Copyright (C) 2010-2026 by Ronnie Sahlberg <ronniesahlberg@gmail.com> and contributors"
+      ],
+      "texts": [
+        {
+          "from": "third_party/libnfs/COPYING",
+          "to": "COPYING"
+        },
+        {
+          "from": "third_party/libnfs/LICENCE-LGPL-2.1.txt",
+          "to": "LICENCE-LGPL-2.1.txt"
+        },
+        {
+          "from": "third_party/libnfs/LICENCE-BSD.txt",
+          "to": "LICENCE-BSD.txt"
+        },
+        {
+          "from": "third_party/libnfs/README.porpoise",
+          "to": "README.porpoise"
+        }
+      ],
+      "source": {
+        "kind": "git",
+        "path": ".",
+        "url": "https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/tree/{rev}/third_party/libnfs"
+      },
+      "modifications": "Altered: a PS5 configuration (ps5/config.h), non-blocking sockets with time limits on the PS5 (lib/socket.c), and its name lookups renamed to Porpoise's at build time; see README.porpoise. Upstream: https://github.com/sahlberg/libnfs (commit 7613236)."
     }
   ]
 }

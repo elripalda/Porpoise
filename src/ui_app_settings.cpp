@@ -665,18 +665,6 @@ void App::add_game_rows(Settings &t, bool per_game)
            "The DualSense's microphone as the GameCube Microphone (Mario Party 6 and 7; R3 is its button) and the "
            "Wii Speak.",
            &t.microphone);
-    if (!per_game)
-    {
-        /* Porpoise's own sound: the menus, not the games. */
-        toggle("menu_music", "Menu Music", "The music that plays in Porpoise's menus.", &t.menu_music);
-        choice("music_volume", "Music Volume", "How loud the menu music plays.", &t.music_volume, 0,
-               {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
-        toggle("menu_sounds", "Menu Sounds", "The sounds of moving through the menus.", &t.menu_sounds);
-        choice("sound_set", "Sound Set", "How the menus sound: Crisp, Soft or Porpoise's original sounds.",
-               &t.sound_set, 0, {"Crisp", "Soft", "Porpoise"});
-        choice("sounds_volume", "Sounds Volume", "How loud the menu sounds play.", &t.sounds_volume, 0,
-               {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
-    }
 
     header("Controls");
     {
@@ -964,19 +952,26 @@ void App::build_settings()
         /* Porpoise's folder on another drive: extended storage or a USB drive,
          * for big texture packs and saves (the console's storage stays free). */
         move_places_.clear();
-        auto place = [&](const std::string &label, const std::string &drive) {
+        std::vector<std::string> move_names; /* each place as the row lists it */
+        auto place = [&](const std::string &label, const std::string &name, const std::string &drive) {
             struct stat st;
             if (drive != "/data" && (stat(drive.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)))
                 return;
             const std::string path = drive + "/porpoise";
             if (path != data_dir_)
+            {
                 move_places_.emplace_back(label, path);
+                move_names.push_back(name);
+            }
         };
-        place(tr("the console's storage"), "/data");
-        place(tr("extended storage"), "/mnt/ext0");
-        place(tr("extended storage 2"), "/mnt/ext1");
+        place(tr("the console's storage"), tr("Console Storage"), "/data");
+        place(tr("extended storage"), tr("Extended Storage"), "/mnt/ext0");
+        place(tr("extended storage 2"), tr("Extended Storage 2"), "/mnt/ext1");
         for (int i = 0; i < 8; ++i)
-            place(trf("USB Drive {n}", {{"n", std::to_string(i + 1)}}), "/mnt/usb" + std::to_string(i));
+        {
+            const std::string usb = trf("USB Drive {n}", {{"n", std::to_string(i + 1)}});
+            place(usb, usb, "/mnt/usb" + std::to_string(i));
+        }
         std::string here = tr("the console's storage");
         if (data_dir_.rfind("/mnt/ext0", 0) == 0)
             here = tr("extended storage");
@@ -984,21 +979,24 @@ void App::build_settings()
             here = tr("extended storage 2");
         else if (data_dir_.rfind("/mnt/usb", 0) == 0)
             here = tr("a USB drive");
-        if (!sandboxed_)
-            for (std::size_t i = 0; i < move_places_.size(); ++i)
-            {
-                SettingRow r;
-                r.section = section;
-                r.label = trf("Move Porpoise's Folder to {place}", {{"place", move_places_[i].first}});
-                r.help = trf("Porpoise's folder is on {here} now. Moving it takes everything in it there: "
-                             "settings, saves, save states, covers and texture packs. Then Porpoise closes; open "
-                             "it again. Your game files elsewhere stay where they are.",
-                             {{"here", here}});
-                r.values = {tr("Move\xE2\x80\xA6")};
-                r.action = kRowMoveData;
-                r.folder = int(i);
-                rows_.push_back(r);
-            }
+        if (!sandboxed_ && !move_places_.empty())
+        {
+            /* One row: left and right pick the drive, Cross moves it there. */
+            SettingRow r;
+            r.section = section;
+            r.key = "move_pick";
+            r.label = tr("Move Porpoise's Folder");
+            r.help = trf("Porpoise's folder is on {here} now. Left and right pick a drive; Cross moves everything "
+                         "in the folder there: settings, saves, save states, covers and texture packs. Then "
+                         "Porpoise closes; open it again. Your game files elsewhere stay where they are.",
+                         {{"here", here}});
+            for (const std::string &name : move_names)
+                r.values.push_back(name);
+            move_choice_ = std::clamp(move_choice_, 0, int(move_places_.size()) - 1);
+            r.int_value = &move_choice_;
+            r.action = kRowMoveData;
+            rows_.push_back(r);
+        }
     }
     toggle("stay_sandboxed", "Stay in the Sandbox",
            "On: Porpoise doesn't ask your jailbreak to free it from the app sandbox. For jailbreaks that close "
@@ -1020,12 +1018,25 @@ void App::build_settings()
         {
             SettingRow r;
             r.section = section;
-            /* Shown as Windows writes a share: \\computer\share\folder. */
+            /* Shown as Windows writes a share (\\computer\share\folder), or
+             * an NFS export as NFS does (computer:/export/folder). */
+            const bool nfs = shares[i].protocol == "nfs";
+            const char sep = nfs ? '/' : '\\';
             std::string folder = shares[i].folder;
-            std::replace(folder.begin(), folder.end(), '/', '\\');
-            while (!folder.empty() && folder.front() == '\\')
+            std::replace(folder.begin(), folder.end(), nfs ? '\\' : '/', sep);
+            while (!folder.empty() && folder.front() == sep)
                 folder.erase(folder.begin());
-            r.label = "\\\\" + shares[i].host + "\\" + shares[i].share + (folder.empty() ? "" : "\\" + folder);
+            if (nfs)
+            {
+                std::string exp = shares[i].share;
+                if (exp.empty() || exp.front() != '/')
+                    exp.insert(exp.begin(), '/');
+                while (exp.size() > 1 && exp.back() == '/')
+                    exp.pop_back();
+                r.label = shares[i].host + ":" + exp + (folder.empty() ? "" : (exp == "/" ? "" : "/") + folder);
+            }
+            else
+                r.label = "\\\\" + shares[i].host + "\\" + shares[i].share + (folder.empty() ? "" : "\\" + folder);
             r.help = trf("A shared folder on {computer}, on your network. Porpoise looks in it and four levels below "
                          "it. Cross changes or removes it.",
                          {{"computer", shares[i].host}});
@@ -1036,8 +1047,8 @@ void App::build_settings()
         }
     }
     action("Add a Network Share",
-           "Games from a shared folder on a computer or NAS on your home network (SMB). A wired connection works "
-           "best for big games.",
+           "Games from a shared folder on a computer or NAS on your home network (SMB or NFS). A wired "
+           "connection works best for big games.",
            "Add\xE2\x80\xA6", kRowAddShare);
 #endif
     const std::size_t n = lib_ ? lib_->games().size() : 0;
@@ -1162,6 +1173,19 @@ void App::build_settings()
             "Retro TV: the card in your hand, its saves on an old TV, the chosen one hopping."};
         choice("mc_view", "Memory Cards View", kHelp[std::clamp(draft_.mc_view, 0, 4)], &draft_.mc_view,
                {"Cards", "Blocks", "By Game", "Cubes", "Retro TV"});
+    }
+    {
+        /* Porpoise's own sound, the menus' (not the games'): each off or how
+         * loud, in one row (menu_music and music_volume, menu_sounds and
+         * sounds_volume, set together in the row's change). */
+        music_level_ = draft_.menu_music ? std::clamp(draft_.music_volume, 0, 10) : 0;
+        sounds_level_ = draft_.menu_sounds ? std::clamp(draft_.sounds_volume, 0, 10) : 0;
+        choice("menu_music_level", "Menu Music", "The music in Porpoise's menus, and how loud it plays.",
+               &music_level_, {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
+        choice("menu_sounds_level", "Menu Sounds", "The sounds of moving through the menus, and how loud they play.",
+               &sounds_level_, {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
+        choice("sound_set", "Sound Set", "How the menus sound: Crisp, Soft or Porpoise's original sounds.",
+               &draft_.sound_set, {"Crisp", "Soft", "Porpoise"});
     }
     action("Reset All Settings", "Every setting back to how Porpoise ships. Games, folders and saves stay.",
            "Reset\xE2\x80\xA6", kRowResetAll);
@@ -1893,6 +1917,18 @@ void App::change_setting(int dir)
         rows_[1].values = {plural(change_count(), "1 change", "{n} changes")};
         return;
     }
+    if (r.key == "menu_music_level" || r.key == "menu_sounds_level")
+    {
+        /* The menus' music or sounds: off, or on at a volume. */
+        const bool music = r.key == "menu_music_level";
+        const int level = music ? music_level_ : sounds_level_;
+        (music ? draft_.menu_music : draft_.menu_sounds) = level > 0;
+        if (level > 0)
+            (music ? draft_.music_volume : draft_.sounds_volume) = level;
+        apply_at_once(music ? std::vector<std::string>{"menu_music", "music_volume"}
+                            : std::vector<std::string>{"menu_sounds", "sounds_volume"});
+        return;
+    }
     /* Everything else waits for Apply (apply_pending), but what changes as
      * you see it, which is saved at once. */
     const std::string key = r.key; /* r goes with a rebuild */
@@ -1980,10 +2016,10 @@ App::Action App::activate_row(const SettingRow &row)
         open_share(row.folder);
         return Action::None;
     case kRowMoveData:
-        if (row.folder >= 0 && row.folder < int(move_places_.size()))
+        if (move_choice_ >= 0 && move_choice_ < int(move_places_.size()))
         {
-            move_pick_ = row.folder;
-            const auto &place = move_places_[std::size_t(row.folder)];
+            move_pick_ = move_choice_;
+            const auto &place = move_places_[std::size_t(move_choice_)];
             struct stat st;
             if (place.second != PORPOISE_DATA && stat((place.second + "/settings.ini").c_str(), &st) == 0)
             {
@@ -1999,7 +2035,7 @@ App::Action App::activate_row(const SettingRow &row)
                 return Action::None;
             }
             open_dialog(DialogKind::MoveData,
-                        trf("Move Porpoise's folder to {place}?", {{"place", move_places_[std::size_t(row.folder)].first}}),
+                        trf("Move Porpoise's folder to {place}?", {{"place", place.first}}),
                         tr("Everything in Porpoise's folder moves there: settings, saves, save states, covers and "
                            "texture packs. A big folder takes a while. Porpoise closes when it's done; open it "
                            "again."),
@@ -2283,6 +2319,12 @@ App::Action App::update_settings(bool up, bool down, bool left, bool right)
     if (row.action == kRowPickVersion && (left || right) && !row.values.empty())
     {
         version_pick_ = std::clamp(version_pick_ + (right ? 1 : -1), 0, int(row.values.size()) - 1);
+        sfx(Sound::MenuScroll);
+        return Action::None;
+    }
+    if (row.action == kRowMoveData && (left || right) && !row.values.empty())
+    {
+        move_choice_ = std::clamp(move_choice_ + (right ? 1 : -1), 0, int(row.values.size()) - 1);
         sfx(Sound::MenuScroll);
         return Action::None;
     }
@@ -2861,6 +2903,8 @@ void App::draw_settings()
         draw_prompts({{Glyph::Cross, "Show"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowWiiSetup)
         draw_prompts({{Glyph::Cross, "Start"}, {Glyph::Circle, "Sections"}}, {}, "");
+    else if (focus.action == kRowMoveData)
+        draw_prompts({{Glyph::DPad, "Choose"}, {Glyph::Cross, "Move"}, {Glyph::Circle, "Sections"}}, {}, "");
     else if (focus.action == kRowUpdate)
         draw_prompts({{Glyph::Cross, update_available() ? "Install" : "Check Now"}, {Glyph::Circle, "Sections"}}, {},
                      "");

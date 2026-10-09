@@ -140,6 +140,10 @@ Problem enumerate(const Share &, std::vector<std::string> &out, std::string *det
         *detail = "network shares are on the PS5";
     return Problem::Other;
 }
+std::vector<Found> discover()
+{
+    return {};
+}
 const retro_vfs_interface *vfs_interface()
 {
     return nullptr;

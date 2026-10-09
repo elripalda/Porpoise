@@ -775,31 +775,171 @@ int main(int argc, char **argv)
     /* PREVIEW_SHARE=1: the network share panel - a new share tested, typing,
      * a problem, shared folders found, a saved one being changed - and
      * Settings > Games with a share in it; then stop. */
+    /* PREVIEW_SHARE_LIVE=1 (with NETFS_TEST_LOOPBACK=1 and the local Samba and
+     * NFS servers): the panel's whole way through, on the network - the scan,
+     * a computer picked, its shared folders, a test, NFS, its exports, a test,
+     * a save; then stop. */
+    if (std::getenv("PREVIEW_SHARE_LIVE"))
+    {
+        const std::uint32_t kUp = 1u << 0, kLeft = 1u << 2;
+        porpoise::netfs::set_shares({});
+        settle();
+        auto wait = [&](const char *what) {
+            for (int i = 0; i < 1500 && ui.preview_share_waiting(); ++i)
+            {
+                ui.update(none, 0.016);
+                usleep(10000);
+            }
+            settle();
+            std::fprintf(stderr, "[%s] %s\n", what, ui.preview_share_state().c_str());
+        };
+        ui.preview_share_open(-1);
+        wait("scanned");
+        render("live-1-scanned", [&] { ui.draw(12.0); });
+        press(kCross); /* the first computer */
+        settle();
+        wait("picked");
+        render("live-2-found", [&] { ui.draw(12.0); });
+        press(kRight); /* the next shared folder, if any */
+        press(kLeft);
+        press(kDown, 3); /* to the buttons */
+        press(kLeft);    /* Test */
+        press(kCross);
+        wait("tested smb");
+        render("live-3-tested", [&] { ui.draw(12.0); });
+        press(kUp, 5); /* Share Type */
+        std::fprintf(stderr, "[at] %s\n", ui.preview_share_state().c_str());
+        press(kRight); /* NFS */
+        settle();
+        wait("nfs found");
+        render("live-4-nfs", [&] { ui.draw(12.0); });
+        press(kDown, 3); /* Test */
+        press(kCross);
+        wait("tested nfs");
+        render("live-5-nfs-tested", [&] { ui.draw(12.0); });
+        press(kUp, 3); /* SMB again: what it had */
+        press(kLeft);
+        settle();
+        wait("back to smb");
+        press(kRight);
+        settle();
+        wait("nfs again");
+        press(kDown, 3);
+        press(kRight); /* Save */
+        press(kCross);
+        settle();
+        std::fprintf(stderr, "[saved] %s\n", ui.preview_share_state().c_str());
+        for (const auto &s : porpoise::netfs::shares())
+            std::fprintf(stderr, "  share %s %s share=%s folder=%s proto=%s\n", s.name.c_str(), s.host.c_str(),
+                         s.share.c_str(), s.folder.c_str(), s.protocol.c_str());
+        return 0;
+    }
     if (std::getenv("PREVIEW_SHARE"))
     {
-        porpoise::netfs::set_shares({{"Games", "192.168.1.20", "Games", "", "ruben", "secret"}});
+        porpoise::netfs::set_shares({{"Games", "192.168.1.20", "Games", "", "ruben", "secret"},
+                                     {"games", "192.168.1.30", "/volume1/games", "gc", "", "", "nfs"}});
+        const std::vector<porpoise::netfs::Found> net = {{"192.168.1.20", "RIPALDA", true, false},
+                                                         {"192.168.1.30", "", true, true},
+                                                         {"192.168.1.44", "DISKSTATION", true, true}};
         settle();
-        ui.preview_share(-1, 5, 1, false, "Connected. Porpoise can read this folder.", true);
+        /* Rows: 0 network, 1 type, 2 computer, 3 folder, 4 user, 5 password, 6 buttons. */
+        ui.preview_share(-1, 0, 0, false, "", false);
+        ui.preview_share_network({}, true, false, 0);
+        settle();
+        render("share-scanning", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 0, 0, false, "", false);
+        ui.preview_share_network({}, false, false, 0);
+        settle();
+        render("share-none", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 0, 0, false, "", false);
+        ui.preview_share_network(net, false, false, 0);
+        settle();
+        render("share-network", [&] { ui.draw(12.0); });
+        /* PREVIEW_SHARE_LANGS=1: the panel and the test build's notice in long
+         * and CJK languages too. */
+        if (std::getenv("PREVIEW_SHARE_LANGS"))
+        {
+            for (int lang : {9, 12, 6, 15, 2})
+            {
+                settings.ui_language = lang;
+                porpoise::ui::apply_language(lang);
+                ui.language_changed();
+                settle();
+                while (gfx.cjk_busy())
+                    settle();
+                ui.preview_share(-1, 3, 0, false, "", false);
+                ui.preview_share_network(net, false, true, 0);
+                ui.preview_share_busy(true);
+                settle();
+                render(("share-lang-" + std::to_string(lang)).c_str(), [&] { ui.draw(12.0); });
+                ui.preview_share(-1, 6, 0, false,
+                                 porpoise::ui::tr("The computer didn't let Porpoise in. Allow this PS5's address in "
+                                                  "the export's settings. Some NAS boxes also need connections from "
+                                                  "non-privileged ports allowed (\"insecure\")."),
+                                 false);
+                ui.preview_share_network(net, false, false, 0);
+                settle();
+                render(("share-lang-smb-" + std::to_string(lang)).c_str(), [&] { ui.draw(12.0); });
+                press(kCircle);
+                ui.show_testing_notice();
+                settle();
+                render(("notice-lang-" + std::to_string(lang)).c_str(), [&] { ui.draw(12.0); });
+                press(kCross);
+                settle();
+            }
+            return 0;
+        }
+        /* PREVIEW_SHARE_THEMES=1: the panel in other themes too. */
+        if (std::getenv("PREVIEW_SHARE_THEMES"))
+        {
+            for (int theme : {1, 2, 6, 12, 16, 18, 14})
+            {
+                settings.ui_theme = theme;
+                settle();
+                while (gfx.theme_fonts_busy())
+                {
+                    settle();
+                    usleep(10000);
+                }
+                ui.preview_share(-1, 1, 0, false, "Found 3 shared folders. Left and right pick one.", true,
+                                 {"Games", "Media"});
+                ui.preview_share_network(net, false, false, 1);
+                settle();
+                render(("share-theme-" + std::to_string(theme)).c_str(), [&] { ui.draw(12.0); });
+            }
+            settings.ui_theme = 0;
+            settle();
+            return 0;
+        }
+        ui.preview_share(-1, 1, 0, false, "", false);
+        ui.preview_share_network(net, false, true, 0);
+        settle();
+        render("share-nfs", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 2, 0, true, "", false);
+        ui.preview_share_numeric();
+        settle();
+        render("share-numpad", [&] { ui.draw(12.0); });
+        ui.preview_share(-1, 6, 0, false, "Connected. Porpoise can read this folder.", true);
         settle();
         render("share-tested", [&] { ui.draw(12.0); });
-        ui.preview_share(-1, 0, 0, true, "", false);
+        ui.preview_share(-1, 3, 0, true, "", false);
         settle();
         render("share-typing", [&] { ui.draw(12.0); });
-        ui.preview_share(-1, 5, 1, false, "", false);
+        ui.preview_share(-1, 6, 0, false, "", false);
         ui.preview_share_busy(false);
         settle();
         render("share-busy", [&] { ui.draw(12.1); });
-        ui.preview_share(-1, 5, 1, false,
+        ui.preview_share(-1, 6, 0, false,
                          "Couldn't reach 192.168.1.20. Check the address, that the computer is on, and that it "
                          "shares files on the network.",
                          false);
         settle();
         render("share-problem", [&] { ui.draw(12.0); });
-        ui.preview_share(-1, 1, 0, false, "Found 3 shared folders. Left and right on Shared Folder pick one.", true,
+        ui.preview_share(-1, 3, 0, false, "Found 3 shared folders. Left and right pick one.", true,
                          {"Games", "Media", "Public"});
         settle();
         render("share-found", [&] { ui.draw(12.0); });
-        ui.preview_share(0, 5, 3, false, "", false);
+        ui.preview_share(0, 6, 2, false, "", false);
         settle();
         render("share-edit", [&] { ui.draw(12.0); });
         press(kCircle);
@@ -814,6 +954,23 @@ int main(int argc, char **argv)
         press(kDown, row);
         settle();
         render("share-settings", [&] { ui.draw(12.0); });
+        /* The test build's notice, over the library. */
+        press(kCircle, 3);
+        ui.show_testing_notice();
+        settle();
+        render("testing-notice", [&] { ui.draw(12.0); });
+        for (int theme : {1, 12})
+        {
+            settings.ui_theme = theme;
+            settle();
+            while (gfx.theme_fonts_busy())
+            {
+                settle();
+                usleep(10000);
+            }
+            render(("testing-notice-" + std::to_string(theme)).c_str(), [&] { ui.draw(12.0); });
+        }
+        settings.ui_theme = 0;
         return 0;
     }
     /* PREVIEW_WIIMAP=1: Customize buttons on each controller's tab; then stop. */

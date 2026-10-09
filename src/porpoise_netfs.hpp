@@ -1,5 +1,6 @@
-/* Porpoise - games on a network share (SMB: a Windows, macOS or Linux shared
- * folder, or a NAS), read with libsmb2.
+/* Porpoise - games on a network share: SMB (a Windows, macOS or Linux shared
+ * folder, or a NAS), read with libsmb2, or NFS (a NAS or a Linux machine),
+ * read with libnfs.
  *
  * A share the player adds appears as /net/<name>/... : the library searches
  * it like a folder, the launcher reads disc headers and banners from it, and
@@ -29,10 +30,11 @@ struct Share
 {
     std::string name;     /* the name Porpoise shows; the path is /net/<name> */
     std::string host;     /* the computer: an address (192.168.1.20) or a name */
-    std::string share;    /* the shared folder on it ("Games") */
+    std::string share;    /* the shared folder on it ("Games"), or the NFS export ("/volume1/games") */
     std::string folder;   /* a folder inside the share to start from, or empty */
-    std::string user;     /* empty: as a guest */
-    std::string password; /* typed by the player on the console */
+    std::string user;     /* empty: as a guest (SMB) */
+    std::string password; /* typed by the player on the console (SMB) */
+    std::string protocol; /* "nfs" for NFS (share is then the export path); else SMB */
 };
 
 /* "/net" */
@@ -106,6 +108,7 @@ enum class Problem
     NoSuchShare, /* no shared folder by that name */
     Denied,      /* not allowed in */
     NoFolder,    /* the folder inside isn't there */
+    NoExports,   /* an NFS server that won't list its exports */
     Other,       /* detail says what */
 };
 
@@ -116,6 +119,20 @@ Problem test(const Share &share, std::string *detail = nullptr);
 /* The shared folders on a computer (for picking one); a Problem when the
  * list can't be had. */
 Problem enumerate(const Share &server, std::vector<std::string> &out, std::string *detail = nullptr);
+
+/* A computer on the console's own network that shares files. */
+struct Found
+{
+    std::string address; /* "192.168.1.20" */
+    std::string name;    /* its Windows (NetBIOS) name when it says, else empty */
+    bool smb = false;    /* answers on SMB's port (445) */
+    bool nfs = false;    /* answers on NFS's port (2049) */
+};
+
+/* The computers on the console's network (the 254 addresses around its own)
+ * that answer on SMB's or NFS's port, with their names where they give them.
+ * Takes a couple of seconds; any thread. */
+std::vector<Found> discover();
 
 /* The libretro VFS (v4) for the core: /net paths only. */
 const retro_vfs_interface *vfs_interface();

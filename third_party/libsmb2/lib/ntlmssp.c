@@ -316,6 +316,9 @@ encode_ntlm_negotiate_message(struct smb2_context *smb2, struct auth_data *auth_
         return 0;
 }
 
+/* Porpoise (src/porpoise_netfs.cpp). */
+void porpoise_netfs_target_name(const char *name);
+
 static int
 ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_data,
                         unsigned char *buf, size_t len)
@@ -375,6 +378,12 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 if (inlen > 0 && inoff < len && inlen <= len - inoff && (outoff + inlen) < alloc_len) {
                         free(auth_data->target_name);
                         auth_data->target_name = discard_const(smb2_utf16_to_utf8((const uint16_t *)(void *)&buf[inoff], inlen / 2));
+                        /* Porpoise: the server's own name (a Windows
+                         * computer's, unless it's in a domain), for the
+                         * share panel's list of computers. */
+                        if (auth_data->target_name) {
+                                porpoise_netfs_target_name(auth_data->target_name);
+                        }
                         memcpy(&auth_data->ntlm_buf[outoff], &buf[inoff], inlen);
                         outoff += inlen;
                 }

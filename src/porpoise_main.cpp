@@ -2416,6 +2416,9 @@ int main(int argc, char **argv)
         else
             g_app.start_welcome();
     }
+    if (porpoise::ui::look::kChannel != porpoise::ui::look::Channel::Release &&
+        g_settings.testing_notice != porpoise::ui::look::kNoticeId)
+        g_app.show_testing_notice(); /* after anything below */
     if (!g_jailbreak_closed.empty() && !g_sandboxed)
         porpoise::jailbreak::forget_closed(); /* /data is there without asking: nothing to choose */
     if (!g_location_missing.empty())

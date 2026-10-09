@@ -5958,5 +5958,149 @@
  {
   "en": "Connecting…",
   "section": "3.0: network shares, universal widescreen"
+ },
+ {
+  "en": "Enter the export's path, like /volume1/games.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Couldn't reach {computer}. Check the address, that the computer is on, and that NFS is turned on for it.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "{computer} has no export called {name}.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "The computer didn't let Porpoise in. Allow this PS5's address in the export's settings. Some NAS boxes also need connections from non-privileged ports allowed (\"insecure\").",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "The computer didn't list its exports. Type the export's path, like /volume1/games.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Found the export {name}.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Found {n} exports. Left and right pick one.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Found {n} shared folders. Left and right pick one.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "The computer answered, but has no exports Porpoise can see.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "This computer wants a username and password. Enter them below and Porpoise looks for its shared folders again.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Looking for exports…",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Porpoise only reads from it.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "On Your Network",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Look Again",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "No computers answered. Check that file sharing is on, or enter the computer's address below.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Looking for computers that share files",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Windows, Mac, most NAS",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Linux, NAS",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Export",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Its path, like /volume1/games",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Its name, and a folder inside it if you like",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "On the network",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Switch",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Letters",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Extended Storage 2",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Move Porpoise's Folder",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Porpoise's folder is on {here} now. Left and right pick a drive; Cross moves everything in the folder there: settings, saves, save states, covers and texture packs. Then Porpoise closes; open it again. Your game files elsewhere stay where they are.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Games from a shared folder on a computer or NAS on your home network (SMB or NFS). A wired connection works best for big games.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "The music in Porpoise's menus, and how loud it plays.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "The sounds of moving through the menus, and how loud they play.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "This is an alpha build",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "This is a beta build",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Porpoise is still being worked on in this build: expect problems, and even crashes.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "This build is still being tested: some things may not work as they should.",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "If something goes wrong, go to Settings > About > Report a Bug to save the logs, then share them in the RIPALDA Discord's bug reports with the game and what happened. Thanks for testing!",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
+  "en": "Share Type",
+  "section": "3.0: network share panel, test build notice"
  }
 ]

@@ -11,6 +11,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -32,7 +33,15 @@ extern "C"
 #include <smb2/libsmb2.h>
 #include <smb2/libsmb2-raw.h>
 #include <smb2/libsmb2-share-enum.h>
+#include <nfsc/libnfs.h>
+#include <nfsc/libnfs-raw-mount.h>
 }
+
+namespace
+{
+/* The server name libsmb2 last saw, on this thread (porpoise_netfs_target_name). */
+thread_local std::string t_target_name;
+} // namespace
 
 #ifdef PORPOISE_NETFS_HOST_TEST
 #include <cstdio>
@@ -70,12 +79,46 @@ long long now_ms()
     return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
+bool is_nfs(const Share &s)
+{
+    return s.protocol == "nfs";
+}
+
+/* What a file or folder is. */
+struct Info
+{
+    bool is_dir = false;
+    u64 size = 0;
+};
+
+/* A connected client of one share, SMB or NFS. Every call holds the share's
+ * Conn::m: one request at a time. Paths are inside the share ("GameCube/x.iso"). */
+struct Session
+{
+    virtual ~Session() = default;
+    virtual std::uint32_t max_read() const = 0;
+    /* -errno on failure. */
+    virtual int open(const std::string &path, void **fh) = 0;
+    virtual int fstat(void *fh, Info &info) = 0;
+    /* Bytes read, or -errno. */
+    virtual int pread(void *fh, std::uint8_t *buf, std::uint32_t n, u64 offset) = 0;
+    virtual void close(void *fh) = 0;
+    virtual int list(const std::string &dir, std::vector<Entry> &out) = 0;
+    virtual int stat(const std::string &path, Info &info) = 0;
+    /* Before a request: no error left from an earlier one. */
+    virtual void clear_error() {}
+    /* After a failed request: the server answered about the request itself
+     * (a missing file, no permission), so the connection is fine. */
+    virtual bool request_error(int rc) = 0;
+    virtual std::string last_error() = 0;
+};
+
 /* One connection a share, one request on it at a time. */
 struct Conn
 {
     Share cfg;
     std::mutex m;
-    smb2_context *ctx = nullptr;
+    std::unique_ptr<Session> session;
     unsigned generation = 0; /* a new one each time it connects; files opened before reopen */
     std::uint32_t max_read = 0;
     long long failed_at = 0; /* when connecting last failed: not tried again for a moment */
@@ -84,14 +127,7 @@ struct Conn
     /* Closes the connection without a goodbye to the server: on a dead
      * connection that would wait out the timeout again. The server lets go of
      * the session when the socket closes. */
-    void drop()
-    {
-        if (ctx)
-        {
-            smb2_destroy_context(ctx);
-            ctx = nullptr;
-        }
-    }
+    void drop() { session.reset(); }
     ~Conn() { drop(); }
 };
 
@@ -102,7 +138,7 @@ std::map<std::string, std::shared_ptr<Conn>> g_conns;
 bool same_target(const Share &a, const Share &b)
 {
     return a.host == b.host && a.share == b.share && a.folder == b.folder && a.user == b.user &&
-           a.password == b.password;
+           a.password == b.password && a.protocol == b.protocol;
 }
 
 /* "/net/<name>/<rest>": the share's connection and the path inside the
@@ -141,33 +177,6 @@ std::shared_ptr<Conn> resolve(std::string_view path, std::string *inside, std::s
     return it->second;
 }
 
-/* The server answered with an error about the request itself (a missing
- * file, no permission): no point reconnecting. A failure with no answer (a
- * socket error) or one that says the session or handle is gone is the
- * connection's. */
-bool request_error(smb2_context *ctx)
-{
-    const std::uint32_t status = std::uint32_t(smb2_get_nterror(ctx));
-    if (status == 0)
-        return false;
-    switch (status)
-    {
-    case 0xC0000203: /* STATUS_USER_SESSION_DELETED */
-    case 0xC00000C9: /* STATUS_NETWORK_NAME_DELETED */
-    case 0xC000035C: /* STATUS_NETWORK_SESSION_EXPIRED */
-    case 0xC0000008: /* STATUS_INVALID_HANDLE */
-    case 0xC0000128: /* STATUS_FILE_CLOSED */
-    case 0xC000020C: /* STATUS_CONNECTION_DISCONNECTED */
-    case 0xC000013B: /* STATUS_LOCAL_DISCONNECT */
-    case 0xC000013C: /* STATUS_REMOTE_DISCONNECT */
-    case 0xC00000B5: /* STATUS_IO_TIMEOUT: no answer in time (libsmb2's own, for a silent server) */
-    case 0xC0000120: /* STATUS_CANCELLED */
-        return false;
-    default:
-        return true;
-    }
-}
-
 std::string server_of(const Share &s)
 {
     std::string host = s.host;
@@ -175,37 +184,34 @@ std::string server_of(const Share &s)
         host.pop_back();
     while (!host.empty() && (host.front() == ' ' || host.front() == '/' || host.front() == '\\'))
         host.erase(host.begin());
-    if (host.rfind("smb:", 0) == 0)
-    {
-        host.erase(0, 4);
-        while (!host.empty() && host.front() == '/')
-            host.erase(host.begin());
-    }
+    for (const char *scheme : {"smb:", "nfs:"})
+        if (host.rfind(scheme, 0) == 0)
+        {
+            host.erase(0, 4);
+            while (!host.empty() && host.front() == '/')
+                host.erase(host.begin());
+        }
     return host;
 }
 
-/* The last request's error: the server's own status (STATUS_LOGON_FAILURE)
- * when it sent one, which libsmb2's message can hide behind the socket
- * closing, else that message. */
-std::string last_error(smb2_context *ctx)
+/* A share for the log: "192.168.1.20:/volume1/games" or "192.168.1.20/Games". */
+std::string where(const Share &s);
+
+/* The export path an NFS server is asked for: "/volume1/games". */
+std::string export_of(const Share &s)
 {
-    const int status = smb2_get_nterror(ctx);
-    if (status != 0)
-        return nterror_to_str(std::uint32_t(status));
-    const char *e = smb2_get_error(ctx);
-    return e ? e : "";
+    std::string e = s.share;
+    std::replace(e.begin(), e.end(), '\\', '/');
+    while (!e.empty() && e.back() == '/')
+        e.pop_back();
+    if (e.empty() || e.front() != '/')
+        e.insert(e.begin(), '/');
+    return e;
 }
 
-/* -errno for a request that failed. */
-int last_errno(smb2_context *ctx)
+std::string where(const Share &s)
 {
-    const int status = smb2_get_nterror(ctx);
-    if (status != 0)
-    {
-        const int e = nterror_to_errno(std::uint32_t(status));
-        return e > 0 ? -e : -EIO;
-    }
-    return -EIO;
+    return s.protocol == "nfs" ? server_of(s) + ":" + export_of(s) : server_of(s) + "/" + s.share;
 }
 
 #ifdef __PROSPERO__
@@ -237,13 +243,12 @@ void lookup_free(addrinfo *ai)
 }
 #endif
 
-/* A plain TCP connection to the computer's SMB port first, step by step in
+/* A plain TCP connection to the computer's SMB (445) or NFS (2049) port first, step by step in
  * the log, with its own deadline: says what the network does (no answer,
- * refused, no route) before libsmb2 tries, and fails fast when it can't. */
-bool probe(const std::string &server, std::string &error)
+ * refused, no route) before the client library tries, and fails fast when it can't. */
+bool probe(const std::string &server, int port, std::string &error)
 {
     std::string host = server;
-    int port = 445;
     const std::size_t colon = host.rfind(':');
     if (colon != std::string::npos && host.find(':') == colon)
     {
@@ -328,10 +333,127 @@ bool probe(const std::string &server, std::string &error)
     return ok;
 }
 
-/* A new context, connected to share (IPC$ to list the shares). */
-smb2_context *open_context(const Share &s, const std::string &share, std::string &error)
+bool hidden(const char *name)
 {
-    smb2_context *ctx = smb2_init_context();
+    return !name || !name[0] || name[0] == '.';
+}
+
+/* ---- SMB (libsmb2) ------------------------------------------------------------------------- */
+
+/* The last request's error: the server's own status (STATUS_LOGON_FAILURE)
+ * when it sent one, which libsmb2's message can hide behind the socket
+ * closing, else that message. */
+std::string smb_error(smb2_context *ctx)
+{
+    const int status = smb2_get_nterror(ctx);
+    if (status != 0)
+        return nterror_to_str(std::uint32_t(status));
+    const char *e = smb2_get_error(ctx);
+    std::string out = e ? e : "";
+    while (!out.empty() && (out.back() == '\n' || out.back() == ' '))
+        out.pop_back();
+    return out;
+}
+
+/* -errno for a request that failed. */
+int smb_errno(smb2_context *ctx)
+{
+    const int status = smb2_get_nterror(ctx);
+    if (status != 0)
+    {
+        const int e = nterror_to_errno(std::uint32_t(status));
+        return e > 0 ? -e : -EIO;
+    }
+    return -EIO;
+}
+
+struct SmbSession : Session
+{
+    smb2_context *ctx = nullptr;
+    std::uint32_t most = 0;
+
+    ~SmbSession() override
+    {
+        if (ctx)
+            smb2_destroy_context(ctx);
+    }
+    std::uint32_t max_read() const override { return most; }
+    int open(const std::string &path, void **fh) override
+    {
+        smb2fh *f = smb2_open(ctx, path.c_str(), O_RDONLY);
+        if (!f)
+            return smb_errno(ctx);
+        *fh = f;
+        return 0;
+    }
+    int fstat(void *fh, Info &info) override
+    {
+        smb2_stat_64 st{};
+        const int rc = smb2_fstat(ctx, static_cast<smb2fh *>(fh), &st);
+        if (rc < 0)
+            return rc;
+        info.is_dir = st.smb2_type == SMB2_TYPE_DIRECTORY;
+        info.size = st.smb2_size;
+        return 0;
+    }
+    int pread(void *fh, std::uint8_t *buf, std::uint32_t n, u64 offset) override
+    {
+        return smb2_pread(ctx, static_cast<smb2fh *>(fh), buf, n, offset);
+    }
+    void close(void *fh) override { smb2_close(ctx, static_cast<smb2fh *>(fh)); }
+    int list(const std::string &dir, std::vector<Entry> &out) override
+    {
+        out.clear();
+        smb2dir *d = smb2_opendir(ctx, dir.c_str());
+        if (!d)
+            return smb_errno(ctx);
+        while (smb2dirent *ent = smb2_readdir(ctx, d))
+            if (!hidden(ent->name))
+                out.push_back({ent->name, ent->st.smb2_type == SMB2_TYPE_DIRECTORY});
+        smb2_closedir(ctx, d);
+        return 0;
+    }
+    int stat(const std::string &path, Info &info) override
+    {
+        smb2_stat_64 st{};
+        const int rc = smb2_stat(ctx, path.c_str(), &st);
+        if (rc < 0)
+            return rc;
+        info.is_dir = st.smb2_type == SMB2_TYPE_DIRECTORY;
+        info.size = info.is_dir ? 0 : st.smb2_size;
+        return 0;
+    }
+    void clear_error() override { smb2_set_error(ctx, ""); }
+    bool request_error(int) override
+    {
+        const std::uint32_t status = std::uint32_t(smb2_get_nterror(ctx));
+        if (status == 0)
+            return false;
+        switch (status)
+        {
+        case 0xC0000203: /* STATUS_USER_SESSION_DELETED */
+        case 0xC00000C9: /* STATUS_NETWORK_NAME_DELETED */
+        case 0xC000035C: /* STATUS_NETWORK_SESSION_EXPIRED */
+        case 0xC0000008: /* STATUS_INVALID_HANDLE */
+        case 0xC0000128: /* STATUS_FILE_CLOSED */
+        case 0xC000020C: /* STATUS_CONNECTION_DISCONNECTED */
+        case 0xC000013B: /* STATUS_LOCAL_DISCONNECT */
+        case 0xC000013C: /* STATUS_REMOTE_DISCONNECT */
+        case 0xC00000B5: /* STATUS_IO_TIMEOUT: no answer in time (libsmb2's own, for a silent server) */
+        case 0xC0000120: /* STATUS_CANCELLED */
+            return false;
+        default:
+            return true;
+        }
+    }
+    std::string last_error() override { return smb_error(ctx); }
+};
+
+/* Connected to share (IPC$ to list the shares), or nullptr and why. */
+std::unique_ptr<SmbSession> smb_connect(const Share &s, const std::string &share, std::string &error)
+{
+    auto session = std::make_unique<SmbSession>();
+    smb2_context *ctx = session->ctx = smb2_init_context();
     if (!ctx)
     {
         error = "out of memory";
@@ -355,54 +477,182 @@ smb2_context *open_context(const Share &s, const std::string &share, std::string
         smb2_set_password(ctx, s.password.c_str());
     }
     const std::string server = server_of(s);
-    if (!probe(server, error))
-    {
-        smb2_destroy_context(ctx);
+    if (!probe(server, 445, error))
         return nullptr;
-    }
     note("connecting to " + server + "/" + share + (guest ? " as a guest" : " with a username"));
     const long long started = now_ms();
     const int rc = smb2_connect_share(ctx, server.c_str(), share.c_str(), guest ? nullptr : user.c_str());
     if (rc < 0)
     {
-        error = last_error(ctx);
+        error = smb_error(ctx);
         if (error.empty())
             error = std::strerror(-rc);
-        while (!error.empty() && (error.back() == '\n' || error.back() == ' '))
-            error.pop_back();
         note("connecting to " + server + "/" + share + " failed after " + std::to_string(now_ms() - started) +
              " ms: " + error);
-        smb2_destroy_context(ctx);
         return nullptr;
     }
     note("connected to " + server + "/" + share + " in " + std::to_string(now_ms() - started) + " ms");
-    return ctx;
+    session->most = smb2_get_max_read_size(ctx);
+    return session;
+}
+
+/* ---- NFS (libnfs) ------------------------------------------------------------------------- */
+
+std::string nfs_path(const std::string &inside)
+{
+    return "/" + inside;
+}
+
+struct NfsSession : Session
+{
+    nfs_context *nfs = nullptr;
+    std::uint32_t most = 0;
+
+    ~NfsSession() override
+    {
+        if (nfs)
+            nfs_destroy_context(nfs);
+    }
+    std::uint32_t max_read() const override { return most; }
+    int open(const std::string &path, void **fh) override
+    {
+        nfsfh *f = nullptr;
+        const int rc = nfs_open(nfs, nfs_path(path).c_str(), O_RDONLY, &f);
+        if (rc < 0 || !f)
+            return rc < 0 ? rc : -EIO;
+        *fh = f;
+        return 0;
+    }
+    int fstat(void *fh, Info &info) override
+    {
+        nfs_stat_64 st{};
+        const int rc = nfs_fstat64(nfs, static_cast<nfsfh *>(fh), &st);
+        if (rc < 0)
+            return rc;
+        info.is_dir = S_ISDIR(st.nfs_mode);
+        info.size = st.nfs_size;
+        return 0;
+    }
+    int pread(void *fh, std::uint8_t *buf, std::uint32_t n, u64 offset) override
+    {
+        return nfs_pread(nfs, static_cast<nfsfh *>(fh), buf, n, offset);
+    }
+    void close(void *fh) override { nfs_close(nfs, static_cast<nfsfh *>(fh)); }
+    int list(const std::string &dir, std::vector<Entry> &out) override
+    {
+        out.clear();
+        nfsdir *d = nullptr;
+        const int rc = nfs_opendir(nfs, nfs_path(dir).c_str(), &d);
+        if (rc < 0 || !d)
+            return rc < 0 ? rc : -EIO;
+        while (nfsdirent *ent = nfs_readdir(nfs, d))
+            if (!hidden(ent->name))
+                out.push_back({ent->name, S_ISDIR(ent->mode) || ent->type == 2 /* NF3DIR */});
+        nfs_closedir(nfs, d);
+        return 0;
+    }
+    int stat(const std::string &path, Info &info) override
+    {
+        nfs_stat_64 st{};
+        const int rc = nfs_stat64(nfs, nfs_path(path).c_str(), &st);
+        if (rc < 0)
+            return rc;
+        info.is_dir = S_ISDIR(st.nfs_mode);
+        info.size = info.is_dir ? 0 : st.nfs_size;
+        return 0;
+    }
+    bool request_error(int rc) override
+    {
+        const int e = rc < 0 ? -rc : rc;
+        return e == ENOENT || e == EACCES || e == EPERM || e == ENOTDIR || e == EISDIR || e == EINVAL ||
+               e == ENAMETOOLONG;
+    }
+    std::string last_error() override
+    {
+        const char *e = nfs_get_error(nfs);
+        return e ? e : "";
+    }
+};
+
+/* Mounted (NFS version 3, else 4), or nullptr and why. */
+std::unique_ptr<NfsSession> nfs_connect(const Share &s, std::string &error)
+{
+    const std::string server = server_of(s), exp = export_of(s);
+    if (!probe(server, 2049, error))
+        return nullptr;
+    std::string why[2];
+    for (int v = 0; v < 2; ++v)
+    {
+        auto session = std::make_unique<NfsSession>();
+        nfs_context *nfs = session->nfs = nfs_init_context();
+        if (!nfs)
+        {
+            error = "out of memory";
+            return nullptr;
+        }
+        nfs_set_timeout(nfs, 10000);
+        nfs_set_autoreconnect(nfs, 0); /* netfs reconnects, and gives up */
+        nfs_set_version(nfs, v == 0 ? 3 : 4); /* NFS_V3, NFS_V4 (libnfs-raw-nfs.h, libnfs-raw-nfs4.h) */
+        note("mounting " + server + ":" + exp + " (NFS " + (v == 0 ? "3" : "4") + ")");
+        const long long started = now_ms();
+        const int rc = nfs_mount(nfs, server.c_str(), exp.c_str());
+        if (rc == 0)
+        {
+            note("mounted " + server + ":" + exp + " in " + std::to_string(now_ms() - started) + " ms");
+            session->most = std::uint32_t(nfs_get_readmax(nfs));
+            return session;
+        }
+        why[v] = session->last_error();
+        if (why[v].empty())
+            why[v] = std::strerror(-rc);
+        note("mounting " + server + ":" + exp + " (NFS " + (v == 0 ? "3" : "4") + ") failed after " +
+             std::to_string(now_ms() - started) + " ms: " + why[v]);
+    }
+    /* Version 3's reason, unless it couldn't reach the mount service at all
+     * (a version-4-only server) or version 4 says the path isn't there (a
+     * version 3 server refuses a path it doesn't export as "access denied"):
+     * then 4's says more. */
+    const bool v3_unreachable = why[0].find("portmap") != std::string::npos ||
+                                why[0].find("connect") != std::string::npos ||
+                                why[0].find("Timeout") != std::string::npos;
+    const bool v4_missing = why[1].find("NOENT") != std::string::npos;
+    error = v3_unreachable || v4_missing ? why[1] : why[0];
+    return nullptr;
+}
+
+/* ---- either ------------------------------------------------------------------------------- */
+
+std::unique_ptr<Session> connect_session(const Share &s, std::string &error)
+{
+    if (is_nfs(s))
+        return nfs_connect(s, error);
+    return smb_connect(s, s.share, error);
 }
 
 /* Connected, or false (with c.error). Holds c.m. */
 bool ensure(Conn &c)
 {
-    if (c.ctx)
+    if (c.session)
         return true;
     if (c.failed_at && now_ms() - c.failed_at < 3000)
         return false;
     std::string error;
-    c.ctx = open_context(c.cfg, c.cfg.share, error);
-    if (!c.ctx)
+    c.session = connect_session(c.cfg, error);
+    if (!c.session)
     {
         c.failed_at = now_ms();
         if (error != c.error)
-            note("can't connect to " + c.cfg.name + " (" + server_of(c.cfg) + "/" + c.cfg.share + "): " + error);
+            note("can't connect to " + c.cfg.name + " (" + where(c.cfg) + "): " + error);
         c.error = error;
         return false;
     }
     c.failed_at = 0;
     c.error.clear();
     ++c.generation;
-    c.max_read = smb2_get_max_read_size(c.ctx);
+    c.max_read = c.session->max_read();
     if (c.max_read == 0 || c.max_read > (8u << 20))
         c.max_read = 1u << 20;
-    note("connected to " + c.cfg.name + " (" + server_of(c.cfg) + "/" + c.cfg.share + "), reads up to " +
+    note("connected to " + c.cfg.name + " (" + where(c.cfg) + "), reads up to " +
          std::to_string(c.max_read / 1024) + " KiB");
     return true;
 }
@@ -415,20 +665,15 @@ template <class Op> int run(Conn &c, Op op)
     {
         if (!ensure(c))
             return -ENOTCONN;
-        smb2_set_error(c.ctx, ""); /* no status left from an earlier request */
-        const int rc = op(c.ctx);
-        if (rc >= 0 || request_error(c.ctx))
+        c.session->clear_error(); /* no status left from an earlier request */
+        const int rc = op(*c.session);
+        if (rc >= 0 || c.session->request_error(rc))
             return rc;
-        note("lost the connection to " + c.cfg.name + ": " + last_error(c.ctx));
+        note("lost the connection to " + c.cfg.name + ": " + c.session->last_error());
         c.drop();
         c.failed_at = 0;
     }
     return -EIO;
-}
-
-bool hidden(const char *name)
-{
-    return !name || !name[0] || name[0] == '.';
 }
 
 /* ---- files ------------------------------------------------------------------------------ */
@@ -443,7 +688,7 @@ struct NetFile
 {
     std::shared_ptr<Conn> conn;
     std::string inside;
-    smb2fh *fh = nullptr;
+    void *fh = nullptr;
     unsigned generation = 0;
     u64 size = 0;
     std::vector<std::uint8_t> cache;
@@ -455,18 +700,22 @@ struct NetFile
         if (!conn)
             return;
         std::lock_guard<std::mutex> lock(conn->m);
-        if (fh && conn->ctx && generation == conn->generation)
-            smb2_close(conn->ctx, fh);
+        if (fh && conn->session && generation == conn->generation)
+            conn->session->close(fh);
     }
 
     /* Opened on the current connection. Holds conn->m. */
-    int reopen(smb2_context *ctx)
+    int reopen(Session &s)
     {
         if (fh && generation == conn->generation)
             return 0;
-        fh = smb2_open(ctx, inside.c_str(), O_RDONLY);
-        if (!fh)
-            return last_errno(ctx); /* a missing file is a file error; anything else may be the connection */
+        fh = nullptr;
+        const int rc = s.open(inside, &fh);
+        if (rc < 0)
+        {
+            fh = nullptr;
+            return rc; /* a missing file is a request error; anything else may be the connection */
+        }
         generation = conn->generation;
         return 0;
     }
@@ -476,27 +725,21 @@ struct NetFile
         conn = std::move(c);
         inside = path_inside;
         std::lock_guard<std::mutex> lock(conn->m);
-        smb2_stat_64 st{};
-        const int rc = run(*conn, [&](smb2_context *ctx) {
-            const int r = reopen(ctx);
+        Info info;
+        const int rc = run(*conn, [&](Session &s) {
+            const int r = reopen(s);
             if (r < 0)
                 return r;
-            return smb2_fstat(ctx, fh, &st);
+            return s.fstat(fh, info);
         });
-        if (rc < 0)
+        if (rc < 0 || info.is_dir)
         {
-            if (fh && conn->ctx && generation == conn->generation)
-                smb2_close(conn->ctx, fh);
+            if (fh && conn->session && generation == conn->generation)
+                conn->session->close(fh);
             fh = nullptr;
             return false;
         }
-        if (st.smb2_type == SMB2_TYPE_DIRECTORY)
-        {
-            smb2_close(conn->ctx, fh);
-            fh = nullptr;
-            return false;
-        }
-        size = st.smb2_size;
+        size = info.size;
         return true;
     }
 
@@ -508,11 +751,11 @@ struct NetFile
         {
             const std::uint32_t want = std::uint32_t(std::min<u64>(n - done, conn->max_read ? conn->max_read : kChunk));
             int got = 0;
-            const int rc = run(*conn, [&](smb2_context *ctx) {
-                const int r = reopen(ctx);
+            const int rc = run(*conn, [&](Session &s) {
+                const int r = reopen(s);
                 if (r < 0)
                     return r;
-                got = smb2_pread(ctx, fh, out + done, want, offset + done);
+                got = s.pread(fh, out + done, want, offset + done);
                 return got;
             });
             if (rc < 0)
@@ -523,7 +766,6 @@ struct NetFile
         }
         return s64(done);
     }
-
     s64 read(u64 offset, void *dst, u64 n)
     {
         if (offset >= size)
@@ -595,20 +837,7 @@ bool list_net(const std::string &dir, std::vector<Entry> &out)
     if (!c)
         return false;
     std::lock_guard<std::mutex> lock(c->m);
-    const int rc = run(*c, [&](smb2_context *ctx) {
-        out.clear();
-        smb2dir *d = smb2_opendir(ctx, inside.c_str());
-        if (!d)
-            return last_errno(ctx);
-        while (smb2dirent *ent = smb2_readdir(ctx, d))
-        {
-            if (hidden(ent->name))
-                continue;
-            out.push_back({ent->name, ent->st.smb2_type == SMB2_TYPE_DIRECTORY});
-        }
-        smb2_closedir(ctx, d);
-        return 0;
-    });
+    const int rc = run(*c, [&](Session &s) { return s.list(inside, out); });
     return rc >= 0;
 }
 
@@ -635,17 +864,14 @@ bool stat_net(const std::string &path, bool *is_dir, u64 *size)
     if (!c)
         return false;
     std::lock_guard<std::mutex> lock(c->m);
-    smb2_stat_64 st{};
-    const int rc = run(*c, [&](smb2_context *ctx) {
-        const int r = smb2_stat(ctx, inside.c_str(), &st);
-        return r;
-    });
+    Info info;
+    const int rc = run(*c, [&](Session &s) { return s.stat(inside, info); });
     if (rc < 0)
         return false;
     if (is_dir)
-        *is_dir = st.smb2_type == SMB2_TYPE_DIRECTORY;
+        *is_dir = info.is_dir;
     if (size)
-        *size = st.smb2_type == SMB2_TYPE_DIRECTORY ? 0 : st.smb2_size;
+        *size = info.size;
     return true;
 }
 
@@ -874,14 +1100,16 @@ Problem classify(const std::string &error)
         return Problem::SignIn;
     if (has("BAD_NETWORK_NAME"))
         return Problem::NoSuchShare;
-    if (has("ACCESS_DENIED"))
+    if (has("ACCESS_DENIED") || has("ERR_ACCES") || has("ERR_PERM") || has("Permission denied") ||
+        has("AUTH_ERROR") || has("AUTH_TOOWEAK") || has("AUTH_BADCRED"))
         return Problem::Denied;
-    if (has("NOT_FOUND") || has("NOT_A_DIRECTORY") || has("PATH_INVALID"))
+    if (has("NOT_FOUND") || has("NOT_A_DIRECTORY") || has("PATH_INVALID") || has("ERR_NOENT") ||
+        has("ERR_NOTDIR") || has("No such file"))
         return Problem::NoFolder;
     if (has("resolve") || has("Invalid address"))
         return Problem::UnknownName;
     if (has("connect failed") || has("Timeout") || has("timed out") || has("TIMEOUT") || has("POLLHUP") ||
-        has("socket"))
+        has("socket") || has("connect()") || has("Failed to connect") || has("portmap") || has("RPC ERROR"))
         return Problem::Unreachable;
     return Problem::Other;
 }
@@ -937,7 +1165,14 @@ std::string root_of(const Share &share)
 
 std::string unique_name(const Share &share, const std::vector<Share> &existing)
 {
-    std::string base = share.share.empty() ? server_of(share) : share.share;
+    std::string base = share.share;
+    std::replace(base.begin(), base.end(), '\\', '/');
+    while (!base.empty() && base.back() == '/')
+        base.pop_back();
+    if (base.find('/') != std::string::npos)
+        base = base.substr(base.rfind('/') + 1); /* an NFS export: its last folder */
+    if (base.empty())
+        base = server_of(share);
     std::string clean;
     for (char ch : base)
         clean += (ch == '/' || ch == '\\' || ch == ':' || ch == '\t' || ch == '\n') ? '-' : ch;
@@ -979,8 +1214,8 @@ bool load(const std::string &file, std::vector<Share> &out)
         }
         if (fields.size() < 3 || fields[0].empty())
             continue;
-        fields.resize(6);
-        Share s{fields[0], fields[1], fields[2], fields[3], fields[4], fields[5]};
+        fields.resize(7);
+        Share s{fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6] == "nfs" ? "nfs" : ""};
         out.push_back(std::move(s));
     }
     std::fclose(f);
@@ -993,11 +1228,13 @@ bool save(const std::string &file, const std::vector<Share> &list)
     std::FILE *f = std::fopen(tmp.c_str(), "w");
     if (!f)
         return false;
-    std::fputs("# Porpoise's network shares: name, computer, share, folder, username, password\n", f);
+    std::fputs("# Porpoise's network shares: name, computer, share (or NFS export), folder, username, password, "
+               "nfs for an NFS share\n",
+               f);
     for (const Share &s : list)
-        std::fprintf(f, "%s\t%s\t%s\t%s\t%s\t%s\n", escape(s.name).c_str(), escape(s.host).c_str(),
+        std::fprintf(f, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", escape(s.name).c_str(), escape(s.host).c_str(),
                      escape(s.share).c_str(), escape(s.folder).c_str(), escape(s.user).c_str(),
-                     escape(s.password).c_str());
+                     escape(s.password).c_str(), is_nfs(s) ? "nfs" : "smb");
     const bool ok = std::fflush(f) == 0;
     std::fclose(f);
     if (!ok || std::rename(tmp.c_str(), file.c_str()) != 0)
@@ -1134,36 +1371,39 @@ Problem test(const Share &share, std::string *detail)
     if (share.share.empty())
         return Problem::NoShare;
     std::string error;
-    smb2_context *ctx = open_context(share, share.share, error);
-    if (!ctx)
+    std::unique_ptr<Session> session = connect_session(share, error);
+    if (!session)
     {
-        note("test of " + server_of(share) + "/" + share.share + " failed: " + error);
+        note("test of " + where(share) + " failed: " + error);
         if (detail)
             *detail = error;
-        return classify(error);
+        const Problem p = classify(error);
+        /* A mount refused for a path the server doesn't export. */
+        return is_nfs(share) && p == Problem::NoFolder ? Problem::NoSuchShare : p;
     }
     std::string folder = share.folder;
-    while (!folder.empty() && (folder.front() == '/' || folder.front() == '\\'))
+    std::replace(folder.begin(), folder.end(), '\\', '/');
+    while (!folder.empty() && folder.front() == '/')
         folder.erase(folder.begin());
-    while (!folder.empty() && (folder.back() == '/' || folder.back() == '\\'))
+    while (!folder.empty() && folder.back() == '/')
         folder.pop_back();
-    smb2_set_error(ctx, "");
-    smb2dir *d = smb2_opendir(ctx, folder.c_str());
+    session->clear_error();
+    std::vector<Entry> entries;
     Problem result = Problem::None;
-    if (!d)
+    if (session->list(folder, entries) < 0)
     {
-        error = last_error(ctx);
-        note("test of " + server_of(share) + "/" + share.share + ", its folder: " + error);
+        error = session->last_error();
+        note("test of " + where(share) + ", its folder: " + error);
         if (detail)
             *detail = error;
         result = classify(error);
-        if (result == Problem::Other || result == Problem::Unreachable)
+        if (result == Problem::Other || result == Problem::Unreachable || result == Problem::NoSuchShare)
             result = Problem::NoFolder;
     }
     else
-        smb2_closedir(ctx, d);
-    smb2_destroy_context(ctx); /* no goodbye: a server slow to answer it would hold the panel */
-    return result;
+        note("test of " + where(share) + ": " + std::to_string(entries.size()) +
+             " entries at the top");
+    return result; /* closed without a goodbye: a server slow to answer it would hold the panel */
 }
 
 Problem enumerate(const Share &server, std::vector<std::string> &out, std::string *detail)
@@ -1171,9 +1411,37 @@ Problem enumerate(const Share &server, std::vector<std::string> &out, std::strin
     out.clear();
     if (server_of(server).empty())
         return Problem::NoComputer;
+    if (is_nfs(server))
+    {
+        /* The server's exports, from its mount service. */
+        std::string raw;
+        if (!probe(server_of(server), 2049, raw))
+        {
+            if (detail)
+                *detail = raw;
+            return classify(raw);
+        }
+        note("asking " + server_of(server) + " for its NFS exports");
+        exportnode *list = mount_getexports_timeout(server_of(server).c_str(), 10000);
+        if (!list)
+        {
+            raw = "the server didn't list its exports (no mount service, or it isn't allowed)";
+            note("listing the exports of " + server_of(server) + " failed");
+            if (detail)
+                *detail = raw;
+            return Problem::NoExports;
+        }
+        for (exportnode *e = list; e; e = e->ex_next)
+            if (e->ex_dir && e->ex_dir[0])
+                out.push_back(e->ex_dir);
+        mount_free_export_list(list);
+        note(server_of(server) + " exports " + std::to_string(out.size()) + " folders");
+        std::sort(out.begin(), out.end());
+        return Problem::None;
+    }
     std::string raw;
-    smb2_context *ctx = open_context(server, "IPC$", raw);
-    if (!ctx)
+    std::unique_ptr<SmbSession> session = smb_connect(server, "IPC$", raw);
+    if (!session)
     {
         note("listing the shares of " + server_of(server) + " failed: " + raw);
         if (detail)
@@ -1181,14 +1449,13 @@ Problem enumerate(const Share &server, std::vector<std::string> &out, std::strin
         return classify(raw);
     }
     note("asking " + server_of(server) + " for its shared folders");
-    smb2_share_enum_reply *reply = smb2_share_enum_sync(ctx, SMB2_SHARE_INFO_1);
+    smb2_share_enum_reply *reply = smb2_share_enum_sync(session->ctx, SMB2_SHARE_INFO_1);
     if (!reply)
     {
-        raw = last_error(ctx);
+        raw = session->last_error();
         note("listing the shares of " + server_of(server) + " failed: " + raw);
         if (detail)
             *detail = raw;
-        smb2_destroy_context(ctx);
         return classify(raw);
     }
     for (std::uint32_t i = 0; i < reply->entries_read; ++i)
@@ -1201,11 +1468,274 @@ Problem enumerate(const Share &server, std::vector<std::string> &out, std::strin
             continue;
         out.push_back(name);
     }
-    smb2_free_data(ctx, reply);
-    smb2_destroy_context(ctx); /* no goodbye: a server slow to answer it would hold the panel */
+    smb2_free_data(session->ctx, reply);
     note(server_of(server) + " shares " + std::to_string(out.size()) + " folders Porpoise can use");
     std::sort(out.begin(), out.end());
     return Problem::None;
+}
+
+/* ---- finding computers --------------------------------------------------------------- */
+
+namespace
+{
+/* Non-blocking, on the console too (fcntl's O_NONBLOCK doesn't take there). */
+void make_nonblocking(int fd)
+{
+    const int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+#ifdef __PROSPERO__
+    int one = 1;
+    setsockopt(fd, SOL_SOCKET, 0x1200, &one, sizeof one); /* SO_NBIO */
+    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof one);
+#endif
+}
+
+/* The console's own IPv4 address: a UDP socket "connected" toward a
+ * documentation address (nothing is sent) says which one it would use. */
+bool own_address(in_addr &out)
+{
+    const int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return false;
+    sockaddr_in to{};
+#ifdef __PROSPERO__
+    to.sin_len = sizeof to;
+#endif
+    to.sin_family = AF_INET;
+    to.sin_port = htons(9);
+    inet_pton(AF_INET, "192.0.2.1", &to.sin_addr);
+    sockaddr_in me{};
+    socklen_t len = sizeof me;
+    const bool ok = connect(fd, reinterpret_cast<sockaddr *>(&to), sizeof to) == 0 &&
+                    getsockname(fd, reinterpret_cast<sockaddr *>(&me), &len) == 0 && me.sin_addr.s_addr != 0;
+    close(fd);
+    if (ok)
+        out = me.sin_addr;
+    return ok;
+}
+
+/* Which of these addresses answer on which of these ports: non-blocking
+ * connects, a batch at a time, each batch given up to wait_ms. open[host][port]. */
+std::vector<std::vector<bool>> answering(const std::vector<in_addr> &hosts, const std::vector<int> &ports,
+                                         int wait_ms)
+{
+    std::vector<std::vector<bool>> open(hosts.size(), std::vector<bool>(ports.size(), false));
+    std::vector<std::pair<std::size_t, std::size_t>> tries; /* host, port */
+    for (std::size_t h = 0; h < hosts.size(); ++h)
+        for (std::size_t p = 0; p < ports.size(); ++p)
+            tries.push_back({h, p});
+    constexpr std::size_t kBatch = 128;
+    for (std::size_t first = 0; first < tries.size(); first += kBatch)
+    {
+        const std::size_t last = std::min(tries.size(), first + kBatch);
+        std::vector<pollfd> fds;
+        std::vector<std::size_t> which;
+        for (std::size_t t = first; t < last; ++t)
+        {
+            const int fd = socket(AF_INET, SOCK_STREAM, 0);
+            if (fd < 0)
+                continue;
+            make_nonblocking(fd);
+            sockaddr_in to{};
+#ifdef __PROSPERO__
+            to.sin_len = sizeof to;
+#endif
+            to.sin_family = AF_INET;
+            to.sin_port = htons(std::uint16_t(ports[tries[t].second]));
+            to.sin_addr = hosts[tries[t].first];
+            const int rc = connect(fd, reinterpret_cast<sockaddr *>(&to), sizeof to);
+            if (rc == 0)
+            {
+                open[tries[t].first][tries[t].second] = true;
+                close(fd);
+                continue;
+            }
+            if (errno != EINPROGRESS)
+            {
+                close(fd);
+                continue;
+            }
+            fds.push_back({fd, POLLOUT, 0});
+            which.push_back(t);
+        }
+        const long long deadline = now_ms() + wait_ms;
+        std::size_t left = fds.size();
+        while (left > 0)
+        {
+            const long long now = now_ms();
+            if (now >= deadline)
+                break;
+            if (poll(fds.data(), nfds_t(fds.size()), int(deadline - now)) <= 0)
+                break;
+            for (std::size_t k = 0; k < fds.size(); ++k)
+            {
+                if (fds[k].fd < 0 || fds[k].revents == 0)
+                    continue;
+                int err = 0;
+                socklen_t len = sizeof err;
+                if (getsockopt(fds[k].fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0 && err == 0 &&
+                    (fds[k].revents & POLLOUT))
+                    open[tries[which[k]].first][tries[which[k]].second] = true;
+                close(fds[k].fd);
+                fds[k].fd = -1; /* poll skips it */
+                --left;
+            }
+        }
+        for (pollfd &p : fds)
+            if (p.fd >= 0)
+                close(p.fd);
+    }
+    return open;
+}
+
+/* NetBIOS names (a Windows computer's, or Samba's): a node status query to
+ * each address on port 137 at once, the answers taken for wait_ms. */
+std::vector<std::string> netbios_names(const std::vector<in_addr> &hosts, int wait_ms)
+{
+    std::vector<std::string> names(hosts.size());
+    if (hosts.empty())
+        return names;
+    const int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return names;
+    make_nonblocking(fd);
+    /* A node status request for "*": the name half-ASCII encoded (CK + 30 A's). */
+    std::uint8_t query[50] = {0x50, 0x4F, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 'C', 'K'};
+    for (int i = 15; i < 45; ++i)
+        query[i] = 'A';
+    query[45] = 0;
+    query[46] = 0x00;
+    query[47] = 0x21; /* NBSTAT */
+    query[48] = 0x00;
+    query[49] = 0x01; /* IN */
+    for (const in_addr &h : hosts)
+    {
+        sockaddr_in to{};
+#ifdef __PROSPERO__
+        to.sin_len = sizeof to;
+#endif
+        to.sin_family = AF_INET;
+        to.sin_port = htons(137);
+        to.sin_addr = h;
+        sendto(fd, query, sizeof query, 0, reinterpret_cast<sockaddr *>(&to), sizeof to);
+    }
+    const long long deadline = now_ms() + wait_ms;
+    std::size_t got = 0;
+    while (got < hosts.size())
+    {
+        const long long now = now_ms();
+        if (now >= deadline)
+            break;
+        pollfd p{fd, POLLIN, 0};
+        if (poll(&p, 1, int(deadline - now)) <= 0)
+            break;
+        std::uint8_t reply[1024];
+        sockaddr_in from{};
+        socklen_t len = sizeof from;
+        const ssize_t n = recvfrom(fd, reply, sizeof reply, 0, reinterpret_cast<sockaddr *>(&from), &len);
+        /* Header 12, the name 34, type, class, TTL, length 10, then a count
+         * and 18 bytes a name: 15 characters, the suffix, two flag bytes. */
+        constexpr std::size_t kNames = 12 + 34 + 10;
+        if (n < ssize_t(kNames + 1))
+            continue;
+        const int count = reply[kNames];
+        std::string name;
+        for (int i = 0; i < count && kNames + 1 + std::size_t(i + 1) * 18 <= std::size_t(n); ++i)
+        {
+            const std::uint8_t *e = reply + kNames + 1 + i * 18;
+            const bool group = (e[16] & 0x80) != 0;
+            if (e[15] != 0x00 || group) /* the workstation name: suffix 0, unique */
+                continue;
+            std::string nb(reinterpret_cast<const char *>(e), 15);
+            while (!nb.empty() && (nb.back() == ' ' || nb.back() == 0))
+                nb.pop_back();
+            name = nb;
+            break;
+        }
+        for (std::size_t i = 0; i < hosts.size(); ++i)
+            if (hosts[i].s_addr == from.sin_addr.s_addr && names[i].empty() && !name.empty())
+            {
+                names[i] = name;
+                ++got;
+            }
+    }
+    close(fd);
+    return names;
+}
+} // namespace
+
+std::vector<Found> discover()
+{
+    std::vector<Found> out;
+    in_addr me{};
+    if (!own_address(me))
+    {
+        note("discover: no network address of our own");
+        return out;
+    }
+#ifdef PORPOISE_NETFS_HOST_TEST
+    if (std::getenv("NETFS_TEST_LOOPBACK"))
+        inet_pton(AF_INET, "127.0.0.200", &me); /* the tests' servers are on 127.0.0.1 */
+#endif
+    const std::uint32_t own = ntohl(me.s_addr);
+    const std::uint32_t net = own & 0xFFFFFF00u; /* the 254 addresses around it (a home network) */
+    std::vector<in_addr> hosts;
+    std::uint32_t last_host = 254;
+#ifdef PORPOISE_NETFS_HOST_TEST
+    if (std::getenv("NETFS_TEST_LOOPBACK"))
+        last_host = 3; /* every 127.0.0.x is this machine: three are enough */
+#endif
+    for (std::uint32_t h = 1; h <= last_host; ++h)
+    {
+        const std::uint32_t a = net | h;
+        if (a == own)
+            continue;
+        in_addr ia{};
+        ia.s_addr = htonl(a);
+        hosts.push_back(ia);
+    }
+    const long long started = now_ms();
+    const auto open = answering(hosts, {445, 2049}, 600);
+    std::vector<in_addr> named;
+    for (std::size_t i = 0; i < hosts.size(); ++i)
+        if (open[i][0] || open[i][1])
+        {
+            char text[INET_ADDRSTRLEN] = "";
+            inet_ntop(AF_INET, &hosts[i], text, sizeof text);
+            out.push_back({text, "", open[i][0], open[i][1]});
+            named.push_back(hosts[i]);
+        }
+    const std::vector<std::string> names = netbios_names(named, 600);
+    for (std::size_t i = 0; i < out.size(); ++i)
+    {
+        out[i].name = names[i];
+        if (out[i].name.empty() && out[i].smb)
+        {
+            /* No NetBIOS answer (Windows's firewall often keeps it out): the
+             * name the server gives as it starts a sign-in, as a guest to IPC$. */
+            smb2_context *ctx = smb2_init_context();
+            if (ctx)
+            {
+                t_target_name.clear();
+                smb2_set_timeout(ctx, 3);
+                smb2_set_security_mode(ctx, SMB2_NEGOTIATE_SIGNING_ENABLED);
+                smb2_set_user(ctx, "Guest");
+                smb2_connect_share(ctx, out[i].address.c_str(), "IPC$", nullptr);
+                smb2_destroy_context(ctx);
+                out[i].name = t_target_name;
+                t_target_name.clear();
+            }
+        }
+    }
+    char own_text[INET_ADDRSTRLEN] = "";
+    inet_ntop(AF_INET, &me, own_text, sizeof own_text);
+    std::string seen;
+    for (const Found &f : out)
+        seen += " " + f.address + (f.name.empty() ? "" : " (" + f.name + ")") + (f.smb ? " smb" : "") +
+                (f.nfs ? " nfs" : "");
+    note("discover: from " + std::string(own_text) + ", " + std::to_string(out.size()) + " sharing in " +
+         std::to_string(now_ms() - started) + " ms:" + seen);
+    return out;
 }
 
 const retro_vfs_interface *vfs_interface()
@@ -1219,10 +1749,10 @@ void shutdown()
 }
 } // namespace porpoise::netfs
 
-/* ---- name lookups for libsmb2 on the PS5 ------------------------------------------------- */
+/* ---- name lookups for libsmb2 and libnfs on the PS5 ------------------------------------------------- */
 #ifdef __PROSPERO__
 /* The console's libc has no getaddrinfo in the modules Porpoise loads:
- * libsmb2 is built to call these instead. An address as it is, a name through
+ * libsmb2 and libnfs are built to call these instead. An address as it is, a name through
  * the console's own resolver (DNS). */
 extern "C"
 {
@@ -1268,7 +1798,7 @@ int porpoise_netfs_getaddrinfo(const char *node, const char *service, const stru
     }
     sin->sin_len = sizeof(sockaddr_in);
     sin->sin_family = AF_INET;
-    sin->sin_port = htons(std::uint16_t(service ? std::atoi(service) : 445));
+    sin->sin_port = htons(std::uint16_t(service ? std::atoi(service) : 0)); /* no service: the caller sets the port */
     sin->sin_addr = addr;
     ai->ai_family = AF_INET;
     ai->ai_socktype = SOCK_STREAM;
@@ -1307,14 +1837,50 @@ int porpoise_netfs_gethostname(char *name, size_t len)
 
 /* FreeBSD's stdio macros read __isthreaded; the locked calls are always right. */
 int porpoise_netfs_isthreaded = 1;
+
+/* libnfs's: TCP is protocol 6; no port is a "well-known service" it must
+ * avoid binding to (it only looks so as to skip them); numeric names only. */
+struct protoent *porpoise_netfs_getprotobyname(const char *name)
+{
+    static char tcp_name[] = "tcp";
+    static char *aliases[] = {nullptr};
+    static protoent tcp{tcp_name, aliases, IPPROTO_TCP};
+    return name && std::strcmp(name, "tcp") == 0 ? &tcp : nullptr;
+}
+
+struct servent *porpoise_netfs_getservbyport(int, const char *)
+{
+    return nullptr;
+}
+
+int porpoise_netfs_getnameinfo(const struct sockaddr *sa, socklen_t, char *host, size_t hostlen, char *serv,
+                               size_t servlen, int)
+{
+    if (!sa || sa->sa_family != AF_INET)
+        return EAI_FAMILY;
+    const auto *sin = reinterpret_cast<const sockaddr_in *>(sa);
+    if (host && hostlen && !inet_ntop(AF_INET, &sin->sin_addr, host, socklen_t(hostlen)))
+        return EAI_FAIL;
+    if (serv && servlen)
+        std::snprintf(serv, servlen, "%u", unsigned(ntohs(sin->sin_port)));
+    return 0;
+}
 }
 #endif
 
-/* libsmb2's sync wait, in the log when it's slow: from its third round (two
- * seconds without an answer), then every tenth. */
+/* libsmb2's NTLM challenge names the server (lib/ntlmssp.c): kept for the
+ * thread that asked (discover). */
+extern "C" void porpoise_netfs_target_name(const char *name)
+{
+    t_target_name = name ? name : "";
+}
+
+/* libsmb2's sync wait, in the log only when it's slow: after two seconds
+ * without the answer, then every ten rounds. (A busy transfer goes round
+ * often in no time; that isn't worth a line.) */
 extern "C" void porpoise_netfs_wait_note(int round, long waited, int fd, int events, int poll_rc, int revents)
 {
-    if (round == 2 || (round > 2 && round % 10 == 0))
+    if (waited >= 2 && round % 10 == 0)
         note("wait: round " + std::to_string(round) + ", " + std::to_string(waited) + " s, fd " +
              std::to_string(fd) + " events " + std::to_string(events) + ", poll " + std::to_string(poll_rc) +
              " revents " + std::to_string(revents));

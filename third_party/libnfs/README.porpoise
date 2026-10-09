@@ -1,0 +1,27 @@
+libnfs, the NFS client library by Ronnie Sahlberg and contributors
+https://github.com/sahlberg/libnfs, commit 7613236464317bee2d9636f087f995148de4db27
+
+Licence: LGPL-2.1-or-later for lib/ and include/ (COPYING, LICENCE-LGPL-2.1.txt);
+the protocol definitions (*.x) and the files generated from them
+(*/libnfs-raw-*.[ch]) BSD-2-Clause (LICENCE-BSD.txt).
+Only the client library is here: lib/ (without Kerberos), include/, and the
+mount, nfs, nfs4 and portmap protocols. NLM, NSM, rquota, the examples,
+utilities, servers and tests are left out.
+
+Porpoise reads games on an NFS share with it (src/porpoise_netfs.cpp).
+tools/build.sh compiles each file in sources.txt as C with ps5/config.h.
+
+Changes from upstream:
+- ps5/config.h: the configuration for the PS5's FreeBSD headers (upstream
+  makes config.h with CMake or autoconf). No HAVE_SIGNAL_H, so the library
+  doesn't set SIGPIPE to ignored for the whole app.
+- lib/socket.c: on the PS5, the console's own SO_NBIO makes a socket
+  non-blocking (fcntl's O_NONBLOCK doesn't take there), with read and write
+  time limits and SO_NOSIGPIPE; and a reconnect closes the old socket
+  instead of dup2() onto it (as on Windows), so there's no dup2 import
+  (Porpoise turns the library's own reconnecting off and reconnects itself).
+- include/nfsc/libnfs-raw-mount.h: a copy of mount/libnfs-raw-mount.h, where
+  upstream installs it, for Porpoise to include.
+- The build renames getaddrinfo, freeaddrinfo, getprotobyname, getservbyport
+  and getnameinfo to src/porpoise_netfs.cpp's (the console's libc has none of
+  them in the modules Porpoise loads), and defines NDEBUG.

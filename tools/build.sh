@@ -209,6 +209,28 @@ for name in "${smb2_sources[@]}"; do
     objects+=("$object")
 done
 
+# libnfs (LGPL-2.1-or-later; its protocol files BSD-2-Clause), for games on an
+# NFS share, the same way: its PS5 configuration in third_party/libnfs/ps5, its
+# name lookups Porpoise's.
+nfs_root="$root/third_party/libnfs"
+mapfile -t nfs_sources < "$nfs_root/sources.txt"
+for name in "${nfs_sources[@]}"; do
+    [[ $name =~ ^[a-z0-9_]+/[a-z0-9_-]+\.c$ && -f $nfs_root/$name ]] || {
+        echo "invalid libnfs source: $name" >&2; exit 2;
+    }
+    object="$build/obj/libnfs_${name//\//_}"
+    object="${object%.c}.o"
+    PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
+        -std=gnu11 -O2 -w -ffunction-sections -fdata-sections -DHAVE_CONFIG_H -DNDEBUG \
+        -I"$nfs_root/ps5" -I"$nfs_root/include" -I"$nfs_root/include/nfsc" -I"$nfs_root/mount" \
+        -I"$nfs_root/nfs" -I"$nfs_root/nfs4" -I"$nfs_root/portmap" \
+        -Dgetaddrinfo=porpoise_netfs_getaddrinfo -Dfreeaddrinfo=porpoise_netfs_freeaddrinfo \
+        -Dgetprotobyname=porpoise_netfs_getprotobyname -Dgetservbyport=porpoise_netfs_getservbyport \
+        -Dgetnameinfo=porpoise_netfs_getnameinfo \
+        -c "$nfs_root/$name" -o "$object"
+    objects+=("$object")
+done
+
 PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
     -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti \
     -ffunction-sections -fdata-sections \
