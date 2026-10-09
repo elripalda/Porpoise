@@ -1825,6 +1825,25 @@ index 86f9e49178..ff12386950 100644
  
    const bool error_free_transformation = single && m_accurate_fmadds;
    const bool packed =
+diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_LoadStorePaired.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_LoadStorePaired.cpp
+index 8dfee9239b..5242a1ffca 100644
+--- a/Source/Core/Core/PowerPC/Jit64/Jit_LoadStorePaired.cpp
++++ b/Source/Core/Core/PowerPC/Jit64/Jit_LoadStorePaired.cpp
+@@ -61,7 +61,13 @@ void Jit64::psq_stXX(UGeckoInstruction inst)
+ 
+     // Paired stores (other than w/type zero) don't yield any real change in
+     // performance right now, but if we can improve fastmem support this might change
+-    if (gqrValue == 0)
++    //
++    // Porpoise (Riptide Boost): every quantized store with a known GQR is written
++    // in place, with fastmem, instead of calling the shared routine, whose store
++    // checks the address in the BAT table first. The same code, so the same
++    // bytes in memory; four calls fewer per pass in Day of Reckoning 2's
++    // skinning loops.
++    if (gqrValue == 0 || m_fast_paired_rounding)
+     {
+       if (w)
+         GenQuantizedStore(true, static_cast<EQuantizeType>(type), (gqrValue & 0x3F00) >> 8);
 diff --git a/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp b/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
 index 2e1b05cb42..b99786cdce 100644
 --- a/Source/Core/Core/PowerPC/Jit64/Jit_Paired.cpp
