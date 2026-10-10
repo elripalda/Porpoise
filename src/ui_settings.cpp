@@ -159,6 +159,7 @@ const Field kFields[] = {
     {"ui_font", &Settings::ui_font, nullptr, 0, 8},
     {"lib_view", &Settings::lib_view, nullptr, 0, 9},
     {"recent_dock", nullptr, &Settings::recent_dock, 0, 1},
+    {"recent_style", &Settings::recent_style, nullptr, 0, 3},
     {"mc_view", &Settings::mc_view, nullptr, 0, 4},
     {"sc_games", &Settings::sc_games, nullptr, 0, 1},
     {"text_size", &Settings::text_size, nullptr, 0, 3},
@@ -414,6 +415,9 @@ bool Settings::load(const std::string &path, bool overlay)
     /* 17 (3.0 Alpha 5): a DNS server typed in before is a custom server, on. */
     if (!overlay && version < 17 && !online_dns.empty())
         online_custom = true;
+    /* 18 (3.0 Alpha 7): Recently Played has looks; off stays off. */
+    if (!overlay && version < 18)
+        recent_style = recent_dock ? 1 : 0;
     /* 2.1.1: the widescreen hack switch became the Widescreen choice; on, it
      * is On (the hack for games with no code of their own). Per game too. */
     if (!saw_wide && legacy_wide >= 0)
@@ -437,7 +441,7 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = open_atomic(path);
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 17\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 18\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     std::fprintf(f, "border = %s\n", border.c_str());

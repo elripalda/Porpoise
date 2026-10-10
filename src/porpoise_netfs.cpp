@@ -90,6 +90,7 @@ struct Info
 {
     bool is_dir = false;
     u64 size = 0;
+    std::int64_t mtime = 0; /* seconds, when the share says */
 };
 
 /* A connected client of one share, SMB or NFS. Every call holds the share's
@@ -422,6 +423,7 @@ struct SmbSession : Session
             return rc;
         info.is_dir = st.smb2_type == SMB2_TYPE_DIRECTORY;
         info.size = info.is_dir ? 0 : st.smb2_size;
+        info.mtime = std::int64_t(st.smb2_mtime);
         return 0;
     }
     void clear_error() override { smb2_set_error(ctx, ""); }
@@ -560,6 +562,7 @@ struct NfsSession : Session
             return rc;
         info.is_dir = S_ISDIR(st.nfs_mode);
         info.size = info.is_dir ? 0 : st.nfs_size;
+        info.mtime = std::int64_t(st.nfs_mtime);
         return 0;
     }
     bool request_error(int rc) override
@@ -848,7 +851,7 @@ bool list_net(const std::string &dir, std::vector<Entry> &out)
     return rc >= 0;
 }
 
-bool stat_net(const std::string &path, bool *is_dir, u64 *size)
+bool stat_net(const std::string &path, bool *is_dir, u64 *size, std::int64_t *mtime)
 {
     std::string_view rest = std::string_view(path).substr(std::strlen(kRoot));
     while (!rest.empty() && rest.front() == '/')
@@ -879,6 +882,8 @@ bool stat_net(const std::string &path, bool *is_dir, u64 *size)
         *is_dir = info.is_dir;
     if (size)
         *size = info.size;
+    if (mtime)
+        *mtime = info.mtime;
     return true;
 }
 
@@ -1284,10 +1289,12 @@ bool list(const std::string &dir, std::vector<Entry> &out)
     return true;
 }
 
-bool stat(const std::string &path, bool *is_dir, std::uint64_t *size)
+bool stat(const std::string &path, bool *is_dir, std::uint64_t *size, std::int64_t *mtime)
 {
+    if (mtime)
+        *mtime = 0;
     if (is_net(path))
-        return stat_net(path, is_dir, size);
+        return stat_net(path, is_dir, size, mtime);
     struct ::stat st;
     if (::stat(path.c_str(), &st) != 0)
         return false;
@@ -1295,6 +1302,8 @@ bool stat(const std::string &path, bool *is_dir, std::uint64_t *size)
         *is_dir = S_ISDIR(st.st_mode);
     if (size)
         *size = S_ISDIR(st.st_mode) ? 0 : std::uint64_t(st.st_size);
+    if (mtime)
+        *mtime = std::int64_t(st.st_mtime);
     return true;
 }
 

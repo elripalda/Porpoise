@@ -10,6 +10,7 @@
 #include "ui_library.hpp"
 
 #include <map>
+#include <mutex>
 
 #include "porpoise_atomic.hpp"
 #include "porpoise_disc.hpp"
@@ -403,10 +404,11 @@ namespace
 {
 /* One game file as the library knows it: its header (or WAD, or app) read.
  * foreign: set when the file is another console's disc image. */
-Game game_from_file(const std::string &path, bool *foreign = nullptr)
+Game game_from_file(const std::string &path, bool *foreign = nullptr, bool *read_ok = nullptr)
 {
     if (foreign)
         *foreign = false;
+    bool ok = false;
     Game g;
     g.path = path;
     g.file = path.substr(path.rfind('/') + 1);
@@ -415,13 +417,15 @@ Game game_from_file(const std::string &path, bool *foreign = nullptr)
         g.bytes = bytes;
     const std::string ext = extension(g.file);
     if (ext == "wad")
-        read_wad_header(path, g);
+        ok = read_wad_header(path, g);
     else if (ext == "dol" || ext == "elf")
-        read_app_meta(path, g);
+        ok = read_app_meta(path, g);
     else if (ext == "tgc")
-        read_disc_header(path, g); /* a demo disc's file: its header is further in */
+        ok = read_disc_header(path, g); /* a demo disc's file: its header is further in */
     else
-        read_disc_header(path, g, foreign);
+        ok = read_disc_header(path, g, foreign);
+    if (read_ok)
+        *read_ok = ok;
     if (ext == "tgc")
         g.format = "TGC";
     if (g.title.empty())
@@ -471,19 +475,199 @@ void Library::scan(const LibraryPaths &paths)
     scan_files(paths, find_game_files(roots, 0, nullptr));
 }
 
+namespace
+{
+/* The header cache (set_header_cache): one line a file, tab-separated. */
+struct Cached
+{
+    std::uint64_t bytes = 0;
+    std::int64_t mtime = 0;
+    bool foreign = false;
+    std::string id, title, format, platform, region, kind, app_dir;
+    int disc_number = 0;
+};
+std::mutex g_cache_lock;
+std::string g_cache_path;
+std::unordered_map<std::string, Cached> g_cache;
+bool g_cache_loaded = false;
+/* A new version here whenever read_disc_header, read_wad_header or
+ * read_app_meta read something differently: every file is read again. */
+constexpr const char *kCacheHead = "# Porpoise's disc headers, read once: path, size, time, what they say (v1)";
+
+std::string cache_field(std::string s)
+{
+    for (char &c : s)
+        if (c == '\t' || c == '\n' || c == '\r')
+            c = ' ';
+    return s;
+}
+
+void load_cache()
+{
+    g_cache_loaded = true;
+    if (g_cache_path.empty())
+        return;
+    std::FILE *f = std::fopen(g_cache_path.c_str(), "r");
+    if (!f)
+        return;
+    std::string line;
+    char buf[4096];
+    bool first = true;
+    while (std::fgets(buf, sizeof buf, f))
+    {
+        line += buf;
+        if (line.empty() || line.back() != '\n')
+            continue;
+        line.pop_back();
+        if (first)
+        {
+            first = false;
+            if (line != kCacheHead)
+                break; /* another version's: read afresh */
+            line.clear();
+            continue;
+        }
+        std::vector<std::string> v;
+        std::size_t start = 0;
+        for (std::size_t i = 0; i <= line.size(); ++i)
+            if (i == line.size() || line[i] == '\t')
+            {
+                v.push_back(line.substr(start, i - start));
+                start = i + 1;
+            }
+        line.clear();
+        if (v.size() != 12)
+            continue;
+        Cached c;
+        c.bytes = std::strtoull(v[1].c_str(), nullptr, 10);
+        c.mtime = std::strtoll(v[2].c_str(), nullptr, 10);
+        c.foreign = v[3] == "1";
+        c.id = v[4];
+        c.disc_number = std::atoi(v[5].c_str());
+        c.title = v[6];
+        c.format = v[7];
+        c.platform = v[8];
+        c.region = v[9];
+        c.kind = v[10];
+        c.app_dir = v[11];
+        g_cache[v[0]] = std::move(c);
+    }
+    std::fclose(f);
+}
+
+void save_cache()
+{
+    if (g_cache_path.empty())
+        return;
+    std::FILE *f = porpoise::open_atomic(g_cache_path);
+    if (!f)
+        return;
+    std::fprintf(f, "%s\n", kCacheHead);
+    for (const auto &[path, c] : g_cache)
+        std::fprintf(f, "%s\t%llu\t%lld\t%d\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n", cache_field(path).c_str(),
+                     (unsigned long long)c.bytes, (long long)c.mtime, c.foreign ? 1 : 0, cache_field(c.id).c_str(),
+                     c.disc_number, cache_field(c.title).c_str(), cache_field(c.format).c_str(),
+                     cache_field(c.platform).c_str(), cache_field(c.region).c_str(), cache_field(c.kind).c_str(),
+                     cache_field(c.app_dir).c_str());
+    porpoise::finish_atomic(f, g_cache_path);
+}
+} // namespace
+
+void set_header_cache(const std::string &path)
+{
+    std::lock_guard<std::mutex> lock(g_cache_lock);
+    g_cache_path = path;
+    g_cache.clear();
+    g_cache_loaded = false;
+}
+
 std::vector<Game> read_games(std::vector<std::string> files)
 {
     std::sort(files.begin(), files.end());
     files.erase(std::unique(files.begin(), files.end()), files.end());
     std::vector<Game> games;
     games.reserve(files.size());
-    for (const std::string &path : files)
+    /* What's known of each file, then the headers of the ones that aren't
+     * (or changed) read without the lock: a share's take a while. */
+    std::vector<std::pair<std::uint64_t, std::int64_t>> stamps(files.size());
     {
-        bool foreign = false;
-        Game g = game_from_file(path, &foreign);
+        std::lock_guard<std::mutex> lock(g_cache_lock);
+        if (!g_cache_loaded)
+            load_cache();
+    }
+    for (std::size_t i = 0; i < files.size(); ++i)
+    {
+        std::uint64_t bytes = 0;
+        std::int64_t mtime = 0;
+        porpoise::netfs::stat(files[i], nullptr, &bytes, &mtime);
+        stamps[i] = {bytes, mtime};
+    }
+    bool changed = false;
+    for (std::size_t i = 0; i < files.size(); ++i)
+    {
+        const std::string &path = files[i];
+        Cached hit;
+        bool known = false;
+        {
+            std::lock_guard<std::mutex> lock(g_cache_lock);
+            const auto it = g_cache.find(path);
+            known = it != g_cache.end() && it->second.bytes == stamps[i].first && stamps[i].first > 0 &&
+                    it->second.mtime == stamps[i].second;
+            if (known)
+                hit = it->second;
+        }
+        if (known)
+        {
+            if (hit.foreign)
+                continue; /* another console's */
+            Game g;
+            g.path = path;
+            g.file = path.substr(path.rfind('/') + 1);
+            g.bytes = hit.bytes;
+            g.id = hit.id;
+            g.disc_number = hit.disc_number;
+            g.title = hit.title;
+            g.format = hit.format;
+            g.platform = hit.platform;
+            g.region = hit.region;
+            g.kind = hit.kind;
+            g.app_dir = hit.app_dir;
+            games.push_back(std::move(g));
+            continue;
+        }
+        bool foreign = false, ok = false;
+        Game g = game_from_file(path, &foreign, &ok);
+        /* Kept only when read whole: a file whose header didn't come (a share
+         * that dropped) is read again next time. */
+        const bool read = foreign || ok;
+        if (read && stamps[i].first > 0)
+        {
+            Cached c;
+            c.bytes = stamps[i].first;
+            c.mtime = stamps[i].second;
+            c.foreign = foreign;
+            c.id = g.id;
+            c.disc_number = g.disc_number;
+            c.title = g.title;
+            c.format = g.format;
+            c.platform = g.platform;
+            c.region = g.region;
+            c.kind = g.kind;
+            c.app_dir = g.app_dir;
+            std::lock_guard<std::mutex> lock(g_cache_lock);
+            g_cache[path] = std::move(c);
+            changed = true;
+        }
         if (foreign)
             continue; /* another console's */
         games.push_back(std::move(g));
+    }
+    if (changed)
+    {
+        std::lock_guard<std::mutex> lock(g_cache_lock);
+        if (g_cache.size() > 20000)
+            g_cache.clear(); /* thousands of files long gone: start over (and say so on disk) */
+        save_cache();
     }
     return games;
 }

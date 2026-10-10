@@ -427,11 +427,14 @@ bool add_online_code(const std::string &ini_path)
      * every "https" in the game's memory from 0x80003000 on loses its 's'
      * (the rest of the string moves up a byte), so the login server is asked
      * over plain HTTP. */
+    /* "ttps" is matched with an "h" before it (lbz r0,-1(r12); cmpwi r0,'h'),
+     * so four bytes of game code that happen to read "ttps" are left alone. */
     static const char *const kLines[] = {
-        "C0000000 0000000E", "3C004E80 60000020", "900F0000 3D808000", "618C3000 3C00017F",
-        "6000CFFC 7C0903A6", "3D607474 616B7073", "800C0000 7C005800", "40A20034 394C0003",
-        "392C0002 7D455378", "38600000 8C050001", "2C000000 38630001", "4082FFF4 8C0A0001",
-        "9C090001 3463FFFF", "4082FFF4 398C0001", "4200FFC0 4E800020",
+        "C0000000 00000010", "3C004E80 60000020", "900F0000 3D808000", "618C3000 3C00017F",
+        "6000CFFC 7C0903A6", "3D607474 616B7073", "800C0000 7C005800", "40A20040 880CFFFF",
+        "2C000068 40A20034", "394C0003 392C0002", "7D455378 38600000", "8C050001 2C000000",
+        "38630001 4082FFF4", "8C0A0001 9C090001", "3463FFFF 4082FFF4", "398C0001 4200FFB4",
+        "4E800020 60000000",
     };
     const char *const name = "$Porpoise: custom server (https to http)";
     bool exists = false;

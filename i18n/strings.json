@@ -6610,5 +6610,117 @@
  {
   "en": "Porpoise's Set",
   "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "The games you played last, along the bottom of the library; Down goes to them. Dock: a glass bar with the game's name. Floating: the boxes on their own, the chosen one growing like a dock's icons. Discs: their discs, the chosen one spinning.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Dock",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Floating",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Your Wii's settings, Miis, channels and saves are Porpoise's now: {n} files.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "{n} of Porpoise's own files were in the way; they're kept in saves/User/Wii-before-NAND.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Its online certificates weren't found (no IOS13 in this backup).",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Wii system data imported",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "The import didn't finish",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Importing your Wii's system data",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "{a} of {n} files",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Reading the backup…",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "This takes a minute or two. Keep Porpoise open.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "No Wii NAND backup found",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Make a NAND backup on your own Wii with BootMii, then copy its nand.bin (and keys.bin, if BootMii made one) to /data/porpoise/nand, or to a USB drive's top folder.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Import your Wii's system data?",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "From {file}: your Wii's settings, Miis, channels, saves and the certificates online services check. Saves Porpoise already has for the same games are moved to saves/User/Wii-before-NAND, not lost. It takes a minute or two.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Import",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Your own Wii's NAND backup, made with BootMii: its settings, Miis, channels, saves and the certificates online services like Wiimmfi check. Put nand.bin (and keys.bin) in /data/porpoise/nand or at a USB drive's top, then import it.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Imported",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Import…",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "2. Wiimmfi may also want your own Wii's system data (a NAND backup made with BootMii): import it in Settings > Console > Wii System Data.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "The backup couldn't be opened.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "This file doesn't look like a BootMii NAND backup.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "This backup has no keys of its own: put the keys.bin BootMii made beside nand.bin.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "No Wii file system was found in this backup (or the keys aren't this Wii's).",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "The backup's file table is damaged.",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "A file couldn't be written: is the drive full?",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
+ },
+ {
+  "en": "Wii System Data",
+  "section": "3.0 Alpha 7: Recently Played looks, Wii system data"
  }
 ]

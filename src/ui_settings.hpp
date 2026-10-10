@@ -181,7 +181,8 @@ struct Settings
     int ui_font = 0;    /* the menus' font: 0 the theme's own, n font_set(n - 1) */
     int lib_view = 0;   /* the library: 0 cover flow, 1 wheel, 2 disc flow, 3 shelf, 4 box, 5 list, 6 stack,
                            7 helix, 8 spines, 9 spotlight */
-    bool recent_dock = true; /* Recently Played: the last games played, along the bottom of the library */
+    bool recent_dock = true; /* before 3.0 Alpha 7: Recently Played on or off (recent_style now) */
+    int recent_style = 1;    /* Recently Played along the bottom of the library: 0 off, 1 dock, 2 floating, 3 discs */
     int mc_view = 0;    /* Memory Cards: 0 the cards side by side, 1 one card's blocks, 2 saves by game, 3 cubes,
                            4 retro TV */
     int sc_games = 0;       /* Star Cube's Games page: 0 spinning discs, 1 covers */

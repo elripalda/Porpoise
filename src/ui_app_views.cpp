@@ -59,7 +59,9 @@ void App::release_far_art(int keep)
         }
         /* Discs, backs and spines are only kept near the selection in the
          * views that show them (Details keeps the chosen game's). */
-        const bool near_disc = view == 2 && std::abs(i - selected_) <= disc_keep;
+        const bool near_disc = (view == 2 && std::abs(i - selected_) <= disc_keep) ||
+                               (settings_->recent_style == 3 &&
+                                std::find(docked.begin(), docked.end(), i) != docked.end()); /* Recently Played's discs */
         const bool near_spine = view == 8 && std::abs(i - selected_) <= 22 && i < shown;
         if (!near_disc && i != selected_ && game.disc)
         {

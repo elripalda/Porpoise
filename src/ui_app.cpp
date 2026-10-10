@@ -394,6 +394,8 @@ App::Action App::update(const Input &in, double dt)
     Action action = Action::None;
     home_pad_sync(); /* the Revolution look's pointer */
     poll_texture_packs(); /* Settings > Textures: the packs' counts, when counted */
+    if (update_nand_job())
+        return Action::None; /* a Wii's system data being imported: the menus wait */
     pump_banners();  /* Wii discs' tiles and banners, as they come */
     g_->set_theme_fonts(fonts_for(*settings_)); /* a theme's own letters, once they're made */
     sc_tick(dt);
@@ -404,6 +406,8 @@ App::Action App::update(const Input &in, double dt)
     lift_ = smooth(lift_, 1.0f, dt, 10.0f);
     mc_lift_ = smooth(mc_lift_, 1.0f, dt, 10.0f);
     dock_lift_ = smooth(dock_lift_, 1.0f, dt, 10.0f);
+    dock_glide_ = calm ? float(dock_sel_) : smooth(dock_glide_, float(dock_sel_), dt, 14.0f);
+    dock_open_ = calm ? (dock_focus_ ? 1.0f : 0.0f) : smooth(dock_open_, dock_focus_ ? 1.0f : 0.0f, dt, 10.0f);
     tab_anim_ = calm ? 0.0f : std::max(0.0f, tab_anim_ - float(dt) * 3.6f);
     screen_anim_ = calm ? 0.0f : std::max(0.0f, screen_anim_ - float(dt) * 4.5f);
     dialog_.anim = calm ? 1.0f : std::min(1.0f, dialog_.anim + float(dt) * 6.0f);
@@ -1102,6 +1106,9 @@ App::Action App::confirm_dialog(DialogKind kind)
         return Action::None;
     case DialogKind::UseFolder:
         return move_target_.empty() ? Action::None : Action::UseFolder;
+    case DialogKind::NandImport:
+        start_nand_import();
+        return Action::None;
     case DialogKind::CoversAgain:
         covers_again_.clear();
         for (const Game &g : lib_->games())
@@ -1238,6 +1245,7 @@ void App::draw_dialog()
     draw_share();
     draw_hub();
     draw_dns();
+    draw_nand_job();
     if (!dialog_.open)
         return;
     Gfx &g = *g_;
@@ -1996,7 +2004,7 @@ std::vector<int> App::recent_games()
 
 bool App::dock_shown()
 {
-    if (!settings_ || !settings_->recent_dock || tab_ != Tab::Library || starcube() ||
+    if (!settings_ || settings_->recent_style == 0 || tab_ != Tab::Library || starcube() ||
         (revolution() && settings_->ui_layout == 0) || lib_->shown() == 0)
         return false;
     for (const Game &g : lib_->games())
@@ -2005,16 +2013,125 @@ bool App::dock_shown()
     return false;
 }
 
-/* A glass dock along the bottom: "Recently Played", then the boxes. */
+/* The chosen game's name under the row (Floating and Discs), where the
+ * library's position count is while the row has the focus. */
+void App::draw_dock_bubble(float cx, float top, const std::string &title)
+{
+    (void)cx;
+    (void)top;
+    Gfx &g = *g_;
+    const float a = dock_open_;
+    if (a < 0.02f)
+        return;
+    const std::string text = fit(g, Font::Bold, ts(24), title, 760);
+    const float w = g.measure(Font::Bold, ts(24), text) + 48, h = 42;
+    const float x = kCx - w * 0.5f, y = 999 + (1.0f - a) * 6.0f;
+    g.panel(x, y, w, h, rgba(0x0B1848, 0.9f * a), 0.8f, h * 0.5f, with_alpha(kIcy, 0.7f * a), 1.4f, 6, 0.12f * a);
+    g.text_mid(Font::Bold, ts(24), kCx, y + h * 0.5f, with_alpha(kWhite, a), Align::Center, text);
+}
+
+/* Floating: the boxes alone on a thin glass shelf; chosen, the one in focus
+ * and its neighbors grow and rise, as a dock's icons do under the pointer. */
+void App::draw_dock_floating(const std::vector<int> &recent)
+{
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    const int n = int(recent.size());
+    /* Below the library's own lines (a view's info ends near y 890). */
+    const float base = 58, gap = 14, shelf_y = 990;
+    float scale[8] = {}, total = 0;
+    for (int j = 0; j < n; ++j)
+    {
+        const float dist = std::fabs(float(j) - dock_glide_);
+        scale[j] = 1.0f + 0.3f * dock_open_ * std::max(0.0f, 1.0f - dist / 2.2f);
+        total += base * 5.0f / 7.0f * scale[j] + (j ? gap : 0.0f);
+    }
+    const float shelf_w = std::max(total, float(n) * (base * 5.0f / 7.0f + gap) - gap) + 56;
+    g.panel(kCx - shelf_w * 0.5f, shelf_y - 30, shelf_w, 36, rgba(0x0F1F63, 0.35f + 0.25f * dock_open_), 0.75f, 18,
+            rgba(0x8BD9FF, 0.35f + 0.4f * dock_open_), 1.4f, 0, 0.18f);
+    float x = kCx - total * 0.5f;
+    float focus_cx = kCx, focus_top = shelf_y;
+    for (int j = 0; j < n; ++j)
+    {
+        Game &game = games[std::size_t(recent[std::size_t(j)])];
+        const float bh = base * scale[j], bw = bh * 5.0f / 7.0f;
+        const float top = shelf_y - 14 - bh;
+        const bool on = dock_focus_ && j == dock_sel_;
+        if (on)
+        {
+            focus_cx = x + bw * 0.5f;
+            focus_top = top;
+            g.blob(focus_cx, top + bh * 0.5f, bw * 1.8f, bh * 1.4f, rgba(0x5CD3FF, 0.22f * dock_open_));
+        }
+        g.blob(x + bw * 0.5f, shelf_y - 12, bw * 0.9f, 10, rgba(0x000000, 0.5f)); /* its shadow on the shelf */
+        if (Texture *cover = cover_of(game))
+        {
+            float uv[4];
+            cover_uv(cover, bw, bh, uv);
+            g.image_part(cover, x, top, bw, bh, uv, with_alpha(kWhite, dock_focus_ && !on ? 0.8f : 1.0f), 6);
+        }
+        else
+            g.panel(x, top, bw, bh, with_alpha(kTileFill, 0.7f), 0.7f, 6, with_alpha(kEdge, 0.6f), 1.2f);
+        if (on) /* the light under the chosen one, as a dock marks a running app */
+            g.panel(x + bw * 0.5f - 4, shelf_y - 8, 8, 8, kIcy, 1, 4);
+        x += bw + gap;
+    }
+    if (dock_focus_)
+        draw_dock_bubble(focus_cx, focus_top, games[std::size_t(recent[std::size_t(dock_sel_)])].title);
+}
+
+/* Discs: the games' discs in a row on a glass strip; the chosen one lifts
+ * and spins. */
+void App::draw_dock_discs(const std::vector<int> &recent, double time)
+{
+    Gfx &g = *g_;
+    auto &games = lib_->games();
+    const int n = int(recent.size());
+    const float d = 70, gap = 22, y = 949; /* the strip from y 902, below the library's own lines */
+    const float w = float(n) * (d + gap) - gap + 64;
+    g.panel(kCx - w * 0.5f, y - d * 0.5f - 12, w, d + 24, rgba(0x0F1F63, dock_focus_ ? 0.7f : 0.45f), 0.75f, kR,
+            rgba(0x4C6FD8, dock_focus_ ? 0.9f : 0.5f), 1.4f, 0, 0.12f);
+    const bool calm = settings_ && settings_->reduced_motion;
+    float focus_cx = kCx, focus_top = y - d * 0.5f;
+    for (int j = 0; j < n; ++j)
+    {
+        Game &game = games[std::size_t(recent[std::size_t(j)])];
+        const bool on = dock_focus_ && j == dock_sel_;
+        const float cx = kCx - w * 0.5f + 32 + d * 0.5f + float(j) * (d + gap);
+        const float size = on ? d * (1.0f + 0.18f * dock_lift_) : d;
+        const float cy = y - (on ? 8.0f * dock_lift_ : 0.0f);
+        const float spin = calm ? 0.0f : on ? float(time) * 2.2f : float(j) * 1.3f;
+        draw_disc(&game, cx, cy, size, spin, 0.0f, dock_focus_ && !on ? 0.75f : 1.0f, on);
+        if (on)
+        {
+            focus_cx = cx;
+            focus_top = cy - size * 0.5f;
+        }
+    }
+    if (dock_focus_)
+        draw_dock_bubble(focus_cx, focus_top, games[std::size_t(recent[std::size_t(dock_sel_)])].title);
+}
+
+/* Recently Played along the bottom, in the look Settings > Interface picks:
+ * a glass dock with "Recently Played" and the chosen name, then the boxes. */
 void App::draw_dock(double time)
 {
-    (void)time;
     Gfx &g = *g_;
     auto &games = lib_->games();
     const std::vector<int> recent = recent_games();
     const int n = int(recent.size());
     if (n == 0)
         return;
+    if (settings_->recent_style == 2)
+    {
+        draw_dock_floating(recent);
+        return;
+    }
+    if (settings_->recent_style == 3)
+    {
+        draw_dock_discs(recent, time);
+        return;
+    }
     const float ch = 74, cw = ch * 5.0f / 7.0f, gap = 18, label_w = 290, h = 96, y = 902;
     const float w = 32 + label_w + float(n) * (cw + gap) - gap + 32, x0 = kCx - w * 0.5f;
     g.panel(x0, y, w, h, rgba(0x0F1F63, dock_focus_ ? 0.80f : 0.55f), 0.75f, kR,

@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0 Alpha Build 7 — 2026-10-10
+
+- **Recently Played** has looks (Settings → Interface): Off, Dock, Floating
+  (the boxes alone, growing like a dock's icons) and Discs.
+- **Wii System Data (beta)** (Settings → Console): your own Wii's BootMii
+  NAND backup imported, with its settings, Miis, channels, saves and the
+  certificates Wiimmfi checks. Saves Porpoise had for the same games are
+  kept in saves/User/Wii-before-NAND.
+- Startup: disc headers are remembered, so a start reads none for games it
+  has seen; GCZ titles read without their whole block table; USB drives'
+  games show before a slow or offline network share's.
+- Online: the secure connection fix only changes real "https" addresses.
+
 ## 3.0 Alpha Build 6 — 2026-10-10
 
 - PAL games switched to 60 Hz in their own menu run at 60 (the pacing

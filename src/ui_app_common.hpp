@@ -20,12 +20,12 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "3.0 Alpha Build 6";
+constexpr const char *kVersion = "3.0 Alpha Build 7";
 constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 3, kVersionMinor = 0, kVersionPatch = 0;
 /* 0 for a final release; its betas (1, 2...) come before it, and its alphas
  * before those (-1000 + n: alpha 1 is -999), as porpoise::update reads tags. */
-constexpr int kVersionBeta = -994; /* alpha 6 */
+constexpr int kVersionBeta = -993; /* alpha 7 */
 /* A test build's tag: shown by the logo, and in a notice at the first start
  * of each such build. Release for neither. */
 enum class Channel
@@ -68,6 +68,7 @@ enum RowAction
     kRowTileArt,      /* a game's settings > Home screen: the tile art editor */
     kRowShots,        /* Screenshots: the gallery */
     kRowAddShare,     /* Games > Add a network share: the share panel */
+    kRowNandImport,   /* Console > Wii System Data: the player's own BootMii NAND backup into Dolphin's */
     kRowEditShare,    /* Games > a network share (folder: its index): the share panel */
     kRowOnlineDns,    /* Online > DNS Server for Online Play: the address panel */
     kRowOnlineHub,    /* Online > Online Hub (ui_app_online.cpp) */

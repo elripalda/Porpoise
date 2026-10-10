@@ -86,6 +86,13 @@ enum class Sound
 };
 
 struct OnlineTest; /* the Online hub's server test (ui_app_online.cpp) */
+} // namespace porpoise::ui
+namespace porpoise::nand
+{
+struct Progress;
+}
+namespace porpoise::ui
+{
 
 /* An HD texture pack in Load/Textures (Settings > Textures). */
 struct TexturePack
@@ -190,7 +197,13 @@ public:
         shot_sel_ = 1;
         shot_view_ = view;
     }
-    void preview_dock(int sel) { dock_focus_ = sel >= 0, dock_sel_ = sel, dock_lift_ = 1; } /* tools/ui-preview */
+    void preview_nand(int done, int total); /* tools/ui-preview: the import's progress */
+    void preview_dock(int sel) /* tools/ui-preview */
+    {
+        dock_focus_ = sel >= 0, dock_sel_ = sel, dock_lift_ = 1;
+        dock_open_ = sel >= 0 ? 1.0f : 0.0f;
+        dock_glide_ = float(sel < 0 ? 0 : sel);
+    }
     /* tools/ui-preview: Settings on a section's name (on its rows when row >= 0). */
     void preview_section(const std::string &name, int row = -1)
     {
@@ -492,6 +505,7 @@ private:
         Wizard,          /* the first start's setup, one question a step (wizard_step_) */
         DeleteShot,      /* a screenshot (Screen::Shots) */
         Testing,         /* an alpha or beta build's notice, at its first start (look::kChannel) */
+        NandImport,      /* Console > Wii System Data: import the backup found (nand_bin_) */
     };
     struct Dialog
     {
@@ -612,6 +626,12 @@ private:
         std::vector<std::pair<std::string, std::string>> coded; /* games with a code file: title, ID */
     };
     HubPanel hub_;
+    /* Console > Wii System Data: the backup found, and an import running. */
+    std::string nand_bin_, nand_keys_;
+    std::shared_ptr<porpoise::nand::Progress> nand_job_;
+    void start_nand_import();
+    bool update_nand_job(); /* true while it runs (the menus wait) */
+    void draw_nand_job();
     void open_hub();
     Action update_hub(bool up, bool down, bool left, bool right);
     void draw_hub();
@@ -721,6 +741,11 @@ private:
     bool dock_focus_ = false;
     int dock_sel_ = 0;
     float dock_lift_ = 0;
+    float dock_glide_ = 0; /* the chosen game's place, gliding (Floating's magnifier) */
+    float dock_open_ = 0;  /* 0 resting, 1 chosen (Down) */
+    void draw_dock_floating(const std::vector<int> &recent);
+    void draw_dock_discs(const std::vector<int> &recent, double time);
+    void draw_dock_bubble(float cx, float top, const std::string &title);
     void release_far_art(int keep);
     std::string game_meta(const Game &g) const;
     bool update_view_nav(bool left, bool right, bool up, bool down, double dt);

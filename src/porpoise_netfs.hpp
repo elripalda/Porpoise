@@ -68,8 +68,10 @@ struct Entry
 /* A folder's entries (".", ".." and hidden names left out). */
 bool list(const std::string &dir, std::vector<Entry> &out);
 
-/* Whether a path exists; is_dir and size when it does. */
-bool stat(const std::string &path, bool *is_dir = nullptr, std::uint64_t *size = nullptr);
+/* Whether a path exists; is_dir, size and when it last changed (seconds;
+ * 0 when a share doesn't say) when it does. */
+bool stat(const std::string &path, bool *is_dir = nullptr, std::uint64_t *size = nullptr,
+          std::int64_t *mtime = nullptr);
 
 /* A file opened for reading at any offset. */
 class Reader

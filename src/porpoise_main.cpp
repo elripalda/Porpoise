@@ -911,6 +911,10 @@ struct Search
     long long took_ms = 0;              /* set by the worker as it ends */
     long long last_ms = -1;             /* the last search's time, for the diagnostic test */
     std::vector<std::string> last_cut;  /* and the places it gave up on */
+    std::vector<std::string> roots;     /* where this search looks */
+    /* At a start: the drives first and network shares after, in a second
+     * search, so a share that's off doesn't hold the USB drive's games back. */
+    bool shares_next = false;
 } g_search;
 
 /* The host's part of Settings > About > Diagnostic test. */
@@ -986,7 +990,7 @@ std::vector<std::string> search_roots(const porpoise::ui::LibraryPaths &paths)
 
 void *search_worker(void *)
 {
-    g_search.files = porpoise::ui::find_game_files(search_roots(g_search.paths), kSearchLimitMs, &g_search.cut);
+    g_search.files = porpoise::ui::find_game_files(g_search.roots, kSearchLimitMs, &g_search.cut);
     /* The headers here too, off the menus' thread: a network share's take a
      * round trip or two each. */
     g_search.games = porpoise::ui::read_games(g_search.files);
@@ -995,7 +999,7 @@ void *search_worker(void *)
     return nullptr;
 }
 
-void rescan_library()
+void rescan_library(bool shares_after = false)
 {
     if (g_search.state.load(std::memory_order_acquire) != 0)
     {
@@ -1003,6 +1007,20 @@ void rescan_library()
         return;
     }
     g_search.paths = library_paths();
+    g_search.roots = search_roots(g_search.paths);
+    g_search.shares_next = false;
+    if (shares_after)
+    {
+        std::vector<std::string> near;
+        for (const std::string &root : g_search.roots)
+            if (!porpoise::netfs::is_net(root))
+                near.push_back(root);
+        if (near.size() != g_search.roots.size())
+        {
+            g_search.roots = near;
+            g_search.shares_next = true;
+        }
+    }
     g_search.files.clear();
     g_search.games.clear();
     g_search.cut.clear();
@@ -1053,7 +1071,14 @@ void take_search()
     g_search.state.store(0, std::memory_order_release);
     if (!same)
         fetch_covers();
-    if (g_search.again)
+    if (g_search.shares_next)
+    {
+        /* Now everything, the shares too (the drives' headers again, from
+         * the header cache). */
+        g_search.shares_next = false;
+        rescan_library();
+    }
+    else if (g_search.again)
     {
         g_search.again = false;
         rescan_library();
@@ -1076,7 +1101,7 @@ void start_library()
     /* The drives and shares in the background; also the console's own
      * folders again when this quick look gave up on one. */
     if (local.size() != search_roots(paths).size() || !cut.empty())
-        rescan_library();
+        rescan_library(true);
 }
 
 /* The game's own controller extras: fast forward and quick save buttons,
@@ -2336,6 +2361,7 @@ int main(int argc, char **argv)
 
     choose_data_dir();
     mark_start("start: player data found, ms");
+    porpoise::ui::set_header_cache(g_data + "/disc-cache.tsv");
     g_settings.load(g_settings_path);
     g_settings.stay_sandboxed = g_stay_sandboxed; /* kept in /app0/porpoise, not settings.ini */
     {

@@ -755,8 +755,8 @@ void App::draw_hub()
                   kSoft, 3);
         paragraph(tr("1. Patch your game with Wiimmfi's patcher."),
                   kWhite, 2);
-        paragraph(tr("2. Wiimmfi may also want your own Wii's system data (a NAND backup made with BootMii), "
-                     "which Porpoise can't load yet."),
+        paragraph(tr("2. Wiimmfi may also want your own Wii's system data (a NAND backup made with BootMii): "
+                     "import it in Settings > Console > Wii System Data."),
                   kWhite, 3);
         paragraph(tr("Then turn Custom Server off and start the patched game: it finds Wiimmfi by itself. Packs "
                      "with servers of their own, like Retro Rewind, also want Custom Server off."),

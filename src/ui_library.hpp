@@ -69,6 +69,11 @@ std::vector<std::string> find_game_files(const std::vector<std::string> &roots, 
  * safe on any thread. Sorted, each file once. */
 std::vector<Game> read_games(std::vector<std::string> files);
 
+/* Where read_games keeps what it read from each file (its ID, title and
+ * kind, by path, size and time changed), so a start reads no disc headers
+ * for files it has seen: set once, before the first search. */
+void set_header_cache(const std::string &path);
+
 class Library
 {
 public:

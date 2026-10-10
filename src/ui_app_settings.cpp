@@ -25,6 +25,8 @@
 #include "porpoise_update.hpp"
 #include "ui_widescreen.hpp"
 #include "ui_app.hpp"
+
+#include "porpoise_nand.hpp"
 #include "porpoise_bios.hpp"
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
@@ -850,6 +852,22 @@ void App::add_game_rows(Settings &t, bool per_game)
            "Wii discs start from the Wii Menu, as on a Wii. Needs your own Wii Menu, installed from your own console "
            "(its WAD in your games). Porpoise includes none.",
            &t.wii_menu_boot);
+#ifndef PORPOISE_DESKTOP
+    if (!per_game)
+    {
+        /* The player's own Wii's NAND (a BootMii backup), for Wiimmfi and
+         * the Wii Menu's own settings. */
+        SettingRow r;
+        r.section = section;
+        r.label = beta_label("Wii System Data (beta)", r.beta);
+        r.help = tr("Your own Wii's NAND backup, made with BootMii: its settings, Miis, channels, saves and the "
+                    "certificates online services like Wiimmfi check. Put nand.bin (and keys.bin) in "
+                    "/data/porpoise/nand or at a USB drive's top, then import it.");
+        r.values = {porpoise::nand::imported(saves_dir_ + "/User/Wii") ? tr("Imported") : tr("Import\xE2\x80\xA6")};
+        r.action = kRowNandImport;
+        rows_.push_back(r);
+    }
+#endif
     toggle("gc_bios", "GameCube Boot Animation (beta)",
            "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in "
            "/data/porpoise/bios. Porpoise includes none.",
@@ -1199,9 +1217,11 @@ void App::build_settings()
             "Spotlight: one game at a time over its own art, with what's known about it; the rest in a strip below."};
         choice("lib_view", "Library View", kHelp[std::clamp(draft_.lib_view, 0, 9)], &draft_.lib_view,
                {"Cover Flow", "Wheel", "Disc Flow", "Shelf", "Box", "List", "Stack", "Helix", "Spines", "Spotlight"});
-        toggle("recent_dock", "Recently Played",
-               "The games you played last, in a row along the bottom of the library. Down goes to it.",
-               &draft_.recent_dock);
+        choice("recent_style", "Recently Played",
+               "The games you played last, along the bottom of the library; Down goes to them. Dock: a glass bar "
+               "with the game's name. Floating: the boxes on their own, the chosen one growing like a dock's "
+               "icons. Discs: their discs, the chosen one spinning.",
+               &draft_.recent_style, {"Off", "Dock", "Floating", "Discs"});
     }
     if (draft_.ui_theme != int(ThemeId::StarCube))
     {
@@ -1997,7 +2017,7 @@ void App::change_setting(int dir)
 bool App::applies_at_once(const std::string &key)
 {
     static const char *const kKeys[] = {
-        "ui_theme",      "ui_palette",   "ui_font",         "ui_layout",      "lib_view",     "mc_view",  "recent_dock",
+        "ui_theme",      "ui_palette",   "ui_font",         "ui_layout",      "lib_view",     "mc_view",  "recent_dock", "recent_style",
         "sc_games",      "ui_pointer",   "text_size",       "high_contrast",  "bold_focus",  "reduced_motion", "still_background",
         "big_prompts",   "colour_filter", "colour_filter_games", "border",    "screen_filter", "filter_strength",
         "menu_music",    "menu_sounds",  "music_volume",    "sounds_volume", "sound_set",
@@ -2267,6 +2287,22 @@ App::Action App::activate_row(const SettingRow &row)
         return Action::None;
     case kRowTileArt:
         open_tile_art();
+        return Action::None;
+    case kRowNandImport:
+        if (!porpoise::nand::find_backup(data_dir_, nand_bin_, nand_keys_))
+        {
+            open_dialog(DialogKind::Info, tr("No Wii NAND backup found"),
+                        tr("Make a NAND backup on your own Wii with BootMii, then copy its nand.bin (and keys.bin, "
+                           "if BootMii made one) to /data/porpoise/nand, or to a USB drive's top folder."),
+                        "");
+            return Action::None;
+        }
+        open_dialog(DialogKind::NandImport, tr("Import your Wii's system data?"),
+                    trf("From {file}: your Wii's settings, Miis, channels, saves and the certificates online "
+                        "services check. Saves Porpoise already has for the same games are moved to "
+                        "saves/User/Wii-before-NAND, not lost. It takes a minute or two.",
+                        {{"file", nand_bin_}}),
+                    tr("Import"));
         return Action::None;
     case kRowCoversAgain:
         if (screen_ == Screen::GameSettings && game_for_)

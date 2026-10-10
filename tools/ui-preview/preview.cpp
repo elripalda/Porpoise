@@ -1089,6 +1089,39 @@ int main(int argc, char **argv)
         render("wiimap-locked", [&] { ui.draw(12.0); });
         return 0;
     }
+    /* PREVIEW_NAND=1: Settings > Console with Wii System Data, and the import's
+     * progress; then stop. */
+    if (std::getenv("PREVIEW_NAND"))
+    {
+        settle();
+        press(kR1, 2);
+        settle();
+        ui.preview_section("Console", 6);
+        settle();
+        render("nand-console", [&] { ui.draw(12.0); });
+        ui.preview_nand(1840, 4211);
+        settle();
+        render("nand-progress", [&] { ui.draw(12.0); });
+        return 0;
+    }
+    /* PREVIEW_DOCK=1: Recently Played in each look, resting and chosen; then stop. */
+    if (std::getenv("PREVIEW_DOCK"))
+    {
+        const long long now = (long long)std::time(nullptr);
+        for (int i = 0; i < 6 && i < int(lib.games().size()); ++i)
+            lib.games()[std::size_t(i)].last_played = now - (i + 1) * 3600LL * 7;
+        for (int style = 1; style <= 3; ++style)
+        {
+            settings.recent_style = style;
+            ui.preview_dock(-1);
+            settle();
+            render(("dock-" + std::to_string(style) + "-rest").c_str(), [&] { ui.draw(12.0); });
+            ui.preview_dock(2);
+            settle();
+            render(("dock-" + std::to_string(style) + "-chosen").c_str(), [&] { ui.draw(12.0); });
+        }
+        return 0;
+    }
     /* PREVIEW_ABOUT=1: Settings > About on the Discord row and on the
      * creator's row; then stop. */
     if (std::getenv("PREVIEW_ABOUT"))

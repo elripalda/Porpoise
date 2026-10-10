@@ -284,24 +284,28 @@ public:
     std::vector<u64> pointers;
     u64 cached = ~u64(0);
     std::vector<u8> cache;
-    bool init()
+    /* header_only: just the first block's place (where the disc header is),
+     * not the whole table (a megabyte or two of a big disc). */
+    bool init(bool header_only = false)
     {
         u8 h[32];
         if (!file.read(0, h, sizeof h) || le32(h) != 0xB10BC001)
             return false;
         compressed = le64(h + 8);
         block = le32(h + 24);
-        const u32 blocks = le32(h + 28);
+        u32 blocks = le32(h + 28);
         if (block == 0 || blocks == 0 || block > kMaxBuffer || u64(blocks) * 12 > file.size || compressed > file.size ||
             u64(blocks) * 8 > kMaxBuffer)
             return false;
+        data_offset = 32 + u64(blocks) * 8 + u64(blocks) * 4;
+        if (header_only && block >= 0x100 && blocks > 2)
+            blocks = 2; /* block 0's start and end */
         std::vector<u8> raw(std::size_t(blocks) * 8);
         if (!file.read(32, raw.data(), raw.size()))
             return false;
         pointers.resize(blocks);
         for (u32 i = 0; i < blocks; ++i)
             pointers[i] = le64(&raw[i * 8]);
-        data_offset = 32 + u64(blocks) * 8 + u64(blocks) * 4;
         return true;
     }
     bool load(u64 b)
@@ -309,9 +313,11 @@ public:
         if (b == cached)
             return true;
         constexpr u64 kRaw = u64(1) << 63;
+        if (b >= pointers.size())
+            return false;
         const u64 start = pointers[b] & ~kRaw;
         const u64 end = b + 1 < pointers.size() ? pointers[b + 1] & ~kRaw : compressed;
-        if (b >= pointers.size() || end < start || end - start > block + 0x10000 || end - start > kMaxBuffer)
+        if (end < start || end - start > block + 0x10000 || end - start > kMaxBuffer)
             return false;
         if (end == start)
             return false; /* an empty block: nothing to decode */
@@ -623,7 +629,7 @@ public:
     }
 };
 
-std::unique_ptr<Image> open_image(const std::string &path, std::string &error)
+std::unique_ptr<Image> open_image(const std::string &path, std::string &error, bool header_only = false)
 {
     u8 magic[4] = {};
     bool got = false;
@@ -669,7 +675,7 @@ std::unique_ptr<Image> open_image(const std::string &path, std::string &error)
     else if (le32(magic) == 0xB10BC001)
     {
         auto c = std::make_unique<Gcz>();
-        ok = c->file.open(path) && c->init();
+        ok = c->file.open(path) && c->init(header_only);
         error = "not a readable .gcz";
         image = std::move(c);
     }
@@ -844,7 +850,7 @@ std::string utf16be(const u8 *p, std::size_t chars)
 
 bool read_header(const std::string &path, std::uint8_t out[0x100], std::string &error)
 {
-    std::unique_ptr<Image> image = open_image(path, error);
+    std::unique_ptr<Image> image = open_image(path, error, true);
     if (!image)
         return false;
     if (!image->read(0, 0x100, out))
