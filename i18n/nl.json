@@ -1679,5 +1679,19 @@
  "No Wii file system was found in this backup (or the keys aren't this Wii's).": "Geen Wii-bestandssysteem gevonden in deze back-up (of de sleutels zijn niet van deze Wii).",
  "The backup's file table is damaged.": "De bestandstabel van de back-up is beschadigd.",
  "A file couldn't be written: is the drive full?": "Een bestand kan niet worden geschreven: is de schijf vol?",
- "Wii System Data": "Wii-systeemdata"
+ "Wii System Data": "Wii-systeemdata",
+ "Living room": "Woonkamer",
+ "Desk": "Bureau",
+ "Bedroom": "Slaapkamer",
+ "Couch": "Bank",
+ "Party": "Feestje",
+ "Boxing": "Boksen",
+ "Tennis": "Tennis",
+ "Racing": "Racen",
+ "Bowling": "Bowlen",
+ "Kids": "Kinderen",
+ "Guest": "Gast",
+ "Mine": "Eigen",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Houd de controller vast zoals je gaat spelen, richt op het midden van het scherm en houd L1 ingedrukt",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Houd de controller vast zoals je gaat spelen, richt op het midden van het scherm en houd R1 ingedrukt"
 }

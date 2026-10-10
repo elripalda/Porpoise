@@ -1679,5 +1679,19 @@
  "No Wii file system was found in this backup (or the keys aren't this Wii's).": "No se encontró ningún sistema de archivos de Wii en esta copia (o las claves no son de esta Wii).",
  "The backup's file table is damaged.": "La tabla de archivos de la copia está dañada.",
  "A file couldn't be written: is the drive full?": "No se pudo escribir un archivo: ¿está llena la unidad?",
- "Wii System Data": "Datos del sistema de Wii"
+ "Wii System Data": "Datos del sistema de Wii",
+ "Living room": "Sala",
+ "Desk": "Escritorio",
+ "Bedroom": "Cuarto",
+ "Couch": "Sofá",
+ "Party": "Fiesta",
+ "Boxing": "Boxeo",
+ "Tennis": "Tenis",
+ "Racing": "Carreras",
+ "Bowling": "Boliche",
+ "Kids": "Niños",
+ "Guest": "Invitado",
+ "Mine": "El mío",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Sostén el control como vas a jugar, apunta al centro de la pantalla y mantén L1",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Sostén el control como vas a jugar, apunta al centro de la pantalla y mantén R1"
 }

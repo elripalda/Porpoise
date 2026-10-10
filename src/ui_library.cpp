@@ -111,7 +111,7 @@ long long now_ms()
 
 /* Folders never searched: Porpoise's and the console's own, a PC's system
  * folders on a drive, and PS4 / PS5 game folders (a title ID: CUSA12345). */
-bool skipped_folder(const std::string &name)
+bool skipped_folder(const std::string &name, const std::string &parent = "")
 {
     static const char *const skip[] = {"system", "cores", "info", "sce_sys", "sce_module", "licenses",
                                        "savefiles", "porpoise", "dolphin-emu", "homebrew", "Sys"};
@@ -124,8 +124,14 @@ bool skipped_folder(const std::string &name)
             return true;
     /* Another console's games, in a roms folder sorted by system (roms/psp,
      * roms/ps2, ...): never GameCube or Wii ones, and a search through them
-     * only takes time (the PSP .iso there showed in the library once). */
-    for (const char *k : {"psp", "ps1", "psx", "ps2", "ps3", "ps4", "ps5", "psvita", "vita", "xbox", "xbox360",
+     * only takes time (the PSP .iso there showed in the library once). Only
+     * there: a drive's own PS5 folder (its captures) may hold a GameCube one. */
+    const std::string up = lower(parent);
+    bool sorted = false;
+    for (const char *k : {"roms", "rom", "games", "isos", "iso", "emulation", "emulators", "emu"})
+        sorted |= up == k;
+    if (sorted)
+        for (const char *k : {"psp", "ps1", "psx", "ps2", "ps3", "ps4", "ps5", "psvita", "vita", "xbox", "xbox360",
                           "xbox 360", "xboxone", "n64", "nes", "snes", "sfc", "famicom", "gb", "gbc", "gba", "nds",
                           "3ds", "switch", "wiiu", "wii u", "genesis", "megadrive", "mega drive", "segacd", "sega cd",
                           "32x", "saturn", "dreamcast", "mastersystem", "gamegear", "pcengine", "tg16", "neogeo",
@@ -173,7 +179,7 @@ void find_games(const std::string &dir, int depth, std::vector<std::string> &out
         const bool is_dir = entry.is_dir, is_file = !entry.is_dir;
         if (is_dir)
         {
-            if (!skipped_folder(name))
+            if (!skipped_folder(name, dir.substr(dir.rfind('/') + 1)))
                 subdirs.push_back(path);
         }
         else if (!is_file)

@@ -1679,5 +1679,19 @@
  "No Wii file system was found in this backup (or the keys aren't this Wii's).": "此备份中未找到Wii文件系统（或密钥不属于这台Wii）。",
  "The backup's file table is damaged.": "备份的文件表已损坏。",
  "A file couldn't be written: is the drive full?": "无法写入文件：驱动器是否已满？",
- "Wii System Data": "Wii系统数据"
+ "Wii System Data": "Wii系统数据",
+ "Living room": "客厅",
+ "Desk": "书桌",
+ "Bedroom": "卧室",
+ "Couch": "沙发",
+ "Party": "派对",
+ "Boxing": "拳击",
+ "Tennis": "网球",
+ "Racing": "赛车",
+ "Bowling": "保龄球",
+ "Kids": "儿童",
+ "Guest": "访客",
+ "Mine": "我的",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "按游戏时的方式握住手柄，对准屏幕中央并按住L1",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "按游戏时的方式握住手柄，对准屏幕中央并按住R1"
 }

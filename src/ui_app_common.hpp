@@ -20,12 +20,12 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "3.0 Alpha Build 7";
+constexpr const char *kVersion = "3.0";
 constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 3, kVersionMinor = 0, kVersionPatch = 0;
 /* 0 for a final release; its betas (1, 2...) come before it, and its alphas
  * before those (-1000 + n: alpha 1 is -999), as porpoise::update reads tags. */
-constexpr int kVersionBeta = -993; /* alpha 7 */
+constexpr int kVersionBeta = 0; /* the release */
 /* A test build's tag: shown by the logo, and in a notice at the first start
  * of each such build. Release for neither. */
 enum class Channel
@@ -34,7 +34,7 @@ enum class Channel
     Beta,
     Alpha,
 };
-constexpr Channel kChannel = Channel::Alpha;
+constexpr Channel kChannel = Channel::Release;
 /* This build, for the notice: shown again when any of these change. */
 constexpr int kNoticeId = (((((kVersionMajor * 10 + kVersionMinor) * 10 + kVersionPatch) * 100 + kVersionBeta) * 100 +
                             kBuild) * 4 + int(kChannel));

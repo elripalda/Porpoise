@@ -65,7 +65,7 @@ std::string App::version_label(const std::string &tag, int build)
 
 namespace
 {
-/* "Quick Resume (beta)": the label without its marker, which is drawn as a
+/* "Quick Resume": the label without its marker, which is drawn as a
  * BETA badge beside it instead. */
 std::string beta_label(const char *label, bool &beta)
 {
@@ -591,7 +591,7 @@ void App::add_game_rows(Settings &t, bool per_game)
            "the first time. The game takes a moment longer to start.",
            &t.wait_shaders);
 #ifndef PORPOISE_DESKTOP /* the PS5's own */
-    toggle("threaded_gpu", "Threaded GPU Recording (beta)",
+    toggle("threaded_gpu", "Threaded GPU Recording",
            "The graphics driver records Dolphin's drawing on a thread of its own, so Dolphin's video thread spends "
            "less time in the driver. Can speed up demanding games. Turn it off if a game crashes or looks wrong. "
            "Applies the next time a game starts.",
@@ -613,7 +613,7 @@ void App::add_game_rows(Settings &t, bool per_game)
     add_texture_rows(per_game);
 
     header("Save States");
-    toggle("quick_resume", "Quick Resume (beta)",
+    toggle("quick_resume", "Quick Resume",
            "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next "
            "time you start it. Start Over (in the in-game menu) boots it fresh.",
            &t.quick_resume);
@@ -626,11 +626,11 @@ void App::add_game_rows(Settings &t, bool per_game)
     choice("volume", "Game Volume", "Volume of the game's sound.", &t.volume, 0,
            {"0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"});
     toggle("muted", "Mute Game", "Silences the game.", &t.muted);
-    toggle("dsp_accurate", "Accurate Audio (beta)",
+    toggle("dsp_accurate", "Accurate Audio",
            "Dolphin's exact sound chip (LLE) instead of its fast one: fixes missing or wrong sound in a few games, but "
            "needs much more of the processor. Best turned on for one game.",
            &t.dsp_accurate);
-    choice("wiimote_speaker", "Wii Remote Speaker (beta)",
+    choice("wiimote_speaker", "Wii Remote Speaker",
            "Sounds Wii games play from the Remote's own speaker (a bow, an item box): in the TV's sound, or from "
            "each player's controller, as on a Wii.",
            &t.wiimote_speaker, 0, {"Off", "TV", "Controller"});
@@ -672,7 +672,7 @@ void App::add_game_rows(Settings &t, bool per_game)
                "When a game slows down, its sound slows with it, slightly lower, instead of crackling.",
                &t.audio_stretch);
     }
-    toggle("microphone", "Microphone (beta)",
+    toggle("microphone", "Microphone",
            "The DualSense's microphone as the GameCube Microphone (Mario Party 6 and 7; R3 is its button) and the "
            "Wii Speak.",
            &t.microphone);
@@ -718,7 +718,7 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.ff_buttons);
     choice("quick_slot", "Quick Save Buttons", kQuickSlotHelp, &t.quick_slot, 0, kQuickSlotValues);
     choice("turbo", "Turbo Button", kTurboHelp, &t.turbo, 0, kTurboValues);
-    choice("trigger_feel", "Trigger Click (beta)", kTriggerFeelHelp, &t.trigger_feel, 0, kTriggerFeelValues);
+    choice("trigger_feel", "Trigger Click", kTriggerFeelHelp, &t.trigger_feel, 0, kTriggerFeelValues);
     if (!per_game)
     {
         static const char *const kLightRows[4] = {"Light Bar, Player 1", "Light Bar, Player 2", "Light Bar, Player 3",
@@ -757,7 +757,7 @@ void App::add_game_rows(Settings &t, bool per_game)
         for (int i = 0; i < Settings::kWiiPresets; ++i)
         {
             const Settings::WiiPreset &w = t.wii_presets[i];
-            presets.push_back(std::to_string(i + 1) + ": " + (w.used ? names[std::size_t(w.name)] : "empty"));
+            presets.push_back(std::to_string(i + 1) + ": " + (w.used ? tr(names[std::size_t(w.name)]) : tr("empty")));
         }
         choice("wii_preset", "Wii Preset",
                "A whole Wii Remote set-up kept under a name: made in the setup's Fine-tune page (Advanced).",
@@ -842,13 +842,13 @@ void App::add_game_rows(Settings &t, bool per_game)
            {"English", "Japanese", "German", "French", "Spanish", "Italian", "Dutch", "Chinese (Simplified)",
             "Chinese (Traditional)", "Korean"});
     toggle("progressive", "Progressive Scan", "480p output, as on a component cable.", &t.progressive);
-    toggle("wii_widescreen", "Wii Widescreen (beta)",
+    toggle("wii_widescreen", "Wii Widescreen",
            "The Wii's own 16:9 setting, which Wii games follow. Off: 4:3.", &t.wii_widescreen);
-    toggle("pal60", "PAL Games at 60 Hz (beta)",
+    toggle("pal60", "PAL Games at 60 Hz",
            "European Wii games run at 60 Hz, as a Wii set to EURGB60 does. Off: 50 Hz.", &t.pal60);
-    choice("sensor_bar", "Sensor Bar (beta)", "Where the Wii is told its sensor bar sits.", &t.sensor_bar, 0,
+    choice("sensor_bar", "Sensor Bar", "Where the Wii is told its sensor bar sits.", &t.sensor_bar, 0,
            {"Below the TV", "Above the TV"});
-    toggle("wii_menu_boot", "Start Wii Discs in the Wii Menu (beta)",
+    toggle("wii_menu_boot", "Start Wii Discs in the Wii Menu",
            "Wii discs start from the Wii Menu, as on a Wii. Needs your own Wii Menu, installed from your own console "
            "(its WAD in your games). Porpoise includes none.",
            &t.wii_menu_boot);
@@ -868,7 +868,7 @@ void App::add_game_rows(Settings &t, bool per_game)
         rows_.push_back(r);
     }
 #endif
-    toggle("gc_bios", "GameCube Boot Animation (beta)",
+    toggle("gc_bios", "GameCube Boot Animation",
            "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in "
            "/data/porpoise/bios. Porpoise includes none.",
            &t.gc_bios);
@@ -880,7 +880,7 @@ void App::add_game_rows(Settings &t, bool per_game)
     /* Wii games online: the server, and the WiiConnect24 channels. */
     header("Online");
     add_online_rows(t, per_game);
-    toggle("wii_online", "WiiConnect24 Channels (beta)",
+    toggle("wii_online", "WiiConnect24 Channels",
            "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. Needs the console "
            "online.",
            &t.wii_online);
@@ -1128,7 +1128,7 @@ void App::build_settings()
            &draft_.sandbox_notice);
 #endif
 #ifndef PORPOISE_DESKTOP
-    action("Saves from a USB Drive (beta)",
+    action("Saves from a USB Drive",
            "Copies saves from the USB drive's Porpoise Saves folder in: GameCube saves onto Slot A, Wii saves to "
            "their games. A save that's already here is left as it is. Options in Memory Cards copies a save out.",
            "Copy In\xE2\x80\xA6", kRowImportSaves);

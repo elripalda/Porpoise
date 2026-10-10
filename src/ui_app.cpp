@@ -2077,7 +2077,8 @@ void App::draw_dock_floating(const std::vector<int> &recent)
         x += bw + gap;
     }
     if (dock_focus_)
-        draw_dock_bubble(focus_cx, focus_top, games[std::size_t(recent[std::size_t(dock_sel_)])].title);
+        draw_dock_bubble(focus_cx, focus_top,
+                         games[std::size_t(recent[std::size_t(std::clamp(dock_sel_, 0, n - 1))])].title);
 }
 
 /* Discs: the games' discs in a row on a glass strip; the chosen one lifts
@@ -2109,7 +2110,8 @@ void App::draw_dock_discs(const std::vector<int> &recent, double time)
         }
     }
     if (dock_focus_)
-        draw_dock_bubble(focus_cx, focus_top, games[std::size_t(recent[std::size_t(dock_sel_)])].title);
+        draw_dock_bubble(focus_cx, focus_top,
+                         games[std::size_t(recent[std::size_t(std::clamp(dock_sel_, 0, n - 1))])].title);
 }
 
 /* Recently Played along the bottom, in the look Settings > Interface picks:

@@ -1679,5 +1679,19 @@
  "No Wii file system was found in this backup (or the keys aren't this Wii's).": "Bu yedekte Wii dosya sistemi bulunamadı (ya da anahtarlar bu Wii'ye ait değil).",
  "The backup's file table is damaged.": "Yedeğin dosya tablosu hasarlı.",
  "A file couldn't be written: is the drive full?": "Bir dosya yazılamadı: sürücü dolu mu?",
- "Wii System Data": "Wii sistem verileri"
+ "Wii System Data": "Wii sistem verileri",
+ "Living room": "Oturma odası",
+ "Desk": "Masa",
+ "Bedroom": "Yatak odası",
+ "Couch": "Kanepe",
+ "Party": "Parti",
+ "Boxing": "Boks",
+ "Tennis": "Tenis",
+ "Racing": "Yarış",
+ "Bowling": "Bowling",
+ "Kids": "Çocuklar",
+ "Guest": "Misafir",
+ "Mine": "Benimki",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Kumandayı oynayacağınız gibi tutun, ekranın ortasına doğrultun ve L1'i basılı tutun",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Kumandayı oynayacağınız gibi tutun, ekranın ortasına doğrultun ve R1'i basılı tutun"
 }

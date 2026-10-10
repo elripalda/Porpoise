@@ -1679,5 +1679,19 @@
  "No Wii file system was found in this backup (or the keys aren't this Wii's).": "このバックアップにWiiのファイルシステムが見つかりませんでした（または鍵がこのWiiのものではありません）。",
  "The backup's file table is damaged.": "バックアップのファイルテーブルが壊れています。",
  "A file couldn't be written: is the drive full?": "ファイルを書き込めませんでした。ドライブの空き容量が不足していませんか？",
- "Wii System Data": "Wiiシステムデータ"
+ "Wii System Data": "Wiiシステムデータ",
+ "Living room": "リビング",
+ "Desk": "デスク",
+ "Bedroom": "寝室",
+ "Couch": "ソファ",
+ "Party": "パーティー",
+ "Boxing": "ボクシング",
+ "Tennis": "テニス",
+ "Racing": "レース",
+ "Bowling": "ボウリング",
+ "Kids": "キッズ",
+ "Guest": "ゲスト",
+ "Mine": "マイセット",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "プレイするときと同じようにコントローラーを持ち、画面の中央に向けてL1を長押ししてください",
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "プレイするときと同じようにコントローラーを持ち、画面の中央に向けてR1を長押ししてください"
 }

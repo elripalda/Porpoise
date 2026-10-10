@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.0 — 2026-10-10
+
+- **Wii games online:** an Online Hub (Settings → Online) with custom
+  servers saved by name and a test, WiiLink WFC, Wiimmfi and the
+  WiiConnect24 channels. Custom servers get the secure connection fix on
+  their own, no cheat file needed.
+- **Network shares:** games from a computer or NAS (SMB or NFS), found on
+  your network.
+- **Wii MotionPlus** with the DualSense's gyroscope (Wii Sports Resort,
+  Skyward Sword, Red Steel 2...).
+- **Wii buttons:** two sets of your own per Wii controller, for every game or
+  one; Pointer Range for games whose pointer can't reach an edge (Zack &
+  Wiki); a GameCube controller in a Wii game turns the Wii Remote off.
+- **Wii System Data (beta):** import your own Wii's BootMii NAND backup.
+- **HD texture packs** listed in Settings → Textures with the game each is
+  for, and held to what the console's memory allows.
+- **Cheats and Patches** as cards; .txt code files with several codes read
+  properly.
+- **Riptide Boost (beta)**, universal widescreen (beta), FSR 1, Sharpen,
+  Extra Bloom, picture color controls and new screen filters.
+- **Looks:** new themes, colors and TV borders; Spines and Spotlight views;
+  Recently Played as a Dock, Floating boxes or Discs; Settings in more
+  sections; screenshots.
+- **Smoother games:** a PAL game switched to 60 Hz runs at 60, and games no
+  longer run a little fast on some displays (the 60/62 fps and skipping
+  sound in Mario Kart Wii).
+- **Faster:** quicker scrolling (hold a direction, L2 / R2 by letter), a
+  quicker start with games remembered, and USB games shown before network
+  shares.
+- Other consoles' games in shared roms folders are left out instead of
+  crashing; a crash after the jailbreak on 12.70 fixed; many smaller fixes.
+
 ## 3.0 Alpha Build 7 — 2026-10-10
 
 - **Recently Played** has looks (Settings → Interface): Off, Dock, Floating
