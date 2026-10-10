@@ -120,6 +120,17 @@ bool skipped_folder(const std::string &name)
     for (const char *k : {"system volume information", "$recycle.bin", "recycler", "lost.dir", "found.000"})
         if (low == k)
             return true;
+    /* Another console's games, in a roms folder sorted by system (roms/psp,
+     * roms/ps2, ...): never GameCube or Wii ones, and a search through them
+     * only takes time (the PSP .iso there showed in the library once). */
+    for (const char *k : {"psp", "ps1", "psx", "ps2", "ps3", "ps4", "ps5", "psvita", "vita", "xbox", "xbox360",
+                          "xbox 360", "xboxone", "n64", "nes", "snes", "sfc", "famicom", "gb", "gbc", "gba", "nds",
+                          "3ds", "switch", "wiiu", "wii u", "genesis", "megadrive", "mega drive", "segacd", "sega cd",
+                          "32x", "saturn", "dreamcast", "mastersystem", "gamegear", "pcengine", "tg16", "neogeo",
+                          "mame", "fbneo", "dos", "atari2600", "atari7800", "lynx", "jaguar", "3do",
+                          "ngp", "ngpc", "wonderswan", "virtualboy", "pokemini", "c64", "amiga", "msx"})
+        if (low == k)
+            return true;
     if (name.size() >= 9)
     {
         const std::string head = name.substr(0, 4);
@@ -440,7 +451,10 @@ std::vector<std::string> find_game_files(const std::vector<std::string> &roots, 
 
 bool foreign_disc(const Game &g)
 {
-    if (g.format != "ISO" && g.format != "GCM")
+    /* A disc whose header was read when it was found is a GameCube or Wii
+     * one (its ID came from it): only one that couldn't be read then is read
+     * again, so starting a game from a share doesn't wait on the network. */
+    if (!g.id.empty() || !g.kind.empty() || g.format == "TGC")
         return false;
     Game probe;
     probe.file = g.file;
@@ -487,8 +501,10 @@ void Library::scan_games(const LibraryPaths &paths, std::vector<Game> games)
     sort(sort_);
 }
 
-Game *Library::open_file(const std::string &path)
+Game *Library::open_file(const std::string &path, bool *foreign_out)
 {
+    if (foreign_out)
+        *foreign_out = false;
     const bool net = porpoise::netfs::is_net(path);
     bool is_dir = true;
     struct stat wanted;
@@ -509,7 +525,11 @@ Game *Library::open_file(const std::string &path)
     bool foreign = false;
     Game g = game_from_file(path, &foreign);
     if (foreign)
+    {
+        if (foreign_out)
+            *foreign_out = true;
         return nullptr; /* another console's */
+    }
     games_.push_back(std::move(g));
     load_state();
     load_info();

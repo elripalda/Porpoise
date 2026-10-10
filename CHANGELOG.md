@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.0 Alpha Build 5 — 2026-10-09
+
+- **Online Hub** (Settings → Online): custom servers saved by name, a test
+  that the chosen one answers, WiiLink WFC and Wiimmfi in a few steps, and
+  the WiiConnect24 channels. With a custom server on, Wii games get the
+  secure connection fix on their own; no cheat file needed. A WiiLink WFC
+  code saved as <game ID>.txt in /data/porpoise/cheats is picked up.
+- Settings in more sections (Downloads, Storage, Textures, Save States,
+  Emulation, Console, Online), in a list that scrolls.
+- **Textures**: every HD texture pack found, the game it's for and how many
+  textures it holds; a pack named for no game in the library says so.
+- A game's Cheats and Patches as cards: what each code is, who made it, and
+  a switch.
+- Spines view: cases on the shelf show their spines only, and one without
+  spine art gets a printed spine with its title. Helix view: no more noise
+  behind the column. Details: the whole description starts below the disc.
+- A game never runs faster than its own speed on a display a little faster
+  than it (the sound skipped every few seconds in Mario Kart Wii).
+- The search skips folders named for other consoles (psp, ps2, xbox...).
+- A home screen tile for another console's game says so; starting a game
+  from a share no longer waits on the network first; L2 / R2 shown in the
+  library's buttons.
+
 ## 3.0 Alpha Build 4 — 2026-10-09
 
 - Library: other consoles' disc images (a PS2 or PSP .iso in a shared roms

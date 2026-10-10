@@ -113,6 +113,8 @@ const Field kFields[] = {
     {"wii_menu_boot", nullptr, &Settings::wii_menu_boot, 0, 1},
     {"gc_bios", nullptr, &Settings::gc_bios, 0, 1},
     {"wii_online", nullptr, &Settings::wii_online, 0, 1},
+    {"online_custom", nullptr, &Settings::online_custom, 0, 1},
+    {"online_https", nullptr, &Settings::online_https, 0, 1},
     {"wii_controller", &Settings::wii_controller, nullptr, 0, 5},
     {"wii_pointer", &Settings::wii_pointer, nullptr, 0, 2},
     {"wii_speed", &Settings::wii_speed, nullptr, 0, 10},
@@ -406,6 +408,9 @@ bool Settings::load(const std::string &path, bool overlay)
      * Porpoise's original sounds stay a choice away. */
     if (!overlay && versioned && version < 16)
         sound_set = 0;
+    /* 17 (3.0 Alpha 5): a DNS server typed in before is a custom server, on. */
+    if (!overlay && version < 17 && !online_dns.empty())
+        online_custom = true;
     /* 2.1.1: the widescreen hack switch became the Widescreen choice; on, it
      * is On (the hack for games with no code of their own). Per game too. */
     if (!saw_wide && legacy_wide >= 0)
@@ -429,7 +434,7 @@ bool Settings::save(const std::string &path) const
     std::FILE *f = open_atomic(path);
     if (!f)
         return false;
-    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 16\n");
+    std::fprintf(f, "# Porpoise settings (written by the Settings screen)\nsettings_version = 17\n");
     for (const Field &fd : kFields)
         write_field(f, *this, fd);
     std::fprintf(f, "border = %s\n", border.c_str());
@@ -861,6 +866,7 @@ void Settings::reset()
     const std::vector<std::string> keep = folders;
     const int notice = testing_notice; /* a test build's notice, already seen */
     const std::string dns = online_dns; /* the network's, not a look or a feel */
+    const bool custom = online_custom, https = online_https;
     int own[kPresets][porpoise::pad::GcCount];
     std::memcpy(own, presets, sizeof own);
     int wii[kWiiButtonSets][porpoise::pad::CtlCount];
@@ -869,6 +875,8 @@ void Settings::reset()
     folders = keep;
     testing_notice = notice;
     online_dns = dns;
+    online_custom = custom;
+    online_https = https;
     std::memcpy(presets, own, sizeof own);
     std::memcpy(wii_buttons, wii, sizeof wii);
 }

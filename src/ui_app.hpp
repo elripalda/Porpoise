@@ -85,6 +85,16 @@ enum class Sound
     LaunchGame,
 };
 
+struct OnlineTest; /* the Online hub's server test (ui_app_online.cpp) */
+
+/* An HD texture pack in Load/Textures (Settings > Textures). */
+struct TexturePack
+{
+    std::string folder; /* the game's ID, or its first letters */
+    long textures = 0;  /* its pictures (.png, .dds) */
+    bool counted = false;
+};
+
 class App
 {
 public:
@@ -181,6 +191,33 @@ public:
         shot_view_ = view;
     }
     void preview_dock(int sel) { dock_focus_ = sel >= 0, dock_sel_ = sel, dock_lift_ = 1; } /* tools/ui-preview */
+    /* tools/ui-preview: Settings on a section's name (on its rows when row >= 0). */
+    void preview_section(const std::string &name, int row = -1)
+    {
+        for (int i = 0; i < section_count(); ++i)
+            if (section_name(i) == name)
+            {
+                rail_ = i;
+                on_rail_ = row < 0;
+                if (row >= 0)
+                    settings_row_ = first_row_of(name) + row;
+            }
+    }
+    /* tools/ui-preview: the Online hub on a card (its rows when inside). */
+    void preview_hub(int mode, bool inside, int row, int typing = 0, const std::string &text = "",
+                     const std::vector<std::pair<std::string, std::string>> &servers = {})
+    {
+        if (!hub_.open)
+            open_hub();
+        if (!servers.empty())
+            hub_.servers = servers;
+        hub_.mode = mode, hub_.inside = inside, hub_.row = row, hub_.typing = typing, hub_.text = text;
+        hub_.anim = 1;
+        hub_.kb = Keyboard{};
+        hub_.kb.numeric = typing == 2;
+        hub_.name = "Dawnofthed WFC";
+    }
+    void preview_hub_close() { hub_ = HubPanel{}; }
 #endif
     /* The save state to start it from ("" for none); asking clears it. */
     std::string take_launch_state()
@@ -557,6 +594,32 @@ private:
     void open_dns();
     Action update_dns(bool up, bool down, bool left, bool right);
     void draw_dns();
+
+    /* The Online hub (ui_app_online.cpp): Wii games online, every way in. */
+    struct HubPanel
+    {
+        bool open = false;
+        float anim = 0, slide = 0;
+        int mode = 0;        /* the card: Custom Server, WiiLink WFC, Wiimmfi, WiiConnect24 */
+        bool inside = false; /* in the card's page, on its rows */
+        int row = 0;
+        std::vector<std::pair<std::string, std::string>> servers; /* a name, its DNS server */
+        int typing = 0;      /* 1 a server's name, 2 its address */
+        int edit = -1;       /* the server being changed; -1 a new one */
+        std::string name, text, message;
+        Keyboard kb;
+        std::shared_ptr<OnlineTest> test;
+    };
+    HubPanel hub_;
+    void open_hub();
+    Action update_hub(bool up, bool down, bool left, bool right);
+    void draw_hub();
+    std::string hub_servers_path() const;
+    void hub_save_servers();
+    void hub_set(bool Settings::*field, bool value);
+    void hub_use_server(const std::string &address);
+    int hub_rows() const;
+    std::vector<const Game *> hub_coded_games() const;
     std::function<RaState()> ra_state_;
     /* The host's own checks for the diagnostic test (the jailbreak, the
      * folder, the search, the last game's speed): ok and what was found. */
@@ -644,7 +707,8 @@ private:
     void draw_disc(Game *game, float cx, float cy, float d, float spin, float yaw, float alpha, bool focused);
     /* load_art false: only art already loaded (the spines view's far cases). */
     void draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha,
-                    bool load_art = true);
+                    bool load_art = true,
+                    bool spine_only = false);
     void draw_spines(double time);
     void draw_spotlight(double time);
     void draw_spotlight_backdrop(); /* under the top bar */
@@ -697,6 +761,19 @@ private:
     /* A game's own value for a key, or (nullptr) back to the global one. */
     void set_game_key(const std::string &key, const std::string *value);
     void add_game_rows(Settings &target, bool per_game);
+    /* Settings > Textures (ui_app_textures.cpp) and Online (ui_app_online.cpp). */
+    void add_texture_rows(bool per_game);
+    /* A game's Cheats and Patches as cards (ui_app_cheats_view.cpp). */
+    void draw_cheat_cards(const std::vector<int> &section_rows, float px, float py, float pw, float ph);
+    float cheat_cards_first_ = 0;
+    void add_online_rows(Settings &target, bool per_game);
+    std::string texture_root() const;
+    void refresh_texture_packs();
+    void poll_texture_packs();
+    const Game *game_for_pack(const std::string &folder) const;
+    std::vector<TexturePack> texture_packs_;
+    bool texture_scanning_ = false;
+    double texture_scan_time_ = -100;
     void change_setting(int dir);
     /* Settings you see change as you choose them (the look, borders, screen
      * filters, menu sounds): saved at once, with no Apply. */
@@ -915,6 +992,7 @@ private:
     void draw_frames(const BannerTex &b, float x, float y, float w, float h, float fade, float radius, bool fill);
     float intro_fade_ = 1, intro_dy_ = 0;
     float rail_glide_ = -1, row_glide_ = -1; /* Settings' highlights, gliding */
+    float rail_scroll_ = -1; /* Settings' section list: the first row shown (it scrolls when they don't all fit) */
     double glide_time_ = 0;
     /* The entrance in steps: what starts later (delay, of the whole) comes
      * in after the top bar. */

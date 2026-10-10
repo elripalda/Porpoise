@@ -114,7 +114,7 @@ void App::show_setup_check(bool first_start)
                            "in Settings > Games."));
         line(settings_->download_covers, settings_->download_covers
                                              ? tr("Covers download while the computer is online.")
-                                             : tr("Cover downloads are off (Settings > Games)."));
+                                             : tr("Cover downloads are off (Settings > Downloads)."));
         open_dialog(DialogKind::Info, first_start ? tr("Welcome to Porpoise") : tr("Your Setup"), "", "");
         dialog_.checks = std::move(checks);
         return;
@@ -155,7 +155,7 @@ void App::show_setup_check(bool first_start)
         line(false, tr("No games yet. Put them in /data/porpoise/games or on a USB drive, or add a folder in "
                        "Settings > Games."));
     line(settings_->download_covers, settings_->download_covers ? tr("Covers download while the console is online.")
-                                                                 : tr("Cover downloads are off (Settings > Games)."));
+                                                                 : tr("Cover downloads are off (Settings > Downloads)."));
     open_dialog(DialogKind::Info, first_start ? tr("Welcome to Porpoise") : tr("Your Setup"), "", "");
     dialog_.checks = std::move(checks);
 }
@@ -562,10 +562,6 @@ void App::add_game_rows(Settings &t, bool per_game)
                &t.pixel_lighting);
         toggle("disable_fog", "Disable Fog", "Removes distance fog. Some games use fog for their look.",
                &t.disable_fog);
-        toggle("custom_textures", "Custom Textures",
-               "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in "
-               "/data/porpoise/saves/User/Load/Textures. A game's Details say when its pack is found.",
-               &t.custom_textures);
         if (per_game && game_for_)
         {
             /* Dolphin's built-in graphics mods, for the games that have them. */
@@ -605,6 +601,16 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.crop_overscan);
     toggle("skip_dupes", "Skip Duplicate Frames", "Saves work when a game shows the same frame twice.",
            &t.skip_dupes);
+
+    /* HD texture packs: the switch, and (in Settings) every pack found. */
+    header("Textures");
+    toggle("custom_textures", "Custom Textures",
+           "Loads HD texture packs. Put each pack's folder, named with the game's ID (like GALE01), in "
+           "/data/porpoise/saves/User/Load/Textures. The packs Porpoise finds are listed below.",
+           &t.custom_textures);
+    add_texture_rows(per_game);
+
+    header("Save States");
     toggle("quick_resume", "Quick Resume (beta)",
            "Leaving a game from the in-game menu keeps where you were, and the game picks up right there the next "
            "time you start it. Start Over (in the in-game menu) boots it fresh.",
@@ -796,7 +802,7 @@ void App::add_game_rows(Settings &t, bool per_game)
            "starts or the controller changes.",
            &t.wii_motion_plus, 0, {"Auto", "On", "Off"});
 
-    header("System");
+    header("Emulation");
     choice("cpu_clock", "CPU Clock", "Overclocking can smooth a game that slows down. 100% is the real console.",
            &t.cpu_clock, 0, {"50%", "60%", "70%", "80%", "90%", "100%", "150%", "200%", "250%", "300%"});
     toggle("fast_float", "Riptide Boost (beta)",
@@ -817,6 +823,8 @@ void App::add_game_rows(Settings &t, bool per_game)
     toggle("fast_disc", "Fast Disc Loading", "Shorter loading screens. A few games need real disc speed.",
            &t.fast_disc);
     toggle("cheats", "Cheats", "Dolphin's cheat codes for games that have them.", &t.cheats);
+
+    header("Console");
     choice("language", "System Language", "The console's language. European games show their text in it.",
            &t.language, 0,
            {"English", "Japanese", "German", "French", "Spanish", "Italian", "Dutch", "Chinese (Simplified)",
@@ -836,29 +844,18 @@ void App::add_game_rows(Settings &t, bool per_game)
            "GameCube games start with the console's own start-up, from your own console's BIOS: put its IPL.bin in "
            "/data/porpoise/bios. Porpoise includes none.",
            &t.gc_bios);
-    toggle("wii_online", "WiiConnect24 Channels (beta)",
-           "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. Online play in games "
-           "uses the game's own patch for its server (Wiimmfi, a custom server, or a mod's own), not this switch. "
-           "Needs the console online.",
-           &t.wii_online);
-#ifndef PORPOISE_DESKTOP
-    if (!per_game)
-    {
-        /* Wii games online: the DNS server a custom server asks for. */
-        SettingRow r;
-        r.section = section;
-        r.label = tr("DNS Server for Online Play");
-        r.help = tr("Where Wii games look up their online servers. Automatic: the console's own. For a custom "
-                    "server, type the DNS address its instructions give, as on a real Wii.");
-        r.values = {settings_ && !settings_->online_dns.empty() ? settings_->online_dns : tr("Automatic")};
-        r.action = kRowOnlineDns;
-        rows_.push_back(r);
-    }
-#endif
     if (!per_game)
         toggle("debug_logs", "Debug Logs",
                "For testing: Porpoise keeps notes on what it did in /data/porpoise/debug, for bug reports.",
                &t.debug_logs);
+
+    /* Wii games online: the server, and the WiiConnect24 channels. */
+    header("Online");
+    add_online_rows(t, per_game);
+    toggle("wii_online", "WiiConnect24 Channels (beta)",
+           "WiiConnect24 channels through WiiLink: Forecast, News, Check Mii Out and more. Needs the console "
+           "online.",
+           &t.wii_online);
     if (!per_game && t.developer)
     {
         header("Developer");
@@ -941,6 +938,9 @@ void App::build_settings()
         rows_.push_back(r);
     };
 
+    /* 3.0 Alpha 5: what was one long Games section, in three: where games
+     * are found, what is downloaded for them, and where Porpoise keeps its
+     * things. */
     header("Games");
 #ifndef PORPOISE_DESKTOP /* the PS5's own */
     toggle("auto_search", "Find Games Automatically",
@@ -948,16 +948,6 @@ void App::build_settings()
            &draft_.auto_search);
     rows_.back().rescan = true;
 #endif
-    toggle("download_covers", "Download Covers",
-           "Box art from GameTDB.com, saved in /data/porpoise/covers. Needs the console online.",
-           &draft_.download_covers);
-    toggle("download_info", "Download Game Info",
-           "Descriptions, developers, release dates and disc art from GameTDB.com, for Details.",
-           &draft_.download_info);
-    action("Download Covers Again",
-           "Gets every game's cover, box and disc art from GameTDB.com again, in place of what Porpoise has (your "
-           "own art too). For art that downloaded wrong or cut short. Needs the console online.",
-           "Download\xE2\x80\xA6", kRowCoversAgain);
     for (std::size_t i = 0; i < draft_.folders.size(); ++i)
     {
         SettingRow r;
@@ -969,67 +959,6 @@ void App::build_settings()
         r.folder = int(i);
         rows_.push_back(r);
     }
-#ifndef PORPOISE_DESKTOP
-    {
-        /* Porpoise's folder on another drive: extended storage or a USB drive,
-         * for big texture packs and saves (the console's storage stays free). */
-        move_places_.clear();
-        std::vector<std::string> move_names; /* each place as the row lists it */
-        auto place = [&](const std::string &label, const std::string &name, const std::string &drive) {
-            struct stat st;
-            if (drive != "/data" && (stat(drive.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)))
-                return;
-            const std::string path = drive + "/porpoise";
-            if (path != data_dir_)
-            {
-                move_places_.emplace_back(label, path);
-                move_names.push_back(name);
-            }
-        };
-        place(tr("the console's storage"), tr("Console Storage"), "/data");
-        place(tr("extended storage"), tr("Extended Storage"), "/mnt/ext0");
-        place(tr("extended storage 2"), tr("Extended Storage 2"), "/mnt/ext1");
-        for (int i = 0; i < 8; ++i)
-        {
-            const std::string usb = trf("USB Drive {n}", {{"n", std::to_string(i + 1)}});
-            place(usb, usb, "/mnt/usb" + std::to_string(i));
-        }
-        std::string here = tr("the console's storage");
-        if (data_dir_.rfind("/mnt/ext0", 0) == 0)
-            here = tr("extended storage");
-        else if (data_dir_.rfind("/mnt/ext1", 0) == 0)
-            here = tr("extended storage 2");
-        else if (data_dir_.rfind("/mnt/usb", 0) == 0)
-            here = tr("a USB drive");
-        if (!sandboxed_ && !move_places_.empty())
-        {
-            /* One row: left and right pick the drive, Cross moves it there. */
-            SettingRow r;
-            r.section = section;
-            r.key = "move_pick";
-            r.label = tr("Move Porpoise's Folder");
-            r.help = trf("Porpoise's folder is on {here} now. Left and right pick a drive; Cross moves everything "
-                         "in the folder there: settings, saves, save states, covers and texture packs. Then "
-                         "Porpoise closes; open it again. Your game files elsewhere stay where they are.",
-                         {{"here", here}});
-            for (const std::string &name : move_names)
-                r.values.push_back(name);
-            move_choice_ = std::clamp(move_choice_, 0, int(move_places_.size()) - 1);
-            r.int_value = &move_choice_;
-            r.action = kRowMoveData;
-            rows_.push_back(r);
-        }
-    }
-    toggle("stay_sandboxed", "Stay in the Sandbox",
-           "On: Porpoise doesn't ask your jailbreak to free it from the app sandbox. For jailbreaks that close "
-           "Porpoise when they free it. Porpoise then can't see /data or USB drives; games in "
-           "/app0/porpoise/games work. Takes effect the next time Porpoise starts.",
-           &draft_.stay_sandboxed);
-    toggle("sandbox_notice", "Sandbox Message at Start",
-           "When the console starts Porpoise inside the app sandbox, says so and how to free it. Off: Porpoise "
-           "just uses its own folder (games in /app0/porpoise/games).",
-           &draft_.sandbox_notice);
-#endif
     action("Add a Game Folder", "Pick any folder on the console or a USB drive to search for games.",
            "Choose\xE2\x80\xA6", kRowAddFolder);
 #ifndef PORPOISE_DESKTOP /* Windows opens a share's folder by its own path */
@@ -1092,6 +1021,85 @@ void App::build_settings()
         r.action = kRowAccount;
         rows_.push_back(r);
     }
+#endif
+
+    header("Downloads");
+    toggle("download_covers", "Download Covers",
+           "Box art from GameTDB.com, saved in /data/porpoise/covers. Needs the console online.",
+           &draft_.download_covers);
+    toggle("download_info", "Download Game Info",
+           "Descriptions, developers, release dates and disc art from GameTDB.com, for Details.",
+           &draft_.download_info);
+    action("Download Covers Again",
+           "Gets every game's cover, box and disc art from GameTDB.com again, in place of what Porpoise has (your "
+           "own art too). For art that downloaded wrong or cut short. Needs the console online.",
+           "Download\xE2\x80\xA6", kRowCoversAgain);
+
+#ifndef PORPOISE_DESKTOP /* the PS5's own: its drives and sandbox */
+    header("Storage");
+#endif
+#ifndef PORPOISE_DESKTOP
+    {
+        /* Porpoise's folder on another drive: extended storage or a USB drive,
+         * for big texture packs and saves (the console's storage stays free). */
+        move_places_.clear();
+        std::vector<std::string> move_names; /* each place as the row lists it */
+        auto place = [&](const std::string &label, const std::string &name, const std::string &drive) {
+            struct stat st;
+            if (drive != "/data" && (stat(drive.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)))
+                return;
+            const std::string path = drive + "/porpoise";
+            if (path != data_dir_)
+            {
+                move_places_.emplace_back(label, path);
+                move_names.push_back(name);
+            }
+        };
+        place(tr("the console's storage"), tr("Console Storage"), "/data");
+        place(tr("extended storage"), tr("Extended Storage"), "/mnt/ext0");
+        place(tr("extended storage 2"), tr("Extended Storage 2"), "/mnt/ext1");
+        for (int i = 0; i < 8; ++i)
+        {
+            const std::string usb = trf("USB Drive {n}", {{"n", std::to_string(i + 1)}});
+            place(usb, usb, "/mnt/usb" + std::to_string(i));
+        }
+        std::string here = tr("the console's storage");
+        if (data_dir_.rfind("/mnt/ext0", 0) == 0)
+            here = tr("extended storage");
+        else if (data_dir_.rfind("/mnt/ext1", 0) == 0)
+            here = tr("extended storage 2");
+        else if (data_dir_.rfind("/mnt/usb", 0) == 0)
+            here = tr("a USB drive");
+        if (!sandboxed_ && !move_places_.empty())
+        {
+            /* One row: left and right pick the drive, Cross moves it there. */
+            SettingRow r;
+            r.section = section;
+            r.key = "move_pick";
+            r.label = tr("Move Porpoise's Folder");
+            r.help = trf("Porpoise's folder is on {here} now. Left and right pick a drive; Cross moves everything "
+                         "in the folder there: settings, saves, save states, covers and texture packs. Then "
+                         "Porpoise closes; open it again. Your game files elsewhere stay where they are.",
+                         {{"here", here}});
+            for (const std::string &name : move_names)
+                r.values.push_back(name);
+            move_choice_ = std::clamp(move_choice_, 0, int(move_places_.size()) - 1);
+            r.int_value = &move_choice_;
+            r.action = kRowMoveData;
+            rows_.push_back(r);
+        }
+    }
+    toggle("stay_sandboxed", "Stay in the Sandbox",
+           "On: Porpoise doesn't ask your jailbreak to free it from the app sandbox. For jailbreaks that close "
+           "Porpoise when they free it. Porpoise then can't see /data or USB drives; games in "
+           "/app0/porpoise/games work. Takes effect the next time Porpoise starts.",
+           &draft_.stay_sandboxed);
+    toggle("sandbox_notice", "Sandbox Message at Start",
+           "When the console starts Porpoise inside the app sandbox, says so and how to free it. Off: Porpoise "
+           "just uses its own folder (games in /app0/porpoise/games).",
+           &draft_.sandbox_notice);
+#endif
+#ifndef PORPOISE_DESKTOP
     action("Saves from a USB Drive (beta)",
            "Copies saves from the USB drive's Porpoise Saves folder in: GameCube saves onto Slot A, Wii saves to "
            "their games. A save that's already here is left as it is. Options in Memory Cards copies a save out.",
@@ -2040,6 +2048,9 @@ App::Action App::activate_row(const SettingRow &row)
     case kRowOnlineDns:
         open_dns();
         return Action::None;
+    case kRowOnlineHub:
+        open_hub();
+        return Action::None;
     case kRowMoveData:
         if (move_choice_ >= 0 && move_choice_ < int(move_places_.size()))
         {
@@ -2571,14 +2582,21 @@ void App::draw_settings()
         sy += 92;
     }
 
-    /* Every section fits in the rail: with a game's name on top and eleven
-     * sections, the usual 68 px ran the last one (Cheats and Patches) off the
-     * panel, so the rows close up as far as they need to. */
-    int sections = 0;
+    /* The sections, a row each at an even pitch. More than the rail holds
+     * (3.0 has more sections, and a game's own settings put its name on top):
+     * the list scrolls to keep the chosen one in view, with a fade and an
+     * arrow at an edge that has more past it. */
+    int sections = 0, here_index = 0;
     for (const SettingRow &r : rows_)
-        sections += r.header ? 1 : 0;
-    const float pitch = std::min(68.0f, (ry + rh - 14 - sy) / float(std::max(1, sections)));
-    const float item_h = pitch - 8;
+        if (r.header)
+        {
+            if (r.section == current)
+                here_index = sections;
+            ++sections;
+        }
+    const float top = sy, room = ry + rh - 14 - top;
+    const float pitch = 64.0f, item_h = pitch - 8;
+    const int fits = std::max(1, int(room / pitch));
     /* The highlights glide from where they were to where they go. */
     const float glide_dt = float(std::clamp(time_ - glide_time_, 0.0, 0.1));
     glide_time_ = time_;
@@ -2589,35 +2607,62 @@ void App::draw_settings()
             at += (target - at) * std::min(1.0f, glide_dt * 16.0f);
         return at;
     };
+    /* The first row shown: the chosen one kept a row from either edge. */
+    float first_target = 0;
+    if (sections > fits)
     {
-        float hy = sy;
-        for (const SettingRow &r : rows_)
-            if (r.header)
-            {
-                if (r.section == current)
-                    break;
-                hy += pitch;
-            }
-        const float y = glide(rail_glide_, hy, 2000);
-        if (on_rail_)
-            g.panel(rx + 14, y, rw - 28, item_h, rgba(0x1F63F0), 0.62f, kR, rgba(0x7FD9FF), 1.6f, 6, 0.35f);
-        else
-            g.panel(rx + 14, y, rw - 28, item_h, rgba(0x1F63F0, 0.25f), 0.8f, kR, rgba(0x7FD9FF, 0.55f), 1.4f);
+        const float shown_first = rail_scroll_ < 0 ? 0.0f : std::round(rail_scroll_);
+        float f = shown_first;
+        if (here_index < f + 1)
+            f = float(here_index - 1);
+        else if (here_index > f + float(fits) - 2)
+            f = float(here_index - fits + 2);
+        first_target = std::clamp(f, 0.0f, float(sections - fits));
     }
-    for (const SettingRow &r : rows_)
+    const float rail_first = glide(rail_scroll_, first_target, 1000);
+    const float bottom = top + float(fits) * pitch;
+    auto fade_at = [&](float y) {
+        /* Rows leaving the rail fade out over half a row. */
+        const float a = std::min((y + item_h - top) / (pitch * 0.5f), (bottom - y) / (pitch * 0.5f));
+        return std::clamp(a, 0.0f, 1.0f);
+    };
     {
-        if (!r.header)
-            continue;
-        const bool here = r.section == current;
-        const float ih = item_h;
-        const Font f = here ? Font::Bold : Font::SemiBold;
-        const float size = ts(item_h < 54 ? 27 : 29);
-        g.text_mid(f, size, rx + 46, sy + ih * 0.5f, here ? kWhite : kSoft, Align::Left,
-                   fit(g, f, size, tr(r.section), rw - 46 - (here && on_rail_ ? 70 : 30)));
-        if (here && on_rail_)
-            g.glyph(Glyph::Arrow, rx + rw - 46, sy + ih * 0.5f, 20, kWhite, kPi * 0.5f);
-        sy += pitch;
-
+        const float hy = top + (float(here_index) - rail_first) * pitch;
+        const float y = glide(rail_glide_, hy, 2000);
+        const float a = fade_at(y);
+        if (a > 0.01f)
+        {
+            if (on_rail_)
+                g.panel(rx + 14, y, rw - 28, item_h, rgba(0x1F63F0, a), 0.62f, kR, rgba(0x7FD9FF, a), 1.6f, 6, 0.35f);
+            else
+                g.panel(rx + 14, y, rw - 28, item_h, rgba(0x1F63F0, 0.25f * a), 0.8f, kR, rgba(0x7FD9FF, 0.55f * a),
+                        1.4f);
+        }
+    }
+    {
+        int k = 0;
+        for (const SettingRow &r : rows_)
+        {
+            if (!r.header)
+                continue;
+            const float y = top + (float(k++) - rail_first) * pitch;
+            const float a = fade_at(y);
+            if (a <= 0.01f)
+                continue;
+            const bool here = r.section == current;
+            const Font f = here ? Font::Bold : Font::SemiBold;
+            const float size = ts(29);
+            g.text_mid(f, size, rx + 46, y + item_h * 0.5f, with_alpha(here ? kWhite : kSoft, a), Align::Left,
+                       fit(g, f, size, tr(r.section), rw - 46 - (here && on_rail_ ? 70 : 30)));
+            if (here && on_rail_)
+                g.glyph(Glyph::Arrow, rx + rw - 46, y + item_h * 0.5f, 20, with_alpha(kWhite, a), kPi * 0.5f);
+        }
+        /* More above or below. */
+        if (rail_first > 0.05f)
+            g.glyph(Glyph::Arrow, rx + rw * 0.5f, top - 4, 16, with_alpha(kLavender, std::min(1.0f, rail_first)), 0);
+        if (rail_first < float(sections - fits) - 0.05f)
+            g.glyph(Glyph::Arrow, rx + rw * 0.5f, bottom + 2, 16,
+                    with_alpha(kLavender, std::min(1.0f, float(sections - fits) - rail_first)), kPi);
     }
 
     /* The section's rows. */
@@ -2637,7 +2682,15 @@ void App::draw_settings()
     if (current == "About")
         subtitle = tr("Porpoise for PS5") + " \xE2\x80\xA2 " + tr("created by @elripalda") + " \xE2\x80\xA2 ripalda.dev";
     else if (current == "Games")
-        subtitle = tr("Where Porpoise looks for games, and what it downloads for them");
+        subtitle = tr("Where Porpoise looks for your games");
+    else if (current == "Downloads")
+        subtitle = tr("Covers and game info from GameTDB.com");
+    else if (current == "Storage")
+        subtitle = tr("Where Porpoise keeps its things, and the app sandbox");
+    else if (current == "Textures" && !game)
+        subtitle = tr("HD texture packs, and the games they're for");
+    else if (current == "Online" && !game)
+        subtitle = tr("Wii games online \xE2\x80\xA2 the Online Hub has everything");
     else if (current == "This Game")
         subtitle = tr("Values in blue are this game's own");
     else if (current == "Interface")
@@ -2684,170 +2737,176 @@ void App::draw_settings()
     for (int i = 0; i < int(rows_.size()); ++i)
         if (!rows_[std::size_t(i)].header && rows_[std::size_t(i)].section == current)
             section_rows.push_back(i);
-    /* Six rows fit; a longer section scrolls with the focus. */
-    constexpr std::size_t kVisible = 6;
-    std::size_t first = 0;
-    for (std::size_t k = 0; k < section_rows.size(); ++k)
-        if (!on_rail_ && section_rows[k] == settings_row_ && k >= kVisible)
-            first = k - kVisible + 1;
-    if (on_rail_)
-        row_glide_ = -1;
+    /* A game's cheats and patches: cards of their own (draw_cheat_cards). */
+    if (current == "Cheats and Patches" && !cheats_.empty())
+        draw_cheat_cards(section_rows, px, py, pw, ph);
     else
-        for (std::size_t k = first; k < section_rows.size() && k < first + kVisible; ++k)
-            if (section_rows[k] == settings_row_)
-            {
-                const float hy = glide(row_glide_, y + float(k - first) * row_h, row_h * 3.5f);
-                g.panel(row_x, hy + 4, row_w, row_h - 8, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
-            }
-    for (std::size_t k = first; k < section_rows.size() && k < first + kVisible; ++k)
     {
-        const int i = section_rows[k];
-        const SettingRow &r = rows_[std::size_t(i)];
-        const bool on = !on_rail_ && i == settings_row_;
-        const bool own = game && !r.key.empty() &&
-                         std::find(game_keys_.begin(), game_keys_.end(), r.key) != game_keys_.end();
-        const bool waiting = row_pending(r, pending);
-        const float cy = y + row_h * 0.5f;
-        if (waiting)
-            g.panel(row_x + 8, cy - 7, 14, 14, kPending, 1, 7); /* changed, not applied yet */
-        if (on)
-            ; /* the gliding highlight, above */
-        else if (k + 1 < section_rows.size() && k + 1 < first + kVisible && (on_rail_ || section_rows[k + 1] != settings_row_))
-            g.panel(row_x + 24, y + row_h - 1, row_w - 48, 1.5f, rgba(0x3D4F9E, 0.55f), 1, 0);
-        {
-            const std::string shown = fit(g, Font::SemiBold, ts(30), r.label, row_w - (r.beta ? 540 : 420));
-            g.text_mid(Font::SemiBold, ts(30), row_x + 28, cy, on ? kWhite : (on_rail_ ? with_alpha(kSoft, 0.8f) : kSoft),
-                       Align::Left, shown);
-            if (r.beta)
-            {
-                /* The BETA badge: new, and still being tuned. */
-                const float bx = row_x + 28 + g.measure(Font::SemiBold, ts(30), shown) + 14;
-                const float bw = g.measure(Font::Bold, ts(18), "BETA") + 22, bh = 30;
-                g.panel(bx, cy - bh * 0.5f, bw, bh, rgba(0xFFB347, on ? 0.95f : 0.8f), 1.0f, bh * 0.5f);
-                g.text_mid(Font::Bold, ts(18), bx + bw * 0.5f, cy, rgba(0x2A1600), Align::Center, "BETA");
-            }
-        }
-
-        std::string value;
-        int vi = 0;
-        const int count = int(r.values.size());
-        if (r.bool_value)
-            vi = *r.bool_value ? 1 : 0;
-        else if (r.int_value && !r.order.empty())
-            vi = int(std::find(r.order.begin(), r.order.end(), *r.int_value) - r.order.begin());
-        else if (r.int_value)
-            vi = *r.int_value - r.min;
-        if (vi >= 0 && vi < count)
-            value = r.values[std::size_t(vi)];
-        if (r.key == "players")
-        {
-            const int n = porpoise::pad::connected_count();
-            value = n <= 1 ? tr("1 player") : trf("{n} players", {{"n", std::to_string(n)}});
-        }
-        const float right = row_x + row_w - 24;
-        const Color value_c = waiting ? kPending : own ? kCyan : (on ? kWhite : kSoft);
-        if (r.action == kRowUpdate)
-            value = update_row_value();
-        if (r.action)
-        {
-            const bool danger = r.action == kRowResetAll || r.action == kRowResetGame || r.action == kRowReinitialize;
-            const float vw = g.measure(Font::Bold, ts(28), value);
-            const float cw = std::max(250.0f, vw + 110), ch = 50, cx = right - cw;
-            g.panel(cx, cy - ch * 0.5f, cw, ch, on ? (danger ? rgba(0xB0305A, 0.85f) : rgba(0x1F63F0, 0.85f))
-                                                  : rgba(0x07102E, 0.40f),
-                    0.7f, kR, on ? (danger ? kDanger : rgba(0x8BD9FF)) : rgba(0x3D5AB0, 0.75f), on ? 1.8f : 1.4f, 0,
-                    on ? 0.25f : 0.0f);
-            if (on)
-            {
-                const float group = 30 + 10 + vw;
-                g.glyph(Glyph::Cross, cx + cw * 0.5f - group * 0.5f + 15, cy, 30, kWhite);
-                g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f - group * 0.5f + 40, cy, kWhite, Align::Left, value);
-            }
-            else
-                g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f, cy, kSoft, Align::Center, value);
-        }
-        else if (r.toggle >= 0)
-        {
-            /* A switch: a green track with the knob right when on. */
-            const bool lit = r.toggle == 1;
-            const float tw = 92, th = 44, tx = right - tw;
-            g.panel(tx, cy - th * 0.5f, tw, th, lit ? rgba(0x2FB574, 0.95f) : rgba(0x07102E, 0.6f), 0.85f, th * 0.5f,
-                    lit ? rgba(0xBDF5D8) : (on ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.85f)), on ? 2.0f : 1.4f,
-                    lit ? 8 : 0);
-            const float kx = lit ? tx + tw - th * 0.5f : tx + th * 0.5f;
-            g.blob(kx, cy, th * 0.9f, th * 0.9f, rgba(0xFFFFFF, lit ? 0.35f : 0.15f));
-            g.panel(kx - th * 0.38f, cy - th * 0.38f, th * 0.76f, th * 0.76f, lit ? kWhite : rgba(0xA9B8E8), 1,
-                    th * 0.38f);
-            const float ow = g.text_mid(Font::Bold, ts(26), tx - 18, cy, lit ? rgba(0x7CF0B4) : kLavender,
-                                        Align::Right, lit ? tr("On") : tr("Off"));
-            if (!r.tag.empty())
-            {
-                /* Where it comes from, in a small pill. */
-                const bool dolphin = r.rec >= 0 && rec_rows_[std::size_t(r.rec)].kind == RecRow::DolphinFix;
-                const float pw2 = g.measure(Font::SemiBold, ts(19), r.tag) + 26, px2 = tx - 18 - ow - 22 - pw2;
-                g.panel(px2, cy - 15, pw2, 30, dolphin ? rgba(0x2A2F6E, 0.8f) : rgba(0x0E3A6E, 0.8f), 1, 15,
-                        dolphin ? rgba(0xA9A0FF, 0.8f) : with_alpha(kCyan, 0.8f), 1.2f);
-                g.text_mid(Font::SemiBold, ts(19), px2 + pw2 * 0.5f, cy, dolphin ? rgba(0xCFC8FF) : kCyan,
-                           Align::Center, r.tag);
-            }
-        }
-        else if (!r.bool_value && !r.int_value)
-        {
-            const float vw = g.text_mid(Font::SemiBold, ts(28), right, cy, on ? kWhite : kSoft, Align::Right, value);
-            if (r.key == "creator")
-            {
-                /* Ruben's mark beside his name. */
-                if (!mark_tried_)
-                {
-                    mark_tried_ = true;
-                    ripalda_ = g.texture_file(g.asset_dir() + "/brand/ripalda.png");
-                }
-                if (ripalda_)
-                    g.image(ripalda_, right - vw - 58, cy - 22, 44, 44, on ? kWhite : kSoft);
-            }
-        }
+        /* Six rows fit; a longer section scrolls with the focus. */
+        constexpr std::size_t kVisible = 6;
+        std::size_t first = 0;
+        for (std::size_t k = 0; k < section_rows.size(); ++k)
+            if (!on_rail_ && section_rows[k] == settings_row_ && k >= kVisible)
+                first = k - kVisible + 1;
+        if (on_rail_)
+            row_glide_ = -1;
         else
+            for (std::size_t k = first; k < section_rows.size() && k < first + kVisible; ++k)
+                if (section_rows[k] == settings_row_)
+                {
+                    const float hy = glide(row_glide_, y + float(k - first) * row_h, row_h * 3.5f);
+                    g.panel(row_x, hy + 4, row_w, row_h - 8, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.4f, 10, 0.18f);
+                }
+        for (std::size_t k = first; k < section_rows.size() && k < first + kVisible; ++k)
         {
-            const float vw = g.measure(Font::Bold, ts(28), value);
-            /* Room for the arrows, and for the flag beside a language's name. */
-            const float flag_w = r.key == "ui_language" ? 54.0f : 0.0f;
-            const float cw = std::max(270.0f, vw + 110 + flag_w), ch = 50, cx = right - cw;
-            g.panel(cx, cy - ch * 0.5f, cw, ch, rgba(0x07102E, on ? 0.55f : 0.40f), 1, kR,
-                    own ? with_alpha(kCyan, 0.9f) : (on ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.75f)), on ? 1.8f : 1.4f);
-            if (r.key == "ui_language" && r.int_value)
+            const int i = section_rows[k];
+            const SettingRow &r = rows_[std::size_t(i)];
+            const bool on = !on_rail_ && i == settings_row_;
+            const bool own = game && !r.key.empty() &&
+                             std::find(game_keys_.begin(), game_keys_.end(), r.key) != game_keys_.end();
+            const bool waiting = row_pending(r, pending);
+            const float cy = y + row_h * 0.5f;
+            if (waiting)
+                g.panel(row_x + 8, cy - 7, 14, 14, kPending, 1, 7); /* changed, not applied yet */
+            if (on)
+                ; /* the gliding highlight, above */
+            else if (k + 1 < section_rows.size() && k + 1 < first + kVisible && (on_rail_ || section_rows[k + 1] != settings_row_))
+                g.panel(row_x + 24, y + row_h - 1, row_w - 48, 1.5f, rgba(0x3D4F9E, 0.55f), 1, 0);
             {
-                /* The language's flag beside its name; System shows the one it follows. */
-                if (!flags_tried_)
+                const std::string shown = fit(g, Font::SemiBold, ts(30), r.label, row_w - (r.beta ? 540 : 420));
+                g.text_mid(Font::SemiBold, ts(30), row_x + 28, cy, on ? kWhite : (on_rail_ ? with_alpha(kSoft, 0.8f) : kSoft),
+                           Align::Left, shown);
+                if (r.beta)
                 {
-                    flags_tried_ = true;
-                    flags_ = g.texture_file(g.asset_dir() + "/ui/flags.png", 2048);
+                    /* The BETA badge: new, and still being tuned. */
+                    const float bx = row_x + 28 + g.measure(Font::SemiBold, ts(30), shown) + 14;
+                    const float bw = g.measure(Font::Bold, ts(18), "BETA") + 22, bh = 30;
+                    g.panel(bx, cy - bh * 0.5f, bw, bh, rgba(0xFFB347, on ? 0.95f : 0.8f), 1.0f, bh * 0.5f);
+                    g.text_mid(Font::Bold, ts(18), bx + bw * 0.5f, cy, rgba(0x2A1600), Align::Center, "BETA");
                 }
-                const int lang = *r.int_value > 0 ? *r.int_value : int(language()) + 1;
-                const float vw = g.measure(Font::Bold, ts(28), value), fw = 42, fh = 28, gap = 12;
-                const float x0 = cx + (cw - (fw + gap + vw)) * 0.5f;
-                if (flags_ && lang >= 1 && lang <= kLanguages)
+            }
+
+            std::string value;
+            int vi = 0;
+            const int count = int(r.values.size());
+            if (r.bool_value)
+                vi = *r.bool_value ? 1 : 0;
+            else if (r.int_value && !r.order.empty())
+                vi = int(std::find(r.order.begin(), r.order.end(), *r.int_value) - r.order.begin());
+            else if (r.int_value)
+                vi = *r.int_value - r.min;
+            if (vi >= 0 && vi < count)
+                value = r.values[std::size_t(vi)];
+            if (r.key == "players")
+            {
+                const int n = porpoise::pad::connected_count();
+                value = n <= 1 ? tr("1 player") : trf("{n} players", {{"n", std::to_string(n)}});
+            }
+            const float right = row_x + row_w - 24;
+            const Color value_c = waiting ? kPending : own ? kCyan : (on ? kWhite : kSoft);
+            if (r.action == kRowUpdate)
+                value = update_row_value();
+            if (r.action)
+            {
+                const bool danger = r.action == kRowResetAll || r.action == kRowResetGame || r.action == kRowReinitialize;
+                const float vw = g.measure(Font::Bold, ts(28), value);
+                const float cw = std::max(250.0f, vw + 110), ch = 50, cx = right - cw;
+                g.panel(cx, cy - ch * 0.5f, cw, ch, on ? (danger ? rgba(0xB0305A, 0.85f) : rgba(0x1F63F0, 0.85f))
+                                                      : rgba(0x07102E, 0.40f),
+                        0.7f, kR, on ? (danger ? kDanger : rgba(0x8BD9FF)) : rgba(0x3D5AB0, 0.75f), on ? 1.8f : 1.4f, 0,
+                        on ? 0.25f : 0.0f);
+                if (on)
                 {
-                    const float uv[4] = {float(lang - 1) / float(kLanguages), 0, float(lang) / float(kLanguages), 1};
-                    g.image_part(flags_, x0, cy - fh * 0.5f, fw, fh, uv);
+                    const float group = 30 + 10 + vw;
+                    g.glyph(Glyph::Cross, cx + cw * 0.5f - group * 0.5f + 15, cy, 30, kWhite);
+                    g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f - group * 0.5f + 40, cy, kWhite, Align::Left, value);
                 }
-                g.text_mid(Font::Bold, ts(28), x0 + fw + gap, cy, value_c, Align::Left, value);
+                else
+                    g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f, cy, kSoft, Align::Center, value);
+            }
+            else if (r.toggle >= 0)
+            {
+                /* A switch: a green track with the knob right when on. */
+                const bool lit = r.toggle == 1;
+                const float tw = 92, th = 44, tx = right - tw;
+                g.panel(tx, cy - th * 0.5f, tw, th, lit ? rgba(0x2FB574, 0.95f) : rgba(0x07102E, 0.6f), 0.85f, th * 0.5f,
+                        lit ? rgba(0xBDF5D8) : (on ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.85f)), on ? 2.0f : 1.4f,
+                        lit ? 8 : 0);
+                const float kx = lit ? tx + tw - th * 0.5f : tx + th * 0.5f;
+                g.blob(kx, cy, th * 0.9f, th * 0.9f, rgba(0xFFFFFF, lit ? 0.35f : 0.15f));
+                g.panel(kx - th * 0.38f, cy - th * 0.38f, th * 0.76f, th * 0.76f, lit ? kWhite : rgba(0xA9B8E8), 1,
+                        th * 0.38f);
+                const float ow = g.text_mid(Font::Bold, ts(26), tx - 18, cy, lit ? rgba(0x7CF0B4) : kLavender,
+                                            Align::Right, lit ? tr("On") : tr("Off"));
+                if (!r.tag.empty())
+                {
+                    /* Where it comes from, in a small pill. */
+                    const bool dolphin = r.rec >= 0 && rec_rows_[std::size_t(r.rec)].kind == RecRow::DolphinFix;
+                    const float pw2 = g.measure(Font::SemiBold, ts(19), r.tag) + 26, px2 = tx - 18 - ow - 22 - pw2;
+                    g.panel(px2, cy - 15, pw2, 30, dolphin ? rgba(0x2A2F6E, 0.8f) : rgba(0x0E3A6E, 0.8f), 1, 15,
+                            dolphin ? rgba(0xA9A0FF, 0.8f) : with_alpha(kCyan, 0.8f), 1.2f);
+                    g.text_mid(Font::SemiBold, ts(19), px2 + pw2 * 0.5f, cy, dolphin ? rgba(0xCFC8FF) : kCyan,
+                               Align::Center, r.tag);
+                }
+            }
+            else if (!r.bool_value && !r.int_value)
+            {
+                const float vw = g.text_mid(Font::SemiBold, ts(28), right, cy, on ? kWhite : kSoft, Align::Right, value);
+                if (r.key == "creator")
+                {
+                    /* Ruben's mark beside his name. */
+                    if (!mark_tried_)
+                    {
+                        mark_tried_ = true;
+                        ripalda_ = g.texture_file(g.asset_dir() + "/brand/ripalda.png");
+                    }
+                    if (ripalda_)
+                        g.image(ripalda_, right - vw - 58, cy - 22, 44, 44, on ? kWhite : kSoft);
+                }
             }
             else
-                g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f, cy, value_c, Align::Center, value);
-            if (on)
             {
-                const bool at_min = r.int_value && vi <= 0;
-                const bool at_max = r.int_value && vi >= count - 1;
-                g.glyph(Glyph::Arrow, cx + 26, cy, 18, with_alpha(kCyan, at_min ? 0.3f : 1.0f), -kPi * 0.5f);
-                g.glyph(Glyph::Arrow, cx + cw - 26, cy, 18, with_alpha(kCyan, at_max ? 0.3f : 1.0f), kPi * 0.5f);
+                const float vw = g.measure(Font::Bold, ts(28), value);
+                /* Room for the arrows, and for the flag beside a language's name. */
+                const float flag_w = r.key == "ui_language" ? 54.0f : 0.0f;
+                const float cw = std::max(270.0f, vw + 110 + flag_w), ch = 50, cx = right - cw;
+                g.panel(cx, cy - ch * 0.5f, cw, ch, rgba(0x07102E, on ? 0.55f : 0.40f), 1, kR,
+                        own ? with_alpha(kCyan, 0.9f) : (on ? rgba(0x8BD9FF) : rgba(0x3D5AB0, 0.75f)), on ? 1.8f : 1.4f);
+                if (r.key == "ui_language" && r.int_value)
+                {
+                    /* The language's flag beside its name; System shows the one it follows. */
+                    if (!flags_tried_)
+                    {
+                        flags_tried_ = true;
+                        flags_ = g.texture_file(g.asset_dir() + "/ui/flags.png", 2048);
+                    }
+                    const int lang = *r.int_value > 0 ? *r.int_value : int(language()) + 1;
+                    const float vw = g.measure(Font::Bold, ts(28), value), fw = 42, fh = 28, gap = 12;
+                    const float x0 = cx + (cw - (fw + gap + vw)) * 0.5f;
+                    if (flags_ && lang >= 1 && lang <= kLanguages)
+                    {
+                        const float uv[4] = {float(lang - 1) / float(kLanguages), 0, float(lang) / float(kLanguages), 1};
+                        g.image_part(flags_, x0, cy - fh * 0.5f, fw, fh, uv);
+                    }
+                    g.text_mid(Font::Bold, ts(28), x0 + fw + gap, cy, value_c, Align::Left, value);
+                }
+                else
+                    g.text_mid(Font::Bold, ts(28), cx + cw * 0.5f, cy, value_c, Align::Center, value);
+                if (on)
+                {
+                    const bool at_min = r.int_value && vi <= 0;
+                    const bool at_max = r.int_value && vi >= count - 1;
+                    g.glyph(Glyph::Arrow, cx + 26, cy, 18, with_alpha(kCyan, at_min ? 0.3f : 1.0f), -kPi * 0.5f);
+                    g.glyph(Glyph::Arrow, cx + cw - 26, cy, 18, with_alpha(kCyan, at_max ? 0.3f : 1.0f), kPi * 0.5f);
+                }
             }
+            y += row_h;
         }
-        y += row_h;
+        if (first > 0)
+            g.glyph(Glyph::Arrow, px + pw - 30, py + 170, 18, rgba(0x58B8FF), 0);
+        if (first + kVisible < section_rows.size())
+            g.glyph(Glyph::Arrow, px + pw - 30, py + ph - 120, 18, rgba(0x58B8FF), kPi);
     }
-    if (first > 0)
-        g.glyph(Glyph::Arrow, px + pw - 30, py + 170, 18, rgba(0x58B8FF), 0);
-    if (first + kVisible < section_rows.size())
-        g.glyph(Glyph::Arrow, px + pw - 30, py + ph - 120, 18, rgba(0x58B8FF), kPi);
 
     /* What the focused row does. */
     std::string help;

@@ -72,6 +72,13 @@ private:
     long long last_vblank_ns_ = 0;
     int vblanks_per_frame_ = 1; /* 2 on a 120 Hz output */
     long long frame_floor_ns_ = 0; /* 96% of the content's frame */
+    /* The game's own clock, a hair fast (0.4%, what the sound's rate
+     * correction absorbs): held to the display, a frame that would put the
+     * game further ahead than half a frame waits a vblank more, so a display
+     * a little faster than the game (or one whose vblanks wander) never runs
+     * it fast on average - the sound skipped every few seconds when it did. */
+    long long cap_ns_ = 0;
+    void hold_to_game();
     int quick_vblanks_ = 0;
     int misses_ = 0;
     int vblank_retry_ = 0;

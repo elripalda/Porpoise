@@ -393,6 +393,7 @@ App::Action App::update(const Input &in, double dt)
     auto &games = lib_->games();
     Action action = Action::None;
     home_pad_sync(); /* the Revolution look's pointer */
+    poll_texture_packs(); /* Settings > Textures: the packs' counts, when counted */
     pump_banners();  /* Wii discs' tiles and banners, as they come */
     g_->set_theme_fonts(fonts_for(*settings_)); /* a theme's own letters, once they're made */
     sc_tick(dt);
@@ -434,7 +435,8 @@ App::Action App::update(const Input &in, double dt)
         update_failed_ = false;
         open_dialog(DialogKind::Info, tr("The update didn't finish"), tr(update_error_), "");
     }
-    if (testing_notice_ && !dialog_.open && !acct_.open && !share_.open && !dns_.open && screen_ == Screen::Main &&
+    if (testing_notice_ && !dialog_.open && !acct_.open && !share_.open && !dns_.open && !hub_.open &&
+        screen_ == Screen::Main &&
         wizard_step_ < 0 && !welcome_after_dialog_)
     {
         /* A test build's notice, once the start's own messages are seen. */
@@ -460,6 +462,8 @@ App::Action App::update(const Input &in, double dt)
         return update_share(up, down, left, right);
     if (dns_.open)
         return update_dns(up, down, left, right);
+    if (hub_.open)
+        return update_hub(up, down, left, right);
     if (screen_ == Screen::Achievements)
         return update_achievements_screen(up, down);
     if (screen_ == Screen::Welcome)
@@ -922,7 +926,7 @@ void App::offer_jailbreak_retry()
     open_dialog(DialogKind::JailbreakClosed, tr("Porpoise stayed in the sandbox"),
                 tr("Last time, Porpoise closed while your jailbreak was freeing it from the app sandbox, so this "
                    "time it didn't ask. It can't see /data or USB drives, but games in /app0/porpoise/games work. "
-                   "Stay in the Sandbox to always start this way (change it in Settings > Games), or try again."),
+                   "Stay in the Sandbox to always start this way (change it in Settings > Storage), or try again."),
                 tr("Stay in the Sandbox"));
     dialog_.no = tr("Try Again");
     dialog_.choice = 1;
@@ -1229,6 +1233,7 @@ void App::draw_dialog()
         draw_achievements_screen(); /* over whichever look's library */
     draw_account(); /* under any dialog */
     draw_share();
+    draw_hub();
     draw_dns();
     if (!dialog_.open)
         return;
@@ -1615,7 +1620,7 @@ void App::draw_prompts(const std::vector<std::pair<Glyph, std::string>> &left_in
                        const std::vector<std::pair<Glyph, std::string>> &right_in, const std::string &center)
 {
     Gfx &g = *g_;
-    if ((dialog_.open || acct_.open || share_.open || dns_.open || screen_ == Screen::Achievements) &&
+    if ((dialog_.open || acct_.open || share_.open || dns_.open || hub_.open || screen_ == Screen::Achievements) &&
         !drawing_dialog_)
         return; /* the dialog (or the account panel, the achievements page) brings its own */
     /* Every prompt is translated here, so callers write plain English. */
@@ -1960,7 +1965,10 @@ void App::draw_library(double time)
     }
     char pos[32];
     std::snprintf(pos, sizeof pos, "%02d / %02d", selected_ + 1, shown);
-    draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Cross, "Play"}},
+    /* L2 / R2: a letter at a time sorted by title, else a page (update_view_nav). */
+    draw_prompts({{Glyph::DPad, "Browse"},
+                  {kKeyL2R2, lib_->sort_order() == Library::Sort::Title ? "Letters" : "Pages"},
+                  {Glyph::Cross, "Play"}},
                  {{Glyph::Options, sel.favourite ? "Unfavorite" : "Favorite"}, {Glyph::Square, "Details"},
                   {Glyph::Triangle, "Sort & Filter"}},
                  pos);
@@ -2135,9 +2143,11 @@ void App::draw_details(double time)
 
     /* The disc, turning slowly, at the panel's top right. */
     float text_w = pw - 104;
+    float disc_bottom = 0; /* below it, text may take the panel's whole width */
     if (Texture *disc = disc_of(game))
     {
         const float d = 176, dcx = px + pw - 52 - d * 0.5f, dcy = py + 36 + d * 0.5f;
+        disc_bottom = dcy + d * 0.5f + 14;
         const float angle = settings_->reduced_motion ? 0.0f : float(time) * 0.6f;
         Corner c[4];
         const float ca = std::cos(angle), sa = std::sin(angle), r = d * 0.5f;
@@ -2241,7 +2251,9 @@ void App::draw_details(double time)
         g.text_mid(Font::SemiBold, ts(27), fx, fy + 28, kWhite, Align::Left,
                    fit(g, Font::SemiBold, ts(27), facts[i].second, col_w - 30));
     }
-    float dy = whole_text ? ty + 20 : fy0 + float((facts.size() + 2) / 3) * 62 + 6;
+    /* The whole description runs the panel's width: below the disc, not
+     * under it. */
+    float dy = whole_text ? std::max(ty + 20, disc_bottom) : fy0 + float((facts.size() + 2) / 3) * 62 + 6;
 
     /* What the game is about. */
     const int action_count = details_shots_ > 0 ? 5 : 4; /* Screenshots, when it has some */
@@ -2285,7 +2297,7 @@ void App::draw_details(double time)
     else if (game.synopsis.empty() && actions_y - 16 - dy >= 34)
         g.text_mid(Font::Regular, ts(24), px + 52, dy + 12, with_alpha(kLavender, 0.8f), Align::Left,
                    settings_->download_info ? tr("No description yet. It arrives with the game info from GameTDB.com.")
-                                            : tr("Turn on Settings > Games > Download Game Info for a description."));
+                                            : tr("Turn on Settings > Downloads > Download Game Info for a description."));
 
     const std::string actions[5] = {title_case(tr("Play")), title_case(tr("Save States")),
                                     title_case(tr("Game Settings")), title_case(tr("Save Data")),

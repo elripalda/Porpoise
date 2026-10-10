@@ -344,7 +344,7 @@ void App::draw_shelf(double time)
  * corners, as projected, turn clockwise (it faces you), so at any angle each
  * shows cleanly and none bleeds through another. */
 void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float depth, float yaw, float alpha,
-                     bool load_art)
+                     bool load_art, bool spine_only)
 {
     Gfx &g = *g_;
     const bool toned = g.toned();
@@ -378,7 +378,10 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
                               tl.z + du.z * uv[i][0] + dv.z * uv[i][1]});
     };
     const Color black = Color{0.035f, 0.038f, 0.045f, alpha};
-    Texture *const cover_art = load_art ? cover_of(game) : game.cover; /* far: no new loads */
+    /* spine_only: a case standing in a row of them, where its neighbours hide
+     * its sides: the spine alone (a side face, seen past the next case's
+     * spine, showed as a cover sliver across it). */
+    Texture *const cover_art = spine_only ? nullptr : load_art ? cover_of(game) : game.cover; /* far: no new loads */
     const Color edge_light = Color{0.16f, 0.17f, 0.19f, alpha};
 
     /* Its shadow on the floor. */
@@ -395,6 +398,8 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
     Corner q[4];
     for (const P *f : {top, bottom})
     {
+        if (spine_only)
+            break;
         for (int i = 0; i < 4; ++i)
             q[i] = corner(f[i]);
         if (seen(q))
@@ -402,7 +407,7 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
     }
     for (int i = 0; i < 4; ++i)
         q[i] = corner(open_side[i]);
-    if (seen(q))
+    if (!spine_only && seen(q))
     {
         /* The open side: plastic, with the ridge of its clasp catching the light. */
         g.quad3d(nullptr, q, depth, h, black, 3, false, false);
@@ -419,23 +424,29 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
         face(spine, 3, paper, in);
         if (Texture *art = spine_of(game))
             g.quad3d(art, in, depth - 6, h - paper * 2, with_alpha(kWhite, alpha), 1, false, false);
-        else if (Texture *cover = cover_art)
-        {
-            const float uv[4] = {0.0f, 0.0f, 0.06f, 1.0f};
-            g.quad3d(cover, in, depth - 6, h - paper * 2, Color{0.62f, 0.64f, 0.70f, alpha}, 1, false, false, uv);
-        }
         else
         {
-            /* No spine art: the plastic, a light strip down it. */
-            Corner strip[4];
-            face(spine, depth * 0.42f, paper * 3, strip);
-            g.quad3d(nullptr, strip, depth * 0.16f, h - paper * 6, edge_light, 1, false, false);
+            /* No spine art: a printed spine of its own - a Wii game's white,
+             * a GameCube game's dark - with the title down it, top to bottom.
+             * (A strip of the cover squeezed in looked like noise.) */
+            const bool wii = game.platform == "Wii";
+            g.quad3d(nullptr, in, depth - 6, h - paper * 2,
+                     wii ? Color{0.90f, 0.91f, 0.93f, alpha} : Color{0.10f, 0.11f, 0.13f, alpha}, 1, false, false);
+            const float size = std::clamp(depth * 0.52f, 9.0f, 26.0f), margin = h * 0.06f;
+            const std::string title =
+                fit(g, Font::SemiBold, size, game.title.empty() ? game.file : game.title, h - paper * 2 - margin * 2);
+            auto down_spine = [&](float x, float y) {
+                return corner(P{-hw - 0.5f, -hh + paper + margin + x, depth * 0.5f + y});
+            };
+            g.text_mapped(Font::SemiBold, size, title,
+                          wii ? Color{0.16f, 0.17f, 0.20f, alpha} : Color{0.86f, 0.88f, 0.92f, alpha}, Align::Left,
+                          down_spine);
         }
         gloss_over(g, q, depth, h, 2, cx / 1920.0f + yaw * 0.1f, alpha * 0.6f);
     }
     for (int i = 0; i < 4; ++i)
         q[i] = corner(back[i]);
-    if (seen(q))
+    if (!spine_only && seen(q))
     {
         g.quad3d(nullptr, q, w, h, black, 6, false, false);
         Corner in[4];
@@ -457,7 +468,7 @@ void App::draw_box3d(Game &game, float cx, float cy, float w, float h, float dep
     }
     for (int i = 0; i < 4; ++i)
         q[i] = corner(front[i]);
-    if (seen(q))
+    if (!spine_only && seen(q))
     {
         g.quad3d(nullptr, q, w, h, black, 6, false, false);
         Corner in[4];
@@ -647,7 +658,9 @@ void App::draw_helix(double time)
     (void)time;
     auto &games = lib_->games();
     const int shown = lib_->shown();
-    const float step = 0.85f, radius = 560.0f, rise = 118.0f;
+    /* Each game a little further round: never past the side of the column,
+     * where a case would show its back (it showed as noise). */
+    const float step = 0.42f, radius = 760.0f, rise = 118.0f;
     /* The column. */
     g.panel(kCx - 5, 200, 10, 560, rgba(0x5CD3FF, 0.14f), 1, 6, rgba(0x8BD9FF, 0.25f), 1.0f, 8);
     struct Item
@@ -671,9 +684,13 @@ void App::draw_helix(double time)
         const float y = kCy - 10 - k * rise * s;
         /* Fade before the top bar or the title below. */
         const float room = std::clamp(std::min(y - 250.0f, 700.0f - y) / 90.0f + 1.0f, 0.0f, 1.0f);
-        const float alpha = room * std::clamp((4.0f - std::fabs(k)) / 1.2f, 0.0f, 1.0f) * (it.z > radius ? 0.5f : 1.0f);
+        const float round = std::clamp((1.3f - std::fabs(it.a)) / 0.3f, 0.0f, 1.0f); /* gone before side-on */
+        const float alpha = room * round * std::clamp((4.0f - std::fabs(k)) / 1.2f, 0.0f, 1.0f);
+        if (alpha <= 0.01f)
+            continue;
         const bool focused = it.i == selected_ && std::fabs(k) < 0.5f;
-        draw_tile(&games[std::size_t(it.i)], x, y, kTileW * 0.66f * s, kTileH * 0.66f * s, it.a, alpha, focused, false);
+        draw_tile(&games[std::size_t(it.i)], x, y, kTileW * 0.66f * s, kTileH * 0.66f * s,
+                  std::clamp(it.a, -1.2f, 1.2f), alpha, focused, false);
     }
 }
 
@@ -716,7 +733,7 @@ void App::draw_spines(double time)
         if (x < -80 || x > 2000)
             continue;
         const float alpha = std::clamp((21.0f - a) / 3.0f, 0.0f, 1.0f);
-        draw_box3d(games[std::size_t(i)], x, y, w * s, h * s, depth * s, yaw, alpha, a <= 8.0f);
+        draw_box3d(games[std::size_t(i)], x, y, w * s, h * s, depth * s, yaw, alpha, a <= 8.0f, a >= 1.0f);
     }
 }
 

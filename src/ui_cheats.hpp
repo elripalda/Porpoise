@@ -38,6 +38,11 @@ std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &gam
  * which needs Dolphin's cheats on. */
 bool add_own_cheats(const std::string &own_dir, const std::string &game_id, const std::string &ini_path,
                     bool (*off)(const Cheat &cheat, const void *user), const void *user);
+/* A custom server (Online): the code that turns a Wii game's "https" into
+ * "http" once, as it starts (community servers take plain connections),
+ * added to Dolphin's per-game file at ini_path and turned on. A Gecko code:
+ * it needs Dolphin's cheats on. */
+bool add_online_code(const std::string &ini_path);
 /* How a code is named in Dolphin's [<kind>_Enabled] / [<kind>_Disabled]
  * lists: as written, except a Gecko code's, which Dolphin takes only up to its
  * author tag ("$16:9 Widescreen [Ralf]" is "$16:9 Widescreen" there). */

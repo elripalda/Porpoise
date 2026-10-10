@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <map>
 #include <mutex>
 #include <ifaddrs.h>
@@ -354,6 +355,28 @@ bool lookup(const std::string &name, std::uint32_t &address)
     if (ok)
         address = found;
     return ok;
+}
+int probe(const std::string &server, const std::string &name, int &ms, std::string &address)
+{
+    timespec a{}, b{};
+    clock_gettime(CLOCK_MONOTONIC, &a);
+    std::uint32_t out = 0;
+    std::string why;
+    Said said = Said::Nothing;
+    for (int attempt = 0; attempt < 3 && said == Said::Nothing; ++attempt)
+        said = ask(server, name, out, why);
+    clock_gettime(CLOCK_MONOTONIC, &b);
+    ms = int((b.tv_sec - a.tv_sec) * 1000 + (b.tv_nsec - a.tv_nsec) / 1000000);
+    if (said == Said::Address)
+    {
+        char text[INET_ADDRSTRLEN] = {};
+        in_addr in{};
+        in.s_addr = out;
+        inet_ntop(AF_INET, &in, text, sizeof text);
+        address = text;
+        return 1;
+    }
+    return said == Said::No ? 0 : -1;
 }
 } // namespace porpoise::dns
 

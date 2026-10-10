@@ -360,7 +360,7 @@ void set_stay(bool stay)
     if (stay == stay_wanted())
         return;
     if (stay)
-        write_note(kStay, "Porpoise doesn't ask the jailbreak to free it (Settings > Games > Stay in the sandbox)\n");
+        write_note(kStay, "Porpoise doesn't ask the jailbreak to free it (Settings > Storage > Stay in the sandbox)\n");
     else
         unlink(kStay);
     note("jailbreak: stay in the sandbox %d", stay);

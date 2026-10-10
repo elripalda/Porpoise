@@ -834,6 +834,95 @@ int main(int argc, char **argv)
                          s.share.c_str(), s.folder.c_str(), s.protocol.c_str());
         return 0;
     }
+    /* PREVIEW_B5=1: 3.0 Alpha 5's settings - the scrolling sections, Online,
+     * Textures - and the Online hub; then stop. */
+    if (std::getenv("PREVIEW_B5"))
+    {
+        settle();
+        press(kR1, 2);
+        settle();
+        for (const char *sec : {"Games", "Storage", "Textures", "Online", "Console", "Accessibility", "About"})
+        {
+            ui.preview_section(sec);
+            settle();
+            render((std::string("b5-rail-") + sec).c_str(), [&] { ui.draw(12.0); });
+        }
+        ui.preview_section("Textures", 1);
+        settle();
+        render("b5-textures-rows", [&] { ui.draw(12.0); });
+        ui.preview_section("Online", 0);
+        settle();
+        render("b5-online-rows", [&] { ui.draw(12.0); });
+        const std::vector<std::pair<std::string, std::string>> servers = {
+            {"Dawnofthed WFC", "172.8.199.18"}, {"Home Server", "192.168.1.40"}};
+        ui.preview_hub(0, false, 0, 0, "", servers);
+        settle();
+        render("b5-hub-custom", [&] { ui.draw(12.0); });
+        ui.preview_hub(0, true, 1);
+        settle();
+        render("b5-hub-custom-server", [&] { ui.draw(12.0); });
+        ui.preview_hub(0, true, 5);
+        settle();
+        render("b5-hub-custom-https", [&] { ui.draw(12.0); });
+        ui.preview_hub(1, false, 0);
+        settle();
+        render("b5-hub-wiilink", [&] { ui.draw(12.0); });
+        ui.preview_hub(2, false, 0);
+        settle();
+        render("b5-hub-wiimmfi", [&] { ui.draw(12.0); });
+        ui.preview_hub(3, true, 0);
+        settle();
+        render("b5-hub-channels", [&] { ui.draw(12.0); });
+        ui.preview_hub(0, true, 3, 1, "Dawnofthed");
+        settle();
+        render("b5-hub-typing-name", [&] { ui.draw(12.0); });
+        ui.preview_hub(0, true, 3, 2, "172.8.199.18");
+        settle();
+        render("b5-hub-typing-dns", [&] { ui.draw(12.0); });
+        ui.preview_hub_close();
+        /* A game's Cheats and Patches as cards (own codes from out/cheats). */
+        for (int i = 0; i < int(lib.games().size()); ++i)
+            if (lib.games()[std::size_t(i)].id == "PRVW03")
+            {
+                ui.preview_game_settings(i);
+                settle();
+                ui.preview_section("Cheats and Patches", 2);
+                settle();
+                render("b5-cheats", [&] { ui.draw(12.0); });
+                ui.preview_section("Textures", 0);
+                settle();
+                render("b5-game-textures", [&] { ui.draw(12.0); });
+                ui.preview_section("Online", 0);
+                settle();
+                render("b5-game-online", [&] { ui.draw(12.0); });
+                press(kCircle, 2);
+                settle();
+                break;
+            }
+        if (const char *langs = std::getenv("PREVIEW_B5_LANGS"))
+            for (const char *at = langs; *at;)
+            {
+                const int lang = std::atoi(at);
+                while (*at && *at != ',')
+                    ++at;
+                if (*at == ',')
+                    ++at;
+                settings.ui_language = lang;
+                porpoise::ui::apply_language(lang);
+                ui.language_changed();
+                settle();
+                while (gfx.cjk_busy())
+                    settle();
+                ui.preview_section("Online");
+                settle();
+                render(("b5-online-" + std::to_string(lang)).c_str(), [&] { ui.draw(12.0); });
+                ui.preview_hub(0, true, 1, 0, "", servers);
+                settle();
+                render(("b5-hub-" + std::to_string(lang)).c_str(), [&] { ui.draw(12.0); });
+                ui.preview_hub_close();
+            }
+        return 0;
+    }
     if (std::getenv("PREVIEW_SHARE"))
     {
         porpoise::netfs::set_shares({{"Games", "192.168.1.20", "Games", "", "ruben", "secret"},

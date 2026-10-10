@@ -148,6 +148,28 @@ void Pacer::enter_vblank()
     ps5::debug::mark(line);
 }
 
+void Pacer::hold_to_game()
+{
+    const long long cap_period = period_ns_ * 1000 / 1004;
+    const long long now = now_ns();
+    cap_ns_ += cap_period;
+    if (cap_ns_ == cap_period || now > cap_ns_ + 4 * period_ns_)
+    {
+        cap_ns_ = now; /* the start, or behind (a slow stretch): from here */
+        return;
+    }
+    if (now >= cap_ns_ - period_ns_ / 2)
+        return;
+    /* Ahead: the next vblank (on the display's beat), else the game's time. */
+    if (mode_ == Mode::Vblank && porpoise::vk::wait_vblank())
+    {
+        last_vblank_ns_ = last_ns_ = now_ns();
+        return;
+    }
+    sleep_until_ns(cap_ns_ - period_ns_ / 2);
+    last_ns_ = now_ns();
+}
+
 /* V-Sync: a frame done before the vblank it is meant for waits for it, so
  * the next one starts just after it and every frame is on screen for one
  * vblank. A frame done after it doesn't wait (waiting would cost a whole
@@ -210,6 +232,7 @@ void Pacer::vblank_frame()
 
 void Pacer::resync()
 {
+    cap_ns_ = 0;
     clock_since_ns_ = now_ns();
     last_ns_ = deadline_ns_ = window_start_ns_ = now_ns();
     last_vblank_ns_ = now_ns() - vblank_ns_ / 2;
@@ -223,6 +246,8 @@ void Pacer::frame_done()
     if (mode_ == Mode::Vblank)
     {
         vblank_frame();
+        if (mode_ == Mode::Vblank)
+            hold_to_game();
         return;
     }
     /* V-Sync wanted but the display's output wasn't found yet (it opens with
@@ -303,5 +328,6 @@ void Pacer::frame_done()
      * most 4% fast until the checks above catch it. */
     sleep_until_ns(last_ns_ + vblank_ns_ * 24 / 25);
     last_ns_ = now_ns();
+    hold_to_game();
 }
 } // namespace porpoise::pacer

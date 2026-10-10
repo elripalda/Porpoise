@@ -216,6 +216,10 @@ struct Settings
     bool wii_menu_boot = false; /* Wii discs start from the player's own Wii Menu */
     bool gc_bios = false;   /* the GameCube's start-up, from the player's own IPL.bin */
     bool wii_online = false; /* WiiConnect24 through WiiLink (Dolphin.ini: Core/EnableWiiLink) */
+    /* Wii games online on a custom server: its DNS server (online_dns), and
+     * the https-to-http code added to every Wii game (3.0 Alpha 5). */
+    bool online_custom = false;
+    bool online_https = true; /* with a custom server: the https-to-http code (a server that takes https turns it off) */
     /* Accessibility */
     int text_size = 0;          /* 0 normal, 1 large, 2 larger, 3 smaller */
     int colour_filter = 0;      /* 0 off, 1 red-weak, 2 green-weak, 3 blue-weak, 4 greyscale */

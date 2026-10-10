@@ -2348,13 +2348,16 @@ int main(int argc, char **argv)
      * Before g_app.init: open_file() may add it to the library's games. */
     porpoise::ui::Game *forwarded_game = nullptr;
     bool forwarded_session = false;
-    std::string forwarded_missing;
+    std::string forwarded_missing, forwarded_foreign;
     if (!forwarded.rom.empty())
     {
         const std::string path = porpoise::forward::resolve(forwarded.rom, g_data + "/games");
+        bool foreign = false;
         if (!path.empty())
-            forwarded_game = g_library.open_file(path);
-        if (!forwarded_game)
+            forwarded_game = g_library.open_file(path, &foreign);
+        if (foreign)
+            forwarded_foreign = path.substr(path.rfind('/') + 1);
+        else if (!forwarded_game)
             forwarded_missing = path.empty() ? forwarded.rom : path;
         ps5::debug::mark(("main: forwarded game " + (path.empty() ? forwarded.rom : path) +
                           (forwarded_game ? ": found" : ": not found"))
@@ -2449,6 +2452,10 @@ int main(int argc, char **argv)
                                             "\xE2\x80\xA2 Or run a standalone daemon such as Lapy.\n"
                                             "Then open Porpoise again; if a launch still lands here, try once more. "
                                             "Until then, games go in /app0/porpoise/games."));
+    else if (!forwarded_foreign.empty())
+        g_app.show_message(porpoise::ui::tr("This isn't a GameCube or Wii game"),
+                           porpoise::ui::trf("{file} is a disc image from another console, so Porpoise can't play it.",
+                                             {{"file", forwarded_foreign}}));
     else if (!forwarded_missing.empty())
         g_app.show_message(porpoise::ui::tr("Forwarded game not found"),
                            porpoise::ui::trf("Porpoise was asked to start {path}, but can't find that file.",
@@ -2793,6 +2800,18 @@ int main(int argc, char **argv)
                         g_play.write_core_options(g_options_path);
                     }
                 }
+                /* A custom server: the https-to-http code, for a Wii game. */
+                const bool wii_disc = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
+                if (wii_disc && g_play.online_custom && g_play.online_https && !g_settings.online_dns.empty() &&
+                    porpoise::ui::add_online_code(dir + "/" + launch->id + ".ini"))
+                {
+                    ps5::debug::mark("main: the custom server's secure connection fix is on");
+                    if (!g_play.cheats)
+                    {
+                        g_play.cheats = true;
+                        g_play.write_core_options(g_options_path);
+                    }
+                }
                 /* The game's widescreen code (Warped Polygon's collection, or
                  * Dolphin's own), on when the plan says so. */
                 bool ws_on = false;
@@ -2875,7 +2894,12 @@ int main(int argc, char **argv)
         const bool is_wii = g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii");
         g_wii_game_id = launch->id;
 #ifndef PORPOISE_DESKTOP
-        porpoise::dns::set_server(g_settings.online_dns); /* a Wii game going online */
+        /* A Wii game going online: through the custom server's DNS when
+         * Custom Server is on (this game's choice, or everyone's). */
+        porpoise::dns::set_server(g_play.online_custom ? g_settings.online_dns : std::string());
+        ps5::debug::mark(g_play.online_custom && !g_settings.online_dns.empty()
+                             ? ("main: online through the custom server, DNS " + g_settings.online_dns).c_str()
+                             : "main: online the game's own way (no custom server)");
 #endif
         playback.wii = g_play.wii_config(is_wii, g_wii_game_id);
         playback.controller_speakers = g_controller_speakers;
@@ -2892,7 +2916,7 @@ int main(int argc, char **argv)
             mkdir(debug_dir.c_str(), 0777);
             if (std::FILE *f = std::fopen((debug_dir + "/README.txt").c_str(), "w"))
             {
-                std::fputs("Porpoise's debug folder (turn it off in Settings > System > Debug logs).\n\n"
+                std::fputs("Porpoise's debug folder (turn it off in Settings > Console > Debug logs).\n\n"
                            "WiimoteNew.ini  The Wii Remote set-up Dolphin was given for the last Wii game.\n\n"
                            "Send it with /data/homebrew/PPSA99764/trace.txt and "
                            "/data/homebrew/PPSA99764/porpoise/core.log when you report a problem.\n",

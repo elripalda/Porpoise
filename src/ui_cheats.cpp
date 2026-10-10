@@ -4,6 +4,7 @@
 #include "ui_cheats.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 
@@ -14,12 +15,38 @@ namespace porpoise::ui
 {
 namespace
 {
+/* "0123ABCD 4567EF01": a line of a Gecko or Action Replay code. */
+bool code_line(const std::string &l)
+{
+    if (l.size() < 17 || l[8] != ' ')
+        return false;
+    for (int i = 0; i < 17; ++i)
+        if (i != 8 && !std::isxdigit(static_cast<unsigned char>(l[std::size_t(i)])))
+            return false;
+    return true;
+}
+
+bool ends_with(const std::string &s, const char *tail)
+{
+    const std::size_t n = std::strlen(tail);
+    return s.size() >= n && s.compare(s.size() - n, n, tail) == 0;
+}
+
+/* A .txt of bare code lines (as WiiLink WFC hands out a game's code): one
+ * Gecko code, named after its file. */
+std::string bare_name(const std::string &path)
+{
+    return "$Codes from " + path.substr(path.rfind('/') + 1);
+}
+
 void read_file(const std::string &path, std::vector<Cheat> &out)
 {
     std::FILE *f = std::fopen(path.c_str(), "r");
     if (!f)
         return;
-    std::string section;
+    const bool bare = ends_with(path, ".txt");
+    std::string section = bare ? "Gecko" : "";
+    bool named = false;
     char buf[512];
     auto find = [&](const std::string &kind, const std::string &name) -> Cheat * {
         for (Cheat &c : out)
@@ -40,8 +67,17 @@ void read_file(const std::string &path, std::vector<Cheat> &out)
             section = end == std::string::npos ? "" : line.substr(1, end - 1);
             continue;
         }
+        if (bare && !named && section == "Gecko" && code_line(line))
+        {
+            /* Code lines before any name: the file's own code. */
+            named = true;
+            if (!find("Gecko", bare_name(path)))
+                out.push_back({"Gecko", bare_name(path), false});
+            continue;
+        }
         if (line[0] != '$' || line.size() < 2 || line.find('=') != std::string::npos)
             continue;
+        named = true;
         for (const char *kind : {"OnFrame", "ActionReplay", "Gecko"})
         {
             const std::string k = kind;
@@ -161,15 +197,17 @@ bool add_own_cheats(const std::string &own_dir, const std::string &game_id, cons
         std::FILE *f = std::fopen(path.c_str(), "r");
         if (!f)
             continue;
-        std::string section;
+        const bool bare = ends_with(path, ".txt");
+        std::string section = bare ? "Gecko" : "";
         char buf[512];
-        bool skipping = false;
+        /* A .txt's lines before its code (a title, a note) belong to nothing. */
+        bool skipping = bare, file_named = false;
         while (std::fgets(buf, sizeof buf, f))
         {
             std::string line = buf;
             while (!line.empty() && (line.back() == '\n' || line.back() == '\r' || line.back() == ' '))
                 line.pop_back();
-            if (line.empty())
+            if (line.empty() || line[0] == '#')
                 continue;
             if (line[0] == '[')
             {
@@ -182,11 +220,24 @@ bool add_own_cheats(const std::string &own_dir, const std::string &game_id, cons
                 continue;
             if (line[0] == '$')
             {
+                file_named = true;
                 skipping = false;
                 for (const Code &c : codes)
                     skipping |= c.kind == section && c.name == line; /* a repeat (a later, less specific file) */
                 if (!skipping)
                     codes.push_back({section, line, {}});
+            }
+            else if (bare && !file_named && section == "Gecko" && code_line(line))
+            {
+                file_named = true;
+                /* Code lines before any name: the file's own code. */
+                const std::string name = bare_name(path);
+                bool have = false;
+                for (const Code &c : codes)
+                    have |= c.kind == "Gecko" && c.name == name;
+                if (!have)
+                    codes.push_back({"Gecko", name, {line}});
+                skipping = have;
             }
             else if (!skipping && !codes.empty())
                 codes.back().lines.push_back(line);
@@ -287,5 +338,35 @@ std::string cheat_help(const Cheat &cheat)
     return cheat.kind == "Gecko" ? tr("A Gecko cheat from Dolphin's list. Turning one on turns this game's cheats on.")
                                  : tr("An Action Replay cheat from Dolphin's list. Turning one on turns this game's "
                                       "cheats on.");
+}
+bool add_online_code(const std::string &ini_path)
+{
+    /* Once, as the game starts (it writes a blr over its own first word):
+     * every "https" in the game's memory from 0x80003000 on loses its 's'
+     * (the rest of the string moves up a byte), so the login server is asked
+     * over plain HTTP. */
+    static const char *const kLines[] = {
+        "C0000000 0000000E", "3C004E80 60000020", "900F0000 3D808000", "618C3000 3C00017F",
+        "6000CFFC 7C0903A6", "3D607474 616B7073", "800C0000 7C005800", "40A20034 394C0003",
+        "392C0002 7D455378", "38600000 8C050001", "2C000000 38630001", "4082FFF4 8C0A0001",
+        "9C090001 3463FFFF", "4082FFF4 398C0001", "4200FFC0 4E800020",
+    };
+    const char *const name = "$Porpoise: custom server (https to http)";
+    bool exists = false;
+    if (std::FILE *probe = std::fopen(ini_path.c_str(), "r"))
+    {
+        exists = true;
+        std::fclose(probe);
+    }
+    std::FILE *f = std::fopen(ini_path.c_str(), "a");
+    if (!f)
+        return false;
+    if (!exists)
+        std::fprintf(f, "# Written by Porpoise from this game's settings; changes here are replaced.\n");
+    std::fprintf(f, "\n# Online: a custom server (Settings > Online)\n[Gecko]\n%s\n", name);
+    for (const char *l : kLines)
+        std::fprintf(f, "%s\n", l);
+    std::fprintf(f, "\n[Gecko_Enabled]\n%s\n", name);
+    return std::fclose(f) == 0;
 }
 } // namespace porpoise::ui

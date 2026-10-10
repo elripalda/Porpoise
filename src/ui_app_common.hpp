@@ -20,12 +20,12 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "3.0 Alpha Build 4";
+constexpr const char *kVersion = "3.0 Alpha Build 5";
 constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 3, kVersionMinor = 0, kVersionPatch = 0;
 /* 0 for a final release; its betas (1, 2...) come before it, and its alphas
  * before those (-1000 + n: alpha 1 is -999), as porpoise::update reads tags. */
-constexpr int kVersionBeta = -996; /* alpha 4 */
+constexpr int kVersionBeta = -995; /* alpha 5 */
 /* A test build's tag: shown by the logo, and in a notice at the first start
  * of each such build. Release for neither. */
 enum class Channel
@@ -69,7 +69,8 @@ enum RowAction
     kRowShots,        /* Screenshots: the gallery */
     kRowAddShare,     /* Games > Add a network share: the share panel */
     kRowEditShare,    /* Games > a network share (folder: its index): the share panel */
-    kRowOnlineDns,    /* System > DNS Server for Online Play: the address panel */
+    kRowOnlineDns,    /* Online > DNS Server for Online Play: the address panel */
+    kRowOnlineHub,    /* Online > Online Hub (ui_app_online.cpp) */
 };
 
 /* Prompts with a keycap instead of a face-button glyph (draw_prompts). */

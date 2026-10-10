@@ -81,7 +81,8 @@ public:
      * added (a game started with --rom from outside the library's folders).
      * nullptr if it isn't a file. Moves games_: no Game pointer held before
      * the call stays good. */
-    Game *open_file(const std::string &path);
+    /* foreign: set when the file is there but another console's image. */
+    Game *open_file(const std::string &path, bool *foreign = nullptr);
     std::vector<Game> &games() { return games_; }
     const LibraryPaths &paths() const { return paths_; }
 

@@ -28,6 +28,8 @@ bool plain_address(const std::string &text)
     {
         if (c >= '0' && c <= '9')
         {
+            if (value == 0)
+                return false; /* a leading zero (192.168.001.2): not read as meant */
             value = (value < 0 ? 0 : value) * 10 + (c - '0');
             if (value > 255)
                 return false;
@@ -83,6 +85,8 @@ App::Action App::update_dns(bool up, bool down, bool left, bool right)
         settings_->online_dns = text;
         draft_.online_dns = text;
         base_.online_dns = text;
+        /* An address is a custom server, on; none, off. */
+        settings_->online_custom = draft_.online_custom = base_.online_custom = !text.empty();
         settings_->save(settings_path_);
     }
 #ifndef PORPOISE_DESKTOP

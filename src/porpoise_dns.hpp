@@ -24,4 +24,8 @@ bool is_address(const std::string &text);
 /* A name's IPv4 address (network order) through the server set, or the
  * console's resolver; false when neither knows it. Answers are kept a while. */
 bool lookup(const std::string &name, std::uint32_t &address);
+/* One question to a given DNS server (the Online hub's Test): 1 it gave an
+ * address, 0 it answered without one, -1 no answer. ms: how long it took;
+ * address: "a.b.c.d" when it gave one. Blocks a few seconds at most. */
+int probe(const std::string &server, const std::string &name, int &ms, std::string &address);
 } // namespace porpoise::dns
