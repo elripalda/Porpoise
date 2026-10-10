@@ -352,7 +352,27 @@ mkdir -p "$app/sce_sys" "$app/sce_module"
 "$tool" self --sign --in "$build/eboot.elf" --out "$app/eboot.bin" \
     --magic "$fself_magic"
 
-cp "$param" "$app/sce_sys/param.json"
+# The app's version, as PS5 Upload and the console show it, is Porpoise's own
+# (src/ui_app_common.hpp): 3.0 is 03.000.000, 3.1 03.100.000, 3.0.1 03.010.000.
+python3 - "$param" "$root/src/ui_app_common.hpp" "$app/sce_sys/param.json" <<'PY'
+import re, sys
+
+source, header, out = sys.argv[1:4]
+found = re.search(r"kVersionMajor\s*=\s*(\d+),\s*kVersionMinor\s*=\s*(\d+),\s*kVersionPatch\s*=\s*(\d+)",
+                  open(header, encoding="utf-8").read())
+if not found:
+    raise SystemExit("ui_app_common.hpp: kVersionMajor/Minor/Patch not found")
+major, minor, patch = map(int, found.groups())
+if major > 99 or minor > 9 or patch > 9:
+    raise SystemExit("the version doesn't fit param.json's NN.NNN.NNN")
+version = "%02d.%03d.000" % (major, minor * 100 + patch * 10)
+text, n = re.subn(r'("contentVersion"\s*:\s*")[0-9.]+(")', r"\g<1>" + version + r"\g<2>",
+                  open(source, encoding="utf-8").read())
+if n != 1:
+    raise SystemExit("param.json: contentVersion not found")
+open(out, "w", encoding="utf-8").write(text)
+print("param.json contentVersion " + version)
+PY
 for asset in icon0.png pic0.dds pic1.dds snd0.at9; do
     [[ -f $root/sce_sys/$asset ]] && cp "$root/sce_sys/$asset" "$app/sce_sys/$asset"
 done
