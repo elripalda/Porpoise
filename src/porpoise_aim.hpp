@@ -96,7 +96,7 @@ struct Dot
     float x = 0, y = 0;
     bool visible = false;
 };
-void sensor_bar(float x, float y, float roll, Dot out[2]);
+void sensor_bar(float x, float y, float roll, Dot out[2], float range = 1.0f);
 
 /* Smoothing for the pointer (0 off .. 3 strong): steadies a still hand,
  * stays quick when it moves. */

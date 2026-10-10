@@ -242,6 +242,7 @@ void App::begin_mapping()
     /* Edit the layout in use, or the first one. */
     const int own = map_target_ ? map_target_->preset_in_use() : -1;
     map_preset_ = own >= 0 ? own : 0;
+    map_wii_slot_ = map_target_ ? std::clamp(map_target_->wii_buttons_use, 0, 2) : 1;
     map_row_ = own >= 0 ? kFirstButton : kSelectRow;
     map_capture_ = false;
     map_note_.clear();
@@ -271,29 +272,51 @@ void App::close_mapping()
 
 /* The layouts live with the global settings; which one is in use belongs to
  * whatever opened the screen. */
-void App::save_mapping(bool layout_changed)
+void App::save_mapping(bool layout_changed, const char *key)
 {
-    for (Settings *other : {map_target_, &game_, menu_play_})
+    /* The layouts are the global settings'; every copy of the settings that
+     * is on screen or in play gets them, so none puts old ones back. */
+    for (Settings *other : {map_target_, &game_, &game_base_, menu_play_, &menu_draft_, &menu_base_})
         if (other && other != settings_)
+        {
             std::memcpy(other->presets, settings_->presets, sizeof settings_->presets);
+            std::memcpy(other->wii_buttons, settings_->wii_buttons, sizeof settings_->wii_buttons);
+            std::memcpy(other->wii_buttons2, settings_->wii_buttons2, sizeof settings_->wii_buttons2);
+        }
     if (map_game_ && map_target_ != settings_)
     {
         if (layout_changed)
         {
             const std::string path = game_settings_path(*map_game_);
             std::vector<std::string> keys = Settings::keys_in(path);
-            if (std::find(keys.begin(), keys.end(), "button_layout") == keys.end())
-                keys.push_back("button_layout");
-            if (map_target_ == &game_ &&
-                std::find(game_keys_.begin(), game_keys_.end(), "button_layout") == game_keys_.end())
-                game_keys_.push_back("button_layout");
+            if (std::find(keys.begin(), keys.end(), key) == keys.end())
+                keys.push_back(key);
+            if (map_target_ == &game_)
+            {
+                /* Saved: what's in effect for the game now, not a change
+                 * waiting for Apply (a Discard would undo it on screen only). */
+                if (std::find(game_keys_.begin(), game_keys_.end(), key) == game_keys_.end())
+                    game_keys_.push_back(key);
+                if (std::find(game_keys_base_.begin(), game_keys_base_.end(), key) == game_keys_base_.end())
+                    game_keys_base_.push_back(key);
+                game_base_.copy_keys(game_, {key});
+            }
             mkdir((data_dir_ + "/game-settings").c_str(), 0777);
-            map_target_->save_keys(path, keys);
+            /* From what's in effect: Game Settings' own changes wait for
+             * Apply, and aren't written by this. */
+            (map_target_ == &game_ ? game_base_ : *map_target_).save_keys(path, keys);
         }
     }
     settings_->save(settings_path_);
     if (map_in_game_)
-        menu_change_ = "button_layout";
+    {
+        /* In effect already: the in-game menu's rows show it as it is. */
+        menu_draft_.copy_keys(*map_target_, {key});
+        menu_base_.copy_keys(*map_target_, {key});
+        menu_change_ = key;
+    }
+    else
+        porpoise::pad::set_wii_buttons(map_target_->wii_buttons_in_use()); /* for the guides' pictures */
 }
 
 void App::use_preset(int preset)
@@ -336,7 +359,7 @@ void App::start_preset_from(int layout)
 App::Action App::update_mapping(bool up, bool down, bool left, bool right)
 {
     if (map_kind_ > 0)
-        return update_wii_mapping(up, down);
+        return update_wii_mapping(up, down, left, right);
     const bool global = map_target_ == settings_;
     const Action changed = global ? Action::SettingsChanged : Action::None;
     if (!map_capture_ && switch_map_kind())
@@ -2053,12 +2076,18 @@ void App::draw_map_tabs()
     }
 }
 
-App::Action App::update_wii_mapping(bool up, bool down)
+App::Action App::update_wii_mapping(bool up, bool down, bool left, bool right)
 {
+    /* Row 0 picks the buttons (Porpoise's, Mine 1, Mine 2); then each
+     * binding; then Start Over. Porpoise's own are shown but never change. */
     const int set = map_kind_ - 1;
     const WiiLayout base = base_layout(set);
-    const int rows = base.count + 1; /* each binding, then Start over */
-    int *perm = settings_->wii_buttons[set];
+    const int rows = base.count + 2;
+    const bool global = map_target_ == settings_;
+    const Action changed = global ? Action::SettingsChanged : Action::None;
+    auto (*tables)[CtlCount] = settings_->wii_slot(map_wii_slot_);
+    int *perm = tables ? tables[set] : nullptr;
+    int bind = map_row_ - 1; /* the binding on this row, if it is one */
     if (map_capture_)
     {
         const std::uint32_t mask = 0xFFFFu;
@@ -2077,27 +2106,26 @@ App::Action App::update_wii_mapping(bool up, bool down)
             return Action::None;
         }
         const std::uint32_t fresh = (raw_held_ & ~raw_prev_) & mask;
-        if (fresh && map_row_ < base.count)
+        if (fresh && perm && bind >= 0 && bind < base.count)
             for (int c = 0; c < CtlCount; ++c)
                 if (fresh & control_bit(c))
                 {
                     /* The binding moves to the pressed control; whatever was
                      * there takes its old place. */
-                    const int from = base.binds[map_row_].control;
+                    const int from = base.binds[bind].control;
                     int other = 0;
                     for (int e = 0; e < CtlCount; ++e)
                         if (perm[e] == c)
                             other = e;
                     std::swap(perm[from], perm[other]);
-                    porpoise::pad::set_wii_buttons(settings_->wii_buttons);
-                    settings_->save(settings_path_);
+                    use_wii_slot(map_wii_slot_);
                     map_note_ = trf("{button} is now on {control}.",
-                                    {{"button", tr(wii_input_name(base.binds[map_row_].input))},
+                                    {{"button", tr(wii_input_name(base.binds[bind].input))},
                                      {"control", control_name(c)}});
                     map_note_time_ = time_;
                     map_capture_ = false;
                     sfx(Sound::LaunchGame);
-                    return Action::SettingsChanged;
+                    return changed;
                 }
         return Action::None;
     }
@@ -2113,6 +2141,14 @@ App::Action App::update_wii_mapping(bool up, bool down)
         ++map_row_;
         sfx(Sound::MenuScroll);
     }
+    if (map_row_ == 0 && (left || right))
+    {
+        map_wii_slot_ = (map_wii_slot_ + (left ? Settings::kWiiButtonSlots - 1 : 1)) % Settings::kWiiButtonSlots;
+        sfx(Sound::MovingTab);
+        tables = settings_->wii_slot(map_wii_slot_);
+        perm = tables ? tables[set] : nullptr;
+    }
+    bind = map_row_ - 1;
     if (pressed(BtnCircle))
     {
         map_kind_ = 0;
@@ -2121,7 +2157,20 @@ App::Action App::update_wii_mapping(bool up, bool down)
     }
     if (pressed(BtnCross))
     {
-        if (map_row_ < base.count)
+        if (map_row_ == 0)
+        {
+            use_wii_slot(map_wii_slot_);
+            sfx(Sound::LaunchGame);
+            return changed;
+        }
+        if (!perm)
+        {
+            map_note_ = tr("Porpoise's buttons stay as they are: pick Mine 1 or Mine 2 to make your own.");
+            map_note_time_ = time_;
+            sfx(Sound::DetailsFlip);
+            return Action::None;
+        }
+        if (bind < base.count)
         {
             map_capture_ = true;
             map_armed_ = false;
@@ -2131,14 +2180,44 @@ App::Action App::update_wii_mapping(bool up, bool down)
         }
         for (int c = 0; c < CtlCount; ++c)
             perm[c] = c;
-        porpoise::pad::set_wii_buttons(settings_->wii_buttons);
-        settings_->save(settings_path_);
+        use_wii_slot(map_wii_slot_);
         map_note_ = trf("{controller} is back to Porpoise's layout.", {{"controller", tr(kMapKindNames[map_kind_])}});
         map_note_time_ = time_;
         sfx(Sound::LaunchGame);
-        return Action::SettingsChanged;
+        return changed;
     }
     return Action::None;
+}
+
+/* The Wii buttons in a slot go to whatever opened the screen (every game, or
+ * one), and are saved. */
+void App::use_wii_slot(int slot)
+{
+    /* In a game played with GameCube buttons, the Wii buttons are for every
+     * Wii game: this game would never use them. */
+    Settings *const target = map_target_;
+    const bool in_game = map_in_game_;
+    const bool for_all = in_game && !porpoise::pad::wii().active;
+    if (for_all)
+    {
+        map_target_ = settings_;
+        map_in_game_ = false;
+    }
+    const bool changed = map_target_->wii_buttons_use != slot;
+    map_target_->wii_buttons_use = slot;
+    save_mapping(changed, "wii_buttons_use");
+    const std::string name = tr(slot == 0 ? "Porpoise's Set" : slot == 1 ? "Mine 1" : "Mine 2");
+    map_note_ = map_game_ && map_target_ != settings_ ? trf("Wii buttons: {name}, for this game.", {{"name", name}})
+                                                      : trf("Wii buttons: {name}.", {{"name", name}});
+    map_note_time_ = time_;
+    map_target_ = target;
+    map_in_game_ = in_game;
+    if (for_all && target)
+    {
+        /* The game's copies show it too (In Use), with nothing waiting. */
+        target->wii_buttons_use = slot;
+        menu_draft_.wii_buttons_use = menu_base_.wii_buttons_use = slot;
+    }
 }
 
 void App::draw_wii_mapping(double time)
@@ -2146,7 +2225,9 @@ void App::draw_wii_mapping(double time)
     Gfx &g = *g_;
     const int set = map_kind_ - 1;
     const WiiLayout base = base_layout(set);
-    const int *perm = settings_->wii_buttons[set];
+    static const int kSame[CtlCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    auto (*tables)[CtlCount] = settings_->wii_slot(map_wii_slot_);
+    const int *perm = tables ? tables[set] : kSame;
     WiiLayout mine = base;
     for (int i = 0; i < mine.count; ++i)
         mine.binds[i].control = perm[mine.binds[i].control];
@@ -2166,11 +2247,36 @@ void App::draw_wii_mapping(double time)
     const float px = 950, py = 136, pw = 880, ph = 800;
     g.panel(px, py, pw, ph, rgba(0x0F1F63, 0.62f), 0.75f, kR, rgba(0x4C6FD8, 0.9f), 1.8f, 0, 0.12f);
     const int rows = base.count + 1;
-    const float row_h = std::min(44.0f, (ph - 180) / float(rows)), row_x = px + 22, row_w = pw - 44;
-    float y = py + 74;
+    const float row_x = px + 22, row_w = pw - 44;
+    {
+        /* Which buttons: Porpoise's, Mine 1, Mine 2 (and which are in use). */
+        const bool on = map_row_ == 0;
+        const float sy = py + 66, sh = 58;
+        if (on)
+            g.panel(row_x, sy, row_w, sh, rgba(0x1D45B8, 0.88f), 0.7f, kR, kIcy, 2.2f, 8, 0.18f);
+        else
+            g.panel(row_x, sy, row_w, sh, rgba(0x07102E, 0.45f), 0.8f, kR, rgba(0x3D4F9E, 0.8f), 1.2f);
+        const int use = map_target_ ? map_target_->wii_buttons_use : 1;
+        const std::string name = tr(map_wii_slot_ == 0 ? "Porpoise's Set" : map_wii_slot_ == 1 ? "Mine 1" : "Mine 2");
+        g.text_mid(Font::SemiBold, ts(26), row_x + 30, sy + sh * 0.5f, on ? kWhite : kSoft, Align::Left,
+                   fit(g, Font::SemiBold, ts(26), tr("Buttons"), row_w * 0.3f));
+        const float vx = row_x + row_w * 0.62f;
+        g.glyph(Glyph::Arrow, vx - 150, sy + sh * 0.5f, 14, on ? kWhite : kSoft, -kPi * 0.5f);
+        g.glyph(Glyph::Arrow, vx + 150, sy + sh * 0.5f, 14, on ? kWhite : kSoft, kPi * 0.5f);
+        g.text_mid(Font::Bold, ts(28), vx, sy + sh * 0.5f, kWhite, Align::Center,
+                   fit(g, Font::Bold, ts(28), name, 270));
+        const bool in_use = use == map_wii_slot_;
+        std::string tag = map_wii_slot_ == 0 ? tr("Locked") : "";
+        if (in_use)
+            tag = tag.empty() ? tr("In Use") : tr("In Use") + " \xE2\x80\xA2 " + tag;
+        g.text_mid(Font::SemiBold, ts(21), row_x + row_w - 26, sy + sh * 0.5f, in_use ? rgba(0x7CF0A6) : kLavender,
+                   Align::Right, fit(g, Font::SemiBold, ts(21), tag, row_w * 0.22f));
+    }
+    const float row_h = std::min(44.0f, (ph - 200) / float(rows));
+    float y = py + 136;
     for (int i = 0; i < rows; ++i)
     {
-        const bool on = i == map_row_;
+        const bool on = i + 1 == map_row_;
         const float cy = y + row_h * 0.5f;
         if (i == base.count)
         {
@@ -2214,16 +2320,19 @@ void App::draw_wii_mapping(double time)
                    fit(g, Font::SemiBold, ts(24), map_note_, pw - 60));
     }
     draw_map_tabs();
-    if (map_capture_ && map_row_ < base.count)
+    const int bind = map_row_ - 1;
+    if (map_capture_ && bind >= 0 && bind < base.count)
     {
         const int left = int(std::ceil(kCaptureSeconds - (time_ - map_capture_start_)));
         draw_prompts({}, {}, trf("Press the DualSense button for {button} ({n})",
-                                 {{"button", tr(wii_input_name(base.binds[map_row_].input))},
+                                 {{"button", tr(wii_input_name(base.binds[bind].input))},
                                   {"n", std::to_string(std::max(1, left))}}));
     }
+    else if (map_row_ > 0 && map_wii_slot_ == 0)
+        draw_prompts({{Glyph::DPad, "Browse"}, {Glyph::Circle, "Back"}}, {{kKeyL1R1, "Controller"}}, "");
     else
         draw_prompts({{Glyph::DPad, "Browse"},
-                      {Glyph::Cross, map_row_ < base.count ? "Change" : "Start Over"},
+                      {Glyph::Cross, map_row_ == 0 ? "Use" : bind < base.count ? "Change" : "Start Over"},
                       {Glyph::Circle, "Back"}},
                      {{kKeyL1R1, "Controller"}}, "");
 }

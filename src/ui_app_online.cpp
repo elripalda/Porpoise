@@ -24,8 +24,10 @@
 #include <mutex>
 #include <sys/stat.h>
 
+#include "porpoise_atomic.hpp"
 #include "porpoise_pad.hpp"
 #include "title_threads.hpp"
+#include "ui_cheats.hpp"
 #include "ui_app_common.hpp"
 #include "ui_i18n.hpp"
 #ifndef PORPOISE_DESKTOP
@@ -94,6 +96,10 @@ bool dotted_quad(const std::string &text)
         }
         else if (c == '.' && value >= 0 && parts < 3)
         {
+            /* Not a server anywhere: 0.x, the console itself (127.x),
+             * multicast and broadcast (224 and up). */
+            if (parts == 0 && (value == 0 || value == 127 || value >= 224))
+                return false;
             ++parts;
             value = -1;
         }
@@ -144,9 +150,10 @@ void App::add_online_rows(Settings &t, bool per_game)
         r.section = "Online";
         r.key = "online_custom";
         r.label = tr("Custom Server");
-        r.help = tr("Wii games go online through a community's server: the DNS server below sends them there, and "
-                    "Porpoise adds the fix such servers need to every Wii game. Off: each game goes online its own "
-                    "way (a game patched for Wiimmfi, or a WiiLink WFC code).");
+        r.help = tr("Wii games go online through a community's server: the DNS server set in Settings > Online "
+                    "sends them there, and Porpoise adds the fix such servers need to every Wii game. It needs that "
+                    "DNS server first. Off: each game goes online its own way (a game patched for Wiimmfi, or a "
+                    "WiiLink WFC code).");
         r.bool_value = &t.online_custom;
         r.values = {tr("Off"), tr("On")};
         rows_.push_back(r);
@@ -176,22 +183,21 @@ std::string App::hub_servers_path() const
 
 void App::hub_save_servers()
 {
-    const std::string path = hub_servers_path(), tmp = path + ".part";
-    std::FILE *f = std::fopen(tmp.c_str(), "w");
+    const std::string path = hub_servers_path();
+    std::FILE *f = porpoise::open_atomic(path);
     if (!f)
         return;
     std::fprintf(f, "# Porpoise's online servers: a name, a tab, its DNS server's address\n");
     for (const auto &[name, address] : hub_.servers)
         std::fprintf(f, "%s\t%s\n", name.c_str(), address.c_str());
-    const bool ok = std::fclose(f) == 0;
-    if (ok)
-        std::rename(tmp.c_str(), path.c_str());
+    porpoise::finish_atomic(f, path);
 }
 
 void App::open_hub()
 {
     hub_ = HubPanel{};
     hub_.open = true;
+    hub_.coded = hub_coded_games();
     if (std::FILE *f = std::fopen(hub_servers_path().c_str(), "r"))
     {
         char buf[512];
@@ -200,9 +206,10 @@ void App::open_hub()
             std::string line = buf;
             while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
                 line.pop_back();
-            if (line.empty() || line[0] == '#')
-                continue;
+            /* A comment: "#" and no tab (a server's name may start with "#"). */
             const std::size_t tab = line.find('\t');
+            if (line.empty() || (line[0] == '#' && tab == std::string::npos))
+                continue;
             if (tab == std::string::npos)
                 continue;
             const std::string name = line.substr(0, tab), address = line.substr(tab + 1);
@@ -267,22 +274,18 @@ int App::hub_rows() const
 
 /* The Wii games with a code file of their own (a WiiLink WFC code, most
  * likely, or any the player made): <data>/cheats/<ID>.txt or .ini. */
-std::vector<const Game *> App::hub_coded_games() const
+std::vector<std::pair<std::string, std::string>> App::hub_coded_games() const
 {
-    std::vector<const Game *> out;
+    /* Looked for once, as the hub opens (two or more files a game). */
+    std::vector<std::pair<std::string, std::string>> out;
     if (!lib_)
         return out;
     for (const Game &g : lib_->games())
     {
         if (g.platform != "Wii" || !g.kind.empty() || g.id.size() != 6)
             continue;
-        struct stat st{};
-        for (const char *ext : {".txt", ".ini"})
-            if (stat((data_dir_ + "/cheats/" + g.id + ext).c_str(), &st) == 0)
-            {
-                out.push_back(&g);
-                break;
-            }
+        if (!own_files(data_dir_ + "/cheats", g.id).empty())
+            out.push_back({g.db_title.empty() ? g.title : g.db_title, g.id});
     }
     return out;
 }
@@ -562,7 +565,7 @@ void App::draw_hub()
     }
 
     /* The four ways in, as cards. */
-    const std::vector<const Game *> coded = hub_coded_games();
+    const std::vector<std::pair<std::string, std::string>> &coded = p.coded;
     std::vector<std::string> channels;
     if (lib_)
         for (const WcChannel &c : kChannels)
@@ -646,9 +649,10 @@ void App::draw_hub()
                   kSoft, 3);
         row_box(0, tr("Custom Server"), settings_ && settings_->online_custom ? tr("On") : tr("Off"),
                 settings_ && settings_->online_custom ? good : hint);
-        /* The servers: five at a time around the one in focus. */
+        /* The servers: three at a time around the one in focus (with the rows
+         * under them and the note, the page's height). */
         const int n = int(p.servers.size());
-        constexpr int kShown = 4;
+        constexpr int kShown = 3;
         int first = 0;
         if (p.inside && p.row >= 1 && p.row <= n)
             first = std::clamp(p.row - 1 - kShown + 1, 0, std::max(0, n - kShown));
@@ -664,12 +668,13 @@ void App::draw_hub()
             g.panel(px + 24, row_y + 23, 18, 18, chosen ? good : rgba(0x3D5AB0, 0.0f), 1, 9,
                     chosen ? good : rgba(0x8A96C8), 1.8f);
         }
-        if (n > kShown)
-            g.text_mid(Font::Regular, ts(22), px + pw, ly - 4, hint, Align::Right,
-                       trf("{a}-{b} of {n}", {{"a", std::to_string(first + 1)},
-                                              {"b", std::to_string(std::min(n, first + kShown))},
-                                              {"n", std::to_string(n)}}));
-        row_box(1 + n, tr("Add a Server\xE2\x80\xA6"), "", hint);
+        /* How many there are, when not all show: beside Add. */
+        row_box(1 + n, tr("Add a Server\xE2\x80\xA6"),
+                n > kShown ? trf("{a}-{b} of {n}", {{"a", std::to_string(first + 1)},
+                                                    {"b", std::to_string(std::min(n, first + kShown))},
+                                                    {"n", std::to_string(n)}})
+                           : std::string(),
+                hint);
         std::string test_value;
         Color test_color = hint;
         if (p.test)
@@ -733,11 +738,11 @@ void App::draw_hub()
             paragraph(tr("None yet."), hint, 1);
         for (std::size_t i = 0; i < coded.size() && i < 6; ++i)
         {
-            const Game &gm = *coded[i];
+            const auto &[title, id] = coded[i];
             g.panel(px, ly, pw, 54, rgba(0x0E1C55, 0.55f), 0.8f, kR, with_alpha(good, 0.6f), 1.2f);
             g.text_mid(Font::SemiBold, ts(26), px + 22, ly + 27, kWhite, Align::Left,
-                       fit(g, Font::SemiBold, ts(26), gm.db_title.empty() ? gm.title : gm.db_title, pw - 200));
-            g.text_mid(Font::Regular, ts(22), px + pw - 22, ly + 27, hint, Align::Right, gm.id);
+                       fit(g, Font::SemiBold, ts(26), title, pw - 200));
+            g.text_mid(Font::Regular, ts(22), px + pw - 22, ly + 27, hint, Align::Right, id);
             ly += 62;
         }
         if (coded.size() > 6)
@@ -748,13 +753,13 @@ void App::draw_hub()
         paragraph(tr("Wiimmfi is the biggest home for Mario Kart Wii online. On Dolphin, and so in Porpoise, it "
                      "needs two things done on a computer:"),
                   kSoft, 3);
-        paragraph(tr("1. Patch your game with Wiimmfi's patcher (or play a pack made for it, like Retro Rewind)."),
+        paragraph(tr("1. Patch your game with Wiimmfi's patcher."),
                   kWhite, 2);
         paragraph(tr("2. Wiimmfi may also want your own Wii's system data (a NAND backup made with BootMii), "
                      "which Porpoise can't load yet."),
                   kWhite, 3);
-        paragraph(tr("Then turn Custom Server off and start the patched game: it finds Wiimmfi by itself. A game "
-                     "patched for Wiimmfi says so on its online screen."),
+        paragraph(tr("Then turn Custom Server off and start the patched game: it finds Wiimmfi by itself. Packs "
+                     "with servers of their own, like Retro Rewind, also want Custom Server off."),
                   hint, 3);
     }
     else

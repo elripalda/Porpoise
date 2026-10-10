@@ -682,7 +682,8 @@ void App::add_game_rows(Settings &t, bool per_game)
             layouts.push_back(trf("My Layout {n}", {{"n", std::to_string(i)}}));
         choice("button_layout", "Button Layout",
                "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made "
-               "in Customize Buttons.",
+               "in Customize Buttons. For GameCube games, and Wii games played with the GameCube Controller; other "
+               "Wii controllers have Wii Buttons (Wii Remote).",
                &t.button_layout, 0, layouts);
         choice("invert_main", "Invert the Control Stick",
                "Turns the left stick around, up-down, left-right or both: for a game that moves the other way. "
@@ -697,7 +698,8 @@ void App::add_game_rows(Settings &t, bool per_game)
         SettingRow r;
         r.section = section;
         r.label = tr("Customize Buttons");
-        r.help = tr("Make up to four layouts of your own, on a picture of the controller. Any game can use any of them.");
+        r.help = tr("Make up to four layouts of your own, on a picture of the controller. Any game can use any of "
+                    "them. L1 / R1 there switch to the Wii controllers, with two sets of Wii buttons of your own.");
         r.values = {tr("Edit\xE2\x80\xA6")};
         r.action = kRowMapping;
         rows_.push_back(r);
@@ -786,12 +788,20 @@ void App::add_game_rows(Settings &t, bool per_game)
            &t.wii_controller, 0, {"Remote + Nunchuk", "Remote", "Remote Sideways", "Classic Controller",
                                   "Two Controllers (Alpha)", "GameCube Controller"});
     rows_.back().help += " " + tr(kGameCubeOnWiiHelp);
+    choice("wii_buttons_use", "Wii Buttons",
+           "Which buttons the Wii controllers use: Porpoise's, or one of your own two sets, made in Controls > "
+           "Customize Buttons (L1 / R1 to each Wii controller). A game can have its own.",
+           &t.wii_buttons_use, 0, {"Porpoise's Set", "Mine 1", "Mine 2"});
     choice("wii_pointer", "Pointer", "What moves the Remote's pointer. Gyro: point the controller at the screen; hold R1 a moment to center it.",
            &t.wii_pointer, 0, {"Gyro", "Touch Pad", "Right Stick"});
     choice("wii_speed", "Pointer Speed",
            "How far you turn the controller to reach the screen's edge. Your screen: as measured by the Wii Remote "
            "Setup, so the pointer is where you point.",
            &t.wii_speed, 0, {"Your screen", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"});
+    choice("wii_range", "Pointer Range",
+           "How far the game's pointer can go. Wide helps in a game whose pointer can't reach an edge of the "
+           "screen. Auto: Wide for the games known to need it, like Zack & Wiki.",
+           &t.wii_range, 0, {"Auto", "Standard", "Wide", "Extra Wide"});
     choice("wii_grip", "Grip", "How you hold the DualSense. Auto reads it: flat in both hands, or stood on end in either hand.", &t.wii_grip, 0,
            {"Auto", "Both Hands", "Upright, trigger to the TV", "Upright, facing you"});
     toggle("wii_motion", "Motion", "The DualSense's motion is the Remote's: tilt, swing and point.", &t.wii_motion);
@@ -1410,6 +1420,9 @@ void App::build_game_settings()
         art.action = kRowCoversAgain;
         rows_.push_back(art);
     }
+    /* The saved setups belong to This Game: before the Home Screen section,
+     * or moving down stopped at that header and never reached them. */
+    add_setup_rows(true);
 #ifndef PORPOISE_DESKTOP
     if (game_for_ && !sandboxed_)
     {
@@ -1447,7 +1460,6 @@ void App::build_game_settings()
         rows_.push_back(add);
     }
 #endif
-    add_setup_rows(true);
     add_game_rows(game_, true);
     add_recommended_rows();
     add_cheat_rows();

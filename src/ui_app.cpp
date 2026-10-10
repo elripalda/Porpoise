@@ -902,12 +902,15 @@ void App::draw_check_mark(float cx, float cy, float size, bool ok)
     bar(cx - size * 0.06f, cy + size * 0.17f, cx + size * 0.23f, cy - size * 0.15f);
 }
 
-void App::offer_found_folder(const std::string &path, const std::string &place)
+void App::offer_found_folder(const std::string &path, const std::string &place, bool handmade)
 {
     move_target_ = path;
     open_dialog(DialogKind::UseFolder, trf("Porpoise's folder is on {place}", {{"place", tr(place)}}),
-                tr("Porpoise found its folder there, with settings and saves. Use it to pick up where you left "
-                   "off. Porpoise closes; open it again."),
+                handmade ? trf("There's a folder for Porpoise there ({path}). Use it to keep everything there: "
+                               "games, saves, covers and texture packs. Porpoise closes; open it again.",
+                               {{"path", path}})
+                         : tr("Porpoise found its folder there, with settings and saves. Use it to pick up where "
+                              "you left off. Porpoise closes; open it again."),
                 tr("Use It"));
     dialog_.no = tr("Start Fresh");
     dialog_.choice = 1; /* Use it first */

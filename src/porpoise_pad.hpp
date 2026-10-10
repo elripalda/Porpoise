@@ -188,6 +188,10 @@ struct WiiConfig
     float half_x = 0, half_y = 0;
     int smooth = 1;  /* pointer smoothing: 0 off, 1 light, 2 medium, 3 strong */
     int reach = 100; /* percent: more reaches the edges with less turning */
+    /* How far the game's pointer goes for the screen's edges: 1 Dolphin's own
+     * (most games' edges), more for a game whose own edges lie further out
+     * (Zack & Wiki's top quarter was out of reach). */
+    float range = 1.0f;
     /* Porpoise's own home screen points with it (the Revolution look): R1 and
      * L1 stay menu buttons, centre_now() centres. */
     bool menu = false;

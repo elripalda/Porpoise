@@ -104,6 +104,19 @@ struct Settings
      * Porpoise's layout puts on each control. Each starts as Porpoise's. */
     static constexpr int kWiiButtonSets = 4;
     int wii_buttons[kWiiButtonSets][porpoise::pad::CtlCount] = {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
+    /* A second set of them ("Mine 2"); wii_buttons above is "Mine 1". */
+    int wii_buttons2[kWiiButtonSets][porpoise::pad::CtlCount] = {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
+    /* Which Wii buttons games use: 0 Porpoise's (never changed), 1 Mine 1,
+     * 2 Mine 2. Mine 1 starts as Porpoise's, so 1 changes nothing until the
+     * player edits it (and keeps what 3.0 Alpha Build 5 and before did). */
+    int wii_buttons_use = 1;
+    static constexpr int kWiiButtonSlots = 3;
+    /* The tables of a slot (nullptr for Porpoise's), and the ones in use. */
+    int (*wii_slot(int slot))[porpoise::pad::CtlCount]
+    {
+        return slot == 1 ? wii_buttons : slot == 2 ? wii_buttons2 : nullptr;
+    }
+    const int (*wii_buttons_in_use() const)[porpoise::pad::CtlCount];
     /* Wii games: how the DualSense plays the Wii Remote (porpoise::pad::WiiConfig). */
     int wii_controller = 0; /* Remote + Nunchuk, Remote, sideways, Classic, two controllers, GameCube */
     int wii_pointer = 0;    /* gyro, touch pad, right stick */
@@ -125,6 +138,7 @@ struct Settings
     bool wii_setup_advanced = false; /* the setup's extra pages: size and distance, fine-tuning, presets */
     int wii_smooth = 1;              /* pointer smoothing: off, light, medium, strong */
     int wii_reach = 100;             /* percent */
+    int wii_range = 0; /* the pointer's range: 0 Auto, 1 Standard, 2 Wide, 3 Extra Wide (WiiConfig::range) */
     int wii_size = 27, wii_distance = 30; /* the screen's diagonal (inches) and how far away (tenths of feet) */
     /* Wii presets: a whole Wii Remote set-up kept under a name (global only). */
     static constexpr int kWiiPresets = 4;

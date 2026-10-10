@@ -6534,5 +6534,81 @@
  {
   "en": "Last time, Porpoise closed while your jailbreak was freeing it from the app sandbox, so this time it didn't ask. It can't see /data or USB drives, but games in /app0/porpoise/games work. Stay in the Sandbox to always start this way (change it in Settings > Storage), or try again.",
   "section": "3.0 Alpha 5: settings, Online hub, textures, cheats"
+ },
+ {
+  "en": "Pointer Range",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "How far the game's pointer can go. Wide helps in a game whose pointer can't reach an edge of the screen. Auto: Wide for the games known to need it, like Zack & Wiki.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Standard",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Wide",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Extra Wide",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Mine 1",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Mine 2",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Wii Buttons",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Which buttons the Wii controllers use: Porpoise's, or one of your own two sets, made in Controls > Customize Buttons (L1 / R1 to each Wii controller). A game can have its own.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Porpoise's buttons stay as they are: pick Mine 1 or Mine 2 to make your own.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Wii buttons: {name}.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Wii buttons: {name}, for this game.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "PlayStation: Cross is A, Circle is B. GameCube: Circle is A, Cross is B. My layouts: your own, made in Customize Buttons. For GameCube games, and Wii games played with the GameCube Controller; other Wii controllers have Wii Buttons (Wii Remote).",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Make up to four layouts of your own, on a picture of the controller. Any game can use any of them. L1 / R1 there switch to the Wii controllers, with two sets of Wii buttons of your own.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "1. Patch your game with Wiimmfi's patcher.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Then turn Custom Server off and start the patched game: it finds Wiimmfi by itself. Packs with servers of their own, like Retro Rewind, also want Custom Server off.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "There's a folder for Porpoise there ({path}). Use it to keep everything there: games, saves, covers and texture packs. Porpoise closes; open it again.",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Wii games go online through a community's server: the DNS server set in Settings > Online sends them there, and Porpoise adds the fix such servers need to every Wii game. It needs that DNS server first. Off: each game goes online its own way (a game patched for Wiimmfi, or a WiiLink WFC code).",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
+ },
+ {
+  "en": "Porpoise's Set",
+  "section": "3.0 Alpha 6: Wii buttons, pointer range, online"
  }
 ]

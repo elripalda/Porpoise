@@ -96,6 +96,7 @@ void Pacer::start(double content_hz, const char *who)
     probe_frames_ = probe_held_ = 0;
     misses_ = 0;
     vblank_retry_ = 0;
+    vblank_failures_ = 0;
     char line[160];
     std::snprintf(line, sizeof line, "pacer: %s at %.3f Hz on a %.3f Hz display: %s", who_, content, display,
                   !g_vsync          ? "own clock (V-Sync off)"
@@ -126,8 +127,13 @@ void Pacer::enter_vblank()
     const int n = interval > 0 ? int(std::lround(double(period_ns_) / double(interval))) : 0;
     if (n < 1 || n > 4 || std::fabs(double(n * interval - period_ns_)) > 0.012 * double(period_ns_))
     {
+        /* Not going to change while this game runs: no more tries. */
+        const bool was_clock = mode_ == Mode::Clock;
         mode_ = Mode::Clock;
-        clock_since_ns_ = deadline_ns_ = last_ns_ = now_ns();
+        vblank_failures_ = 1000;
+        clock_since_ns_ = now_ns();
+        if (!was_clock)
+            deadline_ns_ = last_ns_ = clock_since_ns_;
         char line[128];
         std::snprintf(line, sizeof line, "pacer: %s: the vblanks don't divide %.3f ms: own clock", who_,
                       period_ns_ / 1e6);
@@ -148,9 +154,22 @@ void Pacer::enter_vblank()
     ps5::debug::mark(line);
 }
 
+void Pacer::vblank_failed(long long now, const char *why)
+{
+    mode_ = Mode::Clock;
+    clock_since_ns_ = now;
+    deadline_ns_ = now;
+    last_ns_ = now;
+    ++vblank_failures_;
+    char line[160];
+    std::snprintf(line, sizeof line, "pacer: %s: own clock (V-Sync given up %d time%s)", why, vblank_failures_,
+                  vblank_failures_ == 1 ? "" : "s");
+    ps5::debug::mark(line);
+}
+
 void Pacer::hold_to_game()
 {
-    const long long cap_period = period_ns_ * 1000 / 1004;
+    const long long cap_period = period_ns_ * 1000 / 1002;
     const long long now = now_ns();
     cap_ns_ += cap_period;
     if (cap_ns_ == cap_period || now > cap_ns_ + 4 * period_ns_)
@@ -160,11 +179,24 @@ void Pacer::hold_to_game()
     }
     if (now >= cap_ns_ - period_ns_ / 2)
         return;
-    /* Ahead: the next vblank (on the display's beat), else the game's time. */
+    /* Ahead: the next vblank (on the display's beat), else the game's time.
+     * A wait that came back at once didn't hold anything: the clock then. */
     if (mode_ == Mode::Vblank && porpoise::vk::wait_vblank())
     {
-        last_vblank_ns_ = last_ns_ = now_ns();
-        return;
+        const long long woke = now_ns();
+        if (woke - now >= vblank_ns_ / 4)
+        {
+            last_vblank_ns_ = last_ns_ = woke;
+            return;
+        }
+        /* Waits that stopped waiting partway through a game: counted here
+         * too, as every frame then looks late and never reaches the count
+         * in vblank_frame. */
+        if (++quick_vblanks_ > 20)
+        {
+            vblank_failed(woke, "the vblank wait doesn't wait");
+            return;
+        }
     }
     sleep_until_ns(cap_ns_ - period_ns_ / 2);
     last_ns_ = now_ns();
@@ -183,51 +215,52 @@ void Pacer::vblank_frame()
     {
         /* The vblank this frame is due on: at 120 Hz the next one may be a
          * frame early, so wait again until within half a vblank of it. */
-        long long after = now;
+        long long woke = now;
         for (int waits = 0; waits <= vblanks_per_frame_; ++waits)
         {
             if (!porpoise::vk::wait_vblank())
             {
-                mode_ = Mode::Clock;
-                clock_since_ns_ = now;
-                deadline_ns_ = now;
-                ps5::debug::mark("pacer: the vblank wait failed: own clock");
+                vblank_failed(now, "the vblank wait failed");
                 return;
             }
-            after = now_ns();
-            if (after >= due - vblank_ns_ / 2)
+            woke = now_ns();
+            if (woke >= due - vblank_ns_ / 2)
                 break;
-        }
-        /* Never shorter than 96% of the game's own frame, whatever the
-         * vblanks said: a game is never run faster than itself. */
-        if (after - last_ns_ < frame_floor_ns_)
-        {
-            sleep_until_ns(last_ns_ + frame_floor_ns_);
-            after = now_ns();
         }
         /* A wait that ends at once when the vblank was still well away is not
          * a vblank wait: after a few, back to the own clock (a loop that
-         * isn't held mustn't run fast). */
-        if (after - now < 300000 && due - now > 3000000)
+         * isn't held mustn't run fast). Judged on the wait itself, before
+         * the floor below: after it, every frame looked held, and a display
+         * whose waits didn't wait ran the game 4% fast (62 frames a second,
+         * the sound jumping every few seconds). */
+        if (woke - now < 300000 && due - now > 3000000)
         {
             if (++quick_vblanks_ > 20)
             {
-                mode_ = Mode::Clock;
-                clock_since_ns_ = after;
-                deadline_ns_ = after;
-                ps5::debug::mark("pacer: the vblank wait doesn't wait: own clock");
+                vblank_failed(woke, "the vblank wait doesn't wait");
                 return;
             }
         }
         else
             quick_vblanks_ = 0;
-        last_vblank_ns_ = after;
+        /* Never shorter than 96% of the game's own frame, whatever the
+         * vblanks said: a game is never run faster than itself. */
+        long long after = woke;
+        if (after - last_ns_ < frame_floor_ns_)
+        {
+            sleep_until_ns(last_ns_ + frame_floor_ns_);
+            after = now_ns();
+        }
+        last_vblank_ns_ = woke; /* the display's beat, not the floor's */
         last_ns_ = after;
         return;
     }
+    /* Late: the vblank it missed is the beat now. The next frame is measured
+     * from that vblank, not from this late moment, or the floor above pushed
+     * it past its own vblank too and one miss became a run of them. */
     ++misses_;
     last_vblank_ns_ += ((now - last_vblank_ns_) / vblank_ns_) * vblank_ns_;
-    last_ns_ = now;
+    last_ns_ = last_vblank_ns_;
 }
 
 void Pacer::resync()
@@ -252,10 +285,13 @@ void Pacer::frame_done()
     }
     /* V-Sync wanted but the display's output wasn't found yet (it opens with
      * the first swapchain): look again now and then. */
-    if (g_vsync && compatible_ && ++vblank_retry_ % 60 == 0 && porpoise::vk::vblank_ready())
+    if (g_vsync && compatible_ && vblank_failures_ < 3 && ++vblank_retry_ % 60 == 0 &&
+        porpoise::vk::vblank_ready())
     {
         enter_vblank();
-        return;
+        if (mode_ == Mode::Vblank)
+            return;
+        /* Still the own clock: this frame is paced by it below. */
     }
     if (g_vsync && mode_ == Mode::Clock && compatible_ && now_ns() - clock_since_ns_ > kReprobeNs)
     {

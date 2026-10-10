@@ -215,7 +215,7 @@ bool level_grip(const Basis &grip, const float up[3], Basis &out)
 
 namespace
 {
-void sensor_bar_at(float x, float y, float roll, Dot out[2])
+void sensor_bar_at(float x, float y, float roll, Dot out[2], float range)
 {
     /* Dolphin's pointer geometry (Core/HW/WiimoteEmu: Dynamics.cpp EmulatePoint,
      * Camera.cpp GetCameraPoints): the Remote 2 m from the bar, the bar 10 cm
@@ -229,7 +229,7 @@ void sensor_bar_at(float x, float y, float roll, Dot out[2])
     constexpr float kEdgeX = 12.5f * kPi / 180.0f, kEdgeY = 10.0f * kPi / 180.0f, kPast = 1.15f;
     constexpr float kDistance = 2.0f, kHeight = 0.10f, kSeparation = 0.2f;
     constexpr float kFovX = 42.0f * kPi / 180.0f, kFovY = kFovX / (4.0f / 3.0f);
-    const float yaw = x * kEdgeX * kPast, pitch = -y * kEdgeY * kPast;
+    const float yaw = x * kEdgeX * kPast * range, pitch = -y * kEdgeY * kPast * range;
     /* M = Rz(-yaw) Rx(-pitch) Ry(-roll), axes x left, y back, z up. */
     const float cz = std::cos(-yaw), sz = std::sin(-yaw);
     const float cx = std::cos(-pitch), sx = std::sin(-pitch);
@@ -269,8 +269,9 @@ void sensor_bar_at(float x, float y, float roll, Dot out[2])
 }
 } // namespace
 
-void sensor_bar(float x, float y, float roll, Dot out[2])
+void sensor_bar(float x, float y, float roll, Dot out[2], float range)
 {
+    range = std::clamp(range, 0.5f, 2.0f);
     /* Up to a little past the screen's edges the game's cursor stays pinned
      * at the edge (a real Remote would lose the bar there, but on a menu's
      * top row that only makes the cursor blink away); further out, the lights
@@ -285,11 +286,13 @@ void sensor_bar(float x, float y, float roll, Dot out[2])
     x = std::clamp(x, -1.06f, 1.06f);
     y = std::clamp(y, -1.06f, 1.06f);
     roll = std::clamp(roll, -0.52f, 0.52f);
-    sensor_bar_at(x, y, roll, out);
-    for (int i = 1; i <= 20 && !(out[0].visible && out[1].visible); ++i)
+    sensor_bar_at(x, y, roll, out, range);
+    /* Past what the camera can see (a wide range's lower edge): pulled in
+     * until both lights are in view, so the pointer pins rather than goes. */
+    for (int i = 1; i <= 30 && !(out[0].visible && out[1].visible); ++i)
     {
         const float k = 1.0f - 0.02f * float(i);
-        sensor_bar_at(x * k, y * k, roll * k, out);
+        sensor_bar_at(x * k, y * k, roll * k, out, range);
     }
 }
 

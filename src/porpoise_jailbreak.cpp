@@ -56,8 +56,12 @@
 #include "trace.hpp"
 
 extern "C" int sceKernelUsleep(unsigned microseconds);
-extern "C" int chroot(const char *path);
-extern "C" int fchdir(int fd);
+extern "C" int sceKernelDlsym(int handle, const char *name, void **address);
+/* Weak: on some firmware (12.70) the title's libkernel doesn't give these
+ * out, and a call through the empty import was a crash right after the
+ * jailbreak freed Porpoise. Each is checked, then looked up by name. */
+extern "C" int chroot(const char *path) __attribute__((weak));
+extern "C" int fchdir(int fd) __attribute__((weak));
 
 namespace porpoise::jailbreak
 {
@@ -269,11 +273,59 @@ bool data_visible()
     return false;
 }
 
+/* A system call through libkernel's own "syscall" instruction (the console
+ * takes them only from there), as the payload SDK makes them: libkernel's
+ * getpid is "mov rax, 20; mov r10, rcx; syscall; jb error; ret", so ten
+ * bytes in, with our number in rax, it makes ours and returns its result
+ * (-1 on failure). For the two above, when the title's libkernel gives out
+ * neither. */
+extern "C" long porpoise_kernel_call(long number, long argument, const void *at);
+asm(".text\n"
+    ".p2align 4\n"
+    ".type porpoise_kernel_call, @function\n"
+    "porpoise_kernel_call:\n"
+    "  mov %rdi, %rax\n"
+    "  mov %rsi, %rdi\n"
+    "  jmp *%rdx\n"
+    ".size porpoise_kernel_call, . - porpoise_kernel_call\n");
+static long raw_call(long number, long argument)
+{
+    const auto getpid_at = reinterpret_cast<std::uintptr_t>(&getpid);
+    if (getpid_at == 0)
+        return -1;
+    return porpoise_kernel_call(number, argument, reinterpret_cast<const void *>(getpid_at + 0xa));
+}
+static int raw_fchdir(int fd) { return int(raw_call(13 /* SYS_fchdir */, fd)); }
+static int raw_chroot(const char *path) { return int(raw_call(61 /* SYS_chroot */, reinterpret_cast<long>(path))); }
+
 /* The daemon made the console's root Porpoise's root, so /app0 is gone:
  * the sandbox Porpoise started in becomes its root again. */
 bool put_root_back()
 {
-    if (g_sandbox_root < 0 || fchdir(g_sandbox_root) != 0 || chroot(".") != 0)
+    using FchdirFn = int (*)(int);
+    using ChrootFn = int (*)(const char *);
+    FchdirFn to_dir = fchdir;
+    ChrootFn to_root = chroot;
+    /* Not linked: libkernel by name (its handle in a title, then libc's). */
+    for (int handle : {0x2001, 0x2, 0x1})
+    {
+        void *address = nullptr;
+        if (!to_dir && sceKernelDlsym(handle, "fchdir", &address) == 0 && address)
+            to_dir = reinterpret_cast<FchdirFn>(address);
+        address = nullptr;
+        if (!to_root && sceKernelDlsym(handle, "chroot", &address) == 0 && address)
+            to_root = reinterpret_cast<ChrootFn>(address);
+    }
+    if (!to_dir || !to_root)
+    {
+        note("jailbreak: fchdir %d, chroot %d from libkernel; the rest as system calls", to_dir != nullptr,
+             to_root != nullptr);
+        if (!to_dir)
+            to_dir = raw_fchdir;
+        if (!to_root)
+            to_root = raw_chroot;
+    }
+    if (g_sandbox_root < 0 || to_dir(g_sandbox_root) != 0 || to_root(".") != 0)
         return false;
     chdir("/");
     g_put_back = true;

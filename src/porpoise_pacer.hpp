@@ -72,7 +72,7 @@ private:
     long long last_vblank_ns_ = 0;
     int vblanks_per_frame_ = 1; /* 2 on a 120 Hz output */
     long long frame_floor_ns_ = 0; /* 96% of the content's frame */
-    /* The game's own clock, a hair fast (0.4%, what the sound's rate
+    /* The game's own clock, a hair fast (0.2%, within what the sound's rate
      * correction absorbs): held to the display, a frame that would put the
      * game further ahead than half a frame waits a vblank more, so a display
      * a little faster than the game (or one whose vblanks wander) never runs
@@ -82,6 +82,12 @@ private:
     int quick_vblanks_ = 0;
     int misses_ = 0;
     int vblank_retry_ = 0;
+    /* Times V-Sync was tried and gave up (a wait that failed or didn't wait,
+     * vblanks that don't divide the frame): after a few, the own clock stays
+     * until the next start, rather than going back every second and running
+     * the game fast while it finds out again. */
+    int vblank_failures_ = 0;
+    void vblank_failed(long long now, const char *why);
     Mode mode_ = Mode::Clock;
     long long period_ns_ = 16666667;  /* content */
     long long vblank_ns_ = 16666667;  /* display */

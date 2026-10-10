@@ -609,6 +609,7 @@ private:
         std::string name, text, message;
         Keyboard kb;
         std::shared_ptr<OnlineTest> test;
+        std::vector<std::pair<std::string, std::string>> coded; /* games with a code file: title, ID */
     };
     HubPanel hub_;
     void open_hub();
@@ -619,7 +620,7 @@ private:
     void hub_set(bool Settings::*field, bool value);
     void hub_use_server(const std::string &address);
     int hub_rows() const;
-    std::vector<const Game *> hub_coded_games() const;
+    std::vector<std::pair<std::string, std::string>> hub_coded_games() const;
     std::function<RaState()> ra_state_;
     /* The host's own checks for the diagnostic test (the jailbreak, the
      * folder, the search, the last game's speed): ok and what was found. */
@@ -828,7 +829,7 @@ public:
     void set_sound_pulled(bool pulled);
     /* A first start found a Porpoise folder on a drive (path, the drive's
      * English name): asks to use it; otherwise the welcome goes on. */
-    void offer_found_folder(const std::string &path, const std::string &place);
+    void offer_found_folder(const std::string &path, const std::string &place, bool handmade = false);
     /* After Reinitialize: the menus as at the first start. */
     void restart_fresh();
 private:
@@ -853,12 +854,13 @@ private:
     Action update_mapping(bool up, bool down, bool left, bool right);
     void draw_mapping(double time);
     /* The same screen for a Wii controller's buttons (map_kind_ 1..4). */
-    Action update_wii_mapping(bool up, bool down);
+    Action update_wii_mapping(bool up, bool down, bool left, bool right);
     void draw_wii_mapping(double time);
     void draw_map_tabs();
     bool switch_map_kind(); /* L1 / R1: GameCube, then each Wii controller */
     void assign_control(int gc_input, int control);
-    void save_mapping(bool layout_changed);
+    void save_mapping(bool layout_changed, const char *key = "button_layout");
+    void use_wii_slot(int slot);
     void draw_keycap(float right, float cy, const std::string &label, bool on, float height = 40);
 
     /* Dialogs */
@@ -1332,6 +1334,7 @@ private:
     std::string map_note_; /* a line under the list after a change */
     double map_note_time_ = -10;
     int map_kind_ = 0;
+    int map_wii_slot_ = 1; /* the Wii buttons being edited: 0 Porpoise's, 1 Mine 1, 2 Mine 2 */
     /* Settings > Games > Move Porpoise's folder: the places offered (label,
      * path), the one picked, and the one confirmed. */
     std::vector<std::pair<std::string, std::string>> move_places_;

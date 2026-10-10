@@ -15,6 +15,7 @@
 #include "porpoise_dns.hpp"
 #include "porpoise_paths.hpp"
 #include <algorithm>
+#include <tuple>
 #include <atomic>
 #include <cctype>
 #include <cmath>
@@ -111,6 +112,7 @@ std::string g_location_missing; /* named there but not connected */
 /* A first start (nothing in /data/porpoise, no pointer) that finds a Porpoise
  * folder on extended storage or a USB drive: offered, never taken unasked. */
 std::string g_found_folder, g_found_place;
+bool g_found_handmade = false; /* the found folder has no settings yet */
 
 bool writable_dir(const std::string &dir)
 {
@@ -204,6 +206,19 @@ bool has_porpoise_folder(const std::string &dir)
     return stat((dir + "/settings.ini").c_str(), &st) == 0 && writable_dir(dir);
 }
 
+/* A Porpoise folder made by hand on a drive, before Porpoise ever ran from it
+ * (its games, saves or texture packs copied in): no settings yet. */
+bool has_handmade_folder(const std::string &dir)
+{
+    if (!writable_dir(dir))
+        return false;
+    struct stat st;
+    for (const char *sub : {"games", "saves", "covers", "bios", "cheats"})
+        if (stat((dir + "/" + sub).c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+            return true;
+    return false;
+}
+
 /* The pointer names a drive that isn't there. A drive can be slow to appear
  * after rest mode, and a USB drive plugged into another port shows up under
  * another number: both are looked for before giving up on it. Only runs when
@@ -282,6 +297,10 @@ void choose_data_dir()
             ps5::debug::mark(("main: Porpoise's folder is set to " + where).c_str());
         }
         else if (fresh)
+        {
+            /* A folder Porpoise used before first; else one made by hand on
+             * extended storage (a fresh install there kept writing to /data
+             * and left it empty). */
             for (const auto &drive : folder_drives())
                 if (has_porpoise_folder(drive.first + "/porpoise"))
                 {
@@ -290,6 +309,18 @@ void choose_data_dir()
                     ps5::debug::mark(("main: a first start, and a Porpoise folder is on " + g_found_folder).c_str());
                     break;
                 }
+            if (g_found_folder.empty())
+                for (const char *drive : {"/mnt/ext0", "/mnt/ext1"})
+                    if (has_handmade_folder(std::string(drive) + "/porpoise"))
+                    {
+                        g_found_folder = std::string(drive) + "/porpoise";
+                        g_found_place = drive[8] == '0' ? "extended storage" : "extended storage 2";
+                        g_found_handmade = true;
+                        ps5::debug::mark(("main: a first start, and a folder made for Porpoise is on " +
+                                          g_found_folder).c_str());
+                        break;
+                    }
+        }
     }
     else if (!freed)
         g_sandboxed = true;
@@ -989,11 +1020,30 @@ void take_search()
 {
     if (g_search.state.load(std::memory_order_acquire) != 2 || !g_app.library_free())
         return;
-    g_app.release_covers();
-    g_library.scan_games(g_search.paths, std::move(g_search.games));
+    /* The same games as the library has (the usual case at a start): nothing
+     * to redo. Otherwise every cover was decoded and faded in again, and
+     * the cursor went back to the game saved last. */
+    auto key_list = [](const std::vector<porpoise::ui::Game> &games) {
+        std::vector<std::tuple<std::string, std::string, std::uint64_t, int>> keys;
+        keys.reserve(games.size());
+        for (const porpoise::ui::Game &g : games)
+            keys.emplace_back(g.path, g.id, g.bytes, g.disc_number);
+        std::sort(keys.begin(), keys.end());
+        return keys;
+    };
+    const bool same = g_library.games().size() == g_search.games.size() &&
+                      key_list(g_library.games()) == key_list(g_search.games);
+    if (!same)
+    {
+        const std::string selected = g_library.selected_id(); /* where the player is now */
+        g_app.release_covers();
+        g_library.scan_games(g_search.paths, std::move(g_search.games));
+        if (!selected.empty())
+            g_library.set_selected(selected);
+        g_app.library_changed();
+    }
     g_search.games.clear();
     g_search.files.clear();
-    g_app.library_changed();
     ps5::debug::mark_value("main: games after the search", static_cast<long long>(g_library.games().size()));
     ps5::debug::mark_value("main: the search took, ms", g_search.took_ms);
     for (const std::string &root : g_search.cut)
@@ -1001,7 +1051,8 @@ void take_search()
     g_search.last_ms = g_search.took_ms; /* the search itself, not how long the menus kept it waiting */
     g_search.last_cut = g_search.cut;
     g_search.state.store(0, std::memory_order_release);
-    fetch_covers();
+    if (!same)
+        fetch_covers();
     if (g_search.again)
     {
         g_search.again = false;
@@ -1022,7 +1073,9 @@ void start_library()
     g_library.scan_files(paths, porpoise::ui::find_game_files(local, kSearchLimitMs, &cut));
     for (const std::string &root : cut)
         ps5::debug::mark(("main: the search gave up on " + root + " (too slow)").c_str());
-    if (local.size() != search_roots(paths).size())
+    /* The drives and shares in the background; also the console's own
+     * folders again when this quick look gave up on one. */
+    if (local.size() != search_roots(paths).size() || !cut.empty())
         rescan_library();
 }
 
@@ -1073,7 +1126,7 @@ void apply_settings()
     porpoise::pad::set_mapping(g_settings.mapping());
     porpoise::pad::set_rumble_enabled(g_settings.rumble);
     porpoise::pad::set_fast_forward_buttons(g_settings.ff_buttons);
-    porpoise::pad::set_wii_buttons(g_settings.wii_buttons);
+    porpoise::pad::set_wii_buttons(g_settings.wii_buttons_in_use());
     {
         const int lights[4] = {g_settings.light_1, g_settings.light_2, g_settings.light_3, g_settings.light_4};
         porpoise::pad::set_light_colours(lights);
@@ -1266,7 +1319,8 @@ int menu_paused(void *)
         /* The Wii Remote: the pad and the core's ports; the pointer's source
          * is also a Dolphin option. */
         porpoise::core::set_wii(g_play.wii_config(true, g_wii_game_id));
-        apply_game_controls(true); /* the GameCube controller gets the trigger click */
+        porpoise::pad::set_wii_buttons(g_play.wii_buttons_in_use());
+        apply_game_controls(porpoise::pad::wii().active); /* the GameCube controller gets the trigger click */
         if (key == "wii_pointer" || key == "wii_setup")
             for (const auto &[k, v] : g_play.core_options())
                 porpoise::core::set_option(k.c_str(), v.c_str());
@@ -1732,10 +1786,19 @@ int count_textures(const std::string &dir, int depth)
             if (name.empty() || name[0] == '.')
                 continue;
             const std::string full = dir + "/" + name;
-            struct stat st;
-            if (stat(full.c_str(), &st) != 0)
+            /* The listing says what each entry is; asked only when it doesn't
+             * (a pack is tens of thousands of files, on USB a while each). */
+            bool is_dir = e->d_type == DT_DIR;
+            if (e->d_type == DT_UNKNOWN || e->d_type == DT_LNK)
+            {
+                struct stat st;
+                if (stat(full.c_str(), &st) != 0)
+                    continue;
+                is_dir = S_ISDIR(st.st_mode);
+            }
+            else if (e->d_type != DT_REG && !is_dir)
                 continue;
-            if (S_ISDIR(st.st_mode))
+            if (is_dir)
             {
                 if (depth < 8)
                     n += count_textures(full, depth + 1);
@@ -2283,9 +2346,10 @@ int main(int argc, char **argv)
         ps5::debug::mark_value("main: network shares", static_cast<long long>(shares.size()));
     }
     {
-        /* Games' own settings from 1.0, brought up to date once. */
+        /* Games' own settings from 1.0, brought up to date once (settings
+         * saved by this version have been: no need to read every file). */
         bool changed = false;
-        if (DIR *d = opendir((g_data + "/game-settings").c_str()))
+        if (DIR *d = g_settings.loaded_version >= 17 ? nullptr : opendir((g_data + "/game-settings").c_str()))
         {
             while (dirent *e = readdir(d))
             {
@@ -2417,7 +2481,7 @@ int main(int argc, char **argv)
          * Porpoise can see (setup_checked is saved once a look is chosen).
          * A Porpoise folder found on a drive is offered first. */
         if (!g_found_folder.empty())
-            g_app.offer_found_folder(g_found_folder, g_found_place);
+            g_app.offer_found_folder(g_found_folder, g_found_place, g_found_handmade);
         else
             g_app.start_welcome();
     }
@@ -2852,6 +2916,7 @@ int main(int argc, char **argv)
                 }
         }
         porpoise::pad::set_mapping(g_play.mapping());
+        porpoise::pad::set_wii_buttons(g_play.wii_buttons_in_use());
         porpoise::pad::set_rumble_enabled(g_play.rumble);
         apply_game_controls(g_play.console == 2 || (g_play.console == 0 && launch->platform == "Wii"));
         g_app.begin_launch(launch);
@@ -2909,6 +2974,11 @@ int main(int argc, char **argv)
         g_wii_hint_from = g_time + 2.0; /* once the game is up */
         g_wii_centrings = 0;
         const std::string debug_dir = g_data + "/debug";
+        /* A Wii game's every socket call in core.log: for reports only. */
+        if (g_settings.debug_logs)
+            setenv("PORPOISE_NET_LOG", "1", 1);
+        else
+            unsetenv("PORPOISE_NET_LOG");
         if (g_settings.debug_logs)
         {
             playback.debug_dir = debug_dir.c_str();

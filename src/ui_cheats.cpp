@@ -39,26 +39,121 @@ std::string bare_name(const std::string &path)
     return "$Codes from " + path.substr(path.rfind('/') + 1);
 }
 
-void read_file(const std::string &path, std::vector<Cheat> &out)
+/* A line as the parsers want it: no byte-order mark (a file saved by
+ * Notepad), no line ending, no spaces or tabs around it. */
+std::string clean_line(const char *buf, bool first)
 {
+    std::string line = buf;
+    if (first && line.compare(0, 3, "\xEF\xBB\xBF") == 0)
+        line.erase(0, 3);
+    while (!line.empty() && (line.back() == '\n' || line.back() == '\r' || line.back() == ' ' || line.back() == '\t'))
+        line.pop_back();
+    std::size_t lead = 0;
+    while (lead < line.size() && (line[lead] == ' ' || line[lead] == '\t'))
+        ++lead;
+    return line.substr(lead);
+}
+
+/* A code as a file has it: its section, its $name and its lines. */
+struct FileCode
+{
+    std::string kind, name;
+    std::vector<std::string> lines;
+};
+
+/* A .txt of Gecko codes as the code sites lay them out, with or without
+ * "$": a name line, then its code lines ("*" lines are notes). A file of
+ * code lines alone is one code named after the file; lines before the first
+ * code (the game's ID and title) name nothing but the code right after them. */
+std::vector<FileCode> read_txt(const std::string &path)
+{
+    std::vector<FileCode> codes;
     std::FILE *f = std::fopen(path.c_str(), "r");
     if (!f)
-        return;
-    const bool bare = ends_with(path, ".txt");
-    std::string section = bare ? "Gecko" : "";
-    bool named = false;
+        return codes;
     char buf[512];
+    std::string pending; /* the last name line, for the next code */
+    bool open = false;   /* code lines go to codes.back() */
+    bool first = true;
+    bool gecko = true;   /* no section yet, or [Gecko]: a .txt in ini form keeps its others out */
+    while (std::fgets(buf, sizeof buf, f))
+    {
+        const std::string line = clean_line(buf, first);
+        first = false;
+        if (line.empty() || line[0] == '#')
+            continue;
+        /* A section is a whole line "[...]"; "[NTSC-U] Infinite Lives" is
+         * a code's name. */
+        if (line[0] == '[' && line.back() == ']' && line.find(']') == line.size() - 1)
+        {
+            gecko = line == "[Gecko]";
+            open = false;
+            pending.clear();
+            continue;
+        }
+        if (!gecko)
+            continue;
+        if (code_line(line))
+        {
+            if (!open)
+            {
+                std::string name = pending.empty() ? bare_name(path) : pending;
+                if (name[0] != '$')
+                    name = "$" + name;
+                /* "[NTSC-U] Infinite Lives": Dolphin reads what's in brackets
+                 * as the author, leaving no name, so the tag goes in ( ). */
+                if (name.size() > 2 && name[1] == '[')
+                {
+                    const std::size_t close = name.find(']');
+                    if (close != std::string::npos)
+                    {
+                        name[1] = '(';
+                        name[close] = ')';
+                    }
+                }
+                codes.push_back({"Gecko", name, {}});
+                open = true;
+                pending.clear();
+            }
+            codes.back().lines.push_back(line);
+        }
+        else if (line[0] == '*' && open)
+            codes.back().lines.push_back(line);
+        else if (line[0] != '*')
+        {
+            pending = line;
+            open = false;
+        }
+    }
+    std::fclose(f);
+    return codes;
+}
+
+void read_file(const std::string &path, std::vector<Cheat> &out)
+{
     auto find = [&](const std::string &kind, const std::string &name) -> Cheat * {
         for (Cheat &c : out)
             if (c.kind == kind && c.name == name)
                 return &c;
         return nullptr;
     };
+    if (ends_with(path, ".txt"))
+    {
+        for (const FileCode &c : read_txt(path))
+            if (!find(c.kind, c.name))
+                out.push_back({c.kind, c.name, false});
+        return;
+    }
+    std::FILE *f = std::fopen(path.c_str(), "r");
+    if (!f)
+        return;
+    std::string section;
+    char buf[512];
+    bool first = true;
     while (std::fgets(buf, sizeof buf, f))
     {
-        std::string line = buf;
-        while (!line.empty() && (line.back() == '\n' || line.back() == '\r' || line.back() == ' '))
-            line.pop_back();
+        const std::string line = clean_line(buf, first);
+        first = false;
         if (line.empty() || line[0] == '#')
             continue;
         if (line[0] == '[')
@@ -67,17 +162,8 @@ void read_file(const std::string &path, std::vector<Cheat> &out)
             section = end == std::string::npos ? "" : line.substr(1, end - 1);
             continue;
         }
-        if (bare && !named && section == "Gecko" && code_line(line))
-        {
-            /* Code lines before any name: the file's own code. */
-            named = true;
-            if (!find("Gecko", bare_name(path)))
-                out.push_back({"Gecko", bare_name(path), false});
+        if (line[0] != '$' || line.size() < 2)
             continue;
-        }
-        if (line[0] != '$' || line.size() < 2 || line.find('=') != std::string::npos)
-            continue;
-        named = true;
         for (const char *kind : {"OnFrame", "ActionReplay", "Gecko"})
         {
             const std::string k = kind;
@@ -194,19 +280,28 @@ bool add_own_cheats(const std::string &own_dir, const std::string &game_id, cons
     std::vector<Code> codes;
     for (const std::string &path : files)
     {
+        if (ends_with(path, ".txt"))
+        {
+            for (FileCode &c : read_txt(path))
+            {
+                bool have = false;
+                for (const Code &k : codes)
+                    have |= k.kind == c.kind && k.name == c.name; /* a repeat (a later, less specific file) */
+                if (!have)
+                    codes.push_back({c.kind, c.name, std::move(c.lines)});
+            }
+            continue;
+        }
         std::FILE *f = std::fopen(path.c_str(), "r");
         if (!f)
             continue;
-        const bool bare = ends_with(path, ".txt");
-        std::string section = bare ? "Gecko" : "";
+        std::string section;
         char buf[512];
-        /* A .txt's lines before its code (a title, a note) belong to nothing. */
-        bool skipping = bare, file_named = false;
+        bool skipping = true, first = true;
         while (std::fgets(buf, sizeof buf, f))
         {
-            std::string line = buf;
-            while (!line.empty() && (line.back() == '\n' || line.back() == '\r' || line.back() == ' '))
-                line.pop_back();
+            const std::string line = clean_line(buf, first);
+            first = false;
             if (line.empty() || line[0] == '#')
                 continue;
             if (line[0] == '[')
@@ -220,24 +315,11 @@ bool add_own_cheats(const std::string &own_dir, const std::string &game_id, cons
                 continue;
             if (line[0] == '$')
             {
-                file_named = true;
                 skipping = false;
                 for (const Code &c : codes)
                     skipping |= c.kind == section && c.name == line; /* a repeat (a later, less specific file) */
                 if (!skipping)
                     codes.push_back({section, line, {}});
-            }
-            else if (bare && !file_named && section == "Gecko" && code_line(line))
-            {
-                file_named = true;
-                /* Code lines before any name: the file's own code. */
-                const std::string name = bare_name(path);
-                bool have = false;
-                for (const Code &c : codes)
-                    have |= c.kind == "Gecko" && c.name == name;
-                if (!have)
-                    codes.push_back({"Gecko", name, {line}});
-                skipping = have;
             }
             else if (!skipping && !codes.empty())
                 codes.back().lines.push_back(line);

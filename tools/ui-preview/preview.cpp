@@ -1083,6 +1083,10 @@ int main(int argc, char **argv)
         ui.preview_mapping(1, 0);
         settle();
         render("wiimap-custom", [&] { ui.draw(12.0); });
+        settings.wii_buttons_use = 0; /* Porpoise's, locked */
+        ui.preview_mapping(3, 3);
+        settle();
+        render("wiimap-locked", [&] { ui.draw(12.0); });
         return 0;
     }
     /* PREVIEW_ABOUT=1: Settings > About on the Discord row and on the

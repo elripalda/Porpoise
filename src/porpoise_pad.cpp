@@ -469,13 +469,8 @@ void close_slot(int player)
 }
 
 /* Users who signed in join as the next free player; users who signed out leave. */
-void rescan()
+void rescan(const std::int32_t *ids)
 {
-    std::int32_t ids[16];
-    for (std::int32_t &id : ids)
-        id = -1;
-    if (sceUserServiceGetLoginUserIdList(ids) != 0)
-        return;
     auto signed_in = [&](std::int32_t user) {
         for (int i = 0; i < 4; ++i)
             if (ids[i] == user)
@@ -970,7 +965,11 @@ bool open()
     g_ready = true;
     g_initial_user = user_id;
     open_slot(0, user_id, 10);
-    rescan();
+    std::int32_t ids[16];
+    for (std::int32_t &id : ids)
+        id = -1;
+    if (sceUserServiceGetLoginUserIdList(ids) == 0)
+        rescan(ids);
     return g_slots[0].handle >= 0;
 }
 
@@ -1049,12 +1048,25 @@ const State &poll()
 #ifdef PORPOISE_DESKTOP
     porpoise::platform::pump(); /* the window's and controllers' events, on the main thread */
 #endif
-    std::lock_guard<std::recursive_mutex> lock(g_lock);
-    if (g_ready && ++g_polls_since_scan >= polls_per_scan)
+    /* Who is signed in, asked outside the lock: the emulator's thread reads
+     * the controllers under it and shouldn't wait on the user service. */
+    bool scan = false;
     {
-        g_polls_since_scan = 0;
-        rescan();
+        std::lock_guard<std::recursive_mutex> lock(g_lock);
+        if (g_ready && ++g_polls_since_scan >= polls_per_scan)
+        {
+            g_polls_since_scan = 0;
+            scan = true;
+        }
     }
+    std::int32_t ids[16];
+    for (std::int32_t &id : ids)
+        id = -1;
+    if (scan)
+        scan = sceUserServiceGetLoginUserIdList(ids) == 0;
+    std::lock_guard<std::recursive_mutex> lock(g_lock);
+    if (scan && g_ready)
+        rescan(ids);
     for (Slot &slot : g_slots)
         slot.state = slot.handle >= 0 ? read_slot(slot) : State{};
     return g_slots[0].state;

@@ -3652,24 +3652,53 @@ index b1248b660b..c1c4d19578 100644
  std::string NormalizePath(const std::string& path);
  std::string DenormalizePath(const std::string& path);
  
+diff --git a/Source/Core/DolphinLibretro/Input.cpp b/Source/Core/DolphinLibretro/Input.cpp
+index 5250054bf4..623852428d 100644
+--- a/Source/Core/DolphinLibretro/Input.cpp
++++ b/Source/Core/DolphinLibretro/Input.cpp
+@@ -1356,7 +1356,13 @@ void retro_set_controller_port_device_gc(unsigned port, unsigned device)
+   auto& si = Core::System::GetInstance().GetSerialInterface();
+ 
+   if (device == RETRO_DEVICE_GC_ON_WII) // Disconnect Wii device if we're using GC controller as device type to avoid conflict
++  {
++    // Porpoise: in the config too, or the Remote came back when the Wii's
++    // controllers were set up at boot, and both took the same presses.
++    if (port < 4)
++      Config::SetBaseOrCurrent(Config::GetInfoForWiimoteSource(port), WiimoteSource::None);
+     WiimoteCommon::OnSourceChanged(port, WiimoteSource::None);
++  }
+ 
+   Core::System& system = Core::System::GetInstance();
+ 
 diff --git a/Source/Core/DolphinLibretro/Log.cpp b/Source/Core/DolphinLibretro/Log.cpp
-index 1a1915cd1d..236a2e86d7 100644
+index 1a1915cd1d..948cc1b8b4 100644
 --- a/Source/Core/DolphinLibretro/Log.cpp
 +++ b/Source/Core/DolphinLibretro/Log.cpp
-@@ -94,6 +94,12 @@ LogListener::LogListener(retro_log_printf_t log) : m_log(log)
+@@ -2,6 +2,8 @@
+ #include "Common/Logging/Log.h"
+ #include "Common/Logging/LogManager.h"
+ #include "DolphinLibretro/Log.h"
++
++#include <cstdlib>
+ #include "DolphinLibretro/Common/Options.h"
+ #if defined(ANDROID)
+ #include <android/log.h>
+@@ -94,6 +96,14 @@ LogListener::LogListener(retro_log_printf_t log) : m_log(log)
    Common::Log::LogManager::GetInstance()->SetEnable(
      Common::Log::LogType::DSP_MAIL,
      Libretro::Options::GetCached<bool>(Libretro::Options::main_interface::LOG_DSP_MAIL, false));
 +
 +  // Porpoise 3.0 alpha: a Wii game going online - its sockets and SSL, for
-+  // finding why a game drops from a server.
-+  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_NET, true);
++  // finding why a game drops from a server. Every socket call (a line per
++  // packet in a race) only with Porpoise's Debug Logs on.
++  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_NET,
++                                                    std::getenv("PORPOISE_NET_LOG") != nullptr);
 +  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_SSL, true);
 +  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_WC24, true);
  }
  
  LogListener::~LogListener()
-@@ -112,18 +118,18 @@ void LogListener::Log(Common::Log::LogLevel level, const char* text)
+@@ -112,18 +122,18 @@ void LogListener::Log(Common::Log::LogLevel level, const char* text)
    switch (level)
    {
    case Common::Log::LogLevel::LDEBUG:
@@ -4119,6 +4148,35 @@ index 6338e52e3d..10539c661e 100644
    }
  }
  
+diff --git a/Source/Core/VideoCommon/Assets/CustomAssetCache.cpp b/Source/Core/VideoCommon/Assets/CustomAssetCache.cpp
+index 3b15d5733e..32297b09d7 100644
+--- a/Source/Core/VideoCommon/Assets/CustomAssetCache.cpp
++++ b/Source/Core/VideoCommon/Assets/CustomAssetCache.cpp
+@@ -3,6 +3,8 @@
+ 
+ #include "VideoCommon/Assets/CustomAssetCache.h"
+ 
++#include <algorithm>
++
+ #include "Common/Logging/Log.h"
+ #include "Common/MemoryUtil.h"
+ 
+@@ -21,6 +23,15 @@ void CustomAssetCache::Initialize()
+   const size_t keep_unused_mem = std::max(sys_mem / 2, std::min(sys_mem, must_keep_unused));
+ 
+   m_max_ram_available = sys_mem - keep_unused_mem;
++#ifdef __PROSPERO__
++  // Porpoise: the console reports all of its memory (16 GiB), half of which
++  // a big texture pack was then allowed to fill - far past what a title
++  // has, so a long session with an HD pack ended in the system closing the
++  // app. Its textures stay within 2 GiB; the least recently used go first.
++  constexpr size_t porpoise_cap = size_t(2) * 1024 * 1024 * 1024;
++  m_max_ram_available = std::min(m_max_ram_available, porpoise_cap);
++  NOTICE_LOG_FMT(VIDEO, "Custom textures may use up to {} MiB", m_max_ram_available >> 20);
++#endif
+ 
+   if (m_max_ram_available == 0)
+     ERROR_LOG_FMT(VIDEO, "Not enough system memory for custom resources.");
 diff --git a/Source/Core/VideoCommon/CommandProcessor.cpp b/Source/Core/VideoCommon/CommandProcessor.cpp
 index 1dbf466f1c..bae595786b 100644
 --- a/Source/Core/VideoCommon/CommandProcessor.cpp

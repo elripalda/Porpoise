@@ -700,7 +700,7 @@ void log_motion()
     const porpoise::pad::Motion &m = p.motion;
     const porpoise::pad::Motion n2 = porpoise::pad::snapshot(1).motion; /* the second controller */
     porpoise::aim::Dot dots[2];
-    porpoise::aim::sensor_bar(m.aim_x, m.aim_y, m.roll, dots);
+    porpoise::aim::sensor_bar(m.aim_x, m.aim_y, m.roll, dots, h.wii.range);
     auto cam = [](const porpoise::aim::Dot &d, bool y) {
         return d.visible ? static_cast<int>((y ? d.y * 767 : d.x * 1023) + 0.5f) : -1;
     };
@@ -963,7 +963,7 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
         if (index > 1 || !h.wii.active)
             return 0;
         porpoise::aim::Dot dots[2];
-        porpoise::aim::sensor_bar(pad.motion.aim_x, pad.motion.aim_y, pad.motion.roll, dots);
+        porpoise::aim::sensor_bar(pad.motion.aim_x, pad.motion.aim_y, pad.motion.roll, dots, h.wii.range);
         const porpoise::aim::Dot &dot = dots[index];
         if (!dot.visible)
             return 0;
@@ -1561,7 +1561,11 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     const std::size_t kAudioBackstop = target + 2496;    /* ~100 ms at Normal: locked to the display */
     porpoise::pacer::Pacer pacer;
     auto content_hz = [] { return h.fps > 10.0 && h.fps < 60.5 ? h.fps : 60.0; };
-    pacer.start(content_hz(), "game");
+    /* The rate the pacing follows: the core can change h.fps itself (its
+     * SET_SYSTEM_AV_INFO when a PAL game goes 50 -> 60), so the check below
+     * compares against this, not against h.fps. */
+    double paced_hz = content_hz();
+    pacer.start(paced_hz, "game");
     long long window_start = monotonic_ns();
     unsigned long long window_frames = 0, window_samples = 0;
     long long window_audio_wait_us = 0;
@@ -1764,7 +1768,8 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             if (now_av.timing.fps > 10.0 && now_av.timing.fps < 200.0 && std::fabs(now_av.timing.fps - h.fps) > 0.5)
                 h.fps = now_av.timing.fps; /* a PAL game shows its 50 Hz only now */
             /* Judge the vblank on the game itself, not on its boot. */
-            pacer.start(content_hz(), "game");
+            paced_hz = content_hz();
+            pacer.start(paced_hz, "game");
         }
 #ifndef PORPOISE_DESKTOP
         /* Performance report: every 20 seconds (the first after 30), the
@@ -1800,16 +1805,18 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
              * change is taken from the answer, then. */
             if (now_av.geometry.aspect_ratio > 0.0f && std::fabs(now_av.geometry.aspect_ratio - h.aspect) > 0.01f)
                 h.aspect = now_av.geometry.aspect_ratio;
-            if (now_av.timing.fps > 10.0 && now_av.timing.fps < 200.0 && std::fabs(now_av.timing.fps - h.fps) > 0.5)
+            if (now_av.timing.fps > 10.0 && now_av.timing.fps < 200.0)
+                h.fps = now_av.timing.fps;
+            if (std::fabs(content_hz() - paced_hz) > 0.5)
             {
                 char line[120];
-                std::snprintf(line, sizeof line, "core: the game's rate changed: %.3f -> %.3f fps", h.fps,
-                              now_av.timing.fps);
+                std::snprintf(line, sizeof line, "core: the game's rate changed: %.3f -> %.3f fps", paced_hz,
+                              content_hz());
                 ps5::debug::mark(line);
                 if (h.log)
                     std::fprintf(h.log, "[porpoise] %s\n", line);
-                h.fps = now_av.timing.fps;
-                pacer.start(content_hz(), "game");
+                paced_hz = content_hz();
+                pacer.start(paced_hz, "game");
             }
         }
 
@@ -1857,9 +1864,10 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
                                          : 100.0 * samples / secs / h.sample_rate;
             std::fprintf(h.log,
                          "[porpoise] %.2f frames/s (game %.3f), %.0f%% speed (%.0f audio frames/s at %.0f Hz), "
-                         "%s, display wait %.1f ms/frame, queue %zu, waited %.1f ms/s for the speakers, players %d\n",
+                         "%s (%d missed), display wait %.1f ms/frame, queue %zu, waited %.1f ms/s for the speakers, "
+                         "players %d\n",
                          window_frames / secs, h.fps, speed, samples / secs, h.sample_rate,
-                         pacer.display_locked() ? "locked to the vblank" : "own clock",
+                         pacer.display_locked() ? "locked to the vblank" : "own clock", pacer.take_misses(),
                          window_frames ? window_present_wait_ms / window_frames : 0.0, porpoise::audio::queued(),
                          window_audio_wait_us / 1000.0 / secs, porpoise::pad::connected_count());
             /* Where each frame's time went: what holds a game under its rate. */

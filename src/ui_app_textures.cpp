@@ -246,7 +246,9 @@ void App::add_texture_rows(bool per_game)
         const Game *ga = game_for_pack(a->folder), *gb = game_for_pack(b->folder);
         if ((ga != nullptr) != (gb != nullptr))
             return ga != nullptr;
-        return ga && gb ? ga->title < gb->title : a->folder < b->folder;
+        if (ga && gb)
+            return (ga->db_title.empty() ? ga->title : ga->db_title) < (gb->db_title.empty() ? gb->title : gb->db_title);
+        return a->folder < b->folder;
     });
     for (const TexturePack *pp : order)
     {

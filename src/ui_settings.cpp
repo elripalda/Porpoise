@@ -130,6 +130,8 @@ const Field kFields[] = {
     {"wii_setup_advanced", nullptr, &Settings::wii_setup_advanced, 0, 1},
     {"wii_smooth", &Settings::wii_smooth, nullptr, 0, 3},
     {"wii_reach", &Settings::wii_reach, nullptr, 50, 200},
+    {"wii_range", &Settings::wii_range, nullptr, 0, 3},
+    {"wii_buttons_use", &Settings::wii_buttons_use, nullptr, 0, 2},
     {"wii_size", &Settings::wii_size, nullptr, 10, 150},
     {"wii_distance", &Settings::wii_distance, nullptr, 5, 250},
     {"wii_preset", &Settings::wii_preset, nullptr, 0, 4},
@@ -326,7 +328,8 @@ bool Settings::load(const std::string &path, bool overlay)
             }
             continue;
         }
-        if (k.size() == 11 && k.rfind("wiibuttons", 0) == 0 && k[10] >= '1' && k[10] <= '4')
+        const bool second_set = k.size() == 13 && k.rfind("wiibuttons2_", 0) == 0 && k[12] >= '1' && k[12] <= '4';
+        if (second_set || (k.size() == 11 && k.rfind("wiibuttons", 0) == 0 && k[10] >= '1' && k[10] <= '4'))
         {
             /* The player's own Wii buttons: sixteen controls, a permutation. */
             if (overlay)
@@ -348,7 +351,7 @@ bool Settings::load(const std::string &path, bool overlay)
                 }
             }
             if (ok) /* anything else (damaged) keeps Porpoise's */
-                std::memcpy(wii_buttons[k[10] - '1'], row, sizeof row);
+                std::memcpy(second_set ? wii_buttons2[k[12] - '1'] : wii_buttons[k[10] - '1'], row, sizeof row);
             continue;
         }
         if (k.rfind("map_", 0) == 0)
@@ -451,6 +454,13 @@ bool Settings::save(const std::string &path) const
         std::fprintf(f, "wiibuttons%d =", s + 1);
         for (int i = 0; i < porpoise::pad::CtlCount; ++i)
             std::fprintf(f, " %d", wii_buttons[s][i]);
+        std::fprintf(f, "\n");
+    }
+    for (int s = 0; s < kWiiButtonSets; ++s)
+    {
+        std::fprintf(f, "wiibuttons2_%d =", s + 1);
+        for (int i = 0; i < porpoise::pad::CtlCount; ++i)
+            std::fprintf(f, " %d", wii_buttons2[s][i]);
         std::fprintf(f, "\n");
     }
     for (int p = 0; p < kWiiPresets; ++p)
@@ -672,14 +682,12 @@ bool Settings::migrate_game_file(const std::string &path, Settings &global)
         keep.push_back("button_layout = 2");
     if (sharp >= 0 && !saw_filter)
         keep.push_back(std::string("screen_filter = ") + (sharp ? "1" : "0"));
-    const std::string tmp = path + ".part";
-    if (std::FILE *o = std::fopen(tmp.c_str(), "w"))
+    if (std::FILE *o = porpoise::open_atomic(path))
     {
         for (const std::string &l : keep)
             if (!l.empty())
                 std::fprintf(o, "%s\n", l.c_str());
-        std::fclose(o);
-        std::rename(tmp.c_str(), path.c_str());
+        porpoise::finish_atomic(o, path); /* the old file stays if this one didn't make it */
     }
     return global_changed;
 }
@@ -844,6 +852,15 @@ porpoise::pad::WiiConfig Settings::wii_config(bool active, const std::string &ga
     c.motion_plus = active && porpoise::pad::wants_motion_plus(wii_motion_plus, game_id);
     c.smooth = std::clamp(wii_smooth, 0, 3);
     c.reach = std::clamp(wii_reach, 50, 200);
+    /* The pointer's range: Auto is wide for the games known to need it. */
+    {
+        static const char *const kWide[] = {"RTZ"}; /* Zack & Wiki */
+        bool wide = false;
+        for (const char *id : kWide)
+            wide |= game_id.compare(0, 3, id) == 0;
+        const float ranges[4] = {wide ? 1.35f : 1.0f, 1.0f, 1.35f, 1.6f};
+        c.range = ranges[std::clamp(wii_range, 0, 3)];
+    }
     c.invert_x = developer && wii_invert_x; /* developer options only */
     c.invert_y = developer && wii_invert_y;
     return c;
@@ -869,8 +886,9 @@ void Settings::reset()
     const bool custom = online_custom, https = online_https;
     int own[kPresets][porpoise::pad::GcCount];
     std::memcpy(own, presets, sizeof own);
-    int wii[kWiiButtonSets][porpoise::pad::CtlCount];
+    int wii[kWiiButtonSets][porpoise::pad::CtlCount], wii2[kWiiButtonSets][porpoise::pad::CtlCount];
     std::memcpy(wii, wii_buttons, sizeof wii);
+    std::memcpy(wii2, wii_buttons2, sizeof wii2);
     *this = Settings{};
     folders = keep;
     testing_notice = notice;
@@ -879,6 +897,17 @@ void Settings::reset()
     online_https = https;
     std::memcpy(presets, own, sizeof own);
     std::memcpy(wii_buttons, wii, sizeof wii);
+    std::memcpy(wii_buttons2, wii2, sizeof wii2);
+}
+
+const int (*Settings::wii_buttons_in_use() const)[porpoise::pad::CtlCount]
+{
+    static const int kPorpoise[kWiiButtonSets][porpoise::pad::CtlCount] = {
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
+    return wii_buttons_use == 1 ? wii_buttons : wii_buttons_use == 2 ? wii_buttons2 : kPorpoise;
 }
 
 int Settings::audio_preset() const

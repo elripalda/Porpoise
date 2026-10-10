@@ -29,6 +29,10 @@ struct Cheat
  * own from own_dir, when given. */
 /* wii: a Wii game (its 16:9 is the Wii's own setting, so no widescreen code
  * is turned on by itself). */
+/* The player's own code files for a game (<own_dir>/<ID>.ini or .txt, then
+ * its first four and three letters), the ones that exist. */
+std::vector<std::string> own_files(const std::string &own_dir, const std::string &game_id);
+
 std::vector<Cheat> cheats_for(const std::string &sys_dir, const std::string &game_id, const std::string &own_dir = "",
                               bool wii = false);
 /* Adds the player's own codes for the game (own_dir/<ID>.ini, or its first

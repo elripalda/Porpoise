@@ -20,12 +20,12 @@
 
 namespace porpoise::ui::look
 {
-constexpr const char *kVersion = "3.0 Alpha Build 5";
+constexpr const char *kVersion = "3.0 Alpha Build 6";
 constexpr int kBuild = 0; /* a release named "... (build N)" with a higher N is newer */
 constexpr int kVersionMajor = 3, kVersionMinor = 0, kVersionPatch = 0;
 /* 0 for a final release; its betas (1, 2...) come before it, and its alphas
  * before those (-1000 + n: alpha 1 is -999), as porpoise::update reads tags. */
-constexpr int kVersionBeta = -995; /* alpha 5 */
+constexpr int kVersionBeta = -994; /* alpha 6 */
 /* A test build's tag: shown by the logo, and in a notice at the first start
  * of each such build. Release for neither. */
 enum class Channel
@@ -295,13 +295,22 @@ inline std::string fit(Gfx &g, Font f, float size, std::string s, float max_w)
 {
     if (g.measure(f, size, s) <= max_w)
         return s;
-    while (!s.empty() && g.measure(f, size, s + "\xE2\x80\xA6") > max_w)
+    /* The longest start (whole UTF-8 sequences) that fits with the ellipsis:
+     * found by halving, as it's asked for many titles every frame. */
+    std::vector<std::size_t> cuts; /* where a character starts */
+    for (std::size_t i = 1; i < s.size(); ++i)
+        if ((static_cast<unsigned char>(s[i]) & 0xC0) != 0x80)
+            cuts.push_back(i);
+    std::size_t lo = 0, hi = cuts.size(); /* cuts[lo-1] fits (0: nothing kept); hi: the first that doesn't */
+    while (lo < hi)
     {
-        s.pop_back();
-        while (!s.empty() && (static_cast<unsigned char>(s.back()) & 0xC0) == 0x80)
-            s.pop_back(); /* whole UTF-8 sequences */
+        const std::size_t mid = (lo + hi + 1) / 2;
+        if (g.measure(f, size, s.substr(0, cuts[mid - 1]) + "\xE2\x80\xA6") <= max_w)
+            lo = mid;
+        else
+            hi = mid - 1;
     }
-    return s + "\xE2\x80\xA6";
+    return (lo == 0 ? std::string() : s.substr(0, cuts[lo - 1])) + "\xE2\x80\xA6";
 }
 
 /* Chinese and Japanese have no spaces: a line may end after any of their

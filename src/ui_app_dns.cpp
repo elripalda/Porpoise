@@ -36,6 +36,10 @@ bool plain_address(const std::string &text)
         }
         else if (c == '.' && value >= 0 && parts < 3)
         {
+            /* Not a server anywhere: 0.x, the console itself (127.x),
+             * multicast and broadcast (224 and up). */
+            if (parts == 0 && (value == 0 || value == 127 || value >= 224))
+                return false;
             ++parts;
             value = -1;
         }

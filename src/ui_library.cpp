@@ -17,6 +17,7 @@
 #include "ui_i18n.hpp"
 
 #include <algorithm>
+#include <unordered_map>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -601,6 +602,12 @@ void Library::load_info()
     std::FILE *f = std::fopen(paths_.info.c_str(), "r");
     if (!f)
         return;
+    /* The games by ID: GameTDB's file has thousands of rows, a library a
+     * few hundred games; only the rows for them are read whole. */
+    std::unordered_map<std::string, std::vector<Game *>> by_id;
+    for (Game &g : games_)
+        if (!g.id.empty())
+            by_id[g.id].push_back(&g);
     std::string line;
     char buf[4096];
     while (std::fgets(buf, sizeof buf, f))
@@ -609,6 +616,12 @@ void Library::load_info()
         if (line.empty() || line.back() != '\n')
             continue; /* a long line: keep reading */
         line.pop_back();
+        const auto hit = by_id.find(unescape_field(line.substr(0, line.find('\t'))));
+        if (hit == by_id.end())
+        {
+            line.clear();
+            continue;
+        }
         std::vector<std::string> fields;
         std::size_t start = 0;
         for (std::size_t i = 0; i <= line.size(); ++i)
@@ -620,18 +633,18 @@ void Library::load_info()
         line.clear();
         if (fields.size() < 9)
             continue;
-        for (Game &g : games_)
-            if (g.id == fields[0])
-            {
-                g.db_title = fields[1];
-                g.synopsis = fields[2];
-                g.developer = fields[3];
-                g.publisher = fields[4];
-                g.released = fields[5];
-                g.genre = fields[6];
-                g.players = std::atoi(fields[7].c_str());
-                g.rating = fields[8];
-            }
+        for (Game *game : hit->second)
+        {
+            Game &g = *game;
+            g.db_title = fields[1];
+            g.synopsis = fields[2];
+            g.developer = fields[3];
+            g.publisher = fields[4];
+            g.released = fields[5];
+            g.genre = fields[6];
+            g.players = std::atoi(fields[7].c_str());
+            g.rating = fields[8];
+        }
     }
     std::fclose(f);
 }

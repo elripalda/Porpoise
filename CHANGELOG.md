@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.0 Alpha Build 6 — 2026-10-10
+
+- PAL games switched to 60 Hz in their own menu run at 60 (the pacing
+  stayed at 50).
+- Frame pacing: a display whose vblank waits don't hold is caught and the
+  game's own clock takes over, instead of running about 4% fast (60/62 fps
+  and the sound jumping every few seconds); one late frame no longer turns
+  into a run of them.
+- HD texture packs: the memory they may use is held to what the console can
+  give, so a long session with a big pack doesn't end in a crash.
+- Wii buttons: two sets of your own per Wii controller (Mine 1, Mine 2) next
+  to Porpoise's, picked for every game or one (Controls → Customize Buttons,
+  L1 / R1; or Wii Remote → Wii Buttons).
+- Wii Remote: Pointer Range (Auto, Standard, Wide, Extra Wide); Auto is wide
+  for Zack & Wiki, whose pointer couldn't reach the top of the screen.
+- A GameCube controller in a Wii game no longer leaves the Wii Remote on too.
+- A Porpoise folder made by hand on extended storage is offered at the first
+  start.
+- Cheats: a .txt with several codes keeps them apart, by name; files saved
+  with a byte-order mark are read.
+- After being freed by the jailbreak on 12.70, Porpoise no longer crashes
+  putting its own folder back.
+- Online hub: lighter, three servers at a time; Retro Rewind's own servers
+  explained. A Wii game's every socket call is logged only with Debug Logs.
+- A game's saved setups can be reached in its settings again.
+- Startup: the library isn't rebuilt (covers faded in again, the cursor moved
+  back) when the background search finds the same games; GameTDB info and
+  long titles are quicker to read and fit.
+
 ## 3.0 Alpha Build 5 — 2026-10-09
 
 - **Online Hub** (Settings → Online): custom servers saved by name, a test
