@@ -109,9 +109,13 @@ public:
     int shown() const { return shown_; }
     bool shows(const Game &g) const
     {
+        /* Wii and GameCube: discs; channels, WiiWare, Virtual Console and
+         * homebrew under Channels (and All). */
+        if (show_ == Show::All)
+            return true;
         if (show_ == Show::Channels)
             return !g.kind.empty();
-        return show_ == Show::All || (show_ == Show::Wii) == (g.platform == "Wii");
+        return g.kind.empty() && (show_ == Show::Wii) == (g.platform == "Wii");
     }
 
     /* Selection and play history, kept across launches. */
@@ -162,7 +166,10 @@ private:
 
 /* Reads a disc image's header: ID, title, platform. Returns false if the
  * format keeps its header compressed (GCZ, WBFS). Public for the preview tool. */
-bool read_disc_header(const std::string &path, Game &g);
+/* foreign: set when the file reads fine but is another console's image. */
+bool read_disc_header(const std::string &path, Game &g, bool *foreign = nullptr);
+/* Whether a library entry is another console's disc image (read again). */
+bool foreign_disc(const Game &g);
 std::string relative_time(long long then, long long now);
 /* "3 h 20 min", "45 min", "Less than a minute" (translated). */
 std::string play_time_text(long long seconds);

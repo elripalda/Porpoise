@@ -1581,35 +1581,7 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
     for (;;)
     {
         const porpoise::pad::State &pad = porpoise::pad::poll();
-        ++h.frame_number;
         log_motion();
-        if (h.wii_changed)
-        {
-            /* The in-game menu changed the Wii controller: every port again.
-             * Two-controller play has only the Remote (port 0): the second
-             * controller is its Nunchuk, not a second Remote. */
-            h.wii_changed = false;
-            const bool two = h.wii.active && h.wii.controller == porpoise::pad::WiiTwoControllers;
-            for (int port = 1; port < porpoise::pad::kMaxPlayers; ++port)
-                if (two && h.plugged[port])
-                {
-                    h.api.set_controller_port_device(unsigned(port), RETRO_DEVICE_NONE);
-                    h.plugged[port] = false;
-                }
-            if (h.nunchuk_stage == 1 || h.nunchuk_stage == 2)
-                nunchuk_motion_step(true); /* the option goes off first, then every port, then again */
-            else
-                for (int port = 0; port < porpoise::pad::kMaxPlayers; ++port)
-                    if (h.plugged[port])
-                        h.api.set_controller_port_device(unsigned(port), port_device(port));
-            if (h.nunchuk_stage == 4)
-            {
-                h.nunchuk_stage = 0;
-                h.nunchuk_tries = 0;
-            }
-            h.nunchuk_frame = std::max(h.nunchuk_frame, h.frame_number + 10);
-        }
-        nunchuk_motion_step();
         /* A controller that joins mid-game is plugged into its GameCube port. */
         const bool two_controllers = h.wii.active && h.wii.controller == porpoise::pad::WiiTwoControllers;
         for (int port = 1; port < porpoise::pad::kMaxPlayers; ++port)
@@ -1717,6 +1689,38 @@ Exit run_game(const char *game_path, const Paths &paths, const Hooks &hooks, con
             continue;
         }
         h.running = true;
+        /* Counted, and the Wii controller changed, only while the game runs:
+         * the core takes a changed option as a frame starts, so a change made
+         * in the paused menu waits for it (plugged in again while paused, the
+         * Remote was read back from the file as it was, its old attachment). */
+        ++h.frame_number;
+        if (h.wii_changed)
+        {
+            /* The in-game menu changed the Wii controller: every port again.
+             * Two-controller play has only the Remote (port 0): the second
+             * controller is its Nunchuk, not a second Remote. */
+            h.wii_changed = false;
+            const bool two = h.wii.active && h.wii.controller == porpoise::pad::WiiTwoControllers;
+            for (int port = 1; port < porpoise::pad::kMaxPlayers; ++port)
+                if (two && h.plugged[port])
+                {
+                    h.api.set_controller_port_device(unsigned(port), RETRO_DEVICE_NONE);
+                    h.plugged[port] = false;
+                }
+            if (h.nunchuk_stage == 1 || h.nunchuk_stage == 2)
+                nunchuk_motion_step(true); /* the option goes off first, then every port, then again */
+            else
+                for (int port = 0; port < porpoise::pad::kMaxPlayers; ++port)
+                    if (h.plugged[port])
+                        h.api.set_controller_port_device(unsigned(port), port_device(port));
+            if (h.nunchuk_stage == 4)
+            {
+                h.nunchuk_stage = 0;
+                h.nunchuk_tries = 0;
+            }
+            h.nunchuk_frame = std::max(h.nunchuk_frame, h.frame_number + 10);
+        }
+        nunchuk_motion_step();
         /* Fast forward: several emulated frames for each one shown, without
          * their sound. */
         const int runs = h.fast_forward;

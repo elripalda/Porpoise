@@ -3272,7 +3272,7 @@ index a96698067d..5f74d2dbe2 100644
  extern "C" {
  
 diff --git a/Source/Core/DolphinLibretro/Boot.cpp b/Source/Core/DolphinLibretro/Boot.cpp
-index c53281053f..9aa38a6095 100644
+index c53281053f..dce587dd93 100644
 --- a/Source/Core/DolphinLibretro/Boot.cpp
 +++ b/Source/Core/DolphinLibretro/Boot.cpp
 @@ -1,4 +1,5 @@
@@ -3365,7 +3365,7 @@ index c53281053f..9aa38a6095 100644
      Libretro::Log::LogFrontEnd(style, caption, text, 2000);
      return true; // Always "continue"
    });
-@@ -357,6 +399,29 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -357,6 +399,30 @@ bool retro_load_game(const struct retro_game_info* game)
  #endif
    Config::SetBase(Config::MAIN_ACCURATE_CPU_CACHE,
      Libretro::GetOption<bool>(core::MAIN_ACCURATE_CPU_CACHE, /*def=*/false));
@@ -3391,11 +3391,12 @@ index c53281053f..9aa38a6095 100644
 +    HLE_PorpoiseWidescreen::SetEnabled(universal);
 +    NOTICE_LOG_FMT(BOOT, "Universal widescreen = {}", universal ? "Yes" : "No");
 +  }
++
 +#endif
  
    Config::SetBase(Config::MAIN_DSP_HLE,
                       Libretro::GetOption<bool>(audio::DSP_HLE, /*def=*/true));
-@@ -496,6 +561,12 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -496,6 +562,12 @@ bool retro_load_game(const struct retro_game_info* game)
  
    Config::SetBase(Config::GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
      Libretro::GetOption<bool>(gfx_settings::WAIT_FOR_SHADERS, /*def=*/false));
@@ -3408,7 +3409,7 @@ index c53281053f..9aa38a6095 100644
  
    if (Common::is_uwp())
      Config::SetBase(Config::GFX_SHADER_CACHE, false);
-@@ -646,6 +717,10 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -646,6 +718,10 @@ bool retro_load_game(const struct retro_game_info* game)
    NOTICE_LOG_FMT(BOOT, "CPU Core: {}", Libretro::Options::CPUCoreToString(Config::Get(Config::MAIN_CPU_CORE)));
    NOTICE_LOG_FMT(BOOT, "Fastmem enabled = {}", (Config::Get(Config::MAIN_FASTMEM)) ? "Yes" : "No");
    NOTICE_LOG_FMT(BOOT, "JIT debug enabled = {}", Config::IsDebuggingEnabled() ? "Yes" : "No");
@@ -3419,7 +3420,7 @@ index c53281053f..9aa38a6095 100644
  
    Libretro::FrameTiming::Init();
    Libretro::Audio::Init();
-@@ -737,6 +812,13 @@ bool retro_load_game(const struct retro_game_info* game)
+@@ -737,6 +813,13 @@ bool retro_load_game(const struct retro_game_info* game)
      ERROR_LOG_FMT(BOOT, "Could not boot {}", game->path);
      return false;
    }
@@ -3433,7 +3434,7 @@ index c53281053f..9aa38a6095 100644
  
    Libretro::Input::InitStage2();
  
-@@ -804,6 +886,7 @@ void retro_unload_game(void)
+@@ -804,6 +887,7 @@ void retro_unload_game(void)
  
      Core::Shutdown(system);
    }
@@ -3652,10 +3653,10 @@ index b1248b660b..c1c4d19578 100644
  std::string DenormalizePath(const std::string& path);
  
 diff --git a/Source/Core/DolphinLibretro/Log.cpp b/Source/Core/DolphinLibretro/Log.cpp
-index 1a1915cd1d..90e42ae087 100644
+index 1a1915cd1d..236a2e86d7 100644
 --- a/Source/Core/DolphinLibretro/Log.cpp
 +++ b/Source/Core/DolphinLibretro/Log.cpp
-@@ -94,6 +94,11 @@ LogListener::LogListener(retro_log_printf_t log) : m_log(log)
+@@ -94,6 +94,12 @@ LogListener::LogListener(retro_log_printf_t log) : m_log(log)
    Common::Log::LogManager::GetInstance()->SetEnable(
      Common::Log::LogType::DSP_MAIL,
      Libretro::Options::GetCached<bool>(Libretro::Options::main_interface::LOG_DSP_MAIL, false));
@@ -3664,10 +3665,11 @@ index 1a1915cd1d..90e42ae087 100644
 +  // finding why a game drops from a server.
 +  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_NET, true);
 +  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_SSL, true);
++  Common::Log::LogManager::GetInstance()->SetEnable(Common::Log::LogType::IOS_WC24, true);
  }
  
  LogListener::~LogListener()
-@@ -112,18 +117,18 @@ void LogListener::Log(Common::Log::LogLevel level, const char* text)
+@@ -112,18 +118,18 @@ void LogListener::Log(Common::Log::LogLevel level, const char* text)
    switch (level)
    {
    case Common::Log::LogLevel::LDEBUG:

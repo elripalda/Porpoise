@@ -1531,5 +1531,8 @@
  "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Onde os jogos de Wii procuram os servidores online deles. Automático: o do console. Para um servidor personalizado, digite o endereço DNS indicado nas instruções dele, como num Wii de verdade.",
  "Automatic": "Automático",
  "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Para um servidor personalizado para jogos de Wii online: o endereço DNS indicado nas instruções dele, como nas configurações de rede de um Wii. Vazio: Automático, o do console.",
- "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Isso não é um endereço. Digite um como 192.168.1.2 ou apague tudo para Automático."
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "Isso não é um endereço. Digite um como 192.168.1.2 ou apague tudo para Automático.",
+ "This isn't a GameCube or Wii game": "Isto não é um jogo de GameCube nem de Wii",
+ "{file} is a disc image from another console, so Porpoise can't play it.": "{file} é uma imagem de disco de outro console, então o Porpoise não consegue jogá-lo.",
+ "{computer} has no export called {name}. It shares: {list}": "{computer} não tem nenhuma exportação chamada {name}. Compartilha: {list}"
 }

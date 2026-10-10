@@ -4,6 +4,7 @@
 #include "porpoise_netfs.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -1384,6 +1385,37 @@ Problem test(const Share &share, std::string *detail)
         if (detail)
             *detail = error;
         const Problem p = classify(error);
+        if (is_nfs(share) && (p == Problem::Denied || p == Problem::NoFolder))
+        {
+            /* A version 3 server refuses a path it doesn't export as "access
+             * denied" (WinNFSd): when its list hasn't got it, that's what it
+             * is, and the list says which to use. */
+            std::vector<std::string> exports;
+            if (enumerate(share, exports) == Problem::None && !exports.empty())
+            {
+                auto plain = [](std::string e) {
+                    std::replace(e.begin(), e.end(), '\\', '/');
+                    while (e.size() > 1 && e.back() == '/')
+                        e.pop_back();
+                    return e; /* case and all: a Linux or NAS server tells /Games from /games */
+                };
+                const std::string wanted = plain(export_of(share));
+                bool listed = false;
+                std::string names;
+                for (const std::string &e : exports)
+                {
+                    listed |= plain(e) == wanted;
+                    names += (names.empty() ? "" : ", ") + e;
+                }
+                if (!listed)
+                {
+                    note(where(share) + " isn't among its exports: " + names);
+                    if (detail)
+                        *detail = names;
+                    return Problem::NoSuchShare;
+                }
+            }
+        }
         /* A mount refused for a path the server doesn't export. */
         return is_nfs(share) && p == Problem::NoFolder ? Problem::NoSuchShare : p;
     }

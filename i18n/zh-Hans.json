@@ -1531,5 +1531,8 @@
  "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Wii游戏查找其在线服务器的位置。自动：使用主机自身的DNS。若要使用自定义服务器，请像在真正的Wii上一样，输入其说明中给出的DNS地址。",
  "Automatic": "自动",
  "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "用于Wii游戏联网的自定义服务器：输入其说明中给出的DNS地址，就像在Wii自身的网络设置中一样。留空：自动，使用主机自身的DNS。",
- "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "这不是有效的地址。请输入类似192.168.1.2的地址，或全部删除以使用“自动”。"
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "这不是有效的地址。请输入类似192.168.1.2的地址，或全部删除以使用“自动”。",
+ "This isn't a GameCube or Wii game": "这不是 GameCube 或 Wii 游戏",
+ "{file} is a disc image from another console, so Porpoise can't play it.": "{file} 是其他游戏机的光盘镜像，Porpoise 无法运行。",
+ "{computer} has no export called {name}. It shares: {list}": "{computer} 上没有名为 {name} 的导出。它共享的有：{list}"
 }

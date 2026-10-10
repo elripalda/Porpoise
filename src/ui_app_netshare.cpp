@@ -260,6 +260,9 @@ std::string problem_text(netfs::Problem problem, const netfs::Share &s, const st
     case Problem::SignIn:
         return tr("The computer didn't accept the username or password.");
     case Problem::NoSuchShare:
+        if (nfs && !detail.empty() && detail[0] == '/')
+            return trf("{computer} has no export called {name}. It shares: {list}",
+                       {{"computer", s.host}, {"name", s.share}, {"list", detail}});
         return nfs ? trf("{computer} has no export called {name}.", {{"computer", s.host}, {"name", s.share}})
                    : trf("{computer} has no shared folder called {name}.", {{"computer", s.host}, {"name", s.share}});
     case Problem::Denied:

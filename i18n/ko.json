@@ -1531,5 +1531,8 @@
  "Where Wii games look up their online servers. Automatic: the console's own. For a custom server, type the DNS address its instructions give, as on a real Wii.": "Wii 게임이 온라인 서버를 찾는 곳입니다. 자동: 본체의 DNS를 사용합니다. 커스텀 서버를 쓰려면 실제 Wii에서처럼 그 안내에 나온 DNS 주소를 입력하세요.",
  "Automatic": "자동",
  "For a custom server for Wii games online: the DNS address its instructions give, as on a Wii's own network settings. Empty: Automatic, the console's own.": "Wii 게임 온라인용 커스텀 서버의 DNS 주소입니다. Wii 본체의 네트워크 설정에서처럼 그 안내에 나온 주소를 입력합니다. 비어 있음: 자동 (본체의 DNS).",
- "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "주소가 아닙니다. 192.168.1.2처럼 입력하거나, 모두 지워 자동으로 설정하세요."
+ "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.": "주소가 아닙니다. 192.168.1.2처럼 입력하거나, 모두 지워 자동으로 설정하세요.",
+ "This isn't a GameCube or Wii game": "게임큐브 또는 Wii 게임이 아닙니다",
+ "{file} is a disc image from another console, so Porpoise can't play it.": "{file}은(는) 다른 게임기의 디스크 이미지라서 Porpoise에서 플레이할 수 없습니다.",
+ "{computer} has no export called {name}. It shares: {list}": "{computer}에 {name}(이)라는 내보내기가 없습니다. 공유 중: {list}"
 }

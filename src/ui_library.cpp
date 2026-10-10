@@ -192,8 +192,10 @@ int count_games(const std::string &dir, int depth)
     return int(files.size());
 }
 
-bool read_disc_header(const std::string &path, Game &g)
+bool read_disc_header(const std::string &path, Game &g, bool *foreign)
 {
+    if (foreign)
+        *foreign = false;
     porpoise::netfs::Reader f; /* a file here or on a network share */
     if (!f.open(path))
         return false;
@@ -249,13 +251,27 @@ bool read_disc_header(const std::string &path, Game &g)
         got = 0x100;
         header_len = 0x100;
     }
-    if (data == -1 || got < 0x60)
+    if (data == -1)
         return false;
+    /* An image read that isn't a GameCube or Wii disc (no magic word, as the
+     * emulator wants one): another console's, a PS2 or PSP .iso in a shared
+     * roms folder. Not a read that failed: that one stays. */
+    const bool plain = g.format == "ISO" || g.format == "GCM";
+    if (got < 0x60)
+    {
+        if (foreign && plain && first >= 0)
+            *foreign = true;
+        return false;
+    }
 
     const bool gamecube = be32(head + 0x1C) == 0xC2339F3D;
     const bool wii = be32(head + 0x18) == 0x5D1C9EA3;
     if (!gamecube && !wii)
+    {
+        if (foreign)
+            *foreign = true;
         return false;
+    }
     g.platform = wii ? "Wii" : "GameCube";
     std::string id;
     for (int i = 0; i < 6; ++i)
@@ -373,9 +389,12 @@ std::string play_time_text(long long seconds)
 
 namespace
 {
-/* One game file as the library knows it: its header (or WAD, or app) read. */
-Game game_from_file(const std::string &path)
+/* One game file as the library knows it: its header (or WAD, or app) read.
+ * foreign: set when the file is another console's disc image. */
+Game game_from_file(const std::string &path, bool *foreign = nullptr)
 {
+    if (foreign)
+        *foreign = false;
     Game g;
     g.path = path;
     g.file = path.substr(path.rfind('/') + 1);
@@ -387,8 +406,10 @@ Game game_from_file(const std::string &path)
         read_wad_header(path, g);
     else if (ext == "dol" || ext == "elf")
         read_app_meta(path, g);
+    else if (ext == "tgc")
+        read_disc_header(path, g); /* a demo disc's file: its header is further in */
     else
-        read_disc_header(path, g);
+        read_disc_header(path, g, foreign);
     if (ext == "tgc")
         g.format = "TGC";
     if (g.title.empty())
@@ -417,6 +438,17 @@ std::vector<std::string> find_game_files(const std::vector<std::string> &roots, 
     return files;
 }
 
+bool foreign_disc(const Game &g)
+{
+    if (g.format != "ISO" && g.format != "GCM")
+        return false;
+    Game probe;
+    probe.file = g.file;
+    bool foreign = false;
+    read_disc_header(g.path, probe, &foreign);
+    return foreign;
+}
+
 void Library::scan(const LibraryPaths &paths)
 {
     std::vector<std::string> roots = paths.roots;
@@ -431,7 +463,13 @@ std::vector<Game> read_games(std::vector<std::string> files)
     std::vector<Game> games;
     games.reserve(files.size());
     for (const std::string &path : files)
-        games.push_back(game_from_file(path));
+    {
+        bool foreign = false;
+        Game g = game_from_file(path, &foreign);
+        if (foreign)
+            continue; /* another console's */
+        games.push_back(std::move(g));
+    }
     return games;
 }
 
@@ -468,7 +506,11 @@ Game *Library::open_file(const std::string &path)
     }
     /* Outside every folder searched: in the library until the next search,
      * with its play history from library.txt like any other game. */
-    games_.push_back(game_from_file(path));
+    bool foreign = false;
+    Game g = game_from_file(path, &foreign);
+    if (foreign)
+        return nullptr; /* another console's */
+    games_.push_back(std::move(g));
     load_state();
     load_info();
     sort(sort_);

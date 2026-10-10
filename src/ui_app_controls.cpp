@@ -1226,6 +1226,16 @@ bool points(int controller)
 
 App::Action App::start_game(Game *g, const std::string &state, bool resume_asked)
 {
+    /* Another console's image (found before this version, or read wrongly
+     * once): an error, not a crash in the emulator. */
+    if (g && foreign_disc(*g))
+    {
+        open_dialog(DialogKind::Info, tr("This isn't a GameCube or Wii game"),
+                    trf("{file} is a disc image from another console, so Porpoise can't play it.",
+                        {{"file", g->file}}),
+                    "");
+        return Action::None;
+    }
     /* The game's own choice, else the global one. */
     Settings eff = *settings_;
     if (g)

@@ -5972,6 +5972,10 @@
   "section": "3.0: network share panel, test build notice"
  },
  {
+  "en": "{computer} has no export called {name}. It shares: {list}",
+  "section": "3.0: network share panel, test build notice"
+ },
+ {
   "en": "The computer didn't let Porpoise in. Allow this PS5's address in the export's settings. Some NAS boxes also need connections from non-privileged ports allowed (\"insecure\").",
   "section": "3.0: network share panel, test build notice"
  },
@@ -6130,5 +6134,13 @@
  {
   "en": "That isn't an address. Type one like 192.168.1.2, or delete it all for Automatic.",
   "section": "3.0 Alpha 1: MotionPlus, online play"
+ },
+ {
+  "en": "This isn't a GameCube or Wii game",
+  "section": "Library"
+ },
+ {
+  "en": "{file} is a disc image from another console, so Porpoise can't play it.",
+  "section": "Library"
  }
 ]

@@ -3,6 +3,7 @@
  * Copyright (C) 2026 Ruben (Project Porpoise)
  * SPDX-License-Identifier: GPL-3.0-or-later */
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <ctime>
 
@@ -861,19 +862,108 @@ void App::draw_glass_cube(float cx, float cy, float size, float yaw, float pitch
 
 /* Moving through the library in the views that move differently: the shelf
  * goes by rows, the box turns with the right stick. True when it moved. */
+namespace
+{
+/* The letter a title files under: A-Z, else '#'. */
+char letter_of(const Game &g)
+{
+    for (char c : g.title)
+    {
+        const unsigned char u = static_cast<unsigned char>(c);
+        if (std::isalpha(u))
+            return char(std::toupper(u));
+        if (std::isdigit(u))
+            return '#';
+    }
+    return '#';
+}
+} // namespace
+
 bool App::update_view_nav(bool left, bool right, bool up, bool down, double dt)
 {
     const int shown = lib_->shown();
     const int view = settings_->lib_view;
     bool moved = false;
+
+    /* Held, the scrolling speeds up: one game a step at first, then 3, then
+     * 10 (a long library crossed in seconds). */
+    constexpr std::uint32_t kDirs = BtnLeft | BtnRight | BtnUp | BtnDown;
+    if ((held_ & kDirs) && (prev_ & kDirs))
+        nav_held_ += dt;
+    else
+        nav_held_ = 0; /* a fresh press (or one held since another screen) starts slow */
+    const int step = nav_held_ > 3.0 ? 10 : nav_held_ > 1.2 ? 3 : 1;
+
+    /* L2 / R2: the previous / next letter, sorted by title; else a page. */
+    auto jump = [&](std::uint32_t bit, float &timer) {
+        if (!(held_ & bit))
+        {
+            timer = 0;
+            return false;
+        }
+        if (!(prev_ & bit))
+        {
+            timer = 0.4f;
+            return true;
+        }
+        if (timer == 0)
+            return false; /* held since Details (its own L2 / R2): wait for a new press */
+        timer -= float(dt);
+        if (timer <= 0)
+        {
+            timer = 0.16f;
+            return true;
+        }
+        return false;
+    };
+    const bool back = jump(BtnL2, lib_rep_l2_), ahead = jump(BtnR2, lib_rep_r2_);
+    if ((back || ahead) && shown > 1)
+    {
+        const auto &games = lib_->games();
+        const int before = selected_;
+        if (lib_->sort_order() == Library::Sort::Title)
+        {
+            const char here = letter_of(games[std::size_t(selected_)]);
+            if (ahead)
+            {
+                int i = selected_;
+                while (i + 1 < shown && letter_of(games[std::size_t(i)]) == here)
+                    ++i;
+                selected_ = i;
+            }
+            else
+            {
+                /* The start of this letter, or of the one before when at it. */
+                int i = selected_;
+                if (i > 0 && letter_of(games[std::size_t(i - 1)]) != here)
+                    --i;
+                const char want = letter_of(games[std::size_t(i)]);
+                while (i > 0 && letter_of(games[std::size_t(i - 1)]) == want)
+                    --i;
+                selected_ = i;
+            }
+        }
+        else
+        {
+            const int page = view == 3 ? kShelfCols * 3 : 10;
+            selected_ = std::clamp(selected_ + (ahead ? page : -page), 0, shown - 1);
+        }
+        if (selected_ != before)
+        {
+            moved = true;
+            if (settings_->reduced_motion)
+                scroll_ = float(selected_);
+        }
+    }
+
     if (left && selected_ > 0)
     {
-        --selected_;
+        selected_ = std::max(0, selected_ - step);
         moved = true;
     }
     if (right && selected_ + 1 < shown)
     {
-        ++selected_;
+        selected_ = std::min(shown - 1, selected_ + step);
         moved = true;
     }
     if (view == 5)
@@ -881,25 +971,29 @@ bool App::update_view_nav(bool left, bool right, bool up, bool down, double dt)
         /* The list: up and down too. */
         if (up && selected_ > 0)
         {
-            --selected_;
+            selected_ = std::max(0, selected_ - step);
             moved = true;
         }
         if (down && selected_ + 1 < shown)
         {
-            ++selected_;
+            selected_ = std::min(shown - 1, selected_ + step);
             moved = true;
         }
     }
     if (view == 3)
     {
+        const int rows = step > 1 ? step / 3 + 1 : 1; /* 1, 2 or 4 rows a step */
         if (up && selected_ >= kShelfCols)
         {
-            selected_ -= kShelfCols;
+            selected_ = std::max(selected_ % kShelfCols, selected_ - kShelfCols * rows);
             moved = true;
         }
         if (down && selected_ + kShelfCols < shown)
         {
-            selected_ += kShelfCols;
+            int to = selected_ + kShelfCols * rows;
+            while (to >= shown)
+                to -= kShelfCols;
+            selected_ = to;
             moved = true;
         }
         else if (down && selected_ / kShelfCols < (shown - 1) / kShelfCols)

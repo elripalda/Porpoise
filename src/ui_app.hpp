@@ -1335,6 +1335,8 @@ private:
     std::uint32_t held_ = 0, prev_ = 0;
     std::uint32_t raw_held_ = 0, raw_prev_ = 0; /* the buttons alone, without the stick as a D-pad */
     float rep_left_ = 0, rep_right_ = 0, rep_up_ = 0, rep_down_ = 0;
+    double nav_held_ = 0; /* how long a direction has been held in the library (speeds it up) */
+    float lib_rep_l2_ = 0, lib_rep_r2_ = 0; /* the library's L2 / R2 letter jumps (not Details' timers) */
     double time_ = 0;
 
     Game *launch_ = nullptr;

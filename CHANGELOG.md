@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.0 Alpha Build 4 — 2026-10-09
+
+- Library: other consoles' disc images (a PS2 or PSP .iso in a shared roms
+  folder) are left out, and one started anyway says so instead of crashing.
+- Library: hold a direction and the scrolling speeds up; L2 / R2 jump to the
+  previous / next letter (a page when sorted another way).
+- The Wii filter shows Wii discs only; WiiWare, Virtual Console, channels and
+  homebrew stay under Channels.
+- A Wii controller changed in the in-game menu applies when the game goes on,
+  without starting it again.
+- NFS: a wrong export name says so and lists the computer's exports.
+
 ## 3.0 Alpha Build 3 — 2026-10-09
 
 - Wii games online: a port the console refuses a game (Mario Kart Wii's for
