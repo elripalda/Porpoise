@@ -1,23 +1,66 @@
 <p align="center"><img src="https://github.com/elripalda/Porpoise-Dolphin-Emulator-for-PS5/raw/Main/docs/images/banner.png" alt="Porpoise" width="100%"></p>
 
-**Porpoise 3.0** is the biggest update yet:
+**Porpoise 3.0** is the biggest update yet.
 
-- **Wii games online:** an **Online Hub** (Settings → Online) with WiiLink WFC, Wiimmfi, the WiiConnect24 channels and your own servers, saved by name with a test.
-- **Network shares:** play games from your computer or NAS (SMB or NFS), found on your network.
-- **Wii MotionPlus** with the DualSense's gyroscope (Wii Sports Resort, Skyward Sword, Red Steel 2...).
-- **Wii buttons:** two sets of your own per Wii controller, for every game or just one, and **Pointer Range** for games whose pointer can't reach an edge.
-- **Stick Sensitivity and Stick Dead Zone** for the control stick, for games whose steering feels twitchy (F-Zero GX).
-- **HD texture packs** listed in Settings → Textures, with the game each one is for.
-- **Riptide Boost (beta)**, universal widescreen (beta), FSR 1, Sharpen, Extra Bloom, picture color controls and new screen filters.
-- **New looks:** themes, colors and TV borders, Spines and Spotlight views, and Recently Played as a Dock, Floating boxes or Discs.
-- **Smoother and faster:** PAL games switched to 60 Hz run at 60, games no longer run a little fast on some displays, and a quicker start and scrolling.
+### 🌐 Online
+- **Online Hub** in Settings → Online
+- **WiiLink WFC** and **Wiimmfi** set up in a few steps
+- **WiiConnect24** channels
+- **Custom servers**, saved by name, with a connection test
+- No more freeze when connecting in Mario Kart Wii
 
-### Also in 3.0
-- **Wii System Data (beta):** import your own Wii's BootMii NAND backup (Settings → Console).
-- **Cheats and Patches** as cards, and .txt code files with several codes read properly.
-- The Wii pointer reaches the top of the screen (Mario Kart Wii), and a game's box flips to its back smoothly.
-- Settings in more sections, and screenshots.
-- Other consoles' games in shared roms folders are left out instead of crashing, a crash after the jailbreak on 12.70 is fixed, and many smaller fixes.
+### 📁 Games and library
+- **Network shares:** play games from your computer or NAS (SMB or NFS)
+- Computers on your network are found for you
+- Games remembered between starts, so Porpoise opens faster
+- USB games show up before network shares
+- Hold a direction to scroll faster
+- **L2 / R2** jump to the previous or next letter
+- The Wii filter shows Wii discs only (WiiWare and channels stay under Channels)
+- Other consoles' games in a shared roms folder are left out
+
+### 🎮 Controls
+- **Stick Sensitivity**, for games whose steering feels twitchy (F-Zero GX)
+- **Stick Dead Zone**
+- **Wii MotionPlus** with the DualSense's gyroscope (Wii Sports Resort, Skyward Sword, Red Steel 2)
+- **Two button sets of your own** for each Wii controller, for every game or just one
+- **Pointer Range** for games whose pointer can't reach an edge
+- The Wii pointer now reaches the top of the screen (Mario Kart Wii)
+
+### 🖼️ Picture
+- **Riptide Boost (beta)** speeds up games that run slow
+- **Universal widescreen (beta)**
+- **FSR 1** upscaling
+- **Sharpen**
+- **Extra Bloom**
+- Saturation, contrast and warmth
+- New screen filters: 16-Bit, NTSC Composite and Aperture Grille
+- **HD texture packs** listed in Settings → Textures, with the game each one is for
+
+### ✨ Looks
+- Four new themes: 8-Bit, Beige, Translucent and Arcade
+- Eight new colors
+- Seven new TV borders
+- **Spines** and **Spotlight** library views
+- **Recently Played** as a Dock, Floating boxes or Discs
+- Settings split into more sections
+- **Screenshots** from the in-game menu, or touch pad + Square
+- New menu sounds
+- Smaller text size and Bolder Focus options
+
+### 🧩 Cheats and system
+- **Cheats and Patches** shown as cards
+- .txt cheat files with several codes read properly
+- **Wii System Data (beta):** import your own Wii's BootMii NAND backup
+- GameCube BIOS found under any file name
+
+### ⚡ Performance and fixes
+- PAL games switched to 60 Hz run at 60
+- Games no longer run a little fast on some displays (the skipping sound in Mario Kart Wii)
+- Smooth box flip in Details
+- HD texture packs held to what the console's memory allows
+- Crash after the jailbreak on 12.70 fixed
+- Many smaller fixes
 
 > [!TIP]
 > ### 💙 Enjoying Porpoise?
@@ -29,9 +72,6 @@
 > **Porpoise is still in early development on the PS5.** If you run into bugs or glitches in a game, please report them on the **[RIPALDA Discord](https://discord.gg/GgDE5Vynyu)**, with the game's name, and we'll get them fixed as soon as we can.
 
 ## Install or update
-
-> [!NOTE]
-> **Having trouble with PS5 Upload?** If it doesn't work for you, copy Porpoise over FTP instead (in binary mode, see below). Still stuck? Reach out on the **[Discord](https://discord.gg/GgDE5Vynyu)** and we'll help you out.
 
 **Use ShadowMountPlus 1.7 beta 4 or newer.** With older versions, Porpoise can close the moment it opens on some setups (firmware 12.x with the Lapy JB Daemon or LegacyJB).
 
