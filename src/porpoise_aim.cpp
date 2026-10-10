@@ -215,7 +215,7 @@ bool level_grip(const Basis &grip, const float up[3], Basis &out)
 
 namespace
 {
-void sensor_bar_at(float x, float y, float roll, Dot out[2], float range)
+void sensor_bar_at(float x, float y, float roll, Dot out[2], float range, bool above)
 {
     /* Dolphin's pointer geometry (Core/HW/WiimoteEmu: Dynamics.cpp EmulatePoint,
      * Camera.cpp GetCameraPoints): the Remote 2 m from the bar, the bar 10 cm
@@ -227,7 +227,12 @@ void sensor_bar_at(float x, float y, float roll, Dot out[2], float range)
      * little past them so the pointer's edge is surely the game's; both lights
      * stay in the camera's view even in the corners. */
     constexpr float kEdgeX = 12.5f * kPi / 180.0f, kEdgeY = 10.0f * kPi / 180.0f, kPast = 1.15f;
-    constexpr float kDistance = 2.0f, kHeight = 0.10f, kSeparation = 0.2f;
+    /* The bar 10 cm above or below where the Remote points at the middle,
+     * as the game was told it sits (Settings > Console > Sensor Bar): told
+     * "below" with the lights seen above, a game's pointer couldn't reach the
+     * top quarter of the screen (Mario Kart Wii, Zack & Wiki). */
+    constexpr float kDistance = 2.0f, kSeparation = 0.2f;
+    const float kHeight = above ? 0.10f : -0.10f;
     constexpr float kFovX = 42.0f * kPi / 180.0f, kFovY = kFovX / (4.0f / 3.0f);
     const float yaw = x * kEdgeX * kPast * range, pitch = -y * kEdgeY * kPast * range;
     /* M = Rz(-yaw) Rx(-pitch) Ry(-roll), axes x left, y back, z up. */
@@ -269,7 +274,7 @@ void sensor_bar_at(float x, float y, float roll, Dot out[2], float range)
 }
 } // namespace
 
-void sensor_bar(float x, float y, float roll, Dot out[2], float range)
+void sensor_bar(float x, float y, float roll, Dot out[2], float range, bool bar_above)
 {
     range = std::clamp(range, 0.5f, 2.0f);
     /* Up to a little past the screen's edges the game's cursor stays pinned
@@ -286,13 +291,13 @@ void sensor_bar(float x, float y, float roll, Dot out[2], float range)
     x = std::clamp(x, -1.06f, 1.06f);
     y = std::clamp(y, -1.06f, 1.06f);
     roll = std::clamp(roll, -0.52f, 0.52f);
-    sensor_bar_at(x, y, roll, out, range);
+    sensor_bar_at(x, y, roll, out, range, bar_above);
     /* Past what the camera can see (a wide range's lower edge): pulled in
      * until both lights are in view, so the pointer pins rather than goes. */
     for (int i = 1; i <= 30 && !(out[0].visible && out[1].visible); ++i)
     {
         const float k = 1.0f - 0.02f * float(i);
-        sensor_bar_at(x * k, y * k, roll * k, out, range);
+        sensor_bar_at(x * k, y * k, roll * k, out, range, bar_above);
     }
 }
 

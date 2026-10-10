@@ -865,6 +865,7 @@ porpoise::pad::WiiConfig Settings::wii_config(bool active, const std::string &ga
         const float ranges[4] = {wide ? 1.35f : 1.0f, 1.0f, 1.35f, 1.6f};
         c.range = ranges[std::clamp(wii_range, 0, 3)];
     }
+    c.bar_above = sensor_bar == 1; /* where the game is told the bar is: the pointer's lights agree */
     c.invert_x = developer && wii_invert_x; /* developer options only */
     c.invert_y = developer && wii_invert_y;
     return c;

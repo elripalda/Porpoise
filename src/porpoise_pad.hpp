@@ -192,6 +192,7 @@ struct WiiConfig
      * (most games' edges), more for a game whose own edges lie further out
      * (Zack & Wiki's top quarter was out of reach). */
     float range = 1.0f;
+    bool bar_above = false; /* Settings > Console > Sensor Bar: the bar above the TV (else below) */
     /* Porpoise's own home screen points with it (the Revolution look): R1 and
      * L1 stay menu buttons, centre_now() centres. */
     bool menu = false;

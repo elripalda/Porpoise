@@ -741,6 +741,10 @@ private:
     bool dock_focus_ = false;
     int dock_sel_ = 0;
     float dock_lift_ = 0;
+    /* Details' whole description (the back of the box), laid out once. */
+    std::string whole_text_for_;
+    std::vector<std::string> whole_text_lines_;
+    float whole_text_size_ = 21, whole_text_line_ = 30;
     float dock_glide_ = 0; /* the chosen game's place, gliding (Floating's magnifier) */
     float dock_open_ = 0;  /* 0 resting, 1 chosen (Down) */
     void draw_dock_floating(const std::vector<int> &recent);

@@ -700,7 +700,7 @@ void log_motion()
     const porpoise::pad::Motion &m = p.motion;
     const porpoise::pad::Motion n2 = porpoise::pad::snapshot(1).motion; /* the second controller */
     porpoise::aim::Dot dots[2];
-    porpoise::aim::sensor_bar(m.aim_x, m.aim_y, m.roll, dots, h.wii.range);
+    porpoise::aim::sensor_bar(m.aim_x, m.aim_y, m.roll, dots, h.wii.range, h.wii.bar_above);
     auto cam = [](const porpoise::aim::Dot &d, bool y) {
         return d.visible ? static_cast<int>((y ? d.y * 767 : d.x * 1023) + 0.5f) : -1;
     };
@@ -963,7 +963,7 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
         if (index > 1 || !h.wii.active)
             return 0;
         porpoise::aim::Dot dots[2];
-        porpoise::aim::sensor_bar(pad.motion.aim_x, pad.motion.aim_y, pad.motion.roll, dots, h.wii.range);
+        porpoise::aim::sensor_bar(pad.motion.aim_x, pad.motion.aim_y, pad.motion.roll, dots, h.wii.range, h.wii.bar_above);
         const porpoise::aim::Dot &dot = dots[index];
         if (!dot.visible)
             return 0;

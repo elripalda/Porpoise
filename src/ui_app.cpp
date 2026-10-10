@@ -2234,6 +2234,9 @@ void App::draw_details(double time)
     if (games.empty())
         return;
     Game &game = games[std::size_t(selected_)];
+    /* The back of the box asked for now, so it's ready when Triangle turns
+     * the box (loaded at the turn, a big back's upload made it stutter). */
+    back_of(game);
 
     /* The box, large, in glass: 5 wide for 7 high. It flies in from the
      * library turning over once, and turns with the right stick. */
@@ -2382,24 +2385,33 @@ void App::draw_details(double time)
     const float actions_y = py + ph - float(action_count) * 66 - 24;
     if (whole_text)
     {
-        /* All of it: the largest size it fits at. */
-        const float sizes[3] = {25, 23, 21};
-        float size = sizes[2], line = 30;
-        std::vector<std::string> lines;
-        for (float sz : sizes)
+        /* All of it: the largest size it fits at (worked out once for the
+         * game and the room, not every frame of the box turning). */
+        const std::string key = game.path + "|" + std::to_string(int(actions_y - dy)) + "|" +
+                                std::to_string(ts(25)) + "|" + std::to_string(game.synopsis.size()) + "|" +
+                                std::to_string(settings_->ui_font) + "|" + std::to_string(settings_->ui_theme);
+        if (key != whole_text_for_)
         {
-            const float lh = sz * 1.36f;
-            const std::size_t fits = std::size_t(std::max(0.0f, (actions_y - 16 - dy) / lh));
-            lines = wrap(g, Font::Regular, ts(sz), game.synopsis, pw - 104, fits);
-            size = sz;
-            line = lh;
-            if (wrap(g, Font::Regular, ts(sz), game.synopsis, pw - 104).size() <= fits)
-                break;
+            const float sizes[3] = {25, 23, 21};
+            whole_text_size_ = sizes[2];
+            whole_text_line_ = 30;
+            for (float sz : sizes)
+            {
+                const float lh = sz * 1.36f;
+                const std::size_t fits = std::size_t(std::max(0.0f, (actions_y - 16 - dy) / lh));
+                const std::vector<std::string> all = wrap(g, Font::Regular, ts(sz), game.synopsis, pw - 104);
+                whole_text_lines_ = wrap(g, Font::Regular, ts(sz), game.synopsis, pw - 104, fits);
+                whole_text_size_ = sz;
+                whole_text_line_ = lh;
+                if (all.size() <= fits)
+                    break;
+            }
+            whole_text_for_ = key;
         }
-        for (const std::string &l : lines)
+        for (const std::string &l : whole_text_lines_)
         {
-            g.text_mid(Font::Regular, ts(size), px + 52, dy + 12, kSoft, Align::Left, l);
-            dy += line;
+            g.text_mid(Font::Regular, ts(whole_text_size_), px + 52, dy + 12, kSoft, Align::Left, l);
+            dy += whole_text_line_;
         }
     }
     else if (const std::size_t room = std::size_t(std::max(0.0f, (actions_y - 16 - dy) / 34.0f));
