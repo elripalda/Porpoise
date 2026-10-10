@@ -226,6 +226,10 @@ std::vector<Row> rows_for(int tab, Settings &p, bool wii = false, const Patches 
                          {"Off", "Up and Down", "Left and Right", "Both"}});
             r.push_back({Kind::Int, "invert_c", "Invert the C-Stick", &p.invert_c, nullptr, 0,
                          {"Off", "Up and Down", "Left and Right", "Both"}});
+            r.push_back({Kind::Int, "stick_sensitivity", "Stick Sensitivity", &p.stick_sensitivity, nullptr, 0,
+                         {"Normal", "Lower", "Low", "Lowest"}});
+            r.push_back({Kind::Int, "stick_deadzone", "Stick Dead Zone", &p.stick_deadzone, nullptr, 0,
+                         {"Off", "Small", "Medium", "Large"}});
         }
         if (wii)
         {

@@ -1693,5 +1693,12 @@
  "Guest": "Gość",
  "Mine": "Własny",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Trzymaj kontroler tak, jak będziesz grać, wskaż środek ekranu i przytrzymaj L1",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Trzymaj kontroler tak, jak będziesz grać, wskaż środek ekranu i przytrzymaj R1"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Trzymaj kontroler tak, jak będziesz grać, wskaż środek ekranu i przytrzymaj R1",
+ "Stick Sensitivity": "Czułość gałki",
+ "Stick Dead Zone": "Martwa strefa gałki",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "Jak mocno działa lekkie wychylenie gałki sterującej: niżej, gdy sterowanie jest zbyt nerwowe (F-Zero GX). Pełne wychylenie to nadal pełny skręt. Najlepiej ustawić dla jednej gry (w jej własnych ustawieniach).",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "Jak daleko trzeba wychylić gałkę sterującą, zanim gra to zauważy: dla gałki, która sama dryfuje.",
+ "Lower": "Nieco niższa",
+ "Lowest": "Najniższa",
+ "Small": "Mały"
 }

@@ -1693,5 +1693,12 @@
  "Guest": "Invitado",
  "Mine": "El mío",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Sostén el control como vas a jugar, apunta al centro de la pantalla y mantén L1",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Sostén el control como vas a jugar, apunta al centro de la pantalla y mantén R1"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Sostén el control como vas a jugar, apunta al centro de la pantalla y mantén R1",
+ "Stick Sensitivity": "Sensibilidad de la palanca",
+ "Stick Dead Zone": "Zona muerta de la palanca",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "Cuánto responde un pequeño movimiento de la palanca de control: más bajo si la dirección es demasiado brusca (F-Zero GX). Llevarla al tope sigue siendo un giro completo. Mejor configurarlo para un solo juego (su configuración propia).",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "Cuánto se mueve la palanca de control antes de que el juego lo detecte: para una palanca que se mueve sola.",
+ "Lower": "Algo más bajo",
+ "Lowest": "Mínimo",
+ "Small": "Pequeño"
 }

@@ -1693,5 +1693,12 @@
  "Guest": "Гость",
  "Mine": "Свой",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Держите контроллер так, как будете играть, наведите его на центр экрана и удерживайте L1",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Держите контроллер так, как будете играть, наведите его на центр экрана и удерживайте R1"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Держите контроллер так, как будете играть, наведите его на центр экрана и удерживайте R1",
+ "Stick Sensitivity": "Чувствительность стика",
+ "Stick Dead Zone": "Мёртвая зона стика",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "Насколько сильно действует лёгкое отклонение стика управления: ниже, если управление слишком дёрганое (F-Zero GX). Полное отклонение по-прежнему даёт полный поворот. Лучше задавать для отдельной игры (в её собственных настройках).",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "Насколько нужно отклонить стик управления, прежде чем игра это заметит: для стика, который дрейфует сам по себе.",
+ "Lower": "Пониженная",
+ "Lowest": "Минимальная",
+ "Small": "Мелкий"
 }

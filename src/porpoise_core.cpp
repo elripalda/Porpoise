@@ -109,6 +109,7 @@ struct Host
     bool presented = false;
     unsigned last_width = 0, last_height = 0;
     int invert_main = 0, invert_c = 0; /* set_stick_invert */
+    float stick_power = 1.0f, stick_dead = 0.0f; /* set_stick_shape */
     int filter = 0;        /* the screen filter (porpoise_vk.hpp) */
     int fast_forward = 1;  /* frames run per frame shown */
     std::string pending_state; /* a save state to load once the game shows its first pictures */
@@ -986,7 +987,21 @@ int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
             };
             const bool x = id == RETRO_DEVICE_ID_ANALOG_X;
             if (index == RETRO_DEVICE_INDEX_ANALOG_LEFT)
-                return turned(x ? pad.left_x : pad.left_y, h.invert_main, x);
+            {
+                if (h.stick_power == 1.0f && h.stick_dead == 0.0f)
+                    return turned(x ? pad.left_x : pad.left_y, h.invert_main, x);
+                /* Its feel: the push's length past the dead zone, on a curve
+                 * (a small push moves less, a full one still all the way),
+                 * in the same direction. */
+                const float sx = pad.left_x / 32767.0f, sy = pad.left_y / 32767.0f;
+                const float len = std::min(1.0f, std::sqrt(sx * sx + sy * sy));
+                float out = 0.0f;
+                if (len > h.stick_dead)
+                    out = std::pow((len - h.stick_dead) / (1.0f - h.stick_dead), h.stick_power);
+                const float k = len > 0.0f ? out / len : 0.0f;
+                const float v = std::clamp((x ? sx : sy) * k, -1.0f, 1.0f);
+                return turned(std::int16_t(std::lround(v * 32767.0f)), h.invert_main, x);
+            }
             if (index == RETRO_DEVICE_INDEX_ANALOG_RIGHT)
                 return turned(x ? pad.right_x : pad.right_y, h.invert_c, x);
         }
@@ -1187,6 +1202,14 @@ bool capture_picture(std::vector<unsigned char> &rgba, unsigned &width, unsigned
 float picture_aspect()
 {
     return h.aspect;
+}
+
+void set_stick_shape(int sensitivity, int deadzone)
+{
+    static constexpr float kPower[4] = {1.0f, 1.4f, 1.8f, 2.3f};
+    static constexpr float kDead[4] = {0.0f, 0.06f, 0.12f, 0.20f};
+    h.stick_power = kPower[std::clamp(sensitivity, 0, 3)];
+    h.stick_dead = kDead[std::clamp(deadzone, 0, 3)];
 }
 
 void set_stick_invert(int main_stick, int c_stick)

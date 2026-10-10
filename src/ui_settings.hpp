@@ -91,6 +91,10 @@ struct Settings
     /* Sticks turned around (0 no, 1 up-down, 2 left-right, 3 both): for games
      * whose camera goes the other way. */
     int invert_main = 0, invert_c = 0;
+    /* The control stick's feel: how much a small push moves (0 normal, 1 lower,
+     * 2 low, 3 lowest: a curve, a full push still full), and a dead zone in
+     * the middle (0 off, 1 small, 2 medium, 3 large). For twitchy steering. */
+    int stick_sensitivity = 0, stick_deadzone = 0;
     /* The player's own layouts, kept with the global settings (a game only
      * picks one): a porpoise::pad::Control for each GameCube input, in
      * porpoise::pad::GcInput order. Each starts as the GameCube layout. */

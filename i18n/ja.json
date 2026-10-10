@@ -1693,5 +1693,12 @@
  "Guest": "ゲスト",
  "Mine": "マイセット",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "プレイするときと同じようにコントローラーを持ち、画面の中央に向けてL1を長押ししてください",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "プレイするときと同じようにコントローラーを持ち、画面の中央に向けてR1を長押ししてください"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "プレイするときと同じようにコントローラーを持ち、画面の中央に向けてR1を長押ししてください",
+ "Stick Sensitivity": "スティック感度",
+ "Stick Dead Zone": "スティックのデッドゾーン",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "コントロールスティックを少し倒したときの動きの大きさです。ハンドル操作が敏感すぎる場合は下げてください（F-Zero GX）。最後まで倒せば、これまでどおり最大まで曲がります。ゲームごとの個別設定で使うのがおすすめです。",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "ゲームが反応するまでにコントロールスティックを倒す量です。勝手に動いてしまう（ドリフトする）スティック向けです。",
+ "Lower": "やや低",
+ "Lowest": "最低",
+ "Small": "小"
 }

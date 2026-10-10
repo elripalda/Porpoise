@@ -1693,5 +1693,12 @@
  "Guest": "Gast",
  "Mine": "Eigen",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Houd de controller vast zoals je gaat spelen, richt op het midden van het scherm en houd L1 ingedrukt",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Houd de controller vast zoals je gaat spelen, richt op het midden van het scherm en houd R1 ingedrukt"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Houd de controller vast zoals je gaat spelen, richt op het midden van het scherm en houd R1 ingedrukt",
+ "Stick Sensitivity": "Stickgevoeligheid",
+ "Stick Dead Zone": "Dode zone van de stick",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "Hoeveel een kleine duw op de besturingsstick doet: lager voor besturing die te schichtig is (F-Zero GX). Helemaal duwen blijft een volle draai. Stel dit het liefst per game in (in de eigen instellingen).",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "Hoe ver de besturingsstick beweegt voordat de game het merkt: voor een stick die vanzelf afdrijft.",
+ "Lower": "Iets lager",
+ "Lowest": "Laagst",
+ "Small": "Klein"
 }

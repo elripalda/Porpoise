@@ -87,6 +87,8 @@ void set_option(const char *key, const char *value);
 void set_picture(int filter, float strength);
 /* The sticks turned around (0 no, 1 up-down, 2 left-right, 3 both). */
 void set_stick_invert(int main_stick, int c_stick);
+/* The control stick's feel (Settings::stick_sensitivity, stick_deadzone). */
+void set_stick_shape(int sensitivity, int deadzone);
 /* Fast forward: 1 is normal speed, 2 or 4 run that many frames for each shown. */
 void set_fast_forward(int factor);
 /* The fast forward in effect now (1: none). */

@@ -6778,5 +6778,33 @@
  {
   "en": "Hold the controller as you'll play, point at the middle of the screen, and hold R1",
   "section": "3.0: Wii presets, pointer hint"
+ },
+ {
+  "en": "Stick Sensitivity",
+  "section": "3.0: stick feel"
+ },
+ {
+  "en": "Stick Dead Zone",
+  "section": "3.0: stick feel"
+ },
+ {
+  "en": "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).",
+  "section": "3.0: stick feel"
+ },
+ {
+  "en": "How far the control stick moves before the game sees it: for a stick that drifts on its own.",
+  "section": "3.0: stick feel"
+ },
+ {
+  "en": "Lower",
+  "section": "3.0: stick feel"
+ },
+ {
+  "en": "Lowest",
+  "section": "3.0: stick feel"
+ },
+ {
+  "en": "Small",
+  "section": "3.0: stick feel"
  }
 ]

@@ -87,6 +87,8 @@ const Field kFields[] = {
     {"button_layout", &Settings::button_layout, nullptr, 0, 5},
     {"invert_main", &Settings::invert_main, nullptr, 0, 3},
     {"invert_c", &Settings::invert_c, nullptr, 0, 3},
+    {"stick_sensitivity", &Settings::stick_sensitivity, nullptr, 0, 3},
+    {"stick_deadzone", &Settings::stick_deadzone, nullptr, 0, 3},
     {"rumble", nullptr, &Settings::rumble, 0, 1},
     {"ff_buttons", nullptr, &Settings::ff_buttons, 0, 1},
     {"quick_slot", &Settings::quick_slot, nullptr, 0, 3},

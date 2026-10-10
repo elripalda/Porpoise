@@ -695,6 +695,13 @@ void App::add_game_rows(Settings &t, bool per_game)
                "Turns the right stick (the C-stick) around: for a game whose camera goes the other way. Best set for "
                "one game (its own settings).",
                &t.invert_c, 0, {"Off", "Up and Down", "Left and Right", "Both"});
+        choice("stick_sensitivity", "Stick Sensitivity",
+               "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero "
+               "GX). A full push is still a full turn. Best set for one game (its own settings).",
+               &t.stick_sensitivity, 0, {"Normal", "Lower", "Low", "Lowest"});
+        choice("stick_deadzone", "Stick Dead Zone",
+               "How far the control stick moves before the game sees it: for a stick that drifts on its own.",
+               &t.stick_deadzone, 0, {"Off", "Small", "Medium", "Large"});
     }
     {
         SettingRow r;

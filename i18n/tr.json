@@ -1693,5 +1693,12 @@
  "Guest": "Misafir",
  "Mine": "Benimki",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "Kumandayı oynayacağınız gibi tutun, ekranın ortasına doğrultun ve L1'i basılı tutun",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Kumandayı oynayacağınız gibi tutun, ekranın ortasına doğrultun ve R1'i basılı tutun"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "Kumandayı oynayacağınız gibi tutun, ekranın ortasına doğrultun ve R1'i basılı tutun",
+ "Stick Sensitivity": "Çubuk hassasiyeti",
+ "Stick Dead Zone": "Çubuk ölü bölgesi",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "Kontrol çubuğunu hafifçe ittiğinizde ne kadar hareket ettiği: direksiyon fazla hassassa düşürün (F-Zero GX). Sonuna kadar itmek yine tam dönüş sağlar. En iyisi tek bir oyun için ayarlamaktır (oyunun kendi ayarlarında).",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "Oyun algılamadan önce kontrol çubuğunun ne kadar hareket ettiği: kendi kendine kayan (drift yapan) bir çubuk için.",
+ "Lower": "Biraz düşük",
+ "Lowest": "En düşük",
+ "Small": "Küçük"
 }

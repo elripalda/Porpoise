@@ -1693,5 +1693,12 @@
  "Guest": "訪客",
  "Mine": "我的",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "以遊玩時的方式握持控制器，指向螢幕中央並按住 L1",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "以遊玩時的方式握持控制器，指向螢幕中央並按住 R1"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "以遊玩時的方式握持控制器，指向螢幕中央並按住 R1",
+ "Stick Sensitivity": "搖桿靈敏度",
+ "Stick Dead Zone": "搖桿死區",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "輕推控制搖桿時的移動幅度：轉向過於靈敏時調低（F-Zero GX）。推到底仍會轉到最大。最好只為單一遊戲設定（在其專屬設定中）。",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "控制搖桿移動多少後遊戲才會偵測到：適用於會自行飄移的搖桿。",
+ "Lower": "較低",
+ "Lowest": "最低",
+ "Small": "小"
 }

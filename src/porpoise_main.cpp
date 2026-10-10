@@ -1110,6 +1110,7 @@ void start_library()
 void apply_game_controls(bool wii_game)
 {
     porpoise::core::set_stick_invert(g_play.invert_main, g_play.invert_c);
+    porpoise::core::set_stick_shape(g_play.stick_sensitivity, g_play.stick_deadzone);
     porpoise::pad::set_fast_forward_buttons(g_play.ff_buttons);
     porpoise::pad::set_quick_buttons(g_play.quick_slot > 0);
     porpoise::pad::set_shot_buttons(g_play.shot_buttons);
@@ -1335,6 +1336,8 @@ int menu_paused(void *)
         porpoise::pad::set_mapping(g_play.mapping());
     else if (key == "invert_main" || key == "invert_c")
         porpoise::core::set_stick_invert(g_play.invert_main, g_play.invert_c);
+    else if (key == "stick_sensitivity" || key == "stick_deadzone")
+        porpoise::core::set_stick_shape(g_play.stick_sensitivity, g_play.stick_deadzone);
     else if (key == "fast_forward")
         porpoise::core::set_fast_forward(g_app.menu_fast_forward());
     else if (key == "border" || key == "fps_overlay" || key == "motion_readout")

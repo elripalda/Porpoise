@@ -1693,5 +1693,12 @@
  "Guest": "게스트",
  "Mine": "내 세트",
  "Hold the controller as you'll play, point at the middle of the screen, and hold L1": "플레이할 때처럼 컨트롤러를 잡고 화면 가운데를 가리킨 채 L1을 누르고 있으세요",
- "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "플레이할 때처럼 컨트롤러를 잡고 화면 가운데를 가리킨 채 R1을 누르고 있으세요"
+ "Hold the controller as you'll play, point at the middle of the screen, and hold R1": "플레이할 때처럼 컨트롤러를 잡고 화면 가운데를 가리킨 채 R1을 누르고 있으세요",
+ "Stick Sensitivity": "스틱 감도",
+ "Stick Dead Zone": "스틱 데드존",
+ "How much a small push of the control stick moves: lower for steering that's too twitchy (F-Zero GX). A full push is still a full turn. Best set for one game (its own settings).": "컨트롤 스틱을 살짝 밀었을 때 움직이는 정도입니다. 조향이 너무 민감하면 낮추세요(F-Zero GX). 끝까지 밀면 여전히 최대로 꺾입니다. 게임별 개별 설정에서 지정하는 것이 가장 좋습니다.",
+ "How far the control stick moves before the game sees it: for a stick that drifts on its own.": "게임이 인식하기 전까지 컨트롤 스틱이 움직이는 거리입니다. 저절로 움직이는(드리프트) 스틱에 사용하세요.",
+ "Lower": "약간 낮음",
+ "Lowest": "가장 낮음",
+ "Small": "작게"
 }
