@@ -13,6 +13,11 @@
 - **Wii buttons:** two sets of your own per Wii controller, for every game or
   one; Pointer Range for games whose pointer can't reach an edge (Zack &
   Wiki); a GameCube controller in a Wii game turns the Wii Remote off.
+- **Stick Sensitivity and Stick Dead Zone** for the control stick (Settings
+  → Controls, a game's own settings and the in-game menu), for games whose
+  steering is twitchy (F-Zero GX).
+- The Wii pointer reaches the top of the screen with the Sensor Bar below
+  the TV (Mario Kart Wii), and a box flips to its back smoothly.
 - **Wii System Data (beta):** import your own Wii's BootMii NAND backup.
 - **HD texture packs** listed in Settings → Textures with the game each is
   for, and held to what the console's memory allows.
